@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #111111;
+  --accent: #000000;
+  --border: #eaeaea;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --accent: #ffffff;
+    --border: #333333;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--background);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-field {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+}
