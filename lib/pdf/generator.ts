@@ -41,14 +41,20 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
       
       doc.lineWidth(1);
       
-      // Draw cells
+      // Draw numbers in the grid
+      // Iterate through all the cells in the grid
       for (let i = 0; i < 9; i++) {
         for (let j = 0; j < 9; j++) {
+          // Get the value of the current cell
           const val = grid[i][j];
+          // If the cell is not empty, draw the value in the cell
           if (val !== 0) {
+            // Set the font size to be 60% of the cell size
             doc.fontSize(cellSize * 0.6);
+            // Get the width and height of the text
             const textWidth = doc.widthOfString(val.toString());
             const textHeight = doc.heightOfString(val.toString());
+            // Draw the text in the center of the cell
             doc.text(
               val.toString(),
               startX + j * cellSize + (cellSize - textWidth) / 2,
@@ -58,16 +64,17 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
         }
       }
 
-      // Draw grid lines
+      // Draw 10 grid lines (horizontal and vertical)
       for (let i = 0; i <= 9; i++) {
+        // Draw thicker lines every 3rd line to create 3x3 subgrids
         doc.lineWidth(i % 3 === 0 ? 3 : 1);
         
-        // Horizontal
+        // Draw horizontal lines
         doc.moveTo(startX, startY + i * cellSize)
            .lineTo(startX + size, startY + i * cellSize)
            .stroke();
            
-        // Vertical
+        // Draw vertical lines
         doc.moveTo(startX + i * cellSize, startY)
            .lineTo(startX + i * cellSize, startY + size)
            .stroke();
