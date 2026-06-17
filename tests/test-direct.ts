@@ -13,7 +13,7 @@ async function run() {
     
     const pdfBuffer = await generatePuzzlePDF(puzzles);
     
-    fs.writeFileSync('test_direct.pdf', pdfBuffer);
+    fs.writeFileSync('../output/test_direct.pdf', pdfBuffer);
     console.log('PDF generated directly! Size:', pdfBuffer.length);
   } catch (err) {
     console.error('Error during direct PDF generation:', err);

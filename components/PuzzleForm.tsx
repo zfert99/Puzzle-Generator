@@ -23,8 +23,8 @@ export default function PuzzleForm() {
       setError('Please select at least one puzzle to generate.');
       return;
     }
-    if (total > 100) {
-      setError('Please select 100 or fewer puzzles total.');
+    if (total > 50) {
+      setError('Too many puzzles. Maximum is 50 per request.');
       return;
     }
 
@@ -77,6 +77,7 @@ export default function PuzzleForm() {
             />
           </div>
         ))}
+        <p className="text-sm text-gray-400 text-center mt-2">You can generate 1–50 puzzles total per request.</p>
       </div>
 
       {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}

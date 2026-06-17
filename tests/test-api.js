@@ -16,7 +16,7 @@ async function run() {
     }
     
     const buffer = Buffer.from(await res.arrayBuffer());
-    fs.writeFileSync('test_output.pdf', buffer);
+    fs.writeFileSync('../output/test_output.pdf', buffer);
     console.log('Successfully generated test_output.pdf! Size:', buffer.length, 'bytes');
     process.exit(0);
   } catch (err) {
