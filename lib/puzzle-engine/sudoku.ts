@@ -117,6 +117,7 @@ function countSolutions(grid: number[][], limit = 2): number {
   return count;
 }
 
+// generateSudoku function generates a Sudoku puzzle with a given difficulty
 export function generateSudoku(difficulty: Difficulty): SudokuPuzzle {
   // Create an empty grid 
   const solution = createEmptyGrid();
@@ -126,6 +127,7 @@ export function generateSudoku(difficulty: Difficulty): SudokuPuzzle {
   // Create a copy of the solution to be used as the puzzle grid
   const grid = copyGrid(solution);
 
+  // if the difficulty is expert, remove as many clues as possible by trying every position in a random order
   if (difficulty === 'expert') {
     applyExhaustiveDigger(grid);
   } else {
@@ -169,7 +171,7 @@ function applyQuotaDigger(grid: number[][], difficulty: Difficulty): void {
   let cluesToRemove = 40;
   if (difficulty === 'medium') cluesToRemove = 50;
   if (difficulty === 'hard') cluesToRemove = 56;
-  
+
   let attempts = 0;
 
   // Remove clues until the desired number of clues is reached  
