@@ -1,4 +1,4 @@
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
 export interface SudokuPuzzle {
   grid: number[][]; // 9x9, 0 represents empty
@@ -125,8 +125,43 @@ export function generateSudoku(difficulty: Difficulty): SudokuPuzzle {
 
   // Create a copy of the solution to be used as the puzzle grid
   const grid = copyGrid(solution);
-  let attempts = 0;
 
+  if (difficulty === 'expert') {
+    applyExhaustiveDigger(grid);
+  } else {
+    applyQuotaDigger(grid, difficulty);
+  }
+
+  // Return the puzzle and solution as a SudokuPuzzle object
+  return { grid, solution, difficulty };
+}
+
+// Helper Function for Expert
+function applyExhaustiveDigger(grid: number[][]): void {
+  // get all the positions in the grid
+  const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
+  // loop through each position
+  for (const pos of positions) {
+    const row = Math.floor(pos / 9);
+    const col = pos % 9;
+
+    // Store the value of the cell
+    const backup = grid[row][col];
+    // If the cell is empty, continue
+    if (backup === 0) continue;
+    // Remove the value from the cell
+    grid[row][col] = 0;
+    // Check if the puzzle still has a unique solution
+    const copy = copyGrid(grid);
+    if (countSolutions(copy) !== 1) {
+      // If not unique, put it back
+      grid[row][col] = backup;
+    }
+  }
+}
+
+// Helper Function for Easy/Med/Hard
+function applyQuotaDigger(grid: number[][], difficulty: Difficulty): void {
   // Basic difficulty heuristic by number of clues to remove
   // Easy: ~40 clues remaining (remove ~41)
   // Medium: ~30 clues remaining (remove ~51)
@@ -134,6 +169,8 @@ export function generateSudoku(difficulty: Difficulty): SudokuPuzzle {
   let cluesToRemove = 40;
   if (difficulty === 'medium') cluesToRemove = 50;
   if (difficulty === 'hard') cluesToRemove = 56;
+  
+  let attempts = 0;
 
   // Remove clues until the desired number of clues is reached  
   while (cluesToRemove > 0 && attempts < 100) {
@@ -161,7 +198,4 @@ export function generateSudoku(difficulty: Difficulty): SudokuPuzzle {
       cluesToRemove--;
     }
   }
-
-  // Return the puzzle and solution as a SudokuPuzzle object
-  return { grid, solution, difficulty };
 }

@@ -27,8 +27,8 @@ function buildEmptyRequest(): NextRequest {
 
 describe('Happy Paths', () => {
 
-  test('The Mixed Book: 1 easy, 2 medium, 1 hard returns 200', async () => {
-    const res = await POST(buildRequest({ easy: 1, medium: 2, hard: 1 }));
+  test('The Mixed Book: 1 easy, 2 medium, 1 hard, 1 expert returns 200', async () => {
+    const res = await POST(buildRequest({ easy: 1, medium: 2, hard: 1, expert: 1 }));
     expect(res.status).toBe(200);
   }, 60_000); // Generous timeout because puzzle generation + PDF rendering can be slow
 
@@ -61,7 +61,7 @@ describe('Happy Paths', () => {
 describe('Sad Paths', () => {
 
   test('The "Zero" Request: all zeros returns 400', async () => {
-    const res = await POST(buildRequest({ easy: 0, medium: 0, hard: 0 }));
+    const res = await POST(buildRequest({ easy: 0, medium: 0, hard: 0, expert: 0 }));
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBeDefined();
@@ -80,12 +80,12 @@ describe('Sad Paths', () => {
   });
 
   test('Bad Data Types: non-numeric values are rejected', async () => {
-    const res = await POST(buildRequest({ easy: 'apple', medium: 'banana', hard: 'cherry' }));
+    const res = await POST(buildRequest({ easy: 'apple', medium: 'banana', hard: 'cherry', expert: 'date' }));
     expect(res.status).toBe(400);
   });
 
   test('Negative Numbers: negative counts are rejected', async () => {
-    const res = await POST(buildRequest({ easy: -5, medium: 0, hard: 0 }));
+    const res = await POST(buildRequest({ easy: -5, medium: 0, hard: 0, expert: 0 }));
     expect(res.status).toBe(400);
   });
 

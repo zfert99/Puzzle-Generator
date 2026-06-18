@@ -7,7 +7,7 @@ This document explains the core logic behind our `sudoku.ts` puzzle engine. It b
 ## 1. Data Structures (The Blueprints)
 
 **Difficulty Levels:**
-We define exactly three allowed difficulty levels: 'easy', 'medium', or 'hard'.
+We define exactly four allowed difficulty levels: 'easy', 'medium', 'hard', or 'expert'.
 
 **Sudoku Puzzle Object:**
 When the engine finishes, it hands back a package containing:
@@ -71,25 +71,42 @@ When the engine finishes, it hands back a package containing:
 
 ---
 
-## 4. The Master Function
+## 4. The Master Function & Diggers
 
 ### `generateSudoku(difficulty)`
-**Goal:** Create the final puzzle object to send to the frontend/PDF generator.
+**Goal:** Act as the "traffic cop" to prepare the puzzle and delegate to the right digging strategy.
 **Steps:**
 1. Create a blank 9x9 grid filled with 0s.
 2. Call `fillGrid` to completely solve it with random numbers.
 3. Save a copy of this full grid as the `solution`.
-4. Determine how many numbers to erase based on the `difficulty`:
-   - Easy: Remove ~30 numbers.
-   - Medium: Remove ~40 numbers.
-   - Hard: Remove ~50 numbers.
-5. **The Digging Loop:** While we still need to remove more numbers (and haven't tried too many times):
+4. If `difficulty` is 'expert', call `applyExhaustiveDigger()`.
+5. Otherwise, call `applyQuotaDigger()`.
+6. Return the final `{ grid, solution, difficulty }` object.
+
+### `applyExhaustiveDigger(grid)`
+**Goal:** Try to remove as many clues as possible for the Expert difficulty.
+**Steps:**
+1. Shuffle a list of all 81 positions on the board.
+2. Loop through every position exactly once:
+   - Save the current number as a backup.
+   - Set the cell to 0 (dig the hole).
+   - Call `countSolutions` on a copy of the grid.
+   - If `countSolutions` does NOT equal 1 (meaning 2+ solutions exist), the hole broke the puzzle. Put the `backup` number back into the cell.
+   - (No attempts counter is used; it aggressively checks every single cell to ensure a minimal puzzle).
+
+### `applyQuotaDigger(grid, difficulty)`
+**Goal:** Remove a specific quota of clues for Easy, Medium, or Hard difficulties.
+**Steps:**
+1. Determine how many numbers to erase based on the `difficulty`:
+   - Easy: Remove 40 clues.
+   - Medium: Remove 50 clues.
+   - Hard: Remove 56 clues.
+2. While we still need to remove more numbers (and haven't tried too many times):
    - Pick a random row and column.
    - If the cell is not already empty:
      - Save the current number as a backup.
      - Set the cell to 0 (dig the hole).
      - Call `countSolutions` on a copy of the grid.
-     - If `countSolutions` does NOT equal 1 (meaning 2+ solutions exist):
+     - If `countSolutions` does NOT equal 1:
        - The hole broke the puzzle! Put the `backup` number back into the cell.
      - Otherwise, the hole is safe. Decrement the "clues to remove" counter.
-6. Return the final `{ grid, solution, difficulty }` object.

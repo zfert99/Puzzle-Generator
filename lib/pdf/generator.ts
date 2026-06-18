@@ -20,7 +20,8 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
     const grouped: Record<string, { puzzle: SudokuPuzzle, index: number }[]> = {
       easy: [],
       medium: [],
-      hard: []
+      hard: [],
+      expert: []
     };
 
     // Group puzzles by difficulty
@@ -100,7 +101,7 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
       let puzzleCount = 0;
 
       // Loop through each difficulty level
-      for (const diff of ['easy', 'medium', 'hard']) {
+      for (const diff of ['easy', 'medium', 'hard', 'expert']) {
         const group = grouped[diff];
         if (group.length === 0) continue;
 

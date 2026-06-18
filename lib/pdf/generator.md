@@ -21,7 +21,7 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 **Goal:** Sort the raw list of puzzles into organized groups for the book.
 **Steps:**
-1. Create buckets for 'easy', 'medium', and 'hard' puzzles.
+1. Create buckets for 'easy', 'medium', 'hard', and 'expert' puzzles.
 2. Loop through the list of generated puzzles and place each one into its corresponding bucket, remembering its original index number so we can label it correctly (e.g., "Sudoku #1").
 
 ---
@@ -57,7 +57,7 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 **Goal:** Loop through all the organized puzzles and draw them, page by page. This handles both the blank puzzles and the solved answer keys.
 **Steps:**
 1. Create a main bookmark/outline section (either "Puzzles" or "Answer Keys").
-2. Loop through each difficulty level ('easy', 'medium', 'hard').
+2. Loop through each difficulty level ('easy', 'medium', 'hard', 'expert').
 3. If there are puzzles in this difficulty, create a sub-bookmark for it.
 4. **The Drawing Loop:** For every puzzle in this group:
    - Add a new page to the PDF.

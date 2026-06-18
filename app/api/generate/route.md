@@ -10,7 +10,7 @@ This document explains the core logic behind our `route.ts` API endpoint for the
 **Steps:**
 1. Wait for an incoming network request.
 2. Open up the hidden "body" of the request (the data payload sent by the user) and read it as JSON.
-3. Extract three specific numbers from the JSON payload: `easy`, `medium`, and `hard`. These represent how many puzzles of each difficulty the user requested. If the user didn't specify a number for a particular difficulty, default it to `0`.
+3. Extract four specific numbers from the JSON payload: `easy`, `medium`, `hard`, and `expert`. These represent how many puzzles of each difficulty the user requested. If the user didn't specify a number for a particular difficulty, default it to `0`.
 
 ---
 
@@ -18,10 +18,10 @@ This document explains the core logic behind our `route.ts` API endpoint for the
 
 **Goal:** Reject bad or dangerous requests before doing any heavy lifting. We run four checks in order:
 **Steps:**
-1. **Type Check:** Are `easy`, `medium`, and `hard` all actual numbers? If someone sends a string like `"apple"` instead of a number, immediately return a `400 Bad Request` error.
+1. **Type Check:** Are `easy`, `medium`, `hard`, and `expert` all actual numbers? If someone sends a string like `"apple"` instead of a number, immediately return a `400 Bad Request` error.
 2. **Negative/Decimal Check:** Are any of the values negative (e.g., `-5`) or non-integer (e.g., `2.7`)? If so, return a `400 Bad Request` error. You can't generate negative puzzles!
-3. **Zero Check:** Are all three values equal to `0`? If so, the user didn't actually ask for anything. Return a `400 Bad Request` error with the message: "Please select at least one puzzle to generate".
-4. **Overload Check:** Does the total (`easy + medium + hard`) exceed the maximum limit of 50? If so, return a `400 Bad Request` error. This prevents a malicious user from requesting millions of puzzles and crashing the server.
+3. **Zero Check:** Are all four values equal to `0`? If so, the user didn't actually ask for anything. Return a `400 Bad Request` error with the message: "Please select at least one puzzle to generate".
+4. **Overload Check:** Does the total (`easy + medium + hard + expert`) exceed the maximum limit of 50? If so, return a `400 Bad Request` error. This prevents a malicious user from requesting millions of puzzles and crashing the server.
 
 ---
 
@@ -33,7 +33,8 @@ This document explains the core logic behind our `route.ts` API endpoint for the
 2. **Easy Puzzles:** Create a loop that runs exactly `easy` times. Inside the loop, tell our Sudoku Engine to generate a new 'easy' puzzle, and add it to our `puzzles` list.
 3. **Medium Puzzles:** Create a loop that runs exactly `medium` times. Tell the engine to generate a 'medium' puzzle, and add it to the list.
 4. **Hard Puzzles:** Create a loop that runs exactly `hard` times. Tell the engine to generate a 'hard' puzzle, and add it to the list.
-5. *Result: We now have a single list containing all the raw, playable Sudoku objects.*
+5. **Expert Puzzles:** Create a loop that runs exactly `expert` times. Tell the engine to generate an 'expert' puzzle, and add it to the list.
+6. *Result: We now have a single list containing all the raw, playable Sudoku objects.*
 
 ---
 

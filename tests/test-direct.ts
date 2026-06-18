@@ -1,5 +1,5 @@
-import { generatePuzzlePDF } from './lib/pdf/generator';
-import { generateSudoku } from './lib/puzzle-engine/sudoku';
+import { generatePuzzlePDF } from '../lib/pdf/generator';
+import { generateSudoku } from '../lib/puzzle-engine/sudoku';
 import * as fs from 'fs';
 
 async function run() {
