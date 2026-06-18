@@ -68,7 +68,19 @@ export class HumanSolver {
         continue;
       }
 
+      if (this.applySwordfish()) {
+        this.usedAdvanced = true;
+        changed = true;
+        continue;
+      }
+
       if (this.applyYWing()) {
+        this.usedAdvanced = true;
+        changed = true;
+        continue;
+      }
+
+      if (this.applyXYZWing()) {
         this.usedAdvanced = true;
         changed = true;
         continue;
@@ -347,6 +359,156 @@ export class HumanSolver {
                       this.candidates[r][c].delete(targetCand);
                       changed = true;
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return changed;
+  }
+
+  applySwordfish(): boolean {
+    let changed = false;
+    for (let num = 1; num <= 9; num++) {
+      // Row-based Swordfish: find 3 rows where candidate appears in at most 3 columns total
+      const rowPositions: number[][] = Array.from({ length: 9 }, () => []);
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
+            rowPositions[r].push(c);
+          }
+        }
+      }
+
+      // Find triplets of rows that each have 2-3 positions, all fitting within exactly 3 columns
+      for (let r1 = 0; r1 < 7; r1++) {
+        if (rowPositions[r1].length < 2 || rowPositions[r1].length > 3) continue;
+        for (let r2 = r1 + 1; r2 < 8; r2++) {
+          if (rowPositions[r2].length < 2 || rowPositions[r2].length > 3) continue;
+          for (let r3 = r2 + 1; r3 < 9; r3++) {
+            if (rowPositions[r3].length < 2 || rowPositions[r3].length > 3) continue;
+
+            // Collect all unique columns used across the 3 rows
+            const colSet = new Set<number>([...rowPositions[r1], ...rowPositions[r2], ...rowPositions[r3]]);
+            if (colSet.size !== 3) continue;
+
+            // Valid Swordfish found — eliminate candidate from these 3 columns in all OTHER rows
+            const coverCols = Array.from(colSet);
+            for (const c of coverCols) {
+              for (let r = 0; r < 9; r++) {
+                if (r !== r1 && r !== r2 && r !== r3) {
+                  if (this.candidates[r][c].has(num)) {
+                    this.candidates[r][c].delete(num);
+                    changed = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Column-based Swordfish: find 3 columns where candidate appears in at most 3 rows total
+      const colPositions: number[][] = Array.from({ length: 9 }, () => []);
+      for (let c = 0; c < 9; c++) {
+        for (let r = 0; r < 9; r++) {
+          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
+            colPositions[c].push(r);
+          }
+        }
+      }
+
+      for (let c1 = 0; c1 < 7; c1++) {
+        if (colPositions[c1].length < 2 || colPositions[c1].length > 3) continue;
+        for (let c2 = c1 + 1; c2 < 8; c2++) {
+          if (colPositions[c2].length < 2 || colPositions[c2].length > 3) continue;
+          for (let c3 = c2 + 1; c3 < 9; c3++) {
+            if (colPositions[c3].length < 2 || colPositions[c3].length > 3) continue;
+
+            const rowSet = new Set<number>([...colPositions[c1], ...colPositions[c2], ...colPositions[c3]]);
+            if (rowSet.size !== 3) continue;
+
+            const coverRows = Array.from(rowSet);
+            for (const r of coverRows) {
+              for (let c = 0; c < 9; c++) {
+                if (c !== c1 && c !== c2 && c !== c3) {
+                  if (this.candidates[r][c].has(num)) {
+                    this.candidates[r][c].delete(num);
+                    changed = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return changed;
+  }
+
+  applyXYZWing(): boolean {
+    let changed = false;
+
+    // Collect all bivalue cells (for pincers)
+    const bivalues: { r: number, c: number, cands: number[] }[] = [];
+    // Collect all trivalue cells (for pivots)
+    const trivalues: { r: number, c: number, cands: number[] }[] = [];
+
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[r][c] !== 0) continue;
+        if (this.candidates[r][c].size === 2) {
+          bivalues.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
+        } else if (this.candidates[r][c].size === 3) {
+          trivalues.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
+        }
+      }
+    }
+
+    // For each trivalue pivot (ABC), find two bivalue pincers (AC, BC) that each see the pivot
+    for (const pivot of trivalues) {
+      const [a, b, z] = pivot.cands;
+      // Try each candidate in the pivot as the "z" (the common elimination candidate)
+      const zCandidates = [a, b, z];
+
+      for (const zCand of zCandidates) {
+        // The other two candidates form the "split"
+        const others = pivot.cands.filter(c => c !== zCand);
+        const x = others[0];
+        const y = others[1];
+
+        // Pincer1 must have {x, z} and see pivot
+        // Pincer2 must have {y, z} and see pivot
+        const pincer1Cands = [x, zCand].sort();
+        const pincer2Cands = [y, zCand].sort();
+
+        const pincer1Options = bivalues.filter(bv =>
+          bv.cands[0] === pincer1Cands[0] && bv.cands[1] === pincer1Cands[1] && this.sees(pivot, bv)
+        );
+        const pincer2Options = bivalues.filter(bv =>
+          bv.cands[0] === pincer2Cands[0] && bv.cands[1] === pincer2Cands[1] && this.sees(pivot, bv)
+        );
+
+        for (const p1 of pincer1Options) {
+          for (const p2 of pincer2Options) {
+            if (p1.r === p2.r && p1.c === p2.c) continue;
+
+            // XYZ-Wing elimination: remove zCand from cells that see ALL THREE (pivot + both pincers)
+            for (let r = 0; r < 9; r++) {
+              for (let c = 0; c < 9; c++) {
+                if (this.grid[r][c] !== 0) continue;
+                if (r === pivot.r && c === pivot.c) continue;
+                if (r === p1.r && c === p1.c) continue;
+                if (r === p2.r && c === p2.c) continue;
+
+                if (this.sees({ r, c }, pivot) && this.sees({ r, c }, p1) && this.sees({ r, c }, p2)) {
+                  if (this.candidates[r][c].has(zCand)) {
+                    this.candidates[r][c].delete(zCand);
+                    changed = true;
                   }
                 }
               }

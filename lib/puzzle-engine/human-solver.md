@@ -22,7 +22,7 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 1. Start a `while` loop that runs as long as the puzzle is not solved and we made at least one change in the last pass.
 2. **Apply Basic Strategies:** Try to find a Naked Single or Hidden Single. If one is found, place the number, mark `changed = true`, and restart the loop.
 3. **Apply Intermediate Strategies:** Try to find Naked Pairs or Pointing Pairs to eliminate candidates. If successful, mark `changed = true` and restart the loop.
-4. **Apply Advanced Strategies:** If basic strategies fail, look for an **X-Wing** or **Y-Wing**. If found, flag that `usedAdvanced = true`, eliminate the candidates, and restart the loop.
+4. **Apply Advanced Strategies:** If basic strategies fail, look for an **X-Wing**, **Swordfish**, **Y-Wing**, or **XYZ-Wing**. If found, flag that `usedAdvanced = true`, eliminate the candidates, and restart the loop.
 5. If the loop finishes checking all strategies and nothing changed, we are stuck. The puzzle requires guessing or strategies we haven't programmed yet.
 6. Return whether the puzzle was fully solved, and whether it explicitly required an advanced strategy to finish.
 
@@ -45,5 +45,11 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 ### X-Wing
 **Logic:** Look for a specific candidate (like a 4). If there are exactly two rows where a 4 can be placed, and those placements align in the exact same two columns, then the 4s must form an 'X' shape. We can eliminate 4 from the candidates of all other cells in those two columns.
 
+### Swordfish
+**Logic:** An extension of X-Wing from 2 rows/columns to 3. Look for a candidate that appears in exactly 2-3 positions within 3 different rows, and where all those positions fall into exactly 3 columns. The candidate must occupy one cell per column within those 3 rows, so we can eliminate it from all other rows in those 3 columns. Also implemented in the reverse direction (3 columns mapping to 3 rows).
+
 ### Y-Wing (Bent Bivalue)
 **Logic:** Look for three cells that only have two candidates each. One is a "Pivot" cell (candidates AB), and the other two are "Pincers" (candidates AC and BC). If the Pivot sees both Pincers, then regardless of whether the Pivot is A or B, one of the Pincers MUST be C. Therefore, any cell that sees BOTH Pincers can never be C, so we can remove C from their candidates.
+
+### XYZ-Wing
+**Logic:** An extension of Y-Wing where the pivot cell has 3 candidates (ABC) instead of 2. The two pincers are bivalue cells containing (AC) and (BC) respectively, and both must see the pivot. Because the pivot itself could also be C, the elimination zone is more restricted than a Y-Wing: candidate C can only be removed from cells that simultaneously see the pivot AND both pincers.
