@@ -1,209 +1,267 @@
 import { HumanSolver } from './human-solver';
 
+// The four possible difficulty levels supported by the engine
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
+// Defines the structure of a generated puzzle
 export interface SudokuPuzzle {
-  grid: number[][]; // 9x9, 0 represents empty
-  solution: number[][];
-  difficulty: Difficulty;
+  grid: number[][]; // 9x9 array representing the unsolved puzzle (0 means empty)
+  solution: number[][]; // 9x9 array representing the fully solved puzzle
+  difficulty: Difficulty; // The requested difficulty level
 }
 
-// Helper to create empty 9x9 grid
+/**
+ * Creates an empty 9x9 Sudoku grid filled with 0s.
+ * 0 is used throughout the engine to represent an empty cell.
+ */
 function createEmptyGrid(): number[][] {
   return Array.from({ length: 9 }, () => Array(9).fill(0));
 }
 
-// Deep copy a grid
+/**
+ * Creates a deep copy of a 2D grid.
+ * Essential when we want to test removing numbers without destroying the original array.
+ */
 function copyGrid(grid: number[][]): number[][] {
   return grid.map(row => [...row]);
 }
 
-// Check if placing num at grid[row][col] is valid
+/**
+ * Checks if placing `num` at `grid[row][col]` is valid according to Sudoku rules.
+ * This does NOT mean `num` is the correct final answer, just that it doesn't currently
+ * conflict with any existing numbers in its row, column, or 3x3 subgrid.
+ */
 function isValid(grid: number[][], row: number, col: number, num: number): boolean {
-  // Check row and column for repetition of the number
+  // Check row and column simultaneously for repetition of the number
   for (let x = 0; x < 9; x++) {
     if (grid[row][x] === num) return false;
     if (grid[x][col] === num) return false;
   }
-  // Find the 3x3 subgrid for the given row and col
+  
+  // Calculate the top-left corner of the 3x3 subgrid that this cell belongs to
   const startRow = Math.floor(row / 3) * 3;
   const startCol = Math.floor(col / 3) * 3;
-  // Check 3x3 subgrid for repetition of the number
+  
+  // Check the 3x3 subgrid for repetition of the number
   for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
-      // If the number is found in the 3x3 subgrid, return false
       if (grid[startRow + i][startCol + j] === num) return false;
     }
   }
-  // Return true if the number is valid 
+  
+  // If no conflicts were found, it's a valid placement
   return true;
 }
 
-// Shuffle array using Fisher-Yates algorithm
+/**
+ * Shuffles an array in place using the modern Fisher-Yates algorithm.
+ * Used to randomize the order in which we test numbers (1-9) or dig cells,
+ * ensuring every generated puzzle is completely unique.
+ */
 function shuffle(array: number[]): number[] {
-  // Iterate through the array starting at the last element and ending at the second element
+  // Iterate backwards from the last element to the second element
   for (let i = array.length - 1; i > 0; i--) {
-    // Generate a random index j less than or equal to i
+    // Generate a random index j between 0 and i (inclusive)
     const j = Math.floor(Math.random() * (i + 1));
     // Swap the elements at indices i and j
     [array[i], array[j]] = [array[j], array[i]];
   }
-  // Return the shuffled array
   return array;
 }
 
-// Generate a full valid Sudoku grid
+/**
+ * Uses a backtracking algorithm to generate a fully solved, valid Sudoku grid.
+ * It randomly tries numbers in empty cells and backtracks when it hits a dead end.
+ * Modifies the `grid` argument in place.
+ */
 function fillGrid(grid: number[][]): boolean {
-  // Iterate through all the cells in the grid
+  // Iterate through all 81 cells in the 9x9 grid using a flat index (0-80)
   for (let i = 0; i < 81; i++) {
-    // Calculate the row and column from the index
+    // Convert the flat index into 2D row and column coordinates
     const row = Math.floor(i / 9);
     const col = i % 9;
+    
     // If the cell is empty, try to fill it
     if (grid[row][col] === 0) {
-      // Shuffle the numbers 1-9 to ensure randomness
+      // Shuffle the numbers 1-9 to ensure the generated solution is completely random
       const numbers = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]);
-      // Try each number in the shuffled list
+      
+      // Try placing each number
       for (const num of numbers) {
         if (isValid(grid, row, col, num)) {
-          // Place the number in the cell 
+          // Place the number tentatively
           grid[row][col] = num;
-          // Recursively call fillGrid to fill the next empty cell
+          
+          // Recursively attempt to fill the rest of the grid.
+          // If the recursive call returns true, it means the grid was successfully filled.
           if (fillGrid(grid)) return true;
-          // Backtrack: if the recursive call returns false, reset the cell to 0
+          
+          // BACKTRACK: If the recursive call returned false, this placement led to a dead end.
+          // Reset the cell to 0 and try the next number in the shuffled list.
           grid[row][col] = 0;
         }
       }
-      // If no number can be placed in the current cell, return false
+      // If we've tried all 9 numbers and none led to a valid full grid, this branch is a dead end
       return false;
     }
   }
-  // If all cells are filled, return true
+  // If we loop through all 81 cells without finding a 0, the grid is completely filled
   return true;
 }
 
-// Count solutions to check for uniqueness
+/**
+ * Counts how many valid solutions exist for a given partially-filled grid.
+ * Used to ensure our generated puzzles have EXACTLY ONE unique solution.
+ * We set a limit (default 2) because we only care if it has 1 solution or >1 solution.
+ * Continuing to count past 2 would be a massive waste of CPU.
+ */
 function countSolutions(grid: number[][], limit = 2): number {
   let count = 0;
-  // Recursive function to count solutions
+  
+  // Inner recursive solver
   function solve(g: number[][]) {
-    // If the count is already greater than or equal to the limit, return
+    // Optimization: Stop immediately if we've already found more solutions than our limit
     if (count >= limit) return;
+    
     for (let i = 0; i < 81; i++) {
       const row = Math.floor(i / 9);
       const col = i % 9;
-      // If the cell is empty, try to fill it
+      
       if (g[row][col] === 0) {
-        // Try each number from 1 to 9
+        // Try each number 1-9 in standard order (randomness isn't needed for counting)
         for (let num = 1; num <= 9; num++) {
-          // If the number is valid, place it in the cell
           if (isValid(g, row, col, num)) {
-            // Place the number in the cell
-            g[row][col] = num;
-            // Recursively call solve to fill the next empty cell
-            solve(g);
-            // Backtrack: if the recursive call returns false, reset the cell to 0
-            g[row][col] = 0;
+            g[row][col] = num; // Tentative placement
+            solve(g);          // Recurse deeper
+            g[row][col] = 0;   // Backtrack
           }
         }
-        // If no number can be placed in the current cell, return false
+        // After trying all 9 numbers, if we reach this point, we must backtrack
         return;
       }
     }
-    // Increment the solution count
+    // If we make it through all 81 cells without finding a 0, we found a valid solution!
     count++;
   }
-  // Call the solve function to count solutions 
+  
+  // Kick off the recursion
   solve(grid);
-  // Return the number of solutions 
   return count;
 }
 
-// generateSudoku function generates a Sudoku puzzle with a given difficulty
+/**
+ * Main entry point for generating a puzzle of a specific difficulty.
+ * The process:
+ * 1. Generate a complete, valid Sudoku solution.
+ * 2. Dig holes (replace numbers with 0s) while ensuring the puzzle remains uniquely solvable.
+ * 3. Use different digging strategies based on difficulty.
+ */
 export function generateSudoku(difficulty: Difficulty): SudokuPuzzle {
-  // Create an empty grid 
+  // Step 1: Create an empty grid
   const solution = createEmptyGrid();
-  // Fill the grid with a valid Sudoku solution
+  
+  // Step 2: Use backtracking to fill the grid with a random, valid solution
   fillGrid(solution);
 
-  // Create a copy of the solution to be used as the puzzle grid
+  // Step 3: Create a copy of the solution that we will "dig" holes into to create the puzzle
   const grid = copyGrid(solution);
 
-  // if the difficulty is expert, remove as many clues as possible by trying every position in a random order
+  // Step 4: Apply the appropriate digging strategy based on requested difficulty
   if (difficulty === 'expert') {
+    // Expert puzzles use logical deduction to guarantee they require advanced strategies
     applyExhaustiveDigger(grid);
   } else {
+    // Easier puzzles just remove a set number of clues while maintaining a unique solution
     applyQuotaDigger(grid, difficulty);
   }
 
-  // Return the puzzle and solution as a SudokuPuzzle object
+  // Return the complete package
   return { grid, solution, difficulty };
 }
 
-// Helper Function for Expert
+/**
+ * Expert Digger:
+ * Tries to remove AS MANY CLUES AS POSSIBLE while guaranteeing the puzzle can still be solved
+ * by a human using pure logic (without guessing).
+ * It achieves this by utilizing the `HumanSolver`.
+ */
 function applyExhaustiveDigger(grid: number[][]): void {
-  // get all the positions in the grid
+  // Create an array of all 81 positions and shuffle it
   const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
-  // loop through each position
+  
+  // Attempt to "dig" (remove) the number at each position one by one
   for (const pos of positions) {
     const row = Math.floor(pos / 9);
     const col = pos % 9;
 
-    // Store the value of the cell
+    // Backup the value in case removing it breaks the puzzle
     const backup = grid[row][col];
-    // If the cell is empty, continue
-    if (backup === 0) continue;
-    // Remove the value from the cell
+    if (backup === 0) continue; // Already empty (shouldn't happen here, but safe)
+    
+    // Tentatively remove the clue
     grid[row][col] = 0;
 
     // Verify a human can solve the resulting puzzle without guessing.
-    // If the HumanSolver succeeds, uniqueness is guaranteed — logical
-    // deduction never "chooses" between ambiguous solutions, so a
-    // solvable puzzle must have exactly one solution.
+    // We use `HumanSolver` instead of `countSolutions` because `countSolutions` uses brute-force backtracking
+    // and would successfully solve puzzles that require guessing. We want to guarantee it's logically solvable.
+    // Additionally, because `HumanSolver` relies purely on logic, if it can solve the puzzle,
+    // the puzzle is inherently guaranteed to have a UNIQUE solution.
     const solver = new HumanSolver(copyGrid(grid));
     const res = solver.solve();
+    
+    // If the HumanSolver gets stuck (requires guessing or unprogrammed strategies),
+    // we put the clue back and move on to the next position.
     if (!res.solved) {
-      // If it requires guessing, multiple solutions, or unprogrammed strategies, put it back
       grid[row][col] = backup;
     }
   }
 }
 
-// Helper Function for Easy/Med/Hard
+/**
+ * Standard Digger (Easy/Medium/Hard):
+ * Removes a specific number of clues from the grid to hit a target difficulty.
+ * Uses brute-force uniqueness checking (`countSolutions`) rather than logical deduction,
+ * because we aren't trying to force advanced logical techniques, we just want a specific clue density.
+ */
 function applyQuotaDigger(grid: number[][], difficulty: Difficulty): void {
-  // Basic difficulty heuristic by number of clues to remove
-  // Easy: ~40 clues remaining (remove ~41)
-  // Medium: ~30 clues remaining (remove ~51)
-  // Hard: ~24 clues remaining (remove ~57)
-  let cluesToRemove = 40;
-  if (difficulty === 'medium') cluesToRemove = 50;
-  if (difficulty === 'hard') cluesToRemove = 55;
+  // Target how many clues we want to REMOVE to achieve the difficulty
+  // Note: A full grid has 81 clues.
+  let cluesToRemove = 40; // Easy: removes 40 (leaves 41)
+  if (difficulty === 'medium') cluesToRemove = 50; // Medium: removes 50 (leaves 31)
+  if (difficulty === 'hard') cluesToRemove = 55;   // Hard: removes 55 (leaves 26)
 
+  // Fail-safe to prevent infinite loops if we get a grid layout where it's 
+  // mathematically difficult to reach the target quota while maintaining uniqueness
   let attempts = 0;
 
-  // Remove clues until the desired number of clues is reached  
+  // Keep digging until we've removed enough clues OR we've failed 100 times
   while (cluesToRemove > 0 && attempts < 100) {
-    // Pick a random cell
+    // Pick a completely random cell
     let row = Math.floor(Math.random() * 9);
     let col = Math.floor(Math.random() * 9);
-    // If the cell is empty, pick another cell
+    
+    // If the cell is already empty, keep picking until we hit a filled one
     while (grid[row][col] === 0) {
       row = Math.floor(Math.random() * 9);
       col = Math.floor(Math.random() * 9);
     }
 
-    // Store the value of the cell
+    // Backup the value
     const backup = grid[row][col];
+    
+    // Tentatively remove the clue
     grid[row][col] = 0;
 
-    // Check if the puzzle still has a unique solution
+    // Check if the puzzle still has exactly ONE unique solution
     const copy = copyGrid(grid);
     if (countSolutions(copy) !== 1) {
-      // If not, put the value back and try again
+      // Removing this clue created multiple valid solutions.
+      // Put the clue back and log a failed attempt.
       grid[row][col] = backup;
       attempts++;
     } else {
-      // If it has a unique solution, remove the clue
+      // Removing this clue kept the puzzle unique!
+      // Decrement our remaining quota and continue.
       cluesToRemove--;
     }
   }

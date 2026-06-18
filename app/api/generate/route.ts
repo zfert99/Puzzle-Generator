@@ -2,75 +2,104 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateSudoku, Difficulty } from '@/lib/puzzle-engine/sudoku';
 import { generatePuzzlePDF } from '@/lib/pdf/generator';
 
+/**
+ * POST /api/generate
+ * API Route Handler for generating Sudoku puzzles and returning them as a downloadable PDF.
+ * 
+ * Expected JSON Body:
+ * {
+ *   "easy": number,    // Number of easy puzzles to generate
+ *   "medium": number,  // Number of medium puzzles to generate
+ *   "hard": number,    // Number of hard puzzles to generate
+ *   "expert": number   // Number of expert puzzles to generate
+ * }
+ */
 export async function POST(req: NextRequest) {
   try {
     let body;
+    // Step 1: Safely parse the incoming JSON request body
     try {
       body = await req.json();
     } catch (e) {
       return NextResponse.json({ error: 'Invalid or missing JSON body' }, { status: 400 });
     }
+    
+    // Extract puzzle counts, defaulting to 0 if not provided
     const { easy = 0, medium = 0, hard = 0, expert = 0 } = body || {};
 
-    // Validate that all values are numbers
+    // ==========================================
+    // VALIDATION
+    // ==========================================
+
+    // Ensure that all provided values are strictly numbers
     if (typeof easy !== 'number' || typeof medium !== 'number' || typeof hard !== 'number' || typeof expert !== 'number') {
       return NextResponse.json({ error: 'Invalid input: easy, medium, hard, and expert must be numbers' }, { status: 400 });
     }
 
-    // Validate that all values are non-negative integers
+    // Ensure that all provided values are non-negative integers (no decimals, no negative amounts)
     if (easy < 0 || medium < 0 || hard < 0 || expert < 0 || !Number.isInteger(easy) || !Number.isInteger(medium) || !Number.isInteger(hard) || !Number.isInteger(expert)) {
       return NextResponse.json({ error: 'Invalid input: values must be non-negative integers' }, { status: 400 });
     }
 
-    // If no puzzles are selected, return an error
+    // Ensure the user requested at least one puzzle
     if (easy === 0 && medium === 0 && hard === 0 && expert === 0) {
       return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
     }
 
-    // Enforce a maximum limit to prevent server overload
+    // Security/Performance measure: Enforce a maximum total puzzle limit to prevent server timeouts or DoS attacks
     const MAX_PUZZLES = 50;
     if (easy + medium + hard + expert > MAX_PUZZLES) {
       return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
     }
 
+    // ==========================================
+    // PUZZLE GENERATION
+    // ==========================================
+    
     const puzzles = [];
 
-    // Generate Easy
+    // Generate Easy puzzles synchronously
     for (let i = 0; i < easy; i++) {
       puzzles.push(generateSudoku('easy'));
     }
 
-    // Generate Medium
+    // Generate Medium puzzles synchronously
     for (let i = 0; i < medium; i++) {
       puzzles.push(generateSudoku('medium'));
     }
 
-    // Generate Hard
+    // Generate Hard puzzles synchronously
     for (let i = 0; i < hard; i++) {
       puzzles.push(generateSudoku('hard'));
     }
 
-    // Generate Expert
+    // Generate Expert puzzles synchronously (this uses the advanced HumanSolver logic)
     for (let i = 0; i < expert; i++) {
       puzzles.push(generateSudoku('expert'));
     }
 
-    // Generate the PDF
+    // ==========================================
+    // PDF GENERATION AND RESPONSE
+    // ==========================================
+
+    // Pass the array of generated puzzles to the PDF generator
     const pdfBuffer = await generatePuzzlePDF(puzzles);
 
-    // Return the PDF as a response
+    // Return the generated PDF buffer directly as the HTTP response body
     return new NextResponse(pdfBuffer as any, {
       status: 200,
-      // Tell the browser that the response is a PDF file and should be downloaded as a file named Sudoku_Puzzles.pdf
       headers: {
+        // Content-Type tells the browser this is a binary PDF file
         'Content-Type': 'application/pdf',
+        // Content-Disposition 'attachment' forces the browser to download the file rather than trying to display it inline
         'Content-Disposition': 'attachment; filename="Sudoku_Puzzles.pdf"',
       },
     });
   } catch (error: any) {
-    // Log the error
+    // If anything fails during puzzle generation or PDF rendering, catch it here
     console.error('Failed to generate PDF:', error);
-    // Return an error response
+    
+    // Return a 500 Internal Server Error with details
     return NextResponse.json({
       error: 'Internal server error during PDF generation',
       details: error.message,
