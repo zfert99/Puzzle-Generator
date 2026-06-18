@@ -1,18 +1,91 @@
 export type Cell = { r: number; c: number };
+export type CandidateCell = { r: number; c: number; cands: number[] };
 
 export class HumanSolver {
+  // Current state of the Sudoku grid
   grid: number[][];
+  // Candidates for each cell
   candidates: Set<number>[][];
+  // Whether advanced strategies were used
   usedAdvanced: boolean = false;
+
+  // Check if two cells are in the same 3x3 box
+  private inSameBox(cell1: { r: number, c: number }, cell2: { r: number, c: number }): boolean {
+    return Math.floor(cell1.r / 3) === Math.floor(cell2.r / 3) && Math.floor(cell1.c / 3) === Math.floor(cell2.c / 3);
+  }
 
   // Check if two cells "see" each other (share a row, column, or 3x3 box)
   private sees(cell1: { r: number, c: number }, cell2: { r: number, c: number }): boolean {
+    // A cell does not "see" itself
     if (cell1.r === cell2.r && cell1.c === cell2.c) return false;
-    return cell1.r === cell2.r || cell1.c === cell2.c || (Math.floor(cell1.r / 3) === Math.floor(cell2.r / 3) && Math.floor(cell1.c / 3) === Math.floor(cell2.c / 3));
+    // Return true if cells share the same row, column, or 3x3 box
+    return cell1.r === cell2.r || cell1.c === cell2.c || this.inSameBox(cell1, cell2);
   }
 
+  // Get all cells for a given 3x3 box (0-8)
+  private getBoxCells(b: number): Cell[] {
+    const cells: Cell[] = [];
+    const startRow = Math.floor(b / 3) * 3;
+    const startCol = (b % 3) * 3;
+    for (let i = 0; i < 9; i++) {
+      cells.push({ r: startRow + Math.floor(i / 3), c: startCol + (i % 3) });
+    }
+    return cells;
+  }
+
+  // Get all empty cells with exactly n candidates
+  private getCellsWithNCandidates(n: number): CandidateCell[] {
+    const cells: CandidateCell[] = [];
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[r][c] === 0 && this.candidates[r][c].size === n) {
+          cells.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
+        }
+      }
+    }
+    return cells;
+  }
+
+  // Build a position map for a candidate: for each row/col/box, which cells contain it
+  private getCandidatePositions(num: number, axis: 'row' | 'col' | 'box'): Cell[][] {
+    const positions: Cell[][] = Array.from({ length: 9 }, () => []);
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
+          if (axis === 'row') positions[r].push({ r, c });
+          else if (axis === 'col') positions[c].push({ r, c });
+          else if (axis === 'box') {
+            const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+            positions[b].push({ r, c });
+          }
+        }
+      }
+    }
+    return positions;
+  }
+
+  // Eliminate a candidate from all empty cells that see every cell in targets
+  private eliminateFromCellsSeeingAll(targets: Cell[], cand: number, excludeCells: Cell[] = []): boolean {
+    let changed = false;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[r][c] !== 0) continue;
+        if (excludeCells.some(e => e.r === r && e.c === c)) continue;
+        if (!this.candidates[r][c].has(cand)) continue;
+        if (targets.every(t => this.sees({ r, c }, t))) {
+          this.candidates[r][c].delete(cand);
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  // Constructor: initializes the solver with a given Sudoku grid
   constructor(initialGrid: number[][]) {
+    // Copy the initial grid
     this.grid = initialGrid.map(row => [...row]);
+    // Initialize candidates for each cell
     this.candidates = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9])));
 
     // Initialize candidates
@@ -25,22 +98,29 @@ export class HumanSolver {
     }
   }
 
+  // Place a number in the grid and update candidates in the affected row, column, and box
   placeNumber(r: number, c: number, num: number) {
+    // Place the number in the grid
     this.grid[r][c] = num;
+    // Clear candidates for the placed number
     this.candidates[r][c].clear();
 
-    const startRow = Math.floor(r / 3) * 3;
-    const startCol = Math.floor(c / 3) * 3;
+    // Get the cells of the 3x3 box this cell belongs to
+    const boxIndex = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+    const boxCells = this.getBoxCells(boxIndex);
 
     for (let i = 0; i < 9; i++) {
+      // Remove the number from candidates in the same row
       this.candidates[r][i].delete(num);
+      // Remove the number from candidates in the same column
       this.candidates[i][c].delete(num);
-      const br = startRow + Math.floor(i / 3);
-      const bc = startCol + (i % 3);
-      this.candidates[br][bc].delete(num);
+      // Remove the number from candidates in the same 3x3 box
+      const cell = boxCells[i];
+      this.candidates[cell.r][cell.c].delete(num);
     }
   }
 
+  // Check if the Sudoku grid is completely filled
   isSolved(): boolean {
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
@@ -93,133 +173,73 @@ export class HumanSolver {
     };
   }
 
+  // Checks every cell for a single candidate and places it if found
   applyNakedSingle(): boolean {
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (this.grid[r][c] === 0 && this.candidates[r][c].size === 1) {
-          const num = Array.from(this.candidates[r][c])[0];
-          this.placeNumber(r, c, num);
-          return true;
-        }
-      }
+    const singles = this.getCellsWithNCandidates(1);
+    if (singles.length > 0) {
+      const { r, c, cands } = singles[0];
+      this.placeNumber(r, c, cands[0]);
+      return true;
     }
     return false;
   }
 
+  // Checks every row, column, and box for a hidden single and places it if found
   applyHiddenSingle(): boolean {
     for (let num = 1; num <= 9; num++) {
-      // Check rows
-      for (let r = 0; r < 9; r++) {
-        let possibleCols = [];
-        for (let c = 0; c < 9; c++) {
-          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) possibleCols.push(c);
-        }
-        if (possibleCols.length === 1) {
-          this.placeNumber(r, possibleCols[0], num);
-          return true;
-        }
-      }
-      // Check cols
-      for (let c = 0; c < 9; c++) {
-        let possibleRows = [];
-        for (let r = 0; r < 9; r++) {
-          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) possibleRows.push(r);
-        }
-        if (possibleRows.length === 1) {
-          this.placeNumber(possibleRows[0], c, num);
-          return true;
-        }
-      }
-      // Check boxes
-      for (let b = 0; b < 9; b++) {
-        let possibleCells = [];
-        const startRow = Math.floor(b / 3) * 3;
-        const startCol = (b % 3) * 3;
+      for (const axis of ['row', 'col', 'box'] as const) {
+        const positions = this.getCandidatePositions(num, axis);
         for (let i = 0; i < 9; i++) {
-          const r = startRow + Math.floor(i / 3);
-          const c = startCol + (i % 3);
-          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
-            possibleCells.push({ r, c });
+          if (positions[i].length === 1) {
+            this.placeNumber(positions[i][0].r, positions[i][0].c, num);
+            return true;
           }
-        }
-        if (possibleCells.length === 1) {
-          this.placeNumber(possibleCells[0].r, possibleCells[0].c, num);
-          return true;
         }
       }
     }
     return false;
   }
 
+  // Find two cells in the same row/column/box that have the same two candidates
+  // If found, remove those candidates from all other cells in that row/column/box
   applyNakedPair(): boolean {
     let changed = false;
+    const bivalues = this.getCellsWithNCandidates(2);
 
-    // Check rows
-    for (let r = 0; r < 9; r++) {
-      const bivalues: { idx: number, cands: number[] }[] = [];
-      for (let c = 0; c < 9; c++) {
-        if (this.grid[r][c] === 0 && this.candidates[r][c].size === 2) {
-          bivalues.push({ idx: c, cands: Array.from(this.candidates[r][c]).sort() });
-        }
-      }
-      for (let i = 0; i < bivalues.length; i++) {
-        for (let j = i + 1; j < bivalues.length; j++) {
-          if (bivalues[i].cands[0] === bivalues[j].cands[0] && bivalues[i].cands[1] === bivalues[j].cands[1]) {
-            const [cand1, cand2] = bivalues[i].cands;
+    for (let i = 0; i < bivalues.length; i++) {
+      for (let j = i + 1; j < bivalues.length; j++) {
+        const b1 = bivalues[i];
+        const b2 = bivalues[j];
+        
+        // Only care if they have the exact same two candidates
+        if (b1.cands[0] === b2.cands[0] && b1.cands[1] === b2.cands[1]) {
+          const [cand1, cand2] = b1.cands;
+          
+          // Shared row
+          if (b1.r === b2.r) {
             for (let c = 0; c < 9; c++) {
-              if (c !== bivalues[i].idx && c !== bivalues[j].idx && this.grid[r][c] === 0) {
-                if (this.candidates[r][c].has(cand1)) { this.candidates[r][c].delete(cand1); changed = true; }
-                if (this.candidates[r][c].has(cand2)) { this.candidates[r][c].delete(cand2); changed = true; }
+              if (c !== b1.c && c !== b2.c && this.grid[b1.r][c] === 0) {
+                if (this.candidates[b1.r][c].has(cand1)) { this.candidates[b1.r][c].delete(cand1); changed = true; }
+                if (this.candidates[b1.r][c].has(cand2)) { this.candidates[b1.r][c].delete(cand2); changed = true; }
               }
             }
           }
-        }
-      }
-    }
-
-    // Check columns
-    for (let c = 0; c < 9; c++) {
-      const bivalues: { idx: number, cands: number[] }[] = [];
-      for (let r = 0; r < 9; r++) {
-        if (this.grid[r][c] === 0 && this.candidates[r][c].size === 2) {
-          bivalues.push({ idx: r, cands: Array.from(this.candidates[r][c]).sort() });
-        }
-      }
-      for (let i = 0; i < bivalues.length; i++) {
-        for (let j = i + 1; j < bivalues.length; j++) {
-          if (bivalues[i].cands[0] === bivalues[j].cands[0] && bivalues[i].cands[1] === bivalues[j].cands[1]) {
-            const [cand1, cand2] = bivalues[i].cands;
+          
+          // Shared col
+          if (b1.c === b2.c) {
             for (let r = 0; r < 9; r++) {
-              if (r !== bivalues[i].idx && r !== bivalues[j].idx && this.grid[r][c] === 0) {
-                if (this.candidates[r][c].has(cand1)) { this.candidates[r][c].delete(cand1); changed = true; }
-                if (this.candidates[r][c].has(cand2)) { this.candidates[r][c].delete(cand2); changed = true; }
+              if (r !== b1.r && r !== b2.r && this.grid[r][b1.c] === 0) {
+                if (this.candidates[r][b1.c].has(cand1)) { this.candidates[r][b1.c].delete(cand1); changed = true; }
+                if (this.candidates[r][b1.c].has(cand2)) { this.candidates[r][b1.c].delete(cand2); changed = true; }
               }
             }
           }
-        }
-      }
-    }
 
-    // Check boxes
-    for (let b = 0; b < 9; b++) {
-      const startRow = Math.floor(b / 3) * 3;
-      const startCol = (b % 3) * 3;
-      const bivalues: { r: number, c: number, cands: number[] }[] = [];
-      for (let i = 0; i < 9; i++) {
-        const r = startRow + Math.floor(i / 3);
-        const c = startCol + (i % 3);
-        if (this.grid[r][c] === 0 && this.candidates[r][c].size === 2) {
-          bivalues.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
-        }
-      }
-      for (let i = 0; i < bivalues.length; i++) {
-        for (let j = i + 1; j < bivalues.length; j++) {
-          if (bivalues[i].cands[0] === bivalues[j].cands[0] && bivalues[i].cands[1] === bivalues[j].cands[1]) {
-            const [cand1, cand2] = bivalues[i].cands;
-            for (let k = 0; k < 9; k++) {
-              const r = startRow + Math.floor(k / 3);
-              const c = startCol + (k % 3);
-              if ((r !== bivalues[i].r || c !== bivalues[i].c) && (r !== bivalues[j].r || c !== bivalues[j].c) && this.grid[r][c] === 0) {
+          // Shared box
+          if (this.inSameBox(b1, b2)) {
+            const b1Box = Math.floor(b1.r / 3) * 3 + Math.floor(b1.c / 3);
+            for (const { r, c } of this.getBoxCells(b1Box)) {
+              if ((r !== b1.r || c !== b1.c) && (r !== b2.r || c !== b2.c) && this.grid[r][c] === 0) {
                 if (this.candidates[r][c].has(cand1)) { this.candidates[r][c].delete(cand1); changed = true; }
                 if (this.candidates[r][c].has(cand2)) { this.candidates[r][c].delete(cand2); changed = true; }
               }
@@ -234,18 +254,10 @@ export class HumanSolver {
 
   applyPointingPairs(): boolean {
     let changed = false;
-    for (let b = 0; b < 9; b++) {
-      const startRow = Math.floor(b / 3) * 3;
-      const startCol = (b % 3) * 3;
-      for (let num = 1; num <= 9; num++) {
-        const cells: Cell[] = [];
-        for (let i = 0; i < 9; i++) {
-          const r = startRow + Math.floor(i / 3);
-          const c = startCol + (i % 3);
-          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
-            cells.push({ r, c });
-          }
-        }
+    for (let num = 1; num <= 9; num++) {
+      const boxPositions = this.getCandidatePositions(num, 'box');
+      for (let b = 0; b < 9; b++) {
+        const cells = boxPositions[b];
         if (cells.length === 2 || cells.length === 3) {
           const sameRow = cells.every(cell => cell.r === cells[0].r);
           const sameCol = cells.every(cell => cell.c === cells[0].c);
@@ -253,7 +265,7 @@ export class HumanSolver {
           if (sameRow) {
             const r = cells[0].r;
             for (let c = 0; c < 9; c++) {
-              if (Math.floor(c / 3) !== Math.floor(startCol / 3)) {
+              if (Math.floor(c / 3) !== b % 3) {
                 if (this.candidates[r][c].has(num)) {
                   this.candidates[r][c].delete(num);
                   changed = true;
@@ -263,7 +275,7 @@ export class HumanSolver {
           } else if (sameCol) {
             const c = cells[0].c;
             for (let r = 0; r < 9; r++) {
-              if (Math.floor(r / 3) !== Math.floor(startRow / 3)) {
+              if (Math.floor(r / 3) !== Math.floor(b / 3)) {
                 if (this.candidates[r][c].has(num)) {
                   this.candidates[r][c].delete(num);
                   changed = true;
@@ -281,21 +293,14 @@ export class HumanSolver {
     let changed = false;
     for (let num = 1; num <= 9; num++) {
       // Row X-Wing
-      const rowPositions: number[][] = Array.from({ length: 9 }, () => []);
-      for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
-            rowPositions[r].push(c);
-          }
-        }
-      }
+      const rowPositions = this.getCandidatePositions(num, 'row');
 
       for (let r1 = 0; r1 < 8; r1++) {
         if (rowPositions[r1].length === 2) {
           for (let r2 = r1 + 1; r2 < 9; r2++) {
-            if (rowPositions[r2].length === 2 && rowPositions[r1][0] === rowPositions[r2][0] && rowPositions[r1][1] === rowPositions[r2][1]) {
-              const c1 = rowPositions[r1][0];
-              const c2 = rowPositions[r1][1];
+            if (rowPositions[r2].length === 2 && rowPositions[r1][0].c === rowPositions[r2][0].c && rowPositions[r1][1].c === rowPositions[r2][1].c) {
+              const c1 = rowPositions[r1][0].c;
+              const c2 = rowPositions[r1][1].c;
               // Remove from cols c1, c2
               for (let r = 0; r < 9; r++) {
                 if (r !== r1 && r !== r2) {
@@ -313,19 +318,11 @@ export class HumanSolver {
 
   applyYWing(): boolean {
     let changed = false;
-    const bivalues: { r: number, c: number, cands: number[] }[] = [];
-
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (this.grid[r][c] === 0 && this.candidates[r][c].size === 2) {
-          bivalues.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
-        }
-      }
-    }
+    const bivalues = this.getCellsWithNCandidates(2);
 
     for (let i = 0; i < bivalues.length; i++) {
       const pivot = bivalues[i];
-      const pincerCandidates: { r: number, c: number, cands: number[] }[] = [];
+      const pincerCandidates: CandidateCell[] = [];
 
       for (let j = 0; j < bivalues.length; j++) {
         if (i === j) continue;
@@ -350,17 +347,9 @@ export class HumanSolver {
             const cand2 = pincer2.cands.find(c => !pivot.cands.includes(c))!;
 
             if (cand1 === cand2) {
-              const targetCand = cand1;
-              // Any cell that sees BOTH pincers cannot have targetCand
-              for (let r = 0; r < 9; r++) {
-                for (let c = 0; c < 9; c++) {
-                  if (this.grid[r][c] === 0 && this.sees({ r, c }, pincer1) && this.sees({ r, c }, pincer2) && (r !== pivot.r || c !== pivot.c)) {
-                    if (this.candidates[r][c].has(targetCand)) {
-                      this.candidates[r][c].delete(targetCand);
-                      changed = true;
-                    }
-                  }
-                }
+              // Any cell that sees BOTH pincers cannot have this candidate
+              if (this.eliminateFromCellsSeeingAll([pincer1, pincer2], cand1, [pivot])) {
+                changed = true;
               }
             }
           }
@@ -375,14 +364,7 @@ export class HumanSolver {
     let changed = false;
     for (let num = 1; num <= 9; num++) {
       // Row-based Swordfish: find 3 rows where candidate appears in at most 3 columns total
-      const rowPositions: number[][] = Array.from({ length: 9 }, () => []);
-      for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
-            rowPositions[r].push(c);
-          }
-        }
-      }
+      const rowPositions = this.getCandidatePositions(num, 'row');
 
       // Find triplets of rows that each have 2-3 positions, all fitting within exactly 3 columns
       for (let r1 = 0; r1 < 7; r1++) {
@@ -393,7 +375,11 @@ export class HumanSolver {
             if (rowPositions[r3].length < 2 || rowPositions[r3].length > 3) continue;
 
             // Collect all unique columns used across the 3 rows
-            const colSet = new Set<number>([...rowPositions[r1], ...rowPositions[r2], ...rowPositions[r3]]);
+            const colSet = new Set<number>([
+              ...rowPositions[r1].map(x => x.c), 
+              ...rowPositions[r2].map(x => x.c), 
+              ...rowPositions[r3].map(x => x.c)
+            ]);
             if (colSet.size !== 3) continue;
 
             // Valid Swordfish found — eliminate candidate from these 3 columns in all OTHER rows
@@ -413,14 +399,7 @@ export class HumanSolver {
       }
 
       // Column-based Swordfish: find 3 columns where candidate appears in at most 3 rows total
-      const colPositions: number[][] = Array.from({ length: 9 }, () => []);
-      for (let c = 0; c < 9; c++) {
-        for (let r = 0; r < 9; r++) {
-          if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
-            colPositions[c].push(r);
-          }
-        }
-      }
+      const colPositions = this.getCandidatePositions(num, 'col');
 
       for (let c1 = 0; c1 < 7; c1++) {
         if (colPositions[c1].length < 2 || colPositions[c1].length > 3) continue;
@@ -429,7 +408,11 @@ export class HumanSolver {
           for (let c3 = c2 + 1; c3 < 9; c3++) {
             if (colPositions[c3].length < 2 || colPositions[c3].length > 3) continue;
 
-            const rowSet = new Set<number>([...colPositions[c1], ...colPositions[c2], ...colPositions[c3]]);
+            const rowSet = new Set<number>([
+              ...colPositions[c1].map(x => x.r), 
+              ...colPositions[c2].map(x => x.r), 
+              ...colPositions[c3].map(x => x.r)
+            ]);
             if (rowSet.size !== 3) continue;
 
             const coverRows = Array.from(rowSet);
@@ -453,21 +436,9 @@ export class HumanSolver {
   applyXYZWing(): boolean {
     let changed = false;
 
-    // Collect all bivalue cells (for pincers)
-    const bivalues: { r: number, c: number, cands: number[] }[] = [];
-    // Collect all trivalue cells (for pivots)
-    const trivalues: { r: number, c: number, cands: number[] }[] = [];
-
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (this.grid[r][c] !== 0) continue;
-        if (this.candidates[r][c].size === 2) {
-          bivalues.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
-        } else if (this.candidates[r][c].size === 3) {
-          trivalues.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
-        }
-      }
-    }
+    // Collect all bivalue cells (for pincers) and trivalue cells (for pivots)
+    const bivalues = this.getCellsWithNCandidates(2);
+    const trivalues = this.getCellsWithNCandidates(3);
 
     // For each trivalue pivot (ABC), find two bivalue pincers (AC, BC) that each see the pivot
     for (const pivot of trivalues) {
@@ -498,20 +469,8 @@ export class HumanSolver {
             if (p1.r === p2.r && p1.c === p2.c) continue;
 
             // XYZ-Wing elimination: remove zCand from cells that see ALL THREE (pivot + both pincers)
-            for (let r = 0; r < 9; r++) {
-              for (let c = 0; c < 9; c++) {
-                if (this.grid[r][c] !== 0) continue;
-                if (r === pivot.r && c === pivot.c) continue;
-                if (r === p1.r && c === p1.c) continue;
-                if (r === p2.r && c === p2.c) continue;
-
-                if (this.sees({ r, c }, pivot) && this.sees({ r, c }, p1) && this.sees({ r, c }, p2)) {
-                  if (this.candidates[r][c].has(zCand)) {
-                    this.candidates[r][c].delete(zCand);
-                    changed = true;
-                  }
-                }
-              }
+            if (this.eliminateFromCellsSeeingAll([pivot, p1, p2], zCand)) {
+              changed = true;
             }
           }
         }

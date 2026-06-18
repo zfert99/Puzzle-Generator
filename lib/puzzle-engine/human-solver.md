@@ -8,7 +8,12 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 
 **Goal:** Initialize the puzzle state and keep track of "pencil marks" (possible candidates) for every cell.
 **Steps:**
-1. The class defines a private `sees()` method that checks if two cells share a row, column, or 3x3 box. This is reused by multiple strategies.
+1. The class defines helper methods to reduce repetition across strategies:
+   - `inSameBox()` / `sees()`: Check if two cells share a 3x3 box, or broadly "see" each other (same row, column, or box).
+   - `getBoxCells(b)`: Returns all 9 cell coordinates for box `b` (0-8).
+   - `getCellsWithNCandidates(n)`: Scans the grid and returns all empty cells with exactly `n` candidates.
+   - `getCandidatePositions(num, axis)`: Builds a position map showing which columns (or rows) contain a given candidate for each row (or column).
+   - `eliminateFromCellsSeeingAll(targets, cand, exclude?)`: Removes a candidate from every empty cell that "sees" all target cells.
 2. When a new solver is created, it takes a copy of the current grid.
 3. It creates a 9x9 grid of `Set`s, where every cell starts with candidates 1 through 9.
 4. It iterates over the grid. If a cell already has a number, it places the number and immediately removes that number from the candidates of all other cells in its row, column, and 3x3 box.
