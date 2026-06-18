@@ -10,7 +10,7 @@ export default function PuzzleForm() {
     easy: 2,
     medium: 2,
     hard: 2,
-    expert: 2
+    expert: 0
   });
   // State for error handling
   const [error, setError] = useState('');
@@ -93,6 +93,11 @@ export default function PuzzleForm() {
           ))}
         {/* Note for the user */}
         <p className="text-sm text-gray-400 text-center mt-2">You can generate 1–50 puzzles total per request.</p>
+        {counts.expert > 0 && (
+          <p className="text-yellow-500 text-sm font-medium mt-2 text-center px-4">
+            Warning: Generating Expert puzzles requires advanced logical validation and may take up to 30 seconds.
+          </p>
+        )}
       </div>
 
       {/* Error handling */}

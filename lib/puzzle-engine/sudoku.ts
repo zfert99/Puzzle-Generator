@@ -1,3 +1,5 @@
+import { HumanSolver } from './human-solver';
+
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
 export interface SudokuPuzzle {
@@ -153,10 +155,15 @@ function applyExhaustiveDigger(grid: number[][]): void {
     if (backup === 0) continue;
     // Remove the value from the cell
     grid[row][col] = 0;
-    // Check if the puzzle still has a unique solution
-    const copy = copyGrid(grid);
-    if (countSolutions(copy) !== 1) {
-      // If not unique, put it back
+
+    // Verify a human can solve the resulting puzzle without guessing.
+    // If the HumanSolver succeeds, uniqueness is guaranteed — logical
+    // deduction never "chooses" between ambiguous solutions, so a
+    // solvable puzzle must have exactly one solution.
+    const solver = new HumanSolver(copyGrid(grid));
+    const res = solver.solve();
+    if (!res.solved) {
+      // If it requires guessing, multiple solutions, or unprogrammed strategies, put it back
       grid[row][col] = backup;
     }
   }
