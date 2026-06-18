@@ -170,7 +170,7 @@ function applyQuotaDigger(grid: number[][], difficulty: Difficulty): void {
   // Hard: ~24 clues remaining (remove ~57)
   let cluesToRemove = 40;
   if (difficulty === 'medium') cluesToRemove = 50;
-  if (difficulty === 'hard') cluesToRemove = 56;
+  if (difficulty === 'hard') cluesToRemove = 55;
 
   let attempts = 0;
 
