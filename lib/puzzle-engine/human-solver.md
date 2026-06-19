@@ -28,7 +28,7 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 
 1. Start a `while` loop that runs as long as the puzzle is not solved and we made at least one change in the last pass.
 2. **Apply Basic Strategies:** Try to find a Naked Single or Hidden Single. If one is found, place the number, mark `changed = true`, and restart the loop.
-3. **Apply Intermediate Strategies:** Try to find Naked Pairs or Pointing Pairs to eliminate candidates. If successful, mark `changed = true` and restart the loop.
+3. **Apply Intermediate Strategies:** Try to find Naked Pairs, Hidden Pairs, or Pointing Pairs to eliminate candidates. If successful, mark `changed = true` and restart the loop.
 4. **Apply Advanced Strategies:** If basic strategies fail, look for an **X-Wing**, **Swordfish**, **Y-Wing**, or **XYZ-Wing**. If found, flag that `usedAdvanced = true`, eliminate the candidates, and restart the loop.
 5. If the loop finishes checking all strategies and nothing changed, we are stuck. The puzzle requires guessing or strategies we haven't programmed yet.
 6. Return whether the puzzle was fully solved, and whether it explicitly required an advanced strategy to finish.
@@ -48,6 +48,9 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 ### Naked Pairs
 
 **Logic:** If two cells in the same row/col/box have the exact same two candidates (e.g., [2, 5]), those two numbers must go in those two cells. We can safely remove 2 and 5 from the candidates of every other cell in that row/col/box.
+
+### Hidden Pairs
+**Logic:** If two specific candidates (e.g., 2 and 5) are restricted to the exact same two cells within a row, column, or box, then those two cells must contain those two candidates. All other candidates can be safely eliminated from those two cells, turning them into a Naked Pair.
 
 ### Pointing Pairs (Box-Line Reduction)
 

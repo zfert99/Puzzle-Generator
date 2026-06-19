@@ -1,4 +1,7 @@
 import { generateSudoku } from '../lib/puzzle-engine/sudoku';
+import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Main benchmark script for the overall Sudoku Generator.
@@ -41,6 +44,23 @@ async function main() {
 
   console.log(`\nTotal time: ${total}ms`);
   console.log(`Average time per Expert puzzle: ${average.toFixed(2)}ms`);
+
+  // --- Auto-Logging ---
+  try {
+    const commit = execSync('git rev-parse --short HEAD').toString().trim();
+    const timestamp = new Date().toISOString();
+    const logPath = path.join(__dirname, 'benchmark-logs.md');
+    
+    const logEntry = `| ${timestamp} | \`${commit}\` | Pipeline Gen (10x Expert) | ${average.toFixed(2)} ms | N/A |\n`;
+    
+    if (!fs.existsSync(logPath)) {
+      fs.writeFileSync(logPath, `| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
+    }
+    fs.appendFileSync(logPath, logEntry);
+    console.log(`Logged results to ${logPath}`);
+  } catch (err) {
+    console.error('Failed to log benchmark:', err);
+  }
 }
 
 // Execute the benchmark

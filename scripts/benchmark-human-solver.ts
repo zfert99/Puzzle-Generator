@@ -1,4 +1,7 @@
 import { HumanSolver } from '../lib/puzzle-engine/human-solver';
+import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * A known expert-level puzzle (requires advanced strategies to solve).
@@ -49,6 +52,25 @@ async function main() {
   console.log(`\nTotal time: ${timeMs.toFixed(2)} ms`);
   console.log(`Average time per solve: ${(timeMs / iterations).toFixed(2)} ms`);
   console.log(`Solves per second: ${Math.round(1000 / (timeMs / iterations))}`);
+
+  // --- Auto-Logging ---
+  try {
+    const commit = execSync('git rev-parse --short HEAD').toString().trim();
+    const timestamp = new Date().toISOString();
+    const logPath = path.join(__dirname, 'benchmark-logs.md');
+    
+    const avg = (timeMs / iterations).toFixed(2);
+    const sps = Math.round(1000 / (timeMs / iterations));
+    const logEntry = `| ${timestamp} | \`${commit}\` | HumanSolver (${iterations}x) | ${avg} ms | ${sps} solves/sec |\n`;
+    
+    if (!fs.existsSync(logPath)) {
+      fs.writeFileSync(logPath, `| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
+    }
+    fs.appendFileSync(logPath, logEntry);
+    console.log(`Logged results to ${logPath}`);
+  } catch (err) {
+    console.error('Failed to log benchmark:', err);
+  }
 }
 
 // Execute the benchmark

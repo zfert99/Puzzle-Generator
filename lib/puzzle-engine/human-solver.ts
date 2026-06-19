@@ -13,10 +13,10 @@ export type CandidateCell = { r: number; c: number; cands: number[] };
 export class HumanSolver {
   // Current state of the Sudoku grid (0 means empty cell)
   grid: number[][];
-  
+
   // A 2D array tracking the remaining possible candidates (1-9) for every cell
   candidates: Set<number>[][];
-  
+
   // Flag indicating if any advanced strategies (X-Wing, Swordfish, etc.) were used during solving
   usedAdvanced: boolean = false;
 
@@ -40,7 +40,7 @@ export class HumanSolver {
   private sees(cell1: { r: number, c: number }, cell2: { r: number, c: number }): boolean {
     // A cell does not "see" itself
     if (cell1.r === cell2.r && cell1.c === cell2.c) return false;
-    
+
     // Return true if cells share the same row, column, or 3x3 box
     return cell1.r === cell2.r || cell1.c === cell2.c || this.inSameBox(cell1, cell2);
   }
@@ -108,12 +108,12 @@ export class HumanSolver {
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (this.grid[r][c] !== 0) continue; // Skip filled cells
-        
+
         // Sometimes a target cell itself (like a pivot in a Y-Wing) should be excluded from elimination
         if (excludeCells.some(e => e.r === r && e.c === c)) continue;
-        
+
         if (!this.candidates[r][c].has(cand)) continue; // Skip if cell doesn't even have the candidate
-        
+
         // If this empty cell sees EVERY single target cell, it's in the crossfire—eliminate the candidate
         if (targets.every(t => this.sees({ r, c }, t))) {
           this.candidates[r][c].delete(cand);
@@ -134,7 +134,7 @@ export class HumanSolver {
   constructor(initialGrid: number[][]) {
     // Deep copy the initial grid so we don't mutate the original array
     this.grid = initialGrid.map(row => [...row]);
-    
+
     // Initialize candidates for each cell: every cell starts with all 9 numbers possible
     this.candidates = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9])));
 
@@ -156,7 +156,7 @@ export class HumanSolver {
   placeNumber(r: number, c: number, num: number) {
     // Place the number in the grid
     this.grid[r][c] = num;
-    
+
     // The cell itself no longer needs candidates since it is filled
     this.candidates[r][c].clear();
 
@@ -168,10 +168,10 @@ export class HumanSolver {
     for (let i = 0; i < 9; i++) {
       // Eliminate this number from all other candidates in the same row
       this.candidates[r][i].delete(num);
-      
+
       // Eliminate this number from all other candidates in the same column
       this.candidates[i][c].delete(num);
-      
+
       // Eliminate this number from all other candidates in the same 3x3 box
       const cell = boxCells[i];
       this.candidates[cell.r][cell.c].delete(num);
@@ -211,12 +211,13 @@ export class HumanSolver {
       if (this.applyNakedSingle()) { changed = true; continue; }
       if (this.applyHiddenSingle()) { changed = true; continue; }
       if (this.applyNakedPair()) { changed = true; continue; }
+      if (this.applyHiddenPair()) { changed = true; continue; }
       if (this.applyPointingPairs()) { changed = true; continue; }
 
       // ADVANCED STRATEGIES: More complex eliminations.
       // We only run these if the basic strategies are stuck.
       // If these succeed, we flag `usedAdvanced` so the engine knows this is an "Expert" puzzle.
-      
+
       if (this.applyXWing()) {
         this.usedAdvanced = true;
         changed = true;
@@ -307,11 +308,11 @@ export class HumanSolver {
       for (let j = i + 1; j < bivalues.length; j++) {
         const b1 = bivalues[i];
         const b2 = bivalues[j];
-        
+
         // Check if these two bivalue cells have the exact same two candidates
         if (b1.cands[0] === b2.cands[0] && b1.cands[1] === b2.cands[1]) {
           const [cand1, cand2] = b1.cands;
-          
+
           // Shared row: If they are in the same row, eliminate the pair from the rest of the row
           if (b1.r === b2.r) {
             for (let c = 0; c < 9; c++) {
@@ -321,7 +322,7 @@ export class HumanSolver {
               }
             }
           }
-          
+
           // Shared col: If they are in the same column, eliminate the pair from the rest of the column
           if (b1.c === b2.c) {
             for (let r = 0; r < 9; r++) {
@@ -350,6 +351,73 @@ export class HumanSolver {
   }
 
   /**
+   * Hidden Pair:
+   * If two candidates are restricted to the exact same two cells within a row, column, or box,
+   * then those two cells must contain those two candidates. All other candidates can be 
+   * safely eliminated from those two cells.
+   */
+  applyHiddenPair(): boolean {
+    let changed = false;
+
+    // Check across every row, column, and box
+    for (const axis of ['row', 'col', 'box'] as const) {
+      
+      // Pre-calculate positions for all 9 numbers on this axis
+      // positionsByNum[num][zoneIndex] = array of cells
+      const positionsByNum: { r: number, c: number }[][][] = [];
+      for (let num = 1; num <= 9; num++) {
+        positionsByNum[num] = this.getCandidatePositions(num, axis);
+      }
+
+      // For each zone index (0-8)
+      for (let i = 0; i < 9; i++) {
+        // Find all candidates that appear exactly twice in this zone
+        const candidatesWithTwoSpots = [];
+        for (let num = 1; num <= 9; num++) {
+          const cells = positionsByNum[num][i];
+          if (cells.length === 2) {
+            candidatesWithTwoSpots.push({ num, cells });
+          }
+        }
+
+        // We need at least two such candidates to form a pair
+        if (candidatesWithTwoSpots.length >= 2) {
+          for (let a = 0; a < candidatesWithTwoSpots.length; a++) {
+            for (let b = a + 1; b < candidatesWithTwoSpots.length; b++) {
+              const candA = candidatesWithTwoSpots[a];
+              const candB = candidatesWithTwoSpots[b];
+
+              // Check if they occupy the EXACT same two cells
+              // (Since they are pushed in grid order, cell 0 and cell 1 will match directly)
+              if (
+                candA.cells[0].r === candB.cells[0].r && candA.cells[0].c === candB.cells[0].c &&
+                candA.cells[1].r === candB.cells[1].r && candA.cells[1].c === candB.cells[1].c
+              ) {
+                // We found a Hidden Pair!
+                // Eliminate all OTHER candidates from these two cells
+                for (const cell of candA.cells) {
+                  const cellCandidates = this.candidates[cell.r][cell.c];
+                  // Only process if it has more than just our pair
+                  if (cellCandidates.size > 2) {
+                    for (const c of Array.from(cellCandidates)) {
+                      if (c !== candA.num && c !== candB.num) {
+                        cellCandidates.delete(c);
+                        changed = true;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return changed;
+  }
+
+  /**
    * Pointing Pairs / Pointing Triples (Box-Line Reduction):
    * If a specific candidate within a 3x3 box only appears in one specific row (or column),
    * then we know the final answer for that box MUST fall somewhere in that line.
@@ -361,7 +429,7 @@ export class HumanSolver {
     for (let num = 1; num <= 9; num++) {
       // Find all positions of `num` grouped by box
       const boxPositions = this.getCandidatePositions(num, 'box');
-      
+
       for (let b = 0; b < 9; b++) {
         const cells = boxPositions[b];
         // Only consider if the candidate is restricted to 2 or 3 cells in the box
@@ -384,7 +452,7 @@ export class HumanSolver {
           } else if (sameCol) {
             const c = cells[0].c;
             for (let r = 0; r < 9; r++) {
-               // Iterate through the whole col. If a cell is NOT in our box (Math.floor(b/3)), eliminate.
+              // Iterate through the whole col. If a cell is NOT in our box (Math.floor(b/3)), eliminate.
               if (Math.floor(r / 3) !== Math.floor(b / 3)) {
                 if (this.candidates[r][c].has(num)) {
                   this.candidates[r][c].delete(num);
@@ -425,7 +493,7 @@ export class HumanSolver {
             if (rowPositions[r2].length === 2 && rowPositions[r1][0].c === rowPositions[r2][0].c && rowPositions[r1][1].c === rowPositions[r2][1].c) {
               const c1 = rowPositions[r1][0].c;
               const c2 = rowPositions[r1][1].c;
-              
+
               // X-Wing found! Remove the candidate from these two columns in all OTHER rows
               for (let r = 0; r < 9; r++) {
                 if (r !== r1 && r !== r2) {
@@ -437,7 +505,7 @@ export class HumanSolver {
           }
         }
       }
-      
+
       // Note: A column-based X-Wing search isn't strictly necessary here because any X-Wing 
       // found vertically would eventually manifest or be solved by other row-based checks,
       // but adding it makes the solver more robust if we expand.
@@ -481,7 +549,7 @@ export class HumanSolver {
         for (let b = a + 1; b < pincerCandidates.length; b++) {
           const pincer1 = pincerCandidates[a];
           const pincer2 = pincerCandidates[b];
-          
+
           // Pincers must not see each other for a true Y-Wing
           if (!this.sees(pincer1, pincer2)) {
             // Find the candidate (C) that is in the pincers but NOT in the pivot
@@ -515,7 +583,7 @@ export class HumanSolver {
   applySwordfish(): boolean {
     let changed = false;
     for (let num = 1; num <= 9; num++) {
-      
+
       // ==========================================
       // Row-based Swordfish
       // ==========================================
@@ -531,11 +599,11 @@ export class HumanSolver {
 
             // Collect all unique columns used across these 3 rows for this candidate
             const colSet = new Set<number>([
-              ...rowPositions[r1].map(x => x.c), 
-              ...rowPositions[r2].map(x => x.c), 
+              ...rowPositions[r1].map(x => x.c),
+              ...rowPositions[r2].map(x => x.c),
               ...rowPositions[r3].map(x => x.c)
             ]);
-            
+
             // If they align perfectly into exactly 3 columns, we found a Swordfish
             if (colSet.size !== 3) continue;
 
@@ -569,8 +637,8 @@ export class HumanSolver {
 
             // Collect all unique rows used across these 3 columns
             const rowSet = new Set<number>([
-              ...colPositions[c1].map(x => x.r), 
-              ...colPositions[c2].map(x => x.r), 
+              ...colPositions[c1].map(x => x.r),
+              ...colPositions[c2].map(x => x.r),
               ...colPositions[c3].map(x => x.r)
             ]);
             if (rowSet.size !== 3) continue;
