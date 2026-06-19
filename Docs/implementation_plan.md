@@ -14,6 +14,7 @@ Based on the research documents provided (`Building a PDF Puzzle Generator` and 
 ## Open Questions
 
 > [!IMPORTANT]
+>
 > - **Puzzle Types**: Should we focus strictly on Sudoku for the initial minimum viable product, or would you like to include another puzzle type (e.g., Nonograms, Mazes) from the start?
 > - **Aesthetics**: Do you have a preferred color palette or specific visual theme (e.g., playful, minimalist, neon, elegant)?
 
@@ -24,12 +25,15 @@ Based on the research documents provided (`Building a PDF Puzzle Generator` and 
 ### Frontend Components
 
 #### [NEW] `app/page.tsx`
+
 The main landing page featuring a dynamic form to select puzzle type, difficulties, and quantities.
 
 #### [NEW] `app/globals.css`
+
 A robust CSS design system implementing a premium aesthetic with custom CSS variables, hover effects, and modern typography.
 
 #### [NEW] `components/PuzzleForm.tsx`
+
 An interactive component handling state for user selections and triggering the PDF generation API.
 
 ---
@@ -37,19 +41,24 @@ An interactive component handling state for user selections and triggering the P
 ### Backend / API & Puzzle Logic
 
 #### [NEW] `app/api/generate/route.ts`
+
 The server-side API endpoint that accepts the configuration, invokes the puzzle engine, generates the PDF in-memory using PDFKit, and streams it back to the client as a `.pdf` download.
 
 #### [NEW] `lib/puzzle-engine/sudoku.ts`
+
 The procedural Sudoku generator utilizing recursive backtracking to generate valid grids, uniquely verify them, and punch holes according to difficulty heuristics.
 
 #### [NEW] `lib/pdf/generator.ts`
+
 The PDFKit rendering logic that iterates through generated puzzles, draws the vector grids, assigns `NamedDestinations` for the answers, and builds the clickable Table of Contents and Answer Key.
 
 ## Verification Plan
 
 ### Automated Tests
+
 - N/A for MVP, but the Sudoku generator will be verified with unit tests for uniqueness and difficulty grading.
 
 ### Manual Verification
+
 - Generate a PDF with multiple difficulties and verify that the puzzles are visually correct.
 - Click the internal links (e.g., "Go to Answer") in the generated PDF to ensure they navigate to the precise answer key page and vice versa.

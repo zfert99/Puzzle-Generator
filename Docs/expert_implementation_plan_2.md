@@ -3,10 +3,12 @@
 After reviewing the `Expert Sudoku Strategies Document.md` research file, our current `HumanSolver` covers the essential basics but misses a few key patterns explicitly outlined in the research as standard "Expert" mechanics.
 
 Currently, we have:
+
 - **Fish Family**: X-Wing
 - **Wing Family**: XY-Wing (Y-Wing)
 
 According to the research document, we are missing two highly foundational advanced strategies that naturally extend what we already have:
+
 - **Swordfish**: A 3x3 extension of the X-Wing logic.
 - **XYZ-Wing**: An extension of the XY-Wing that allows the pivot cell to hold 3 candidates instead of 2.
 
@@ -17,6 +19,7 @@ Adding these will ensure our Expert generator fully aligns with the documented r
 ### `lib/puzzle-engine/human-solver.ts`
 
 #### [MODIFY] `lib/puzzle-engine/human-solver.ts`
+
 1. **Add `applySwordfish()`**:
    - Similar to `applyXWing`, but instead of finding 2 rows with a candidate in the same 2 columns, we look for 3 rows where a candidate appears in a combined maximum of 3 columns.
    - We will implement both Row-Swordfish and Column-Swordfish.
@@ -33,6 +36,7 @@ Adding these will ensure our Expert generator fully aligns with the documented r
 ## Verification Plan
 
 ### Automated Tests
+
 - Run `npx jest` to ensure `applyExhaustiveDigger` still correctly leverages these new strategies to generate mathematically sound Expert puzzles without breaking.
 - Run `npx tsx scripts/benchmark.ts` to ensure that adding these new loops doesn't drastically harm our ~350ms generation time. Because these strategies are only checked when simpler strategies fail, performance impact should be minimal.
 
