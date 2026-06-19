@@ -50,6 +50,7 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 **Logic:** If two cells in the same row/col/box have the exact same two candidates (e.g., [2, 5]), those two numbers must go in those two cells. We can safely remove 2 and 5 from the candidates of every other cell in that row/col/box.
 
 ### Hidden Pairs
+
 **Logic:** If two specific candidates (e.g., 2 and 5) are restricted to the exact same two cells within a row, column, or box, then those two cells must contain those two candidates. All other candidates can be safely eliminated from those two cells, turning them into a Naked Pair.
 
 ### Pointing Pairs (Box-Line Reduction)

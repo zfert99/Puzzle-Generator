@@ -64,7 +64,7 @@ async function main() {
     const logEntry = `| ${timestamp} | \`${commit}\` | HumanSolver (${iterations}x) | ${avg} ms | ${sps} solves/sec |\n`;
     
     if (!fs.existsSync(logPath)) {
-      fs.writeFileSync(logPath, `| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
+      fs.writeFileSync(logPath, `# Benchmark Logs\n\n<!-- markdownlint-disable MD013 MD060 -->\n\n| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
     }
     fs.appendFileSync(logPath, logEntry);
     console.log(`Logged results to ${logPath}`);
