@@ -8,6 +8,7 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 
 **Goal:** Bring in the interactive pieces we need to build the page.
 **Steps:**
+
 1. Import the `PuzzleForm` component. This is the interactive box where users select their puzzle quantities and click the generate button.
 
 ---
@@ -16,6 +17,7 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 
 **Goal:** Build the visual layout and structure of the main landing page.
 **Steps:**
+
 1. Define the default exported function `Home`. Since it doesn't have a `'use client'` directive, it defaults to a React Server Component, meaning it renders on the server for better performance.
 2. Create a main `<main>` container for the entire page. We style it using Tailwind CSS to:
    - Use a flexible column layout (`flex flex-col`), centering everything horizontally and vertically (`items-center justify-center`).
@@ -29,8 +31,9 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 
 **Goal:** Display the main title and introductory text to tell the user what this app does.
 **Steps:**
+
 1. Create a centered div (`text-center`) to hold the header content.
-2. **The Title:** Draw an `<h1>` tag that says "PDF Puzzle Generator". 
+2. **The Title:** Draw an `<h1>` tag that says "PDF Puzzle Generator".
    - We make it very large (`text-5xl`) and bold (`font-extrabold`).
    - **The Gradient Effect:** We use a special trick to make the text look like a gradient. We make the actual text color transparent (`text-transparent`), clip the background to the text shape (`bg-clip-text`), and apply a linear gradient background that flows from dark gray to light gray (and adjusts for dark mode).
 3. **The Subtitle:** Draw a smaller `<p>` tag describing the app: "Create customized, print-ready Sudoku puzzle books with interactive answer keys in seconds." We color it gray and restrict its maximum width so it stays nicely centered.
@@ -41,6 +44,7 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 
 **Goal:** Display the tool the user actually interacts with.
 **Steps:**
+
 1. Render the `<PuzzleForm />` component exactly where we want it on the page. All the complex logic for tracking inputs and downloading the PDF lives entirely inside that separate component.
 
 ---
@@ -49,6 +53,7 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 
 **Goal:** Add a simple copyright footer at the bottom of the page.
 **Steps:**
+
 1. Draw a `<footer>` tag below the form.
 2. Push it down slightly with a top margin (`mt-20`), make the text small (`text-sm`), and color it gray (`text-gray-500`).
 3. Display the text: "Minimalist Premium Design © 2026".

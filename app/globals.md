@@ -8,6 +8,7 @@ This document explains the core logic behind our `globals.css` file. It breaks d
 
 **Goal:** Inject the Tailwind CSS framework into our project.
 **Steps:**
+
 1. Import Tailwind using the `@import "tailwindcss";` directive.
 2. Define a custom Tailwind theme block `@theme`. We override the default sans-serif font (`--font-sans`) to prioritize our custom `Inter` font, falling back to standard system fonts if necessary.
 
@@ -17,6 +18,7 @@ This document explains the core logic behind our `globals.css` file. It breaks d
 
 **Goal:** Define the core color palette for the entire application, and make it automatically adapt to the user's system preferences (Light or Dark mode).
 **Steps:**
+
 1. **Light Mode (Default):** Target the `:root` element (the very top of the HTML document) and define four core color variables:
    - `--background`: Pure white.
    - `--foreground`: Very dark gray/black (for text).
@@ -36,6 +38,7 @@ By using these variables everywhere else in our CSS, our entire site instantly s
 
 **Goal:** Set the default styling for the entire web page.
 **Steps:**
+
 1. Target the `body` tag.
 2. Tell it to use our dynamically changing `--foreground` color for text and `--background` color for the page background.
 3. Apply our custom font (`--font-sans`) and enable smooth text rendering (`antialiased`).
@@ -48,14 +51,18 @@ By using these variables everywhere else in our CSS, our entire site instantly s
 **Goal:** Create reusable "classes" for specific design elements so we don't have to repeat massive Tailwind class strings in our React code.
 
 ### The Glass Panel (`.glass-panel`)
+
 **Steps:**
+
 1. Create a semi-transparent white background (`rgba(255, 255, 255, 0.03)`). This creates a very faint white tint over whatever is behind it.
 2. Add a thin border using our dynamic `--border` color.
 3. **The Magic:** Apply a `backdrop-filter: blur(10px)`. This literally blurs whatever is behind the panel, creating a premium "frosted glass" effect.
 4. Round the corners (`border-radius: 12px`).
 
 ### Primary Buttons (`.btn-primary`)
+
 **Steps:**
+
 1. Make the button background the `--accent` color, and the text the `--background` color (so they contrast perfectly).
 2. Add comfortable padding and rounded corners.
 3. Make the text slightly bold (`font-weight: 500`).
@@ -66,7 +73,9 @@ By using these variables everywhere else in our CSS, our entire site instantly s
    - If the button is disabled (`:disabled`), fade it out to 50% opacity and change the mouse cursor to a "not allowed" sign.
 
 ### Input Fields (`.input-field`)
+
 **Steps:**
+
 1. Make the background completely transparent so the "frosted glass" panel behind it shows through.
 2. Add a thin border using our `--border` color, and use our dynamic `--foreground` color for the text inside the box.
 3. Add padding and softly rounded corners.

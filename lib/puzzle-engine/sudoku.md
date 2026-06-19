@@ -11,6 +11,7 @@ We define exactly four allowed difficulty levels: 'easy', 'medium', 'hard', or '
 
 **Sudoku Puzzle Object:**
 When the engine finishes, it hands back a package containing:
+
 - `grid`: The playable 9x9 board (with holes dug, represented by 0s).
 - `solution`: The completed 9x9 board (the answer key).
 - `difficulty`: The requested difficulty level.
@@ -20,8 +21,10 @@ When the engine finishes, it hands back a package containing:
 ## 2. Core Helper Functions
 
 ### `isValid(grid, row, col, number)`
+
 **Goal:** Check if placing a specific number in a specific cell breaks any Sudoku rules.
 **Steps:**
+
 1. Loop 9 times (index `i` from 0 to 8).
 2. **Row Check:** If the `grid` at `[row][i]` equals the `number`, return FALSE.
 3. **Column Check:** If the `grid` at `[i][col]` equals the `number`, return FALSE.
@@ -30,8 +33,10 @@ When the engine finishes, it hands back a package containing:
 5. If no rules are broken after all 9 checks, return TRUE.
 
 ### `shuffle(array)`
+
 **Goal:** Randomize an array of numbers (1-9) using the Fisher-Yates algorithm.
 **Steps:**
+
 1. Start at the end of the array and work backwards to the beginning.
 2. Pick a random index between 0 and the current position.
 3. Swap the number at the current position with the number at the random index.
@@ -42,8 +47,10 @@ When the engine finishes, it hands back a package containing:
 ## 3. The Generators & Solvers
 
 ### `fillGrid(grid)`
+
 **Goal:** Fill a completely blank 9x9 grid with valid, random numbers (Recursive Backtracking).
 **Steps:**
+
 1. Loop through all 81 cells (index 0 to 80).
 2. Calculate the 2D coordinates: `row = Math.floor(i / 9)` and `col = i % 9`.
 3. If the cell at `[row][col]` is empty (equals 0):
@@ -58,8 +65,10 @@ When the engine finishes, it hands back a package containing:
 4. If the loop finishes checking all 81 cells and finds no empty ones, return TRUE (Puzzle solved!).
 
 ### `countSolutions(grid)`
+
 **Goal:** Prove a puzzle has exactly one valid solution.
 **Steps:**
+
 1. Keep a `count` variable starting at 0.
 2. Define a recursive `solve` function (almost identical to `fillGrid`).
    - If `count` is 2 or more, STOP immediately (the puzzle is broken).
@@ -74,8 +83,10 @@ When the engine finishes, it hands back a package containing:
 ## 4. The Master Function & Diggers
 
 ### `generateSudoku(difficulty)`
+
 **Goal:** Act as the "traffic cop" to prepare the puzzle and delegate to the right digging strategy.
 **Steps:**
+
 1. Create a blank 9x9 grid filled with 0s.
 2. Call `fillGrid` to completely solve it with random numbers.
 3. Save a copy of this full grid as the `solution`.
@@ -84,8 +95,10 @@ When the engine finishes, it hands back a package containing:
 6. Return the final `{ grid, solution, difficulty }` object.
 
 ### `applyExhaustiveDigger(grid)`
+
 **Goal:** Try to remove as many clues as possible for the Expert difficulty.
 **Steps:**
+
 1. Shuffle a list of all 81 positions on the board.
 2. Loop through every position exactly once:
    - Save the current number as a backup.
@@ -95,8 +108,10 @@ When the engine finishes, it hands back a package containing:
    - (No attempts counter is used; it aggressively checks every single cell to ensure a minimal, human-solvable expert puzzle).
 
 ### `applyQuotaDigger(grid, difficulty)`
+
 **Goal:** Remove a specific quota of clues for Easy, Medium, or Hard difficulties.
 **Steps:**
+
 1. Determine how many numbers to erase based on the `difficulty`:
    - Easy: Remove 40 clues.
    - Medium: Remove 50 clues.

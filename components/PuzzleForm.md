@@ -8,6 +8,7 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
 
 **Goal:** Create a user interface that tracks how many puzzles of each difficulty the user wants, and whether we are currently generating a PDF.
 **Steps:**
+
 1. Declare the component as a Client Component (`'use client'`) because it relies on user interactions and browser state.
 2. Set up state variables:
    - `loading`: A boolean flag (true/false) to track if the PDF is currently being generated. This is used to disable the button and show a spinner.
@@ -20,6 +21,7 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
 
 **Goal:** Safely update the puzzle counts when the user types in the input boxes.
 **Steps:**
+
 1. Create a `handleChange` function that takes the difficulty name and the raw input string.
 2. Convert the input string into a valid integer (`parseInt`). If the input is empty or invalid, default to `0`.
 3. Update the `counts` state object by copying the previous values and updating only the specific difficulty that changed.
@@ -30,6 +32,7 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
 
 **Goal:** Check the user's request, send it to the server API, and handle downloading the resulting PDF.
 **Steps:**
+
 1. Create an async `handleGenerate` function that runs when the user clicks "Generate PDF".
 2. **Validation:**
    - Clear any previous error messages.
@@ -55,6 +58,7 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
 
 **Goal:** Visually render the configuration panel.
 **Steps:**
+
 1. Draw a main container (a glassmorphism panel) to hold everything.
 2. **The Inputs:**
    - Loop over an array of the difficulty names (`['easy', 'medium', 'hard', 'expert']`).
