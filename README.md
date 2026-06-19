@@ -1,38 +1,70 @@
 # Puzzle Generator
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+A modern Next.js web application that generates print-ready Sudoku puzzle books in PDF format.
+
+Unlike typical brute-force generators, this project features a custom-built, purely logical `HumanSolver` engine. This guarantees that even the most "Expert" level puzzles generated can actually be solved by a human without ever needing to blindly guess.
+
+## Features
+
+- **Custom Puzzle Books**: Choose exactly how many Easy, Medium, Hard, and Expert puzzles you want in your book.
+- **PDF Generation**: Instantly compiles your selected puzzles into a clean, print-ready PDF.
+- **Logical Solver Engine (`HumanSolver`)**: An advanced deduction engine capable of performing sophisticated Sudoku strategies:
+  - Naked Singles & Hidden Singles
+  - Naked Pairs & Hidden Pairs
+  - Pointing Pairs / Box-Line Reduction
+  - X-Wing & Swordfish
+  - Y-Wing & XYZ-Wing
+- **High Performance**: Highly optimized grid scanning capable of verifying thousands of puzzle states per second.
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies and run the development server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the UI.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Testing & Benchmarks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The project includes a robust Jest test suite and benchmarking tools to measure the performance of the logical solver engine.
 
-## Learn More
+### Run Tests
 
-To learn more about Next.js, take a look at the following resources:
+To run the automated test suite:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Run Benchmarks
 
-## Deploy on Vercel
+There are two benchmark scripts provided. When executed, they automatically append their performance results (along with the current Git commit hash and timestamp) to `scripts/benchmark-logs.md`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+To test the pure logical solving speed on a notoriously difficult Expert puzzle:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx tsx scripts/benchmark-human-solver.ts
+```
+
+To test the entire end-to-end generation pipeline (generating 10 completely random Expert puzzles from scratch):
+
+```bash
+npx tsx scripts/benchmark.ts
+```
+
+## How It Works
+
+1. **Generation**: The `generateSudoku` function first creates a valid, fully solved 9x9 grid.
+2. **Digging**: It then begins removing numbers ("digging holes") one by one to create a playable puzzle.
+3. **Verification**: After *every single hole is dug*, the puzzle is passed to the `HumanSolver`. The solver attempts to complete the puzzle using only logical human deduction. If the solver gets stuck (meaning a human would be forced to guess), the hole is filled back in, and the generator tries another spot.
+4. **Difficulty Rating**: The difficulty of the puzzle is determined by the most advanced logical strategy the `HumanSolver` had to use to verify it.
+
+## Tech Stack
+
+- Next.js (App Router)
+- React
+- TypeScript
+- Jest (Testing)
