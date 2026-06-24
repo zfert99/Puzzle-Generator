@@ -20,6 +20,9 @@ export class HumanSolver {
   // Flag indicating if any advanced strategies (X-Wing, Swordfish, etc.) were used during solving
   usedAdvanced: boolean = false;
 
+  // Tracks how many cells have been filled — avoids scanning all 81 cells to check completion
+  private filledCount: number = 0;
+
   // ==========================================
   // HELPER METHODS
   // ==========================================
@@ -124,6 +127,159 @@ export class HumanSolver {
     return changed;
   }
 
+  /**
+   * Generic Fish Pattern Detection (X-Wing, Swordfish, Jellyfish, etc.)
+   *
+   * A "fish" of size N works as follows: find N rows (or columns) where a specific
+   * candidate appears in only 2-to-N positions, and ALL those positions fall into
+   * exactly N columns (or rows). The candidate can then be eliminated from those
+   * N cover columns (or rows) in every other row (or column) not part of the fish.
+   *
+   * - Size 2 = X-Wing
+   * - Size 3 = Swordfish
+   * - Size 4 = Jellyfish (future)
+   */
+  private applyFishOnAxis(num: number, axis: 'row' | 'col', size: number): boolean {
+    let changed = false;
+    const positions = this.getCandidatePositions(num, axis);
+    const getSecondary = (cell: Cell): number => axis === 'row' ? cell.c : cell.r;
+
+    // Find all primary indices that have 2..size positions for this candidate
+    const eligible: number[] = [];
+    for (let i = 0; i < 9; i++) {
+      if (positions[i].length >= 2 && positions[i].length <= size) {
+        eligible.push(i);
+      }
+    }
+
+    // We need at least `size` eligible lines to form a fish
+    if (eligible.length < size) return false;
+
+    // Check all combinations of `size` eligible lines
+    const combos = this.combinations(eligible, size);
+    for (const combo of combos) {
+      // Collect all secondary indices used across the selected lines
+      const secondarySet = new Set<number>();
+      for (const pri of combo) {
+        for (const cell of positions[pri]) {
+          secondarySet.add(getSecondary(cell));
+        }
+      }
+
+      // If they align into exactly `size` secondary lines, we found a fish!
+      if (secondarySet.size !== size) continue;
+
+      // Eliminate from the cover secondaries in all non-fish primary lines
+      const fishSet = new Set(combo);
+      for (const sec of secondarySet) {
+        for (let pri = 0; pri < 9; pri++) {
+          if (fishSet.has(pri)) continue;
+          const r = axis === 'row' ? pri : sec;
+          const c = axis === 'row' ? sec : pri;
+          if (this.candidates[r][c].has(num)) {
+            this.candidates[r][c].delete(num);
+            changed = true;
+          }
+        }
+      }
+    }
+
+    return changed;
+  }
+
+  /**
+   * Generates all k-element combinations from the given array of numbers.
+   * Used by the fish pattern detector to enumerate candidate line groupings.
+   */
+  private combinations(arr: number[], k: number): number[][] {
+    const results: number[][] = [];
+    const build = (start: number, combo: number[]) => {
+      if (combo.length === k) {
+        results.push([...combo]);
+        return;
+      }
+      for (let i = start; i < arr.length; i++) {
+        combo.push(arr[i]);
+        build(i + 1, combo);
+        combo.pop();
+      }
+    };
+    build(0, []);
+    return results;
+  }
+
+  /**
+   * Generic Wing Pattern Detection (Y-Wing, XYZ-Wing)
+   *
+   * Both patterns follow the same structural skeleton:
+   * 1. Find a "pivot" cell (bivalue for Y-Wing, trivalue for XYZ-Wing)
+   * 2. Identify a "target" candidate Z to eliminate
+   * 3. Find two bivalue "pincer" cells containing Z + one other pivot candidate
+   * 4. Eliminate Z from cells in the intersection of the pincers' vision
+   *
+   * The key insight: in a Y-Wing (pivotSize=2), Z is NOT in the pivot — the pincers
+   * introduce it. In an XYZ-Wing (pivotSize=3), Z IS one of the pivot's own candidates.
+   * This single difference drives three clean branches:
+   * - Z enumeration source (complement vs subset of pivot candidates)
+   * - Pincer mutual visibility constraint (Y-Wing requires pincers don't see each other)
+   * - Elimination zone (Y-Wing: both pincers; XYZ-Wing: pivot + both pincers)
+   *
+   * - pivotSize 2 = Y-Wing
+   * - pivotSize 3 = XYZ-Wing
+   */
+  private applyWingPattern(pivotSize: 2 | 3): boolean {
+    let changed = false;
+    const bivalues = this.getCellsWithNCandidates(2);
+    const pivots = this.getCellsWithNCandidates(pivotSize);
+
+    for (const pivot of pivots) {
+      // Y-Wing: Z is any candidate NOT in the pivot (the pincers introduce it)
+      // XYZ-Wing: Z is any candidate IN the pivot
+      const zCandidates = pivotSize === 2
+        ? Array.from({ length: 9 }, (_, i) => i + 1).filter(n => !pivot.cands.includes(n))
+        : pivot.cands;
+
+      for (const z of zCandidates) {
+        // The two non-Z candidates from the pivot form the "wings"
+        const others = pivot.cands.filter(c => c !== z);
+        if (others.length !== 2) continue;
+
+        const [x, y] = others;
+        const pincer1Cands = [x, z].sort();
+        const pincer2Cands = [y, z].sort();
+
+        // Find bivalue cells matching the needed candidate pairs that see the pivot
+        const pincer1Options = bivalues.filter(bv =>
+          bv.cands[0] === pincer1Cands[0] && bv.cands[1] === pincer1Cands[1] && this.sees(pivot, bv)
+        );
+        const pincer2Options = bivalues.filter(bv =>
+          bv.cands[0] === pincer2Cands[0] && bv.cands[1] === pincer2Cands[1] && this.sees(pivot, bv)
+        );
+
+        for (const p1 of pincer1Options) {
+          for (const p2 of pincer2Options) {
+            // A pincer cannot be the same physical cell as the other pincer
+            if (p1.r === p2.r && p1.c === p2.c) continue;
+
+            // Y-Wing only: pincers must NOT see each other
+            if (pivotSize === 2 && this.sees(p1, p2)) continue;
+
+            // Y-Wing: eliminate Z from cells seeing both pincers (pivot excluded from elimination)
+            // XYZ-Wing: eliminate Z from cells seeing all three (pivot + both pincers)
+            const targets = pivotSize === 2 ? [p1, p2] : [pivot, p1, p2];
+            const exclude = pivotSize === 2 ? [pivot] : [];
+
+            if (this.eliminateFromCellsSeeingAll(targets, z, exclude)) {
+              changed = true;
+            }
+          }
+        }
+      }
+    }
+
+    return changed;
+  }
+
   // ==========================================
   // INITIALIZATION AND PLACEMENT
   // ==========================================
@@ -157,6 +313,9 @@ export class HumanSolver {
     // Place the number in the grid
     this.grid[r][c] = num;
 
+    // Track filled cell count for O(1) completion checks
+    this.filledCount++;
+
     // The cell itself no longer needs candidates since it is filled
     this.candidates[r][c].clear();
 
@@ -179,15 +338,11 @@ export class HumanSolver {
   }
 
   /**
-   * Helper to check if every cell in the 9x9 grid has been filled with a number.
+   * O(1) check if every cell in the 9x9 grid has been filled.
+   * Uses a running counter incremented by placeNumber() instead of scanning all 81 cells.
    */
   isSolved(): boolean {
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (this.grid[r][c] === 0) return false;
-      }
-    }
-    return true;
+    return this.filledCount === 81;
   }
 
   // ==========================================
@@ -472,255 +627,67 @@ export class HumanSolver {
   // ==========================================
 
   /**
-   * X-Wing:
+   * X-Wing (Fish Size 2):
    * Look for a specific candidate. If there are exactly TWO rows where this candidate can be placed,
    * AND those placements align in the exact same TWO columns, they form a perfect rectangle (or 'X').
-   * Since the candidate must be placed in diagonally opposite corners of this rectangle, it is 
+   * Since the candidate must be placed in diagonally opposite corners of this rectangle, it is
    * guaranteed to occupy both of those columns. We can therefore eliminate the candidate from all
-   * OTHER rows in those two columns.
+   * OTHER rows in those two columns. (And vice versa for column-based X-Wings.)
+   *
+   * Delegates to the generic applyFishOnAxis helper with size = 2.
    */
   applyXWing(): boolean {
     let changed = false;
     for (let num = 1; num <= 9; num++) {
-      // Row-based X-Wing
-      const rowPositions = this.getCandidatePositions(num, 'row');
-
-      for (let r1 = 0; r1 < 8; r1++) {
-        // We need a row that only has the candidate in exactly 2 spots
-        if (rowPositions[r1].length === 2) {
-          for (let r2 = r1 + 1; r2 < 9; r2++) {
-            // Find another row that also has the candidate in exactly 2 spots, AND in the exact same columns
-            if (rowPositions[r2].length === 2 && rowPositions[r1][0].c === rowPositions[r2][0].c && rowPositions[r1][1].c === rowPositions[r2][1].c) {
-              const c1 = rowPositions[r1][0].c;
-              const c2 = rowPositions[r1][1].c;
-
-              // X-Wing found! Remove the candidate from these two columns in all OTHER rows
-              for (let r = 0; r < 9; r++) {
-                if (r !== r1 && r !== r2) {
-                  if (this.candidates[r][c1].has(num)) { this.candidates[r][c1].delete(num); changed = true; }
-                  if (this.candidates[r][c2].has(num)) { this.candidates[r][c2].delete(num); changed = true; }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Note: A column-based X-Wing search isn't strictly necessary here because any X-Wing 
-      // found vertically would eventually manifest or be solved by other row-based checks,
-      // but adding it makes the solver more robust if we expand.
+      if (this.applyFishOnAxis(num, 'row', 2)) changed = true;
+      if (this.applyFishOnAxis(num, 'col', 2)) changed = true;
     }
     return changed;
   }
 
   /**
-   * Y-Wing (Bent Bivalue):
-   * Requires three cells that only have two candidates each.
-   * - A "Pivot" cell with candidates [A, B]
-   * - Two "Pincer" cells with candidates [A, C] and [B, C].
-   * The Pivot must "see" both Pincers.
-   * Logic: If Pivot is A, Pincer 1 becomes C. If Pivot is B, Pincer 2 becomes C.
-   * Therefore, one of the two Pincers MUST be C. Because of this, any cell that "sees"
-   * BOTH Pincers can never be C. We can eliminate C from those cells.
+   * Y-Wing (Wing Pattern, pivotSize 2):
+   * Requires three bivalue cells. A "Pivot" cell [A, B], and two "Pincer" cells
+   * [A, C] and [B, C] that each see the pivot but NOT each other.
+   * Since the pivot must be A or B, one pincer is always forced to C.
+   * Any cell seeing BOTH pincers can therefore never be C.
+   *
+   * Delegates to the generic applyWingPattern helper with pivotSize = 2.
    */
   applyYWing(): boolean {
-    let changed = false;
-    // We only care about bivalue cells (exactly 2 candidates)
-    const bivalues = this.getCellsWithNCandidates(2);
-
-    for (let i = 0; i < bivalues.length; i++) {
-      const pivot = bivalues[i];
-      const pincerCandidates: CandidateCell[] = [];
-
-      // Find all possible pincers (other bivalues that see the pivot and share exactly 1 candidate)
-      for (let j = 0; j < bivalues.length; j++) {
-        if (i === j) continue;
-        const pincer = bivalues[j];
-        if (this.sees(pivot, pincer)) {
-          const shared = pivot.cands.filter(c => pincer.cands.includes(c));
-          if (shared.length === 1) {
-            pincerCandidates.push(pincer);
-          }
-        }
-      }
-
-      // Check all valid pairs of pincers against each other
-      for (let a = 0; a < pincerCandidates.length; a++) {
-        for (let b = a + 1; b < pincerCandidates.length; b++) {
-          const pincer1 = pincerCandidates[a];
-          const pincer2 = pincerCandidates[b];
-
-          // Pincers must not see each other for a true Y-Wing
-          if (!this.sees(pincer1, pincer2)) {
-            // Find the candidate (C) that is in the pincers but NOT in the pivot
-            const cand1 = pincer1.cands.find(c => !pivot.cands.includes(c))!;
-            const cand2 = pincer2.cands.find(c => !pivot.cands.includes(c))!;
-
-            // If they share the same non-pivot candidate, we have a Y-Wing!
-            if (cand1 === cand2) {
-              // Eliminate cand1 from any cell that sees BOTH pincers
-              // We pass [pivot] as excludeCells because the pivot shouldn't be affected
-              if (this.eliminateFromCellsSeeingAll([pincer1, pincer2], cand1, [pivot])) {
-                changed = true;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return changed;
+    return this.applyWingPattern(2);
   }
 
   /**
-   * Swordfish:
+   * Swordfish (Fish Size 3):
    * A 3x3 expansion of the X-Wing. We look for a specific candidate. If there are exactly 3 rows
-   * where this candidate appears in 2 or 3 spots, AND all those spots fall into exactly 3 columns 
+   * where this candidate appears in 2 or 3 spots, AND all those spots fall into exactly 3 columns
    * overall, it forms a closed loop. The candidate MUST occupy those 3 columns in those 3 rows.
    * Therefore, we can eliminate the candidate from all other rows in those 3 columns.
-   * (And vice versa for a column-based Swordfish).
+   * (And vice versa for column-based Swordfish.)
+   *
+   * Delegates to the generic applyFishOnAxis helper with size = 3.
    */
   applySwordfish(): boolean {
     let changed = false;
     for (let num = 1; num <= 9; num++) {
-
-      // ==========================================
-      // Row-based Swordfish
-      // ==========================================
-      const rowPositions = this.getCandidatePositions(num, 'row');
-
-      // Check combinations of 3 rows (r1, r2, r3)
-      for (let r1 = 0; r1 < 7; r1++) {
-        if (rowPositions[r1].length < 2 || rowPositions[r1].length > 3) continue;
-        for (let r2 = r1 + 1; r2 < 8; r2++) {
-          if (rowPositions[r2].length < 2 || rowPositions[r2].length > 3) continue;
-          for (let r3 = r2 + 1; r3 < 9; r3++) {
-            if (rowPositions[r3].length < 2 || rowPositions[r3].length > 3) continue;
-
-            // Collect all unique columns used across these 3 rows for this candidate
-            const colSet = new Set<number>([
-              ...rowPositions[r1].map(x => x.c),
-              ...rowPositions[r2].map(x => x.c),
-              ...rowPositions[r3].map(x => x.c)
-            ]);
-
-            // If they align perfectly into exactly 3 columns, we found a Swordfish
-            if (colSet.size !== 3) continue;
-
-            // Eliminate candidate from these 3 columns in all OTHER rows
-            const coverCols = Array.from(colSet);
-            for (const c of coverCols) {
-              for (let r = 0; r < 9; r++) {
-                if (r !== r1 && r !== r2 && r !== r3) {
-                  if (this.candidates[r][c].has(num)) {
-                    this.candidates[r][c].delete(num);
-                    changed = true;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // ==========================================
-      // Column-based Swordfish
-      // ==========================================
-      const colPositions = this.getCandidatePositions(num, 'col');
-
-      for (let c1 = 0; c1 < 7; c1++) {
-        if (colPositions[c1].length < 2 || colPositions[c1].length > 3) continue;
-        for (let c2 = c1 + 1; c2 < 8; c2++) {
-          if (colPositions[c2].length < 2 || colPositions[c2].length > 3) continue;
-          for (let c3 = c2 + 1; c3 < 9; c3++) {
-            if (colPositions[c3].length < 2 || colPositions[c3].length > 3) continue;
-
-            // Collect all unique rows used across these 3 columns
-            const rowSet = new Set<number>([
-              ...colPositions[c1].map(x => x.r),
-              ...colPositions[c2].map(x => x.r),
-              ...colPositions[c3].map(x => x.r)
-            ]);
-            if (rowSet.size !== 3) continue;
-
-            // Eliminate candidate from these 3 rows in all OTHER columns
-            const coverRows = Array.from(rowSet);
-            for (const r of coverRows) {
-              for (let c = 0; c < 9; c++) {
-                if (c !== c1 && c !== c2 && c !== c3) {
-                  if (this.candidates[r][c].has(num)) {
-                    this.candidates[r][c].delete(num);
-                    changed = true;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      if (this.applyFishOnAxis(num, 'row', 3)) changed = true;
+      if (this.applyFishOnAxis(num, 'col', 3)) changed = true;
     }
     return changed;
   }
 
   /**
-   * XYZ-Wing:
-   * A more complex variant of the Y-Wing.
-   * - A "Pivot" cell with THREE candidates [A, B, C]
-   * - Two "Pincer" cells, each with TWO candidates: [A, C] and [B, C].
-   * - Both Pincers must "see" the Pivot.
-   * Logic: The true value of the Pivot must be A, B, or C. 
-   * If Pivot is A, Pincer 1 is C. If Pivot is B, Pincer 2 is C. If Pivot is C, it is C.
-   * In EVERY scenario, one of these three cells is definitely C.
-   * Therefore, any empty cell that simultaneously sees ALL THREE cells (the Pivot and BOTH Pincers)
-   * can never be C. We can safely eliminate C from those cells.
+   * XYZ-Wing (Wing Pattern, pivotSize 3):
+   * A "Pivot" cell with THREE candidates [A, B, C] and two bivalue "Pincer" cells
+   * [A, C] and [B, C] that each see the pivot.
+   * Since the pivot must be A, B, or C — in every case, one of the three cells is C.
+   * Any cell seeing ALL THREE (pivot + both pincers) can therefore never be C.
+   *
+   * Delegates to the generic applyWingPattern helper with pivotSize = 3.
    */
   applyXYZWing(): boolean {
-    let changed = false;
-
-    // Collect all bivalues (potential pincers) and trivalues (potential pivots)
-    const bivalues = this.getCellsWithNCandidates(2);
-    const trivalues = this.getCellsWithNCandidates(3);
-
-    // Loop over every possible trivalue pivot
-    for (const pivot of trivalues) {
-      const [a, b, z] = pivot.cands;
-      const zCandidates = [a, b, z]; // Treat each candidate as the potential "C" target
-
-      for (const zCand of zCandidates) {
-        // Find the other two candidates in the pivot
-        const others = pivot.cands.filter(c => c !== zCand);
-        const x = others[0];
-        const y = others[1];
-
-        // Based on the split, we expect Pincer 1 to have {x, zCand} and Pincer 2 to have {y, zCand}
-        const pincer1Cands = [x, zCand].sort();
-        const pincer2Cands = [y, zCand].sort();
-
-        // Find all bivalue cells that match the needed candidates AND see the pivot
-        const pincer1Options = bivalues.filter(bv =>
-          bv.cands[0] === pincer1Cands[0] && bv.cands[1] === pincer1Cands[1] && this.sees(pivot, bv)
-        );
-        const pincer2Options = bivalues.filter(bv =>
-          bv.cands[0] === pincer2Cands[0] && bv.cands[1] === pincer2Cands[1] && this.sees(pivot, bv)
-        );
-
-        // Check all valid combinations of Pincer 1 and Pincer 2
-        for (const p1 of pincer1Options) {
-          for (const p2 of pincer2Options) {
-            // A pincer cannot be the same physical cell as the other pincer
-            if (p1.r === p2.r && p1.c === p2.c) continue;
-
-            // XYZ-Wing elimination: remove the target candidate (zCand) from any cell
-            // that is in the intersection of all three cells' vision.
-            if (this.eliminateFromCellsSeeingAll([pivot, p1, p2], zCand)) {
-              changed = true;
-            }
-          }
-        }
-      }
-    }
-
-    return changed;
+    return this.applyWingPattern(3);
   }
 }
 
