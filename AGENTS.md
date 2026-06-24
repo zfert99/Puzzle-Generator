@@ -11,3 +11,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 Whenever we generate a new file, create a corresponding markdown file (Plain English Pseudocode) for it.
 Whenever we edit an existing file, update its corresponding markdown file to reflect the changes.
 <!-- END:documentation-rules -->
+
+<!-- BEGIN:roadmap-rules -->
+## Roadmap Rules
+
+Whenever a roadmap phase is started, completed, or its scope changes:
+
+- Update `Docs/roadmap.md` to reflect the current status and any new details.
+- Update the simplified roadmap table in `README.md` (change the Status column: 📋 Planned → 🚧 In Progress → ✅ Done).
+<!-- END:roadmap-rules -->

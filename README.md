@@ -62,6 +62,20 @@ npx tsx scripts/benchmark.ts
 3. **Verification**: After *every single hole is dug*, the puzzle is passed to the `HumanSolver`. The solver attempts to complete the puzzle using only logical human deduction. If the solver gets stuck (meaning a human would be forced to guess), the hole is filled back in, and the generator tries another spot.
 4. **Difficulty Rating**: The difficulty of the puzzle is determined by the most advanced logical strategy the `HumanSolver` had to use to verify it.
 
+## Roadmap
+
+We're evolving from a PDF generator into a full interactive puzzle platform. See the [full roadmap](Docs/roadmap.md) for detailed plans.
+
+| Phase | What | Track | Status |
+| :---: | --- | --- | :---: |
+| **1** | **Impossible Difficulty** 💀🔥 — W-Wing, ALS, AICs | 🧮 Engine | 📋 Planned |
+| **2** | **Mini Puzzles** — 4×4 & 6×6 grids | 🧮 Engine + 🎨 UI | 📋 Planned |
+| **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | 📋 Planned |
+| **4** | **Dailies & Leaderboards** — DB, Auth, Speed Runs | 🗄️ Infrastructure | 📋 Planned |
+| **5** | **Strategy Courses** — Visual solver teaching | 🎨 UI + 🧮 Engine | 📋 Planned |
+
+> Phases 1 & 2 can run in parallel. Phases 4 & 5 both depend on Phase 3.
+
 ## Tech Stack
 
 - Next.js (App Router)
