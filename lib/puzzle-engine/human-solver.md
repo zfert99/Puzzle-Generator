@@ -33,8 +33,9 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 2. **Apply Basic Strategies:** Try to find a Naked Single or Hidden Single. If one is found, place the number, mark `changed = true`, and restart the loop.
 3. **Apply Intermediate Strategies:** Try to find Naked Pairs, Hidden Pairs, or Pointing Pairs to eliminate candidates. If successful, mark `changed = true` and restart the loop.
 4. **Apply Advanced Strategies:** If basic strategies fail, look for an **X-Wing**, **Swordfish**, **Y-Wing**, or **XYZ-Wing**. If found, flag that `usedAdvanced = true`, eliminate the candidates, and restart the loop.
-5. If the loop finishes checking all strategies and nothing changed, we are stuck. The puzzle requires guessing or strategies we haven't programmed yet.
-6. Return whether the puzzle was fully solved, and whether it explicitly required an advanced strategy to finish.
+5. **Apply Extreme Strategies:** If advanced strategies fail, look for a **W-Wing**, **ALS-XZ**, or **AIC**. If found, flag that `usedExtreme = true`, eliminate the candidates, and restart the loop.
+6. If the loop finishes checking all strategies and nothing changed, we are stuck. The puzzle requires guessing or strategies we haven't programmed yet.
+7. Return whether the puzzle was fully solved, and whether it explicitly required an advanced or extreme strategy to finish (`requiresAdvanced`, `requiresExtreme`).
 
 ---
 

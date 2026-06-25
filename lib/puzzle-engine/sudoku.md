@@ -28,7 +28,8 @@ When the engine finishes, it hands back a package containing:
 1. Loop 9 times (index `i` from 0 to 8).
 2. **Row Check:** If the `grid` at `[row][i]` equals the `number`, return FALSE.
 3. **Column Check:** If the `grid` at `[i][col]` equals the `number`, return FALSE.
-4. **Subgrid Check:** - Calculate the starting corner: `startRow = Math.floor(row / 3) * 3` and `startCol = Math.floor(col / 3) * 3`.
+4. **Subgrid Check:**
+   - Calculate the starting corner: `startRow = Math.floor(row / 3) * 3` and `startCol = Math.floor(col / 3) * 3`.
    - Use `i` to check the 3x3 box: If the `grid` at `[startRow + Math.floor(i / 3)][startCol + (i % 3)]` equals the `number`, return FALSE.
 5. If no rules are broken after all 9 checks, return TRUE.
 
@@ -123,9 +124,9 @@ When the engine finishes, it hands back a package containing:
      - Save the current number as a backup.
      - Set the cell to 0 (dig the hole).
      - Call `countSolutions` on a copy of the grid.
-      - If `countSolutions` does NOT equal 1:
-        - The hole broke the puzzle! Put the `backup` number back into the cell.
-      - Otherwise, the hole is safe. Decrement the "clues to remove" counter.
+     - If `countSolutions` does NOT equal 1:
+       - The hole broke the puzzle! Put the `backup` number back into the cell.
+     - Otherwise, the hole is safe. Decrement the "clues to remove" counter.
 
 ### `applyExtremeDigger(grid, solution)`
 

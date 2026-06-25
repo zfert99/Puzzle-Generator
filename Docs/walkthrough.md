@@ -23,6 +23,7 @@ The interactive PDF Puzzle Generator has been successfully built according to th
 ## Next Steps
 
 To try out the application locally:
+
 1. Open your terminal in the workspace directory.
 2. Run `npm run dev`.
 3. Open `http://localhost:3000` in your browser.

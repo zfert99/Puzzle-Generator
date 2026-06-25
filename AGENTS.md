@@ -20,3 +20,9 @@ Whenever a roadmap phase is started, completed, or its scope changes:
 - Update `Docs/roadmap.md` to reflect the current status and any new details.
 - Update the simplified roadmap table in `README.md` (change the Status column: 📋 Planned → 🚧 In Progress → ✅ Done).
 <!-- END:roadmap-rules -->
+
+<!-- BEGIN:markdown-linting-rules -->
+## Markdown Linting Rules
+
+Ensure all markdown files adhere to proper linting standards and formatting (e.g., correct list indentation, explicit code block languages, proper heading hierarchy) to avoid markdown linting errors.
+<!-- END:markdown-linting-rules -->

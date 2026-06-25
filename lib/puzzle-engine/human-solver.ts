@@ -358,7 +358,7 @@ export class HumanSolver {
    * It stops when the puzzle is solved, or when it gets completely stuck (meaning it
    * requires guessing or a strategy we haven't programmed).
    */
-  solve(): { solved: boolean, requiresAdvanced: boolean } {
+  solve(): { solved: boolean, requiresAdvanced: boolean, requiresExtreme: boolean } {
     let changed = true;
 
     while (changed && !this.isSolved()) {
