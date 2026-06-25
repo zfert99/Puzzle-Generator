@@ -1,7 +1,7 @@
-import { HumanSolver } from './human-solver';
+import { HumanSolver, canHumanSolveExtreme } from './human-solver';
 
-// The four possible difficulty levels supported by the engine
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+// The five possible difficulty levels supported by the engine
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 
 // Defines the structure of a generated puzzle
 export interface SudokuPuzzle {
@@ -167,7 +167,10 @@ export function generateSudoku(difficulty: Difficulty): SudokuPuzzle {
   const grid = copyGrid(solution);
 
   // Step 4: Apply the appropriate digging strategy based on requested difficulty
-  if (difficulty === 'expert') {
+  if (difficulty === 'extreme') {
+    // Extreme puzzles require the most advanced strategies (W-Wing, ALS, AICs)
+    applyExtremeDigger(grid, solution);
+  } else if (difficulty === 'expert') {
     // Expert puzzles use logical deduction to guarantee they require advanced strategies
     applyExhaustiveDigger(grid);
   } else {
@@ -265,4 +268,60 @@ function applyQuotaDigger(grid: number[][], difficulty: Difficulty): void {
       cluesToRemove--;
     }
   }
+}
+
+/**
+ * Extreme Digger:
+ * Generates puzzles that require extreme strategies (W-Wing, ALS-XZ, AICs) to solve.
+ * Uses the same exhaustive digging approach as the expert digger, but then validates
+ * that the resulting puzzle actually REQUIRES extreme strategies. If the puzzle can be
+ * solved with only expert-level strategies, the entire process is retried with a fresh
+ * solution grid.
+ */
+function applyExtremeDigger(grid: number[][], solution: number[][]): void {
+  const MAX_RETRIES = 50;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    // On retry, generate a completely new solution and start fresh
+    if (attempt > 0) {
+      const newSolution = createEmptyGrid();
+      fillGrid(newSolution);
+      // Copy the new solution into both the grid and solution arrays
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          grid[r][c] = newSolution[r][c];
+          solution[r][c] = newSolution[r][c];
+        }
+      }
+    }
+
+    // Step 1: Exhaustively dig holes (same logic as expert digger)
+    const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
+    for (const pos of positions) {
+      const row = Math.floor(pos / 9);
+      const col = pos % 9;
+      const backup = grid[row][col];
+      if (backup === 0) continue;
+
+      grid[row][col] = 0;
+
+      // Verify the puzzle is still solvable by the full solver (including extreme strategies)
+      const solver = new HumanSolver(copyGrid(grid));
+      const res = solver.solve();
+
+      if (!res.solved) {
+        grid[row][col] = backup;
+      }
+    }
+
+    // Step 2: Validate that the puzzle actually REQUIRES extreme strategies
+    if (canHumanSolveExtreme(copyGrid(grid))) {
+      return; // Success! The puzzle requires extreme strategies.
+    }
+
+    // If it didn't require extreme strategies, retry with a new grid
+  }
+
+  // If we exhausted all retries, keep the last puzzle even if it's only expert-level.
+  // This is a graceful degradation — the puzzle is still valid and logically solvable.
 }

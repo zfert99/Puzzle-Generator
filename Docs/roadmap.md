@@ -25,8 +25,8 @@ The app is a **stateless PDF pipeline**. The user picks puzzle counts, the serve
 | Layer | Component | Status |
 |---|---|---|
 | **Engine** | Backtracking generator + unique-solution validator | ✅ Shipped |
-| **Engine** | `HumanSolver` — Naked/Hidden Singles & Pairs, Pointing Pairs, X-Wing, Swordfish, Y-Wing, XYZ-Wing | ✅ Shipped |
-| **API** | `/api/generate` — accepts difficulty counts, returns PDF stream | ✅ Shipped |
+| **Engine** | `HumanSolver` — Naked/Hidden Singles & Pairs, Pointing Pairs, X-Wing, Swordfish, Y-Wing, XYZ-Wing, W-Wing, ALS-XZ, AICs | ✅ Shipped |
+| **API** | `/api/generate` — accepts difficulty counts (including extreme), returns PDF stream | ✅ Shipped |
 | **Frontend** | `PuzzleForm` — glassmorphism UI with difficulty selectors | ✅ Shipped |
 | **PDF** | `generator.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
 | **Testing** | Jest suite + benchmark scripts with auto-logging | ✅ Shipped |
@@ -67,6 +67,7 @@ Building interactive play surfaces, visual strategy courses, and real-time compe
 
 > **Tracks:** 🧮 Engine
 > **Branch:** `feature/extreme-strategies`
+> **Status:** ✅ Done
 > **Estimated effort:** Large (1–2 weeks)
 > **Prerequisite:** None — this is the next step.
 

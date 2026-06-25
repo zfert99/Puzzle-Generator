@@ -10,7 +10,8 @@ export default function PuzzleForm() {
     easy: 2,
     medium: 2,
     hard: 2,
-    expert: 0
+    expert: 0,
+    extreme: 0
   });
   // State for error handling
   const [error, setError] = useState('');
@@ -24,7 +25,7 @@ export default function PuzzleForm() {
   // Handler for generating the PDF
   const handleGenerate = async () => {
     setError('');
-    const total = counts.easy + counts.medium + counts.hard + counts.expert;
+    const total = counts.easy + counts.medium + counts.hard + counts.expert + counts.extreme;
     if (total === 0) {
       setError('Please select at least one puzzle to generate.');
       return;
@@ -75,10 +76,12 @@ export default function PuzzleForm() {
       {/* Grid for selecting the number of puzzles for each difficulty */}
       <div className="space-y-4 mb-8">
         {/* Map over the difficulties and create an input field for each difficulty */
-          (['easy', 'medium', 'hard', 'expert'] as const).map(diff => (
+          (['easy', 'medium', 'hard', 'expert', 'extreme'] as const).map(diff => (
             <div key={diff} className="flex items-center justify-between">
-              {/* Label for the difficulty */}
-              <label className="capitalize font-medium text-lg w-1/3">{diff}</label>
+              {/* Label for the difficulty — extreme gets a custom emoji label */}
+              <label className="capitalize font-medium text-lg w-1/3">
+                {diff === 'extreme' ? 'Extreme 💀🔥' : diff}
+              </label>
               {/* Input field for the number of puzzles for the current difficulty */}
               <input
                 type="number"
@@ -96,6 +99,11 @@ export default function PuzzleForm() {
         {counts.expert > 0 && (
           <p className="text-yellow-500 text-sm font-medium mt-2 text-center px-4">
             Warning: Generating Expert puzzles requires advanced logical validation and may take up to 30 seconds.
+          </p>
+        )}
+        {counts.extreme > 0 && (
+          <p className="text-red-500 text-sm font-medium mt-2 text-center px-4">
+            ⚠️ Extreme puzzles require elite-tier strategies (W-Wing, ALS, AICs) and may take up to 60 seconds to generate.
           </p>
         )}
       </div>

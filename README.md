@@ -14,6 +14,7 @@ Unlike typical brute-force generators, this project features a custom-built, pur
   - Pointing Pairs / Box-Line Reduction
   - X-Wing & Swordfish
   - Y-Wing & XYZ-Wing
+  - W-Wing, Almost Locked Sets (ALS-XZ), & Alternating Inference Chains (AICs)
 - **High Performance**: Highly optimized grid scanning capable of verifying thousands of puzzle states per second.
 
 ## Getting Started
@@ -68,7 +69,7 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 
 | Phase | What | Track | Status |
 | :---: | --- | --- | :---: |
-| **1** | **Impossible Difficulty** 💀🔥 — W-Wing, ALS, AICs | 🧮 Engine | 📋 Planned |
+| **1** | **Extreme Difficulty** 💀🔥 — W-Wing, ALS, AICs | 🧮 Engine | ✅ Done |
 | **2** | **Mini Puzzles** — 4×4 & 6×6 grids | 🧮 Engine + 🎨 UI | 📋 Planned |
 | **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | 📋 Planned |
 | **4** | **Dailies & Leaderboards** — DB, Auth, Speed Runs | 🗄️ Infrastructure | 📋 Planned |

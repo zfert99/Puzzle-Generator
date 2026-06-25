@@ -12,7 +12,7 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
 1. Declare the component as a Client Component (`'use client'`) because it relies on user interactions and browser state.
 2. Set up state variables:
    - `loading`: A boolean flag (true/false) to track if the PDF is currently being generated. This is used to disable the button and show a spinner.
-   - `counts`: An object storing the desired quantity for each difficulty level (`easy`, `medium`, `hard`, `expert`). Easy, Medium, and Hard default to 2. Expert defaults to 0.
+   - `counts`: An object storing the desired quantity for each difficulty level (`easy`, `medium`, `hard`, `expert`, `extreme`). Easy, Medium, and Hard default to 2. Expert and Extreme default to 0.
    - `error`: A text string to hold any error messages (e.g., "Too many puzzles") to display to the user.
 
 ---
@@ -61,11 +61,11 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
 
 1. Draw a main container (a glassmorphism panel) to hold everything.
 2. **The Inputs:**
-   - Loop over an array of the difficulty names (`['easy', 'medium', 'hard', 'expert']`).
-   - For each difficulty, draw a label and a number input box.
+   - Loop over an array of the difficulty names (`['easy', 'medium', 'hard', 'expert', 'extreme']`).
+   - For each difficulty, draw a label (Extreme gets a custom `Extreme 💀🔥` label) and a number input box.
    - Hook up the input box so its value matches the state, and its `onChange` event triggers `handleChange`.
 3. Display a subtle helper text reminding the user of the 1–50 limit.
-4. If the user has requested any 'expert' puzzles (count > 0), display a yellow warning message letting them know that Expert puzzles take up to 30 seconds to generate due to advanced logical validation.
+4. If the user has requested any 'expert' puzzles (count > 0), display a yellow warning message letting them know that Expert puzzles take up to 30 seconds to generate due to advanced logical validation. If the user requested any 'extreme' puzzles (count > 0), display a red warning message letting them know that Extreme puzzles require elite-tier strategies (W-Wing, ALS, AICs) and take up to 60 seconds to generate.
 5. If there is an `error` message in the state, display it in red text.
 6. **The Submit Button:**
    - Draw a large, primary button.

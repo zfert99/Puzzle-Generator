@@ -75,3 +75,15 @@ This document explains the core logic behind our `human-solver.ts` engine. Unlik
 ### XYZ-Wing (Wing Pattern, pivotSize 3)
 
 **Logic:** A "Pivot" cell with THREE candidates [A, B, C] and two bivalue "Pincer" cells [A, C] and [B, C] that each see the pivot. Since the pivot must be A, B, or C — in every case, one of the three cells is C. The elimination zone is more restricted: candidate C can only be removed from cells that simultaneously see the pivot AND both pincers. Delegates to the shared `applyWingPattern` helper with `pivotSize = 3`.
+
+### W-Wing (Extreme Strategy)
+
+**Logic:** Two identical bivalue cells (both containing candidates {A, B}) that don't see each other are connected by a "strong link" (conjugate pair) on candidate A in some house. This means at least one of the bivalue cells must resolve to B. Any cell that sees BOTH bivalue cells can therefore eliminate B. The method scans for all conjugate pairs across all houses, then checks each pair of matching bivalue cells to see if a conjugate pair bridges them.
+
+### ALS-XZ (Almost Locked Sets — Extreme Strategy)
+
+**Logic:** An ALS is a group of N cells within a single house containing exactly N+1 candidates. If two ALS groups share a "Restricted Common Candidate" (RCC) x — meaning all cells containing x in set A see all cells containing x in set B — then x is locked between them. Any OTHER common candidate z can be eliminated from cells that see all z-locations in BOTH sets. The method enumerates ALS groups (subsets up to size 5) across all houses, then checks every pair for the ALS-XZ elimination pattern.
+
+### Alternating Inference Chains / AICs (Extreme Strategy)
+
+**Logic:** Chains of (cell, candidate) nodes connected by strictly alternating strong and weak links. A strong link means the candidate appears in exactly 2 cells in a house (conjugate pair). A weak link connects two candidates in the same cell, or two cells in the same house with the same candidate. The method builds a full inference graph, then searches for chains using BFS with strict alternation. Type 2 chains (strong→...→strong) eliminate the candidate from cells seeing both endpoints. Type 1 chains (weak→...→weak) eliminate the candidate at both endpoints. Max chain depth is 12 nodes.

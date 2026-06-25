@@ -7,7 +7,7 @@ This document explains the core logic behind our `sudoku.ts` puzzle engine. It b
 ## 1. Data Structures (The Blueprints)
 
 **Difficulty Levels:**
-We define exactly four allowed difficulty levels: 'easy', 'medium', 'hard', or 'expert'.
+We define exactly five allowed difficulty levels: 'easy', 'medium', 'hard', 'expert', or 'extreme'.
 
 **Sudoku Puzzle Object:**
 When the engine finishes, it hands back a package containing:
@@ -90,9 +90,10 @@ When the engine finishes, it hands back a package containing:
 1. Create a blank 9x9 grid filled with 0s.
 2. Call `fillGrid` to completely solve it with random numbers.
 3. Save a copy of this full grid as the `solution`.
-4. If `difficulty` is 'expert', call `applyExhaustiveDigger()`.
-5. Otherwise, call `applyQuotaDigger()`.
-6. Return the final `{ grid, solution, difficulty }` object.
+4. If `difficulty` is 'extreme', call `applyExtremeDigger()`.
+5. If `difficulty` is 'expert', call `applyExhaustiveDigger()`.
+6. Otherwise, call `applyQuotaDigger()`.
+7. Return the final `{ grid, solution, difficulty }` object.
 
 ### `applyExhaustiveDigger(grid)`
 
@@ -122,6 +123,20 @@ When the engine finishes, it hands back a package containing:
      - Save the current number as a backup.
      - Set the cell to 0 (dig the hole).
      - Call `countSolutions` on a copy of the grid.
-     - If `countSolutions` does NOT equal 1:
-       - The hole broke the puzzle! Put the `backup` number back into the cell.
-     - Otherwise, the hole is safe. Decrement the "clues to remove" counter.
+      - If `countSolutions` does NOT equal 1:
+        - The hole broke the puzzle! Put the `backup` number back into the cell.
+      - Otherwise, the hole is safe. Decrement the "clues to remove" counter.
+
+### `applyExtremeDigger(grid, solution)`
+
+**Goal:** Generate a puzzle that requires extreme strategies (W-Wing, ALS-XZ, AICs) to solve.
+**Steps:**
+
+1. Set a maximum retry count (50 attempts).
+2. For each attempt:
+   - If this is a retry (attempt > 0), generate a completely new solution grid and copy it into both the `grid` and `solution` arrays.
+   - Run the same exhaustive digging logic as `applyExhaustiveDigger` — try to remove every clue, keeping the hole only if the `HumanSolver` (with extreme strategies enabled) can still solve the puzzle.
+   - After digging, validate that the resulting puzzle actually REQUIRES extreme strategies by calling `canHumanSolveExtreme()`.
+   - If it does, return immediately (success).
+   - If not (the puzzle was solvable with only expert-level techniques), retry with a fresh grid.
+3. If all retries are exhausted, keep the last puzzle as a graceful degradation.

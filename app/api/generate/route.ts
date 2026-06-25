@@ -11,7 +11,8 @@ import { generatePuzzlePDF } from '@/lib/pdf/generator';
  *   "easy": number,    // Number of easy puzzles to generate
  *   "medium": number,  // Number of medium puzzles to generate
  *   "hard": number,    // Number of hard puzzles to generate
- *   "expert": number   // Number of expert puzzles to generate
+ *   "expert": number,  // Number of expert puzzles to generate
+ *   "extreme": number  // Number of extreme puzzles to generate
  * }
  */
 export async function POST(req: NextRequest) {
@@ -25,30 +26,30 @@ export async function POST(req: NextRequest) {
     }
     
     // Extract puzzle counts, defaulting to 0 if not provided
-    const { easy = 0, medium = 0, hard = 0, expert = 0 } = body || {};
+    const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0 } = body || {};
 
     // ==========================================
     // VALIDATION
     // ==========================================
 
     // Ensure that all provided values are strictly numbers
-    if (typeof easy !== 'number' || typeof medium !== 'number' || typeof hard !== 'number' || typeof expert !== 'number') {
-      return NextResponse.json({ error: 'Invalid input: easy, medium, hard, and expert must be numbers' }, { status: 400 });
+    if (typeof easy !== 'number' || typeof medium !== 'number' || typeof hard !== 'number' || typeof expert !== 'number' || typeof extreme !== 'number') {
+      return NextResponse.json({ error: 'Invalid input: easy, medium, hard, expert, and extreme must be numbers' }, { status: 400 });
     }
 
     // Ensure that all provided values are non-negative integers (no decimals, no negative amounts)
-    if (easy < 0 || medium < 0 || hard < 0 || expert < 0 || !Number.isInteger(easy) || !Number.isInteger(medium) || !Number.isInteger(hard) || !Number.isInteger(expert)) {
+    if (easy < 0 || medium < 0 || hard < 0 || expert < 0 || extreme < 0 || !Number.isInteger(easy) || !Number.isInteger(medium) || !Number.isInteger(hard) || !Number.isInteger(expert) || !Number.isInteger(extreme)) {
       return NextResponse.json({ error: 'Invalid input: values must be non-negative integers' }, { status: 400 });
     }
 
     // Ensure the user requested at least one puzzle
-    if (easy === 0 && medium === 0 && hard === 0 && expert === 0) {
+    if (easy === 0 && medium === 0 && hard === 0 && expert === 0 && extreme === 0) {
       return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
     }
 
     // Security/Performance measure: Enforce a maximum total puzzle limit to prevent server timeouts or DoS attacks
     const MAX_PUZZLES = 50;
-    if (easy + medium + hard + expert > MAX_PUZZLES) {
+    if (easy + medium + hard + expert + extreme > MAX_PUZZLES) {
       return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
     }
 
@@ -76,6 +77,11 @@ export async function POST(req: NextRequest) {
     // Generate Expert puzzles synchronously (this uses the advanced HumanSolver logic)
     for (let i = 0; i < expert; i++) {
       puzzles.push(generateSudoku('expert'));
+    }
+
+    // Generate Extreme puzzles synchronously (uses extreme HumanSolver strategies)
+    for (let i = 0; i < extreme; i++) {
+      puzzles.push(generateSudoku('extreme'));
     }
 
     // ==========================================

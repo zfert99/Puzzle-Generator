@@ -20,6 +20,9 @@ export class HumanSolver {
   // Flag indicating if any advanced strategies (X-Wing, Swordfish, etc.) were used during solving
   usedAdvanced: boolean = false;
 
+  // Flag indicating if any extreme strategies (W-Wing, ALS-XZ, AIC) were used during solving
+  usedExtreme: boolean = false;
+
   // Tracks how many cells have been filled — avoids scanning all 81 cells to check completion
   private filledCount: number = 0;
 
@@ -396,11 +399,33 @@ export class HumanSolver {
         changed = true;
         continue;
       }
+
+      // EXTREME STRATEGIES: The most computationally expensive human strategies.
+      // These require deep graph-theoretic reasoning and are needed only for the hardest puzzles.
+
+      if (this.applyWWing()) {
+        this.usedExtreme = true;
+        changed = true;
+        continue;
+      }
+
+      if (this.applyALSXZ()) {
+        this.usedExtreme = true;
+        changed = true;
+        continue;
+      }
+
+      if (this.applyAIC()) {
+        this.usedExtreme = true;
+        changed = true;
+        continue;
+      }
     }
 
     return {
       solved: this.isSolved(),
-      requiresAdvanced: this.usedAdvanced
+      requiresAdvanced: this.usedAdvanced,
+      requiresExtreme: this.usedExtreme
     };
   }
 
@@ -689,6 +714,448 @@ export class HumanSolver {
   applyXYZWing(): boolean {
     return this.applyWingPattern(3);
   }
+
+  // ==========================================
+  // EXTREME STRATEGIES
+  // ==========================================
+
+  /**
+   * W-Wing:
+   * Two identical bivalue cells (both containing candidates {A, B}) that DON'T see each other
+   * are connected by a "strong link" (conjugate pair) on candidate A in some house.
+   * This means at least one of the bivalue cells must resolve to B.
+   * Any cell that sees BOTH bivalue cells can therefore eliminate B.
+   *
+   * The structure:
+   *   BV1 {A,B} ---sees---> [Strong Link on A: cell1 ↔ cell2] <---sees--- BV2 {A,B}
+   *   => At least one of BV1/BV2 is B => eliminate B from cells seeing both BV1 and BV2.
+   */
+  applyWWing(): boolean {
+    let changed = false;
+    const bivalues = this.getCellsWithNCandidates(2);
+
+    // Find all conjugate pairs (strong links): for each candidate, find houses where
+    // it appears in exactly 2 cells.
+    const conjugatePairs: { num: number; cells: [Cell, Cell] }[] = [];
+    for (let num = 1; num <= 9; num++) {
+      for (const axis of ['row', 'col', 'box'] as const) {
+        const positions = this.getCandidatePositions(num, axis);
+        for (let i = 0; i < 9; i++) {
+          if (positions[i].length === 2) {
+            conjugatePairs.push({ num, cells: [positions[i][0], positions[i][1]] });
+          }
+        }
+      }
+    }
+
+    // For each pair of identical bivalue cells that don't see each other
+    for (let i = 0; i < bivalues.length; i++) {
+      for (let j = i + 1; j < bivalues.length; j++) {
+        const bv1 = bivalues[i];
+        const bv2 = bivalues[j];
+
+        // Must have identical candidate sets
+        if (bv1.cands[0] !== bv2.cands[0] || bv1.cands[1] !== bv2.cands[1]) continue;
+
+        // Must NOT see each other (if they see each other, it's just a Naked Pair)
+        if (this.sees(bv1, bv2)) continue;
+
+        const [candA, candB] = bv1.cands;
+
+        // Try each candidate as the "linking" candidate
+        for (const linkCand of [candA, candB]) {
+          const elimCand = linkCand === candA ? candB : candA;
+
+          // Search for a conjugate pair on linkCand that bridges bv1 and bv2
+          for (const cp of conjugatePairs) {
+            if (cp.num !== linkCand) continue;
+
+            const [cp1, cp2] = cp.cells;
+
+            // One endpoint must see bv1, the other must see bv2 (or vice versa)
+            const bridge1 = (this.sees(cp1, bv1) && this.sees(cp2, bv2));
+            const bridge2 = (this.sees(cp1, bv2) && this.sees(cp2, bv1));
+
+            if (!bridge1 && !bridge2) continue;
+
+            // The conjugate pair endpoints must not be the bivalue cells themselves
+            if ((cp1.r === bv1.r && cp1.c === bv1.c) || (cp1.r === bv2.r && cp1.c === bv2.c)) continue;
+            if ((cp2.r === bv1.r && cp2.c === bv1.c) || (cp2.r === bv2.r && cp2.c === bv2.c)) continue;
+
+            // Eliminate elimCand from cells seeing both bivalue cells
+            if (this.eliminateFromCellsSeeingAll([bv1, bv2], elimCand, [bv1, bv2])) {
+              changed = true;
+            }
+
+            if (changed) return true;
+          }
+        }
+      }
+    }
+
+    return changed;
+  }
+
+  /**
+   * ALS-XZ (Almost Locked Sets — Doubly Linked):
+   * An ALS is a group of N cells within a single house containing exactly N+1 candidates.
+   * If two ALS groups share a "Restricted Common Candidate" (RCC) x — meaning all cells
+   * containing x in set A see all cells containing x in set B — then x is "locked" between them.
+   * Any OTHER common candidate z can be eliminated from cells that see all z-locations in BOTH sets.
+   *
+   * This is one of the most powerful elimination techniques in Sudoku.
+   */
+  applyALSXZ(): boolean {
+    let changed = false;
+
+    // Step 1: Enumerate all ALS groups across all houses
+    const allALS = this.enumerateALS();
+
+    // Step 2: Check every pair of ALS groups for the ALS-XZ pattern
+    for (let i = 0; i < allALS.length; i++) {
+      for (let j = i + 1; j < allALS.length; j++) {
+        const alsA = allALS[i];
+        const alsB = allALS[j];
+
+        // The two ALS groups must not share any cells
+        if (alsA.cells.some(a => alsB.cells.some(b => a.r === b.r && a.c === b.c))) continue;
+
+        // Find all candidates common to both sets
+        const commonCands: number[] = [];
+        for (const cand of alsA.candidates) {
+          if (alsB.candidates.has(cand)) commonCands.push(cand);
+        }
+        if (commonCands.length < 2) continue; // Need at least an RCC + an elimination candidate
+
+        // Find Restricted Common Candidates (RCCs)
+        for (const x of commonCands) {
+          // Check if x is restricted: every cell containing x in A sees every cell containing x in B
+          const xInA = alsA.cells.filter(c => this.candidates[c.r][c.c].has(x));
+          const xInB = alsB.cells.filter(c => this.candidates[c.r][c.c].has(x));
+
+          if (xInA.length === 0 || xInB.length === 0) continue;
+
+          const isRestricted = xInA.every(a => xInB.every(b => this.sees(a, b)));
+          if (!isRestricted) continue;
+
+          // x is a valid RCC. Now eliminate any other common candidate z
+          for (const z of commonCands) {
+            if (z === x) continue;
+
+            // Find all cells containing z in both ALS groups
+            const zInA = alsA.cells.filter(c => this.candidates[c.r][c.c].has(z));
+            const zInB = alsB.cells.filter(c => this.candidates[c.r][c.c].has(z));
+
+            if (zInA.length === 0 || zInB.length === 0) continue;
+
+            // Eliminate z from any cell that sees ALL z-locations in both sets
+            const allZLocations = [...zInA, ...zInB];
+            const excludeCells = [...alsA.cells, ...alsB.cells];
+
+            if (this.eliminateFromCellsSeeingAll(allZLocations, z, excludeCells)) {
+              changed = true;
+            }
+
+            if (changed) return true;
+          }
+        }
+      }
+    }
+
+    return changed;
+  }
+
+  /**
+   * Enumerates all Almost Locked Sets (ALS) across all houses.
+   * An ALS is a group of N cells within a single house containing exactly N+1 candidates.
+   * We limit subset size to 5 cells to control combinatorial cost.
+   */
+  private enumerateALS(): { cells: Cell[]; candidates: Set<number> }[] {
+    const result: { cells: Cell[]; candidates: Set<number> }[] = [];
+    const maxSubsetSize = 5;
+
+    // Process each house type
+    for (const axis of ['row', 'col', 'box'] as const) {
+      for (let houseIdx = 0; houseIdx < 9; houseIdx++) {
+        // Get all empty cells in this house
+        const emptyCells: Cell[] = [];
+        if (axis === 'row') {
+          for (let c = 0; c < 9; c++) {
+            if (this.grid[houseIdx][c] === 0 && this.candidates[houseIdx][c].size > 0) {
+              emptyCells.push({ r: houseIdx, c });
+            }
+          }
+        } else if (axis === 'col') {
+          for (let r = 0; r < 9; r++) {
+            if (this.grid[r][houseIdx] === 0 && this.candidates[r][houseIdx].size > 0) {
+              emptyCells.push({ r, c: houseIdx });
+            }
+          }
+        } else {
+          const boxCells = this.getBoxCells(houseIdx);
+          for (const { r, c } of boxCells) {
+            if (this.grid[r][c] === 0 && this.candidates[r][c].size > 0) {
+              emptyCells.push({ r, c });
+            }
+          }
+        }
+
+        // Enumerate all subsets of size 1..maxSubsetSize
+        for (let size = 1; size <= Math.min(maxSubsetSize, emptyCells.length); size++) {
+          const subsets = this.combinationsOfCells(emptyCells, size);
+          for (const subset of subsets) {
+            // Union all candidates across the subset
+            const unionCands = new Set<number>();
+            for (const cell of subset) {
+              for (const cand of this.candidates[cell.r][cell.c]) {
+                unionCands.add(cand);
+              }
+            }
+
+            // ALS condition: |candidates| = |cells| + 1
+            if (unionCands.size === subset.length + 1) {
+              result.push({ cells: [...subset], candidates: unionCands });
+            }
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Generates all k-element combinations from an array of Cell objects.
+   * Used by ALS enumeration to generate cell subsets.
+   */
+  private combinationsOfCells(arr: Cell[], k: number): Cell[][] {
+    const results: Cell[][] = [];
+    const build = (start: number, combo: Cell[]) => {
+      if (combo.length === k) {
+        results.push([...combo]);
+        return;
+      }
+      for (let i = start; i < arr.length; i++) {
+        combo.push(arr[i]);
+        build(i + 1, combo);
+        combo.pop();
+      }
+    };
+    build(0, []);
+    return results;
+  }
+
+  /**
+   * Alternating Inference Chains (AICs):
+   * Chains of (cell, candidate) nodes connected by strictly alternating strong and weak links.
+   *
+   * Strong link: The candidate appears in exactly 2 cells in a house (conjugate pair).
+   *              If one is false, the other MUST be true.
+   * Weak link:   Two candidates in the same cell, or two cells in the same house with the same candidate.
+   *              If one is true, the other MUST be false.
+   *
+   * Chain types:
+   *   Type 1 (weak→...→weak): Both endpoints must be false → eliminate candidate at both.
+   *   Type 2 (strong→...→strong): At least one endpoint is true → eliminate candidate from
+   *           cells seeing both endpoints.
+   *
+   * Max chain depth: 12 nodes to prevent unbounded search.
+   */
+  applyAIC(): boolean {
+    const MAX_CHAIN_DEPTH = 12;
+
+    // Build the inference graph: each node is identified by a string "r,c,num"
+    // strongLinks[node] = list of nodes connected by strong links
+    // weakLinks[node] = list of nodes connected by weak links
+    const strongLinks = new Map<string, string[]>();
+    const weakLinks = new Map<string, string[]>();
+
+    const nodeKey = (r: number, c: number, num: number) => `${r},${c},${num}`;
+    const parseKey = (key: string): { r: number; c: number; num: number } => {
+      const [r, c, num] = key.split(',').map(Number);
+      return { r, c, num };
+    };
+
+    const addLink = (map: Map<string, string[]>, from: string, to: string) => {
+      if (!map.has(from)) map.set(from, []);
+      map.get(from)!.push(to);
+    };
+
+    // Collect all active nodes
+    const allNodes: string[] = [];
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[r][c] !== 0) continue;
+        for (const num of this.candidates[r][c]) {
+          allNodes.push(nodeKey(r, c, num));
+        }
+      }
+    }
+
+    // Build strong links: conjugate pairs in each house
+    for (let num = 1; num <= 9; num++) {
+      for (const axis of ['row', 'col', 'box'] as const) {
+        const positions = this.getCandidatePositions(num, axis);
+        for (let i = 0; i < 9; i++) {
+          if (positions[i].length === 2) {
+            const [a, b] = positions[i];
+            const keyA = nodeKey(a.r, a.c, num);
+            const keyB = nodeKey(b.r, b.c, num);
+            addLink(strongLinks, keyA, keyB);
+            addLink(strongLinks, keyB, keyA);
+          }
+        }
+      }
+    }
+
+    // Build weak links:
+    // 1. Same cell, different candidates (bivalue link)
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[r][c] !== 0) continue;
+        const cands = Array.from(this.candidates[r][c]);
+        for (let a = 0; a < cands.length; a++) {
+          for (let b = a + 1; b < cands.length; b++) {
+            const keyA = nodeKey(r, c, cands[a]);
+            const keyB = nodeKey(r, c, cands[b]);
+            addLink(weakLinks, keyA, keyB);
+            addLink(weakLinks, keyB, keyA);
+          }
+        }
+      }
+    }
+
+    // 2. Same candidate, same house, different cells (peer weak link)
+    for (let num = 1; num <= 9; num++) {
+      for (const axis of ['row', 'col', 'box'] as const) {
+        const positions = this.getCandidatePositions(num, axis);
+        for (let i = 0; i < 9; i++) {
+          const cells = positions[i];
+          if (cells.length > 2) { // Only weak links when > 2 (if exactly 2, it's already a strong link)
+            for (let a = 0; a < cells.length; a++) {
+              for (let b = a + 1; b < cells.length; b++) {
+                const keyA = nodeKey(cells[a].r, cells[a].c, num);
+                const keyB = nodeKey(cells[b].r, cells[b].c, num);
+                addLink(weakLinks, keyA, keyB);
+                addLink(weakLinks, keyB, keyA);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Also treat strong links as weak links (a strong link is also a weak link)
+    for (const [from, tos] of strongLinks) {
+      for (const to of tos) {
+        addLink(weakLinks, from, to);
+      }
+    }
+
+    // BFS for alternating chains starting from each node
+    // Chain state: { node, linkType (type of link ARRIVING at this node), path }
+    for (const startNode of allNodes) {
+      // Try starting with a strong link departure (endpoint is "strong")
+      // and with a weak link departure (endpoint is "weak")
+      for (const startLinkType of ['strong', 'weak'] as const) {
+        const queue: { node: string; lastLink: 'strong' | 'weak'; depth: number; path: string[] }[] = [];
+        const visited = new Set<string>();
+
+        // Seed: follow the first link type from the start node
+        const firstLinks = startLinkType === 'strong'
+          ? (strongLinks.get(startNode) || [])
+          : (weakLinks.get(startNode) || []);
+
+        for (const next of firstLinks) {
+          if (next === startNode) continue;
+          const stateKey = `${next}:${startLinkType}`;
+          if (!visited.has(stateKey)) {
+            visited.add(stateKey);
+            queue.push({ node: next, lastLink: startLinkType, depth: 2, path: [startNode, next] });
+          }
+        }
+
+        while (queue.length > 0) {
+          const { node, lastLink, depth, path } = queue.shift()!;
+
+          if (depth > MAX_CHAIN_DEPTH) continue;
+
+          // Check if we've formed a useful chain back to the start node's neighborhood
+          if (depth >= 4) {
+            const startParsed = parseKey(startNode);
+            const endParsed = parseKey(node);
+
+            // Type 2: strong→...→strong endpoints (both ends arrived via strong links)
+            // The start departs via strong, end arrives via strong
+            if (startLinkType === 'strong' && lastLink === 'strong') {
+              // At least one endpoint is true
+              // If both endpoints have the same candidate, eliminate it from cells seeing both
+              if (startParsed.num === endParsed.num) {
+                const elim = this.eliminateFromCellsSeeingAll(
+                  [{ r: startParsed.r, c: startParsed.c }, { r: endParsed.r, c: endParsed.c }],
+                  startParsed.num,
+                  [{ r: startParsed.r, c: startParsed.c }, { r: endParsed.r, c: endParsed.c }]
+                );
+                if (elim) return true;
+              }
+            }
+
+            // Type 1: weak→...→weak endpoints (both ends arrived via weak links)
+            // Both endpoints must be false
+            if (startLinkType === 'weak' && lastLink === 'weak') {
+              // If start and end are the same node, this is a contradiction — not useful here
+              if (startNode === node) continue;
+
+              // Eliminate the candidate at the start node
+              if (startParsed.num === endParsed.num &&
+                  startParsed.r === endParsed.r && startParsed.c === endParsed.c) {
+                // Same cell, same candidate — self-contradiction, eliminate
+                if (this.candidates[startParsed.r][startParsed.c].has(startParsed.num)) {
+                  this.candidates[startParsed.r][startParsed.c].delete(startParsed.num);
+                  return true;
+                }
+              }
+
+              // If both endpoints are the same candidate in different cells that see each other,
+              // both must be false — eliminate from both
+              if (startParsed.num === endParsed.num &&
+                  this.sees({ r: startParsed.r, c: startParsed.c }, { r: endParsed.r, c: endParsed.c })) {
+                let elim = false;
+                if (this.candidates[startParsed.r][startParsed.c].has(startParsed.num)) {
+                  this.candidates[startParsed.r][startParsed.c].delete(startParsed.num);
+                  elim = true;
+                }
+                if (this.candidates[endParsed.r][endParsed.c].has(endParsed.num)) {
+                  this.candidates[endParsed.r][endParsed.c].delete(endParsed.num);
+                  elim = true;
+                }
+                if (elim) return true;
+              }
+            }
+          }
+
+          // Extend the chain with the opposite link type (strict alternation)
+          const nextLinkType: 'strong' | 'weak' = lastLink === 'strong' ? 'weak' : 'strong';
+          const nextLinks = nextLinkType === 'strong'
+            ? (strongLinks.get(node) || [])
+            : (weakLinks.get(node) || []);
+
+          for (const next of nextLinks) {
+            // Don't revisit nodes in the current path (except potentially the start for cycle detection)
+            if (path.includes(next) && next !== startNode) continue;
+
+            const stateKey = `${next}:${nextLinkType}`;
+            if (!visited.has(stateKey)) {
+              visited.add(stateKey);
+              queue.push({ node: next, lastLink: nextLinkType, depth: depth + 1, path: [...path, next] });
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  }
 }
 
 /**
@@ -699,4 +1166,15 @@ export function canHumanSolveExpert(grid: number[][]): boolean {
   const solver = new HumanSolver(grid);
   const result = solver.solve();
   return result.solved && result.requiresAdvanced;
+}
+
+/**
+ * Utility function to test if a puzzle requires extreme strategies to solve.
+ * Returns true only if it is completely solved AND required at least one extreme strategy
+ * (W-Wing, ALS-XZ, or AIC).
+ */
+export function canHumanSolveExtreme(grid: number[][]): boolean {
+  const solver = new HumanSolver(grid);
+  const result = solver.solve();
+  return result.solved && result.requiresExtreme;
 }

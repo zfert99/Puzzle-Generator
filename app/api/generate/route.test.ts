@@ -43,6 +43,13 @@ describe('Happy Paths', () => {
     expect(res.status).toBe(200);
   }, 60_000); // Generous timeout because expert puzzle generation + PDF rendering takes time
 
+  test('The Extreme Challenge: 1 extreme puzzle returns 200', async () => {
+    // Tests the full extreme pipeline: W-Wing/ALS/AIC solver strategies,
+    // the extreme digger with retry logic, and PDF rendering.
+    const res = await POST(buildRequest({ extreme: 1 }));
+    expect(res.status).toBe(200);
+  }, 120_000); // Extreme puzzles may retry multiple grids — generous timeout
+
   test('The Minimum Book: 1 easy puzzle returns 200', async () => {
     const res = await POST(buildRequest({ easy: 1 }));
     expect(res.status).toBe(200);
