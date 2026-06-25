@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD060 -->
+
 # Puzzle Generator — Project Roadmap
 
 > From PDF generator to interactive puzzle platform.
@@ -40,8 +42,8 @@ This roadmap is organized into **three parallel tracks** that correspond to the 
 Expanding the algorithmic solver and generator to support new puzzle types and extreme difficulty levels.
 
 **Key files:**
-- [sudoku.ts](file:///Users/morp/Documents/GitHub/Puzzle-Generator/lib/puzzle-engine/sudoku.ts)
-- [human-solver.ts](file:///Users/morp/Documents/GitHub/Puzzle-Generator/lib/puzzle-engine/human-solver.ts)
+- [sudoku.ts](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/lib/puzzle-engine/sudoku.ts)
+- [human-solver.ts](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/lib/puzzle-engine/human-solver.ts)
 <!-- slide -->
 ### 🗄️ Track B — Backend Infrastructure
 Introducing state, persistence, authentication, and scheduled jobs. Transforming the app from stateless to stateful.
@@ -55,29 +57,31 @@ Introducing state, persistence, authentication, and scheduled jobs. Transforming
 Building interactive play surfaces, visual strategy courses, and real-time competitive features.
 
 **Key files:**
-- [page.tsx](file:///Users/morp/Documents/GitHub/Puzzle-Generator/app/page.tsx)
-- [PuzzleForm.tsx](file:///Users/morp/Documents/GitHub/Puzzle-Generator/components/PuzzleForm.tsx)
+- [page.tsx](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/app/page.tsx)
+- [PuzzleForm.tsx](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/components/PuzzleForm.tsx)
 ````
 
 ---
 
-## Phase 1 — Impossible Difficulty 💀🔥
+## Phase 1 — Extreme Difficulty 💀🔥
 
 > **Tracks:** 🧮 Engine
-> **Branch:** `feature/impossible-strategies`
+> **Branch:** `feature/extreme-strategies`
 > **Estimated effort:** Large (1–2 weeks)
 > **Prerequisite:** None — this is the next step.
 
-This phase is already designed in the [impossible_implementation_plan.md](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/impossible_implementation_plan.md). It extends the `HumanSolver` with three elite-tier strategies and adds a new difficulty level to the entire pipeline.
+This phase is already designed in the [extreme_implementation_plan.md](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/Docs/extreme_implementation_plan.md). It extends the `HumanSolver` with three elite-tier strategies and adds a new difficulty level to the entire pipeline.
 
 ### Deliverables
 
 #### 1.1 — W-Wing Strategy
+
 - Scan for conjugate pairs across all houses
 - Cross-reference with matching bivalue cells bridged by the pair
 - Eliminations from cells seeing both bivalue endpoints
 
 #### 1.2 — Almost Locked Sets (ALS-XZ → Full ALS Chains)
+
 - Enumerate ALS groups (N cells, N+1 candidates) per house
 - Identify Restricted Common Candidates between ALS pairs
 - Extend to full ALS Chains (3+ sets threaded together)
@@ -86,21 +90,24 @@ This phase is already designed in the [impossible_implementation_plan.md](file:/
 > Combinatorial explosion risk: a 9-cell house has 511 possible subsets. Aggressive pruning (only check subsets where `|candidates| = |cells| + 1`) is **mandatory**.
 
 #### 1.3 — Alternating Inference Chains (AICs)
+
 - Build a full inference graph with strong/weak link edges
 - Implement BFS/DFS pathfinding with strict alternation constraints
 - Support Grouped AICs (cell clusters as single nodes)
 - **Max chain depth: 12–16 nodes** to prevent unbounded search
 
 #### 1.4 — Generator Integration
-- New `applyImpossibleDigger` function targeting 20–22 clues
-- `canHumanSolveImpossible(grid)` validator
+
+- New `applyExtremeDigger` function targeting 20–22 clues
+- `canHumanSolveExtreme(grid)` validator
 - UI: skull emoji label 💀🔥, red warning about 60s generation time
-- PDF: new section header in outline for Impossible tier
+- PDF: new section header in outline for Extreme tier
 
 #### Performance Target
+
 | Metric | Target |
 |---|---|
-| Average generation time per Impossible puzzle | < 10 seconds |
+| Average generation time per Extreme puzzle | < 10 seconds |
 | Solver speed (AIC-heavy boards) | < 2 seconds |
 | Existing Expert regression | 0 — all current tests pass |
 
@@ -115,9 +122,10 @@ This phase is already designed in the [impossible_implementation_plan.md](file:/
 
 This is the **lowest-hanging fruit** for new puzzle variety. The core backtracking and validation logic already works; it just needs to be parameterized.
 
-### Deliverables
+### Phase 2 Deliverables
 
 #### 2.1 — Parameterized Engine
+
 - Refactor `generateSudoku` to accept dynamic `gridSize` and `boxDimensions`
   - 4×4 grid → 2×2 boxes
   - 6×6 grid → 2×3 boxes
@@ -126,16 +134,19 @@ This is the **lowest-hanging fruit** for new puzzle variety. The core backtracki
 - Update all hardcoded `9` references to use the parameterized size
 
 #### 2.2 — Difficulty Calibration
+
 - Mini puzzles need their own difficulty curves (a 4×4 with 6 clues is hard; a 4×4 with 4 clues might be impossible)
 - Define clue-count ranges per size per difficulty
 - Simpler strategies dominate — no need for X-Wing on a 4×4
 
 #### 2.3 — PDF Rendering
+
 - Update `generator.ts` to dynamically draw grids of varying sizes
 - Adjust cell sizing, font scaling, and page layout for minis
 - Option to fit multiple mini puzzles per page (e.g., 4 × 4×4 grids per page)
 
 #### 2.4 — UI Updates
+
 - Add a "Puzzle Size" selector to `PuzzleForm` (4×4, 6×6, 9×9)
 - Conditionally show difficulty options based on grid size
 
@@ -150,9 +161,10 @@ This is the **lowest-hanging fruit** for new puzzle variety. The core backtracki
 
 This is the **architectural pivot point**. Everything after this phase depends on having a playable, in-browser Sudoku board instead of a PDF-only output.
 
-### Deliverables
+### Phase 3 Deliverables
 
 #### 3.1 — React Sudoku Board Component
+
 - Full 9×9 interactive grid with keyboard & mouse input
 - Candidate pencil-mark mode (toggle per cell)
 - Visual highlighting: selected row/column/box, conflicts, locked clues
@@ -160,12 +172,14 @@ This is the **architectural pivot point**. Everything after this phase depends o
 - Smooth micro-animations for number placement and error states
 
 #### 3.2 — Game State Manager
+
 - React context or Zustand store for puzzle state
 - Undo/redo stack
 - Timer (with pause)
 - Completion detection + celebration animation
 
 #### 3.3 — Play Mode vs. PDF Mode
+
 - New route: `/play` for interactive solving
 - Existing `/` page continues to offer PDF generation
 - Navigation between modes
@@ -190,9 +204,10 @@ graph TD
 
 This phase introduces **state and persistence**. The app goes from stateless to having a database, user accounts, and scheduled puzzle generation.
 
-### Deliverables
+### Phase 4 Deliverables
 
 #### 4.1 — Database Layer
+
 - Set up PostgreSQL (Supabase or Vercel Postgres)
 - Schema design:
 
@@ -231,12 +246,14 @@ CREATE TABLE solve_attempts (
 ```
 
 #### 4.2 — Daily Puzzle Cron
+
 - Scheduled job runs at midnight UTC
 - Generates one puzzle per difficulty level (Easy, Medium, Hard, Expert)
 - Stores in `daily_puzzles` table
 - All users worldwide get the exact same boards
 
 #### 4.3 — User Authentication
+
 - NextAuth / Auth.js integration
 - OAuth providers: Google, GitHub (start with these)
 - Session management for tracking solve times
@@ -246,6 +263,7 @@ CREATE TABLE solve_attempts (
 > Leaderboard integrity requires server-side time validation. The client sends a start timestamp and the server records completion — never trust a client-reported solve time.
 
 #### 4.4 — Leaderboard UI
+
 - Daily leaderboard per difficulty
 - All-time personal bests
 - Streak tracking (consecutive daily completions)
@@ -262,9 +280,10 @@ CREATE TABLE solve_attempts (
 
 This is the **crown jewel** — turning the `HumanSolver` into a visual teaching tool. Instead of running silently in the backend, the solver's step-by-step deductions are exposed to the React frontend as an interactive, animated course.
 
-### Deliverables
+### Phase 5 Deliverables
 
 #### 5.1 — Solver Step Serialization
+
 - Refactor `HumanSolver.solve()` to emit a `SolveStep[]` array:
 
 ```typescript
@@ -287,6 +306,7 @@ type SolveStep = {
 ```
 
 #### 5.2 — Course Player Component
+
 - Step-through UI: "Previous / Next / Auto-Play" controls
 - Board state updates one step at a time
 - Highlighted cells pulse/glow to show the pattern being explained
@@ -294,6 +314,7 @@ type SolveStep = {
 - Speed slider for auto-play mode
 
 #### 5.3 — Curated Lesson Library
+
 - Pre-built puzzle boards that specifically require each strategy:
   - Lesson 1: Naked Singles & Hidden Singles
   - Lesson 2: Naked Pairs & Pointing Pairs
@@ -314,7 +335,7 @@ gantt
     axisFormat %b %Y
 
     section 🧮 Engine
-    Phase 1 - Impossible Difficulty     :p1, 2026-07-01, 14d
+    Phase 1 - Extreme Difficulty        :p1, 2026-07-01, 14d
     Phase 2 - Mini Puzzles              :p2, 2026-07-01, 5d
 
     section 🎨 Frontend
@@ -336,7 +357,7 @@ gantt
 graph TD
     V1["v1.0.0 — Current State<br/>(PDF Generator + HumanSolver)"]
 
-    P1["Phase 1<br/>Impossible Difficulty 💀🔥<br/><i>W-Wing, ALS, AICs</i>"]
+    P1["Phase 1<br/>Extreme Difficulty 💀🔥<br/><i>W-Wing, ALS, AICs</i>"]
     P2["Phase 2<br/>Mini Puzzles<br/><i>4×4, 6×6 grids</i>"]
     P3["Phase 3<br/>Interactive Board<br/><i>React play surface</i>"]
     P4["Phase 4<br/>Dailies & Leaderboards<br/><i>DB, Auth, Cron</i>"]
@@ -364,18 +385,22 @@ graph TD
 These ideas are explicitly **out of scope** for the roadmap above but are worth documenting as north stars:
 
 ### Killer Sudoku & KenKen
+
 A **massive algorithmic leap** requiring an entirely new constraint system. Killer Sudoku introduces "cages" (irregularly shaped regions with sum constraints and no-repeat rules). KenKen adds mathematical operators (÷, ×, −, +) into constraint checks. This effectively requires writing a brand-new generation and solving engine — not an extension of the current one.
 
 > [!CAUTION]
 > This is not a refactor. Killer Sudoku and KenKen are fundamentally different puzzle types that share a visual resemblance to Sudoku but have distinct constraint satisfaction models. Plan for a new module (`lib/puzzle-engine/killer-sudoku.ts`) rather than trying to shoehorn it into the existing `sudoku.ts`.
 
 ### Multiplayer Speed Races
+
 Real-time WebSocket-based head-to-head solving. Two players get the same board and race to solve it first with a live progress indicator showing the opponent's completion percentage.
 
 ### Mobile App (React Native)
+
 Port the interactive board and daily puzzles to a native mobile experience.
 
 ### Community Puzzle Sharing
+
 User-generated puzzles with a rating system — players can create, share, and rate puzzles.
 
 ---
@@ -384,9 +409,9 @@ User-generated puzzles with a rating system — players can create, share, and r
 
 > [!IMPORTANT]
 > **Database provider:** Supabase vs. Vercel Postgres vs. PlanetScale? This decision affects Phase 4's auth integration and hosting architecture.
-
+>
 > [!IMPORTANT]
 > **Phase 3 scope:** Should the Interactive Board support all grid sizes (4×4, 6×6, 9×9) from the start, or ship with 9×9 only and add mini-board support later?
-
+>
 > [!IMPORTANT]
 > **Killer Sudoku timing:** Should we begin research on the cage-constraint engine during Phase 1, or defer all Killer/KenKen work until after Phase 5?
