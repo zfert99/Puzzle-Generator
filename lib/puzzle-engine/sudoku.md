@@ -105,8 +105,8 @@ When the engine finishes, it hands back a package containing:
 2. Loop through every position exactly once:
    - Save the current number as a backup.
    - Set the cell to 0 (dig the hole).
-   - Pass the grid to the `HumanSolver`. If it can solve the puzzle purely through logical deduction, the hole is valid — uniqueness is guaranteed because logical strategies never "guess" between ambiguous solutions.
-   - If the human solver cannot solve it (meaning it requires guessing, has multiple solutions, or needs unprogrammed strategies), put the `backup` number back into the cell.
+   - Pass the grid to the `HumanSolver` with `{ maxTier: 'advanced' }` (skipping extreme strategies). If it can solve the puzzle purely through logical deduction, the hole is valid — uniqueness is guaranteed because logical strategies never "guess" between ambiguous solutions.
+   - If the human solver cannot solve it (meaning it requires guessing, has multiple solutions, or needs extreme/unprogrammed strategies), put the `backup` number back into the cell.
    - (No attempts counter is used; it aggressively checks every single cell to ensure a minimal, human-solvable expert puzzle).
 
 ### `applyQuotaDigger(grid, difficulty)`

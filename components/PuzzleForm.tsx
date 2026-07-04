@@ -78,9 +78,9 @@ export default function PuzzleForm() {
         {/* Map over the difficulties and create an input field for each difficulty */
           (['easy', 'medium', 'hard', 'expert', 'extreme'] as const).map(diff => (
             <div key={diff} className="flex items-center justify-between">
-              {/* Label for the difficulty — extreme gets a custom emoji label */}
+              {/* Label for the difficulty */}
               <label className="capitalize font-medium text-lg w-1/3">
-                {diff === 'extreme' ? 'Extreme 💀🔥' : diff}
+                {diff}
               </label>
               {/* Input field for the number of puzzles for the current difficulty */}
               <input
@@ -96,14 +96,9 @@ export default function PuzzleForm() {
           ))}
         {/* Note for the user */}
         <p className="text-sm text-gray-400 text-center mt-2">You can generate 1–50 puzzles total per request.</p>
-        {counts.expert > 0 && (
-          <p className="text-yellow-500 text-sm font-medium mt-2 text-center px-4">
-            Warning: Generating Expert puzzles requires advanced logical validation and may take up to 30 seconds.
-          </p>
-        )}
         {counts.extreme > 0 && (
           <p className="text-red-500 text-sm font-medium mt-2 text-center px-4">
-            ⚠️ Extreme puzzles require elite-tier strategies (W-Wing, ALS, AICs) and may take up to 60 seconds to generate.
+            Warning: Extreme puzzles require elite-tier strategies (W-Wing, ALS, AICs) and may take up to 5 seconds per puzzle to generate.
           </p>
         )}
       </div>

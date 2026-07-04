@@ -22,52 +22,64 @@ const expertGrid = [
 ];
 
 /**
- * Benchmark script specifically for the HumanSolver engine.
+ * Benchmark script specifically for the HumanSolver engine across difficulty tiers.
  * 
- * This isolates the logical deduction engine and tests raw solving speed.
- * It does NOT test generation (which involves digging holes and counting solutions).
- * High performance here is critical because the generator will call `solver.solve()`
- * dozens of times per puzzle when trying to create an 'Expert' level grid.
+ * This isolates the logical deduction engine and tests raw solving speed for each tier:
+ * - Basic Tier (Easy / Medium / Hard)
+ * - Advanced Tier (Expert)
+ * - Extreme Tier (Extreme / Impossible)
  */
 async function main() {
-  // We run 5,000 iterations to get a highly accurate average time, 
-  // smoothing out any sudden CPU spikes or garbage collection pauses.
-  const iterations = 5000;
+  console.log('Running HumanSolver benchmarks across difficulty tiers...\n');
 
-  console.log(`Running HumanSolver on an expert puzzle for ${iterations} iterations...`);
+  const benchmarks = [
+    { name: 'HumanSolver Basic', maxTier: 'basic' as const, iterations: 5000 },
+    { name: 'HumanSolver Advanced', maxTier: 'advanced' as const, iterations: 5000 },
+    { name: 'HumanSolver Extreme', maxTier: 'extreme' as const, iterations: 1000 }
+  ];
 
-  // We use performance.now() instead of Date.now() for sub-millisecond precision
-  const start = performance.now();
-
-  for (let i = 0; i < iterations; i++) {
-    // We instantiate a fresh solver every iteration so it starts from scratch,
-    // exactly as it does in production.
-    const solver = new HumanSolver(expertGrid);
-    solver.solve();
+  const logEntries: string[] = [];
+  let commit = 'unknown';
+  try {
+    commit = execSync('git rev-parse --short HEAD').toString().trim();
+  } catch (e) {
+    // Ignore git error
   }
+  const timestamp = new Date().toISOString();
 
-  const end = performance.now();
-  const timeMs = end - start;
+  for (const { name, maxTier, iterations } of benchmarks) {
+    console.log(`Running ${name} (${maxTier} tier) for ${iterations} iterations...`);
 
-  console.log(`\nTotal time: ${timeMs.toFixed(2)} ms`);
-  console.log(`Average time per solve: ${(timeMs / iterations).toFixed(2)} ms`);
-  console.log(`Solves per second: ${Math.round(1000 / (timeMs / iterations))}`);
+    const start = performance.now();
+
+    for (let i = 0; i < iterations; i++) {
+      const solver = new HumanSolver(expertGrid);
+      solver.solve({ maxTier });
+    }
+
+    const end = performance.now();
+    const timeMs = end - start;
+    const avg = (timeMs / iterations).toFixed(2);
+    const sps = Math.round(1000 / (timeMs / iterations));
+
+    console.log(`Total time: ${timeMs.toFixed(2)} ms`);
+    console.log(`Average time per solve: ${avg} ms`);
+    console.log(`Solves per second: ${sps}\n`);
+
+    logEntries.push(`| ${timestamp} | \`${commit}\` | ${name} (${iterations}x) | ${avg} ms | ${sps} solves/sec |\n`);
+  }
 
   // --- Auto-Logging ---
   try {
-    const commit = execSync('git rev-parse --short HEAD').toString().trim();
-    const timestamp = new Date().toISOString();
     const logPath = path.join(__dirname, 'benchmark-logs.md');
-    
-    const avg = (timeMs / iterations).toFixed(2);
-    const sps = Math.round(1000 / (timeMs / iterations));
-    const logEntry = `| ${timestamp} | \`${commit}\` | HumanSolver (${iterations}x) | ${avg} ms | ${sps} solves/sec |\n`;
     
     if (!fs.existsSync(logPath)) {
       fs.writeFileSync(logPath, `# Benchmark Logs\n\n<!-- markdownlint-disable MD013 MD060 -->\n\n| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
     }
-    fs.appendFileSync(logPath, logEntry);
-    console.log(`Logged results to ${logPath}`);
+    for (const entry of logEntries) {
+      fs.appendFileSync(logPath, entry);
+    }
+    console.log(`Logged all tier results to ${logPath}`);
   } catch (err) {
     console.error('Failed to log benchmark:', err);
   }

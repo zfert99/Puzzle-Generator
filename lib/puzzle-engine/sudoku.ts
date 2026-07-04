@@ -210,7 +210,7 @@ function applyExhaustiveDigger(grid: number[][]): void {
     // Additionally, because `HumanSolver` relies purely on logic, if it can solve the puzzle,
     // the puzzle is inherently guaranteed to have a UNIQUE solution.
     const solver = new HumanSolver(copyGrid(grid));
-    const res = solver.solve();
+    const res = solver.solve({ maxTier: 'advanced' });
     
     // If the HumanSolver gets stuck (requires guessing or unprogrammed strategies),
     // we put the clue back and move on to the next position.

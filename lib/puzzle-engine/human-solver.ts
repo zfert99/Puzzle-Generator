@@ -322,9 +322,9 @@ export class HumanSolver {
     // The cell itself no longer needs candidates since it is filled
     this.candidates[r][c].clear();
 
-    // Calculate which 3x3 box this cell falls into
-    const boxIndex = Math.floor(r / 3) * 3 + Math.floor(c / 3);
-    const boxCells = this.getBoxCells(boxIndex);
+    // Compute box origin once (avoids allocating a 9-element array via getBoxCells)
+    const boxStartR = Math.floor(r / 3) * 3;
+    const boxStartC = Math.floor(c / 3) * 3;
 
     // Iterate 9 times to sweep the entire row, column, and box simultaneously
     for (let i = 0; i < 9; i++) {
@@ -335,8 +335,7 @@ export class HumanSolver {
       this.candidates[i][c].delete(num);
 
       // Eliminate this number from all other candidates in the same 3x3 box
-      const cell = boxCells[i];
-      this.candidates[cell.r][cell.c].delete(num);
+      this.candidates[boxStartR + Math.floor(i / 3)][boxStartC + (i % 3)].delete(num);
     }
   }
 
@@ -358,7 +357,7 @@ export class HumanSolver {
    * It stops when the puzzle is solved, or when it gets completely stuck (meaning it
    * requires guessing or a strategy we haven't programmed).
    */
-  solve(): { solved: boolean, requiresAdvanced: boolean, requiresExtreme: boolean } {
+  solve(options: { maxTier?: 'basic' | 'advanced' | 'extreme' } = { maxTier: 'extreme' }): { solved: boolean, requiresAdvanced: boolean, requiresExtreme: boolean } {
     let changed = true;
 
     while (changed && !this.isSolved()) {
@@ -371,6 +370,8 @@ export class HumanSolver {
       if (this.applyNakedPair()) { changed = true; continue; }
       if (this.applyHiddenPair()) { changed = true; continue; }
       if (this.applyPointingPairs()) { changed = true; continue; }
+
+      if (options.maxTier === 'basic') break;
 
       // ADVANCED STRATEGIES: More complex eliminations.
       // We only run these if the basic strategies are stuck.
@@ -399,6 +400,8 @@ export class HumanSolver {
         changed = true;
         continue;
       }
+
+      if (options.maxTier === 'advanced') break;
 
       // EXTREME STRATEGIES: The most computationally expensive human strategies.
       // These require deep graph-theoretic reasoning and are needed only for the hardest puzzles.
@@ -731,18 +734,18 @@ export class HumanSolver {
    *   => At least one of BV1/BV2 is B => eliminate B from cells seeing both BV1 and BV2.
    */
   applyWWing(): boolean {
-    let changed = false;
     const bivalues = this.getCellsWithNCandidates(2);
 
-    // Find all conjugate pairs (strong links): for each candidate, find houses where
-    // it appears in exactly 2 cells.
-    const conjugatePairs: { num: number; cells: [Cell, Cell] }[] = [];
+    // Pre-index conjugate pairs (strong links) by candidate number.
+    // conjugatesByNum.get(5) = all houses where candidate 5 appears in exactly 2 cells.
+    const conjugatesByNum = new Map<number, [Cell, Cell][]>();
     for (let num = 1; num <= 9; num++) {
+      conjugatesByNum.set(num, []);
       for (const axis of ['row', 'col', 'box'] as const) {
         const positions = this.getCandidatePositions(num, axis);
         for (let i = 0; i < 9; i++) {
           if (positions[i].length === 2) {
-            conjugatePairs.push({ num, cells: [positions[i][0], positions[i][1]] });
+            conjugatesByNum.get(num)!.push([positions[i][0], positions[i][1]]);
           }
         }
       }
@@ -766,17 +769,11 @@ export class HumanSolver {
         for (const linkCand of [candA, candB]) {
           const elimCand = linkCand === candA ? candB : candA;
 
-          // Search for a conjugate pair on linkCand that bridges bv1 and bv2
-          for (const cp of conjugatePairs) {
-            if (cp.num !== linkCand) continue;
-
-            const [cp1, cp2] = cp.cells;
-
+          // Search only conjugate pairs matching our link candidate (pre-indexed lookup)
+          for (const [cp1, cp2] of conjugatesByNum.get(linkCand)!) {
             // One endpoint must see bv1, the other must see bv2 (or vice versa)
-            const bridge1 = (this.sees(cp1, bv1) && this.sees(cp2, bv2));
-            const bridge2 = (this.sees(cp1, bv2) && this.sees(cp2, bv1));
-
-            if (!bridge1 && !bridge2) continue;
+            if (!(this.sees(cp1, bv1) && this.sees(cp2, bv2)) &&
+                !(this.sees(cp1, bv2) && this.sees(cp2, bv1))) continue;
 
             // The conjugate pair endpoints must not be the bivalue cells themselves
             if ((cp1.r === bv1.r && cp1.c === bv1.c) || (cp1.r === bv2.r && cp1.c === bv2.c)) continue;
@@ -784,16 +781,14 @@ export class HumanSolver {
 
             // Eliminate elimCand from cells seeing both bivalue cells
             if (this.eliminateFromCellsSeeingAll([bv1, bv2], elimCand, [bv1, bv2])) {
-              changed = true;
+              return true;
             }
-
-            if (changed) return true;
           }
         }
       }
     }
 
-    return changed;
+    return false;
   }
 
   /**
@@ -1164,7 +1159,7 @@ export class HumanSolver {
  */
 export function canHumanSolveExpert(grid: number[][]): boolean {
   const solver = new HumanSolver(grid);
-  const result = solver.solve();
+  const result = solver.solve({ maxTier: 'advanced' });
   return result.solved && result.requiresAdvanced;
 }
 
@@ -1175,6 +1170,6 @@ export function canHumanSolveExpert(grid: number[][]): boolean {
  */
 export function canHumanSolveExtreme(grid: number[][]): boolean {
   const solver = new HumanSolver(grid);
-  const result = solver.solve();
+  const result = solver.solve({ maxTier: 'extreme' });
   return result.solved && result.requiresExtreme;
 }
