@@ -114,7 +114,7 @@ This phase is already designed in the [extreme_implementation_plan.md](file:///c
 
 ---
 
-## Phase 2 — Mini Puzzles (4×4, 6×6)
+## Phase 2 — Mini Puzzles (4×4, 6×6) (🚧 In Progress)
 
 > **Tracks:** 🧮 Engine, 🎨 Frontend
 > **Branch:** `feature/mini-puzzles`

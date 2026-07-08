@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD013 -->
 # Human Solver: Plain English Pseudocode
 
 This document is a thorough, line-by-line pseudocode companion to [`human-solver.ts`](file:///Users/morp/Documents/GitHub/Puzzle-Generator/lib/puzzle-engine/human-solver.ts). Unlike the standard `sudoku.ts` backtracking solver which uses brute-force guessing, the `HumanSolver` uses pure logical deduction — guaranteeing that any puzzle it solves can be solved by a human without guessing.
@@ -53,6 +54,62 @@ startCol = (boxIndex % 3) × 3
 FOR i = 0..8:
     push { r: startRow + floor(i/3), c: startCol + (i % 3) }
 RETURN all 9 cells in that box
+```
+
+### getEmptyCellsInHouse(axis, houseIdx) → Cell[]
+
+Consolidates the row/col/box iteration pattern into a single reusable helper. Returns all empty cells that still have at least one candidate within a specific house.
+
+```text
+IF axis == 'row':
+    FOR c = 0..8:
+        IF grid[houseIdx][c] == 0 AND candidates[houseIdx][c] is non-empty:
+            push { r: houseIdx, c }
+ELSE IF axis == 'col':
+    FOR r = 0..8:
+        IF grid[r][houseIdx] == 0 AND candidates[r][houseIdx] is non-empty:
+            push { r, c: houseIdx }
+ELSE (box):
+    FOR each { r, c } in getBoxCells(houseIdx):
+        IF grid[r][c] == 0 AND candidates[r][c] is non-empty:
+            push { r, c }
+RETURN cells
+```
+
+### buildHousePositions() → Cell[][]
+
+Low-level single-pass scan that buckets every candidate by all 27 houses simultaneously. Returns a flat array of 243 cell lists. This is the data source for conjugate pairs (length === 2) and peer weak links (length > 2). Used by getConjugatePairs (for W-Wing) and directly by AIC.
+
+```text
+// Flat array indexed by (num-1)*27 + houseIndex
+// Houses 0-8 = rows, 9-17 = cols, 18-26 = boxes
+houseCells = array of 243 empty arrays
+
+FOR each cell (r, c) on the grid:
+    IF cell is filled → SKIP
+    box = floor(r/3)*3 + floor(c/3)
+    FOR each candidate num in cell:
+        base = (num-1) * 27
+        push {r,c} to houseCells[base + r]       // row house
+        push {r,c} to houseCells[base + 9 + c]   // col house
+        push {r,c} to houseCells[base + 18 + box] // box house
+
+RETURN houseCells
+```
+
+### getConjugatePairs() → Map<number, `[Cell, Cell][]`>
+
+Finds all conjugate pairs (strong links) across all houses, indexed by candidate number. Used by W-Wing. AIC uses buildHousePositions() directly for both strong and weak links.
+
+```text
+houseCells = buildHousePositions()
+
+FOR num = 1..9:
+    base = (num-1) * 27
+    FOR h = 0..26:
+        IF houseCells[base + h].length == 2:
+            push pair to result[num]
+RETURN result
 ```
 
 ### getCellsWithNCandidates(n) → CandidateCell[]
@@ -378,14 +435,8 @@ Two identical bivalue cells (both containing candidates {A, B}) that DON'T see e
 ```text
 bivalues = getCellsWithNCandidates(2)
 
-// 1. Pre-index conjugate pairs by candidate number
-conjugatesByNum = Map<number, [Cell, Cell][]>
-FOR each number 1-9:
-    FOR each axis (row, col, box):
-        positions = getCandidatePositions(num, axis)
-        FOR each zone i:
-            IF positions[i].length == 2:
-                add [cell1, cell2] to conjugatesByNum[num]
+// 1. Pre-index conjugate pairs (shared helper)
+conjugatesByNum = getConjugatePairs()
 
 // 2. Search bivalue pairs
 FOR each pair (bv1, bv2) of bivalues:
@@ -426,6 +477,9 @@ FOR each pair (alsA, alsB):
     IF commonCands.length < 2 → SKIP   // need RCC + elimination candidate
 
     // 3. Find Restricted Common Candidates (RCCs)
+    // excludeCells is the same for all candidates in this pair — hoist here
+    excludeCells = alsA.cells + alsB.cells
+
     FOR each x in commonCands:
         xInA = cells in alsA containing x
         xInB = cells in alsB containing x
@@ -438,7 +492,7 @@ FOR each pair (alsA, alsB):
             allZLocations = zInA + zInB
 
             // Eliminate z from cells seeing ALL z-locations (excluding ALS cells)
-            IF eliminateFromCellsSeeingAll(allZLocations, z, alsA.cells + alsB.cells):
+            IF eliminateFromCellsSeeingAll(allZLocations, z, excludeCells):
                 RETURN true
 
 RETURN false
@@ -453,7 +507,7 @@ maxSubsetSize = 5    // caps combinatorial cost
 
 FOR each axis (row, col, box):
     FOR each house index 0-8:
-        emptyCells = all empty cells with candidates in this house
+        emptyCells = getEmptyCellsInHouse(axis, houseIdx)
 
         FOR subsetSize = 1 to min(maxSubsetSize, emptyCells.length):
             FOR each subset of `subsetSize` cells from emptyCells:
@@ -483,26 +537,28 @@ MAX_CHAIN_DEPTH = 12
 
 Each node = "r,c,num" (a specific candidate in a specific cell)
 
-Strong links (if one is false, the other MUST be true):
-    FOR each number 1-9:
-        FOR each axis (row, col, box):
-            IF a number appears in exactly 2 cells in a house:
-                add bidirectional strong link between those 2 nodes
+Collect active nodes AND Weak links Type A (same cell, different candidates):
+    FOR each empty cell:
+        FOR each candidate in that cell:
+            push node to active graph
+        FOR each pair of candidates in that cell:
+            add bidirectional weak link
 
-Weak links (if one is true, the other MUST be false):
-    Type A — Same cell, different candidates:
-        FOR each empty cell:
-            FOR each pair of candidates in that cell:
-                add bidirectional weak link
-    Type B — Same candidate, same house, > 2 cells:
-        FOR each number 1-9:
-            FOR each house with > 2 cells containing that number:
+Strong links + Weak links Type B from single scan:
+    housePositions = buildHousePositions()   // one scan for both link types
+    FOR num = 1..9:
+        FOR h = 0..26:
+            cells = housePositions[(num-1)*27 + h]
+            IF cells.length == 2:
+                add bidirectional strong link (conjugate pair)
+            ELSE IF cells.length > 2:
                 add bidirectional weak link between all pairs
     Note: All strong links are ALSO added as weak links.
 
 // ---- BFS FOR ALTERNATING CHAINS ----
 
 FOR each startNode in the graph:
+    parse startNode into {r, c, num}
     FOR each startLinkType in [strong, weak]:
         Initialize BFS queue from startNode
 
@@ -511,7 +567,7 @@ FOR each startNode in the graph:
             IF depth > MAX_CHAIN_DEPTH → SKIP
 
             IF depth >= 4:
-                parse start and end nodes
+                parse end node into {r, c, num}
 
                 // TYPE 2 CHAIN: strong → ... → strong
                 // At least one endpoint is true
@@ -522,8 +578,8 @@ FOR each startNode in the graph:
 
                 // TYPE 1 CHAIN: weak → ... → weak
                 // Both endpoints must be false
-                IF startLinkType=='weak' AND lastLink=='weak':
-                    IF same cell, same candidate:
+                ELSE IF startLinkType=='weak' AND lastLink=='weak':
+                    IF same cell, same candidate (Continuous Nice Loop):
                         self-contradiction → delete the candidate → RETURN true
                     IF same candidate AND endpoints see each other:
                         delete from BOTH endpoints → RETURN true

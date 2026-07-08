@@ -66,6 +66,85 @@ export class HumanSolver {
   }
 
   /**
+   * Returns all empty cells (with at least one candidate) within a specific house.
+   * Consolidates the row/col/box iteration pattern into a single reusable helper.
+   */
+  private getEmptyCellsInHouse(axis: 'row' | 'col' | 'box', houseIdx: number): Cell[] {
+    const cells: Cell[] = [];
+    if (axis === 'row') {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[houseIdx][c] === 0 && this.candidates[houseIdx][c].size > 0) {
+          cells.push({ r: houseIdx, c });
+        }
+      }
+    } else if (axis === 'col') {
+      for (let r = 0; r < 9; r++) {
+        if (this.grid[r][houseIdx] === 0 && this.candidates[r][houseIdx].size > 0) {
+          cells.push({ r, c: houseIdx });
+        }
+      }
+    } else {
+      for (const { r, c } of this.getBoxCells(houseIdx)) {
+        if (this.grid[r][c] === 0 && this.candidates[r][c].size > 0) {
+          cells.push({ r, c });
+        }
+      }
+    }
+    return cells;
+  }
+
+  /**
+   * Single-pass scan that buckets every candidate by all 27 houses simultaneously.
+   * Returns a flat array of 243 cell lists: index = (num-1)*27 + houseIndex
+   * Houses 0-8 = rows, 9-17 = cols, 18-26 = boxes.
+   *
+   * This is the low-level data source for both conjugate pairs (length === 2)
+   * and peer weak links (length > 2). Scans 81 cells once instead of calling
+   * getCandidatePositions 27 times (2,187 cell checks).
+   */
+  private buildHousePositions(): Cell[][] {
+    const houseCells: Cell[][] = Array.from({ length: 9 * 27 }, () => []);
+
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.grid[r][c] !== 0) continue;
+        const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+        for (const num of this.candidates[r][c]) {
+          const base = (num - 1) * 27;
+          houseCells[base + r].push({ r, c });        // row house
+          houseCells[base + 9 + c].push({ r, c });    // col house
+          houseCells[base + 18 + b].push({ r, c });   // box house
+        }
+      }
+    }
+
+    return houseCells;
+  }
+
+  /**
+   * Finds all conjugate pairs (strong links) across all houses, indexed by candidate number.
+   * A conjugate pair exists when a candidate appears in exactly 2 cells within a house.
+   * Used by W-Wing. AIC uses buildHousePositions() directly for both strong and weak links.
+   */
+  private getConjugatePairs(): Map<number, [Cell, Cell][]> {
+    const result = new Map<number, [Cell, Cell][]>();
+    for (let num = 1; num <= 9; num++) result.set(num, []);
+
+    const houseCells = this.buildHousePositions();
+
+    for (let num = 1; num <= 9; num++) {
+      const base = (num - 1) * 27;
+      for (let h = 0; h < 27; h++) {
+        if (houseCells[base + h].length === 2) {
+          result.get(num)!.push([houseCells[base + h][0], houseCells[base + h][1]]);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Scans the entire grid to find all empty cells that have exactly `n` remaining candidates.
    * Useful for finding singles (n=1), bivalue cells (n=2, useful for Y-Wing/Naked Pairs), or trivalue (n=3).
    */
@@ -738,18 +817,7 @@ export class HumanSolver {
 
     // Pre-index conjugate pairs (strong links) by candidate number.
     // conjugatesByNum.get(5) = all houses where candidate 5 appears in exactly 2 cells.
-    const conjugatesByNum = new Map<number, [Cell, Cell][]>();
-    for (let num = 1; num <= 9; num++) {
-      conjugatesByNum.set(num, []);
-      for (const axis of ['row', 'col', 'box'] as const) {
-        const positions = this.getCandidatePositions(num, axis);
-        for (let i = 0; i < 9; i++) {
-          if (positions[i].length === 2) {
-            conjugatesByNum.get(num)!.push([positions[i][0], positions[i][1]]);
-          }
-        }
-      }
-    }
+    const conjugatesByNum = this.getConjugatePairs();
 
     // For each pair of identical bivalue cells that don't see each other
     for (let i = 0; i < bivalues.length; i++) {
@@ -801,8 +869,6 @@ export class HumanSolver {
    * This is one of the most powerful elimination techniques in Sudoku.
    */
   applyALSXZ(): boolean {
-    let changed = false;
-
     // Step 1: Enumerate all ALS groups across all houses
     const allALS = this.enumerateALS();
 
@@ -823,6 +889,9 @@ export class HumanSolver {
         if (commonCands.length < 2) continue; // Need at least an RCC + an elimination candidate
 
         // Find Restricted Common Candidates (RCCs)
+        // excludeCells is the same for all candidates in this pair — hoist it here
+        const excludeCells = [...alsA.cells, ...alsB.cells];
+
         for (const x of commonCands) {
           // Check if x is restricted: every cell containing x in A sees every cell containing x in B
           const xInA = alsA.cells.filter(c => this.candidates[c.r][c.c].has(x));
@@ -845,19 +914,16 @@ export class HumanSolver {
 
             // Eliminate z from any cell that sees ALL z-locations in both sets
             const allZLocations = [...zInA, ...zInB];
-            const excludeCells = [...alsA.cells, ...alsB.cells];
 
             if (this.eliminateFromCellsSeeingAll(allZLocations, z, excludeCells)) {
-              changed = true;
+              return true;
             }
-
-            if (changed) return true;
           }
         }
       }
     }
 
-    return changed;
+    return false;
   }
 
   /**
@@ -872,28 +938,7 @@ export class HumanSolver {
     // Process each house type
     for (const axis of ['row', 'col', 'box'] as const) {
       for (let houseIdx = 0; houseIdx < 9; houseIdx++) {
-        // Get all empty cells in this house
-        const emptyCells: Cell[] = [];
-        if (axis === 'row') {
-          for (let c = 0; c < 9; c++) {
-            if (this.grid[houseIdx][c] === 0 && this.candidates[houseIdx][c].size > 0) {
-              emptyCells.push({ r: houseIdx, c });
-            }
-          }
-        } else if (axis === 'col') {
-          for (let r = 0; r < 9; r++) {
-            if (this.grid[r][houseIdx] === 0 && this.candidates[r][houseIdx].size > 0) {
-              emptyCells.push({ r, c: houseIdx });
-            }
-          }
-        } else {
-          const boxCells = this.getBoxCells(houseIdx);
-          for (const { r, c } of boxCells) {
-            if (this.grid[r][c] === 0 && this.candidates[r][c].size > 0) {
-              emptyCells.push({ r, c });
-            }
-          }
-        }
+        const emptyCells = this.getEmptyCellsInHouse(axis, houseIdx);
 
         // Enumerate all subsets of size 1..maxSubsetSize
         for (let size = 1; size <= Math.min(maxSubsetSize, emptyCells.length); size++) {
@@ -976,39 +1021,19 @@ export class HumanSolver {
       map.get(from)!.push(to);
     };
 
-    // Collect all active nodes
+    // Collect all active nodes AND build Type A weak links (same cell, different candidates)
     const allNodes: string[] = [];
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
         if (this.grid[r][c] !== 0) continue;
-        for (const num of this.candidates[r][c]) {
+        const cands = Array.from(this.candidates[r][c]);
+
+        // 1. Collect nodes
+        for (const num of cands) {
           allNodes.push(nodeKey(r, c, num));
         }
-      }
-    }
 
-    // Build strong links: conjugate pairs in each house
-    for (let num = 1; num <= 9; num++) {
-      for (const axis of ['row', 'col', 'box'] as const) {
-        const positions = this.getCandidatePositions(num, axis);
-        for (let i = 0; i < 9; i++) {
-          if (positions[i].length === 2) {
-            const [a, b] = positions[i];
-            const keyA = nodeKey(a.r, a.c, num);
-            const keyB = nodeKey(b.r, b.c, num);
-            addLink(strongLinks, keyA, keyB);
-            addLink(strongLinks, keyB, keyA);
-          }
-        }
-      }
-    }
-
-    // Build weak links:
-    // 1. Same cell, different candidates (bivalue link)
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (this.grid[r][c] !== 0) continue;
-        const cands = Array.from(this.candidates[r][c]);
+        // 2. Build bivalue weak links
         for (let a = 0; a < cands.length; a++) {
           for (let b = a + 1; b < cands.length; b++) {
             const keyA = nodeKey(r, c, cands[a]);
@@ -1020,20 +1045,28 @@ export class HumanSolver {
       }
     }
 
-    // 2. Same candidate, same house, different cells (peer weak link)
+    // Build strong + peer weak links (Type B) from a single house position scan
+    // (replaces separate getConjugatePairs() + 27 getCandidatePositions() calls)
+    const housePositions = this.buildHousePositions();
+
     for (let num = 1; num <= 9; num++) {
-      for (const axis of ['row', 'col', 'box'] as const) {
-        const positions = this.getCandidatePositions(num, axis);
-        for (let i = 0; i < 9; i++) {
-          const cells = positions[i];
-          if (cells.length > 2) { // Only weak links when > 2 (if exactly 2, it's already a strong link)
-            for (let a = 0; a < cells.length; a++) {
-              for (let b = a + 1; b < cells.length; b++) {
-                const keyA = nodeKey(cells[a].r, cells[a].c, num);
-                const keyB = nodeKey(cells[b].r, cells[b].c, num);
-                addLink(weakLinks, keyA, keyB);
-                addLink(weakLinks, keyB, keyA);
-              }
+      const base = (num - 1) * 27;
+      for (let h = 0; h < 27; h++) {
+        const cells = housePositions[base + h];
+        if (cells.length === 2) {
+          // Strong link: conjugate pair
+          const keyA = nodeKey(cells[0].r, cells[0].c, num);
+          const keyB = nodeKey(cells[1].r, cells[1].c, num);
+          addLink(strongLinks, keyA, keyB);
+          addLink(strongLinks, keyB, keyA);
+        } else if (cells.length > 2) {
+          // Peer weak links: same candidate, same house, >2 cells
+          for (let a = 0; a < cells.length; a++) {
+            for (let b = a + 1; b < cells.length; b++) {
+              const keyA = nodeKey(cells[a].r, cells[a].c, num);
+              const keyB = nodeKey(cells[b].r, cells[b].c, num);
+              addLink(weakLinks, keyA, keyB);
+              addLink(weakLinks, keyB, keyA);
             }
           }
         }
@@ -1050,6 +1083,9 @@ export class HumanSolver {
     // BFS for alternating chains starting from each node
     // Chain state: { node, linkType (type of link ARRIVING at this node), path }
     for (const startNode of allNodes) {
+      const startParsed = parseKey(startNode);
+      const startCell = { r: startParsed.r, c: startParsed.c };
+
       // Try starting with a strong link departure (endpoint is "strong")
       // and with a weak link departure (endpoint is "weak")
       for (const startLinkType of ['strong', 'weak'] as const) {
@@ -1077,8 +1113,8 @@ export class HumanSolver {
 
           // Check if we've formed a useful chain back to the start node's neighborhood
           if (depth >= 4) {
-            const startParsed = parseKey(startNode);
             const endParsed = parseKey(node);
+            const endCell = { r: endParsed.r, c: endParsed.c };
 
             // Type 2: strong→...→strong endpoints (both ends arrived via strong links)
             // The start departs via strong, end arrives via strong
@@ -1086,42 +1122,35 @@ export class HumanSolver {
               // At least one endpoint is true
               // If both endpoints have the same candidate, eliminate it from cells seeing both
               if (startParsed.num === endParsed.num) {
-                const elim = this.eliminateFromCellsSeeingAll(
-                  [{ r: startParsed.r, c: startParsed.c }, { r: endParsed.r, c: endParsed.c }],
-                  startParsed.num,
-                  [{ r: startParsed.r, c: startParsed.c }, { r: endParsed.r, c: endParsed.c }]
-                );
+                const endpoints = [startCell, endCell];
+                const elim = this.eliminateFromCellsSeeingAll(endpoints, startParsed.num, endpoints);
                 if (elim) return true;
               }
             }
 
             // Type 1: weak→...→weak endpoints (both ends arrived via weak links)
             // Both endpoints must be false
-            if (startLinkType === 'weak' && lastLink === 'weak') {
-              // If start and end are the same node, this is a contradiction — not useful here
-              if (startNode === node) continue;
-
-              // Eliminate the candidate at the start node
+            else if (startLinkType === 'weak' && lastLink === 'weak') {
+              // Eliminate the candidate at the start node if it loops back on itself
               if (startParsed.num === endParsed.num &&
-                  startParsed.r === endParsed.r && startParsed.c === endParsed.c) {
+                  startCell.r === endCell.r && startCell.c === endCell.c) {
                 // Same cell, same candidate — self-contradiction, eliminate
-                if (this.candidates[startParsed.r][startParsed.c].has(startParsed.num)) {
-                  this.candidates[startParsed.r][startParsed.c].delete(startParsed.num);
+                if (this.candidates[startCell.r][startCell.c].has(startParsed.num)) {
+                  this.candidates[startCell.r][startCell.c].delete(startParsed.num);
                   return true;
                 }
               }
 
               // If both endpoints are the same candidate in different cells that see each other,
               // both must be false — eliminate from both
-              if (startParsed.num === endParsed.num &&
-                  this.sees({ r: startParsed.r, c: startParsed.c }, { r: endParsed.r, c: endParsed.c })) {
+              if (startParsed.num === endParsed.num && this.sees(startCell, endCell)) {
                 let elim = false;
-                if (this.candidates[startParsed.r][startParsed.c].has(startParsed.num)) {
-                  this.candidates[startParsed.r][startParsed.c].delete(startParsed.num);
+                if (this.candidates[startCell.r][startCell.c].has(startParsed.num)) {
+                  this.candidates[startCell.r][startCell.c].delete(startParsed.num);
                   elim = true;
                 }
-                if (this.candidates[endParsed.r][endParsed.c].has(endParsed.num)) {
-                  this.candidates[endParsed.r][endParsed.c].delete(endParsed.num);
+                if (this.candidates[endCell.r][endCell.c].has(endParsed.num)) {
+                  this.candidates[endCell.r][endCell.c].delete(endParsed.num);
                   elim = true;
                 }
                 if (elim) return true;
