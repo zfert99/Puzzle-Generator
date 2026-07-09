@@ -42,18 +42,18 @@ npm test
 
 ### Run Benchmarks
 
-There are two benchmark scripts provided. When executed, they automatically append their performance results (along with the current Git commit hash and timestamp) to `scripts/benchmark-logs.md`.
+There are two benchmark scripts provided. When executed, they automatically append their performance results (along with the current Git commit hash and timestamp) to `src/features/engine/benchmarks/benchmark-logs.md`.
 
 To test the pure logical solving speed on a notoriously difficult Expert puzzle:
 
 ```bash
-npx tsx scripts/benchmark-human-solver.ts
+npx tsx src/features/engine/benchmarks/benchmark-human-solver.ts
 ```
 
 To test the entire end-to-end generation pipeline (generating 10 completely random Expert puzzles from scratch):
 
 ```bash
-npx tsx scripts/benchmark.ts
+npx tsx src/features/engine/benchmarks/benchmark.ts
 ```
 
 ## How It Works

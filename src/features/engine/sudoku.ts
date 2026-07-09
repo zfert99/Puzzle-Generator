@@ -1,0 +1,86 @@
+import { createEmptyGrid, fillGrid, copyGrid } from './grid-utils';
+import { applyExtremeDigger, applyExhaustiveDigger, applyQuotaDigger } from './diggers';
+
+// The five possible difficulty levels supported by the engine
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
+
+// Supported grid sizes for puzzle generation
+export type GridSize = 4 | 6 | 9;
+
+// Configuration derived from a grid size — box dimensions and total cells
+export interface GridConfig {
+  size: GridSize;
+  boxWidth: number;   // How many columns per box
+  boxHeight: number;  // How many rows per box
+  totalCells: number; // size * size
+  maxNum: number;     // Digits range from 1..maxNum (same as size)
+}
+
+/**
+ * Returns the grid configuration for a given grid size.
+ * Box dimensions:
+ *   4x4 → 2 cols × 2 rows
+ *   6x6 → 3 cols × 2 rows
+ *   9x9 → 3 cols × 3 rows
+ * 
+ * @param size The grid size to get configuration for (4, 6, or 9)
+ * @returns The generated GridConfig
+ */
+export function getGridConfig(size: GridSize): GridConfig {
+  const configs: Record<GridSize, GridConfig> = {
+    4: { size: 4, boxWidth: 2, boxHeight: 2, totalCells: 16, maxNum: 4 },
+    6: { size: 6, boxWidth: 3, boxHeight: 2, totalCells: 36, maxNum: 6 },
+    9: { size: 9, boxWidth: 3, boxHeight: 3, totalCells: 81, maxNum: 9 },
+  };
+  return configs[size];
+}
+
+// Defines the structure of a generated puzzle
+export interface SudokuPuzzle {
+  grid: number[][];       // NxN array representing the unsolved puzzle (0 means empty)
+  solution: number[][];   // NxN array representing the fully solved puzzle
+  difficulty: Difficulty;  // The requested difficulty level
+  gridSize: GridSize;      // The size of the grid (4, 6, or 9)
+}
+
+/**
+ * Main entry point for generating a puzzle of a specific difficulty and size.
+ * The process:
+ * 1. Generate a complete, valid Sudoku solution using backtracking.
+ * 2. Dig holes (replace numbers with 0s) while ensuring the puzzle remains uniquely solvable.
+ * 3. Use different digging strategies based on difficulty (quota vs logical deduction).
+ * 
+ * @param difficulty The requested difficulty level for the puzzle.
+ * @param gridSize The dimensions of the grid (defaults to 9 for 9x9).
+ * @returns A fully generated Sudoku puzzle and its solution.
+ */
+export function generateSudoku(difficulty: Difficulty, gridSize: GridSize = 9): SudokuPuzzle {
+  const config = getGridConfig(gridSize);
+
+  // Step 1: Create an empty grid
+  const solution = createEmptyGrid(config.size);
+  
+  // Step 2: Use backtracking to fill the grid with a random, valid solution
+  fillGrid(solution, config);
+
+  // Step 3: Create a copy of the solution that we will "dig" holes into to create the puzzle
+  const grid = copyGrid(solution);
+
+  // Step 4: Apply the appropriate digging strategy based on requested difficulty
+  if (difficulty === 'extreme' && gridSize === 9) {
+    // Extreme puzzles require the most advanced strategies (W-Wing, ALS, AICs)
+    // Only supported on 9x9 grids
+    applyExtremeDigger(grid, solution, config);
+  } else if (difficulty === 'expert' && gridSize === 9) {
+    // Expert puzzles use logical deduction to guarantee they require advanced strategies
+    // Only supported on 9x9 grids
+    applyExhaustiveDigger(grid, config);
+  } else {
+    // Easier puzzles (and all mini puzzles) remove a set number of clues
+    // while maintaining a unique solution
+    applyQuotaDigger(grid, difficulty, config);
+  }
+
+  // Return the complete package
+  return { grid, solution, difficulty, gridSize };
+}

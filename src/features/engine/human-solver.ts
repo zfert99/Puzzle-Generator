@@ -10,6 +10,12 @@ export type CandidateCell = { r: number; c: number; cands: number[] };
  * this solver mimics how a human plays by systematically applying increasingly complex strategies.
  * If this solver can complete the puzzle, it guarantees a human can solve it without guessing.
  */
+/**
+ * The HumanSolver acts as a logical deduction engine capable of solving Sudoku puzzles
+ * using the exact same strategies a human would use.
+ * By relying strictly on logic rather than brute-force guessing, it can verify if a puzzle
+ * is "fair" and determine its true difficulty.
+ */
 export class HumanSolver {
   // Current state of the Sudoku grid (0 means empty cell)
   grid: number[][];
@@ -456,12 +462,13 @@ export class HumanSolver {
   // ==========================================
 
   /**
-   * The core solving routine. It loops continually, trying simple strategies first.
-   * If simple strategies fail, it moves to advanced strategies.
-   * It stops when the puzzle is solved, or when it gets completely stuck (meaning it
-   * requires guessing or a strategy we haven't programmed).
+   * Attempts to solve the grid using human-like logical deduction strategies.
+   * Strategies are applied in a tiered order (Basic -> Advanced -> Extreme).
+   * 
+   * @param options Configuration for the solver, such as the maximum strategy tier to allow.
+   * @returns An object containing `solved` (boolean) and whether specific tiers were required.
    */
-  solve(options: { maxTier?: 'basic' | 'advanced' | 'extreme' } = { maxTier: 'extreme' }): { solved: boolean, requiresAdvanced: boolean, requiresExtreme: boolean } {
+  solve(options: { maxTier?: 'basic' | 'advanced' | 'extreme' } = {}): { solved: boolean, requiresAdvanced: boolean, requiresExtreme: boolean } {
     let changed = true;
 
     while (changed && !this.isSolved()) {

@@ -13,7 +13,7 @@ import { NextRequest } from 'next/server';
  * Helper to construct a mock NextRequest containing a JSON payload.
  * Simulates a standard POST request from the frontend PuzzleForm component.
  */
-function buildRequest(body: any): NextRequest {
+function buildRequest(body: Record<string, unknown>): NextRequest {
   return new NextRequest('http://localhost:3000/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

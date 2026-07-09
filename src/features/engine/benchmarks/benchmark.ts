@@ -1,4 +1,4 @@
-import { generateSudoku } from '../lib/puzzle-engine/sudoku';
+import { generateSudoku } from '../sudoku';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';

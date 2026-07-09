@@ -1,4 +1,4 @@
-import { HumanSolver } from '../lib/puzzle-engine/human-solver';
+import { HumanSolver } from '../human-solver';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -42,7 +42,7 @@ async function main() {
   let commit = 'unknown';
   try {
     commit = execSync('git rev-parse --short HEAD').toString().trim();
-  } catch (e) {
+  } catch {
     // Ignore git error
   }
   const timestamp = new Date().toISOString();

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateSudoku, Difficulty, GridSize } from '@/lib/puzzle-engine/sudoku';
-import { generatePuzzlePDF } from '@/lib/pdf/generator';
+import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
+import { generatePuzzlePDF } from '@/features/pdf-generation/services/pdf.service';
+
+// Explicitly require Node.js runtime because pdfkit uses native Node APIs (fs, stream)
+export const runtime = 'nodejs';
 
 /**
  * POST /api/generate
@@ -22,7 +25,7 @@ export async function POST(req: NextRequest) {
     // Step 1: Safely parse the incoming JSON request body
     try {
       body = await req.json();
-    } catch (e) {
+    } catch {
       return NextResponse.json({ error: 'Invalid or missing JSON body' }, { status: 400 });
     }
     
@@ -68,33 +71,9 @@ export async function POST(req: NextRequest) {
     // PUZZLE GENERATION
     // ==========================================
     
-    const puzzles = [];
-    const size = gridSize as GridSize;
+    // Delegate the synchronous puzzle generation loops to the engine service
+    const puzzles = generatePuzzleBatch({ easy, medium, hard, expert, extreme, gridSize });
 
-    // Generate Easy puzzles synchronously
-    for (let i = 0; i < easy; i++) {
-      puzzles.push(generateSudoku('easy', size));
-    }
-
-    // Generate Medium puzzles synchronously
-    for (let i = 0; i < medium; i++) {
-      puzzles.push(generateSudoku('medium', size));
-    }
-
-    // Generate Hard puzzles synchronously
-    for (let i = 0; i < hard; i++) {
-      puzzles.push(generateSudoku('hard', size));
-    }
-
-    // Generate Expert puzzles synchronously (this uses the advanced HumanSolver logic)
-    for (let i = 0; i < expert; i++) {
-      puzzles.push(generateSudoku('expert', size));
-    }
-
-    // Generate Extreme puzzles synchronously (uses extreme HumanSolver strategies)
-    for (let i = 0; i < extreme; i++) {
-      puzzles.push(generateSudoku('extreme', size));
-    }
 
     // ==========================================
     // PDF GENERATION AND RESPONSE

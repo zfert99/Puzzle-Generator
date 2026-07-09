@@ -1,4 +1,4 @@
-import PuzzleForm from '@/components/PuzzleForm';
+import PuzzleForm from '@/features/puzzle-configuration/components/PuzzleForm';
 
 /**
  * Home Page (/)
