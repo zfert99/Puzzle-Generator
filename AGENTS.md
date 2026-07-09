@@ -78,7 +78,7 @@ When operating within this codebase, AI agents MUST adhere to the following work
 ### 5. Telemetry & Profiling
 
 - **Structured Logging:** Production telemetry must use structured JSON logging (e.g., Pino) via Next.js `instrumentation.ts` or custom wrappers. Do NOT use raw `console.log` for business logic or errors. Emitting "wide events" is preferred over scattered logs.
-- **Microbenchmarking Warning:** Be cautious of V8 JIT over-optimization in synthetic loops. Benchmarks should use randomized inputs/grids to prevent V8 from caching object shapes or eliminating dead code, ensuring realistic macroscopic profiling.
+- **Microbenchmarking Warning:** Be cautious of V8 JIT over-optimization in synthetic loops (Hidden Class Caching, Dead Code Elimination, Inline Caching). Benchmarks should use randomized inputs/grids to prevent V8 from caching object shapes or eliminating dead code, ensuring realistic macroscopic profiling.
 - **V8 Deoptimization (AI Pitfall):** AI-generated code frequently produces polymorphic functions (functions accepting varying input types). In high-performance areas like the puzzle engine, functions must remain monomorphic (consistent input shapes) to prevent V8 engine deoptimization and potential DoS attack surfaces.
 
 ### 6. Security & Infrastructure (CRITICAL)
