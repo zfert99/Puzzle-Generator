@@ -79,6 +79,11 @@ When operating within this codebase, AI agents MUST adhere to the following work
 - **Session Management:** NEVER store JWTs or sensitive session tokens in `localStorage` or `sessionStorage` (vulnerable to XSS). Implement the "Hybrid Token Architecture": short-lived access tokens in memory, and long-lived refresh tokens stored exclusively in `HttpOnly`, `Secure`, `SameSite=Strict` cookies.
 - **Authorization (BOLA Prevention):** Do not solely verify authentication ("is the user logged in?"). Always verify authorization ownership ("does the user own this specific record?") at the data-access layer using strict `WHERE` clauses or RBAC/ABAC models.
 - **Database Hardening:** Exclusively use parameterized queries (via a type-safe ORM like Prisma or Drizzle) to eliminate SQL injection vulnerabilities. Enforce the principle of least privilege for the database connection.
+
+### 7. Documentation Standards
+
+- **Naming Convention:** All documentation files must use `lowercase-kebab-case.md` for their filenames.
+- **Organization:** Active, living documents (e.g., `roadmap.md`) belong in the root `Docs/` directory. Historical logs (implementation plans, walkthroughs) must be archived in `Docs/archive/`. Research documents belong in `Docs/research/`.
 <!-- END:codebase-management-rules -->
 
 <!-- BEGIN:git-rules -->

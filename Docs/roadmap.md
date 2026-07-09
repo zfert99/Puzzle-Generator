@@ -71,7 +71,7 @@ Building interactive play surfaces, visual strategy courses, and real-time compe
 > **Estimated effort:** Large (1–2 weeks)
 > **Prerequisite:** None — this is the next step.
 
-This phase is already designed in the [extreme_implementation_plan.md](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/Docs/extreme_implementation_plan.md). It extends the `HumanSolver` with three elite-tier strategies and adds a new difficulty level to the entire pipeline.
+This phase is already designed in the [extreme_implementation_plan.md](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/Docs/archive/extreme-implementation-plan.md). It extends the `HumanSolver` with three elite-tier strategies and adds a new difficulty level to the entire pipeline.
 
 ### Deliverables
 

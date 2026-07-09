@@ -6,12 +6,12 @@ This document is a thorough, file-by-file walkthrough of the two major architect
 
 **Reference Documents:**
 
-- [Refactor Implementation Plan](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/refactor_implementation_plan.md) — The original blueprint for the domain-driven restructuring.
-- [Refactor Walkthrough](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/refactor_walkthrough.md) — Summary of the first refactor's results.
-- [Enterprise Implementation Plan](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/enterprise_implementation_plan.md) — The blueprint for testing, telemetry, and benchmarking improvements.
-- [Enterprise Walkthrough](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/enterprise_walkthrough.md) — Summary of the enterprise refactor's results.
-- [Enterprise Architecture Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/Research/Enterprise%20Architecture%2C%20Testing%2C%20and%20Telemetry%20in%20React%20and%20Next.js%20Applications.md) — The research paper that informed the enterprise decisions.
-- [Web Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/Research/Comprehensive_Website_Security_Vulnerability_Mitigation.md) — The security research that informed our new AGENTS.md rules.
+- [Refactor Implementation Plan](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/archive/refactor-implementation-plan.md) — The original blueprint for the domain-driven restructuring.
+- [Refactor Walkthrough](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/archive/refactor-walkthrough.md) — Summary of the first refactor's results.
+- [Enterprise Implementation Plan](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/archive/enterprise-implementation-plan.md) — The blueprint for testing, telemetry, and benchmarking improvements.
+- [Enterprise Walkthrough](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/archive/enterprise-walkthrough.md) — Summary of the enterprise refactor's results.
+- [Enterprise Architecture Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/research/enterprise-architecture.md) — The research paper that informed the enterprise decisions.
+- [Web Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/research/web-security-mitigation.md) — The security research that informed our new AGENTS.md rules.
 
 ---
 
@@ -33,7 +33,7 @@ The guiding principle was **Domain-Driven Design (DDD)** combined with the **Sin
 
 Our architecture research explicitly warned against AI-generated monoliths:
 
-> *"AI tools often violate the principle of colocation by conflating routing mechanisms with business logic, creating monolithic files that obscure security boundaries."* — [Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/Research/Comprehensive_Website_Security_Vulnerability_Mitigation.md)
+> *"AI tools often violate the principle of colocation by conflating routing mechanisms with business logic, creating monolithic files that obscure security boundaries."* — [Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/research/web-security-mitigation.md)
 
 ### 1.3 The `src/` Migration
 
@@ -235,7 +235,7 @@ for (let num = 1; num <= solver.size; num++) {
 
 **The MAX_CHAIN_DEPTH = 12 guard:** Without this limit, the BFS could explore exponentially long chains. The research paper warned about this:
 
-> *"AI-generated code frequently produces performance inefficiencies... leading to a significantly expanded attack surface for Denial of Service (DoS) attacks."* — [Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/Research/Comprehensive_Website_Security_Vulnerability_Mitigation.md)
+> *"AI-generated code frequently produces performance inefficiencies... leading to a significantly expanded attack surface for Denial of Service (DoS) attacks."* — [Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/research/web-security-mitigation.md)
 
 #### The Documentation Mirror
 
@@ -375,7 +375,7 @@ With the structural decomposition complete, we turned to three pillars of enterp
 
 The API route used `console.log` for output. In production, these produce unstructured strings that are nearly impossible to parse, filter, or alert on. Our research paper stated:
 
-> *"Traditional string-based logging is a critical anti-pattern. Engineering teams must adopt structured logging, where every event is output as a machine-readable JSON object containing essential contextual attributes."* — [Enterprise Architecture Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/Research/Enterprise%20Architecture%2C%20Testing%2C%20and%20Telemetry%20in%20React%20and%20Next.js%20Applications.md)
+> *"Traditional string-based logging is a critical anti-pattern. Engineering teams must adopt structured logging, where every event is output as a machine-readable JSON object containing essential contextual attributes."* — [Enterprise Architecture Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/research/enterprise-architecture.md)
 
 #### The Solution: Pino + pino-pretty
 
@@ -654,7 +654,7 @@ for (let i = 0; i < iterations; i++) {
 
 ## Part 3: Security Rules Integration
 
-Based on the [Web Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/Research/Comprehensive_Website_Security_Vulnerability_Mitigation.md), we added a new **"Section 6: Security & Infrastructure"** to [AGENTS.md](file:///Users/morp/Documents/GitHub/Puzzle-Generator/AGENTS.md) and updated the [Roadmap Phase 4](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/roadmap.md) to enforce these practices when we build authentication and database integration:
+Based on the [Web Security Research](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/research/web-security-mitigation.md), we added a new **"Section 6: Security & Infrastructure"** to [AGENTS.md](file:///Users/morp/Documents/GitHub/Puzzle-Generator/AGENTS.md) and updated the [Roadmap Phase 4](file:///Users/morp/Documents/GitHub/Puzzle-Generator/Docs/roadmap.md) to enforce these practices when we build authentication and database integration:
 
 | Rule | Rationale |
 | --- | --- |

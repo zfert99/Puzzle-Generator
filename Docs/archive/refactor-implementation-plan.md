@@ -1,6 +1,6 @@
 # Architectural Refactoring Implementation Plan
 
-This plan outlines the steps required to execute the structural and architectural refactorings identified in the `Docs/Architectural_Analysis_Report.md`. This refactor transitions the codebase from a type-based structure to a domain-driven, feature-based architecture utilizing a root `src/` directory.
+This plan outlines the steps required to execute the structural and architectural refactorings identified in the `Docs/architectural-analysis.md`. This refactor transitions the codebase from a type-based structure to a domain-driven, feature-based architecture utilizing a root `src/` directory.
 
 ## User Review Required
 
