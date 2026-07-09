@@ -60,3 +60,9 @@ When operating within this codebase, AI agents MUST adhere to the following work
 - **Linting:** Run `npm run lint` to catch TypeScript/React issues.
 - **Markdown Linting:** Ensure all markdown files (`.md`) follow strict markdown linting rules (proper heading hierarchy, no trailing spaces, explicit code block languages).
 <!-- END:codebase-management-rules -->
+
+<!-- BEGIN:git-rules -->
+## Git Rules
+
+- **Pushing Code:** ONLY run `git push` when the user explicitly requests it (e.g., "push", "commit push"). You may run `git commit` to safely checkpoint your work locally, but never push to the remote repository unprompted.
+<!-- END:git-rules -->
