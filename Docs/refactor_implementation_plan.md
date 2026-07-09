@@ -105,6 +105,29 @@ We will dismantle the massive `PuzzleForm.tsx` file to satisfy the Single Respon
 
 - Dumb UI component for rendering the 5 difficulty sliders with disabled states.
 
+---
+
+### 5. Modularize HumanSolver & Clean Code Refactoring (`src/features/engine/`)
+
+Based on the architectural best practices research, we will address the massive 1,200+ line `human-solver.ts` file and strictly apply the "Clean Code" commenting philosophy by removing redundant syntax-restating comments. As per previous project preferences, we will **keep `HumanSolver` as a stateful class**, but use a compositional approach where standalone strategy functions operate on the `HumanSolver` instance.
+
+#### [MODIFY] `src/features/engine/sudoku.ts` & `src/features/engine/human-solver.ts`
+- Strip redundant "syntax" comments (e.g., `// Place the number in the grid`). Preserve JSDoc blocks, algorithm explanations, and the Markdown pseudocode file.
+
+#### [NEW] `src/features/engine/strategies/basic.ts`
+- Extract `applyNakedSingle`, `applyHiddenSingle`, `applyNakedPair`, `applyHiddenPair`, `applyPointingPairs`.
+
+#### [NEW] `src/features/engine/strategies/advanced.ts`
+- Extract `applyXWing`, `applySwordfish`, `applyYWing`, `applyXYZWing`.
+
+#### [NEW] `src/features/engine/strategies/extreme.ts`
+- Extract `applyWWing`, `applyALSXZ`, `applyAIC`.
+
+#### [MODIFY] `src/features/engine/human-solver.ts`
+- Remove the strategy implementations from the class body.
+- Update the main `solve()` loop to import and invoke the extracted strategy functions, passing `this` (the solver instance) to them.
+- Expose necessary helper methods as `public` so the external strategy modules can utilize them.
+
 ## Verification Plan
 
 ### Automated Tests
