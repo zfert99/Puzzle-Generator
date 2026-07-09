@@ -214,9 +214,10 @@ This phase introduces **state and persistence**. The app goes from stateless to 
 
 ### Phase 4 Deliverables
 
-#### 4.1 — Database Layer
+#### 4.1 — Database Layer (Secure by Design)
 
 - Set up PostgreSQL (Supabase or Vercel Postgres)
+- Integrate a type-safe ORM (Prisma or Drizzle) to guarantee parameterized queries and prevent SQL injection.
 - Schema design:
 
 ```sql
@@ -238,6 +239,7 @@ CREATE TABLE users (
   provider    TEXT NOT NULL,       -- 'google', 'github', etc.
   provider_id TEXT NOT NULL,
   username    TEXT UNIQUE NOT NULL,
+  password    TEXT,                -- Hashed via Argon2id (if local auth is added)
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 
@@ -260,15 +262,19 @@ CREATE TABLE solve_attempts (
 - Stores in `daily_puzzles` table
 - All users worldwide get the exact same boards
 
-#### 4.3 — User Authentication
+#### 4.3 — User Authentication & Session Security
 
 - NextAuth / Auth.js integration
 - OAuth providers: Google, GitHub (start with these)
-- Session management for tracking solve times
-- **Anti-cheat**: solve time validated server-side, puzzle state checksums
+- **Token Security:** strictly enforce the Hybrid Token Architecture. Use `HttpOnly`, `Secure`, `SameSite=Strict` cookies for all persistent session state. JWTs must NEVER touch `localStorage`.
+- **Anti-cheat:** solve time validated server-side, puzzle state checksums
 
 > [!IMPORTANT]
 > Leaderboard integrity requires server-side time validation. The client sends a start timestamp and the server records completion — never trust a client-reported solve time.
+
+#### 4.3.1 — Authorization & BOLA Prevention
+- Implement strict ownership checks at the data-access layer.
+- Ensure API routes explicitly verify that `session.userId === requestedObject.ownerId` before permitting mutations or reads of personal data.
 
 #### 4.4 — Leaderboard UI
 

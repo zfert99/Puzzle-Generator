@@ -72,6 +72,13 @@ When operating within this codebase, AI agents MUST adhere to the following work
 
 - **Structured Logging:** Production telemetry must use structured JSON logging (e.g., Pino) via Next.js `instrumentation.ts` or custom wrappers. Do NOT use raw `console.log` for business logic or errors. Emitting "wide events" is preferred over scattered logs.
 - **Microbenchmarking Warning:** Be cautious of V8 JIT over-optimization in synthetic loops. Benchmarks should use randomized inputs/grids to prevent V8 from caching object shapes or eliminating dead code, ensuring realistic macroscopic profiling.
+
+### 6. Security & Infrastructure (CRITICAL)
+
+- **Cryptographic Storage:** Never use deprecated hashes (MD5, SHA-1). Passwords must be hashed using memory-hard algorithms like **Argon2id** or **bcrypt** (with SHA-256 pre-hashing to bypass the 72-byte limit) combined with a 16-byte salt.
+- **Session Management:** NEVER store JWTs or sensitive session tokens in `localStorage` or `sessionStorage` (vulnerable to XSS). Implement the "Hybrid Token Architecture": short-lived access tokens in memory, and long-lived refresh tokens stored exclusively in `HttpOnly`, `Secure`, `SameSite=Strict` cookies.
+- **Authorization (BOLA Prevention):** Do not solely verify authentication ("is the user logged in?"). Always verify authorization ownership ("does the user own this specific record?") at the data-access layer using strict `WHERE` clauses or RBAC/ABAC models.
+- **Database Hardening:** Exclusively use parameterized queries (via a type-safe ORM like Prisma or Drizzle) to eliminate SQL injection vulnerabilities. Enforce the principle of least privilege for the database connection.
 <!-- END:codebase-management-rules -->
 
 <!-- BEGIN:git-rules -->
