@@ -57,16 +57,11 @@ export interface SudokuPuzzle {
 export function generateSudoku(difficulty: Difficulty, gridSize: GridSize = 9): SudokuPuzzle {
   const config = getGridConfig(gridSize);
 
-  // Step 1: Create an empty grid
   const solution = createEmptyGrid(config.size);
-  
-  // Step 2: Use backtracking to fill the grid with a random, valid solution
   fillGrid(solution, config);
-
-  // Step 3: Create a copy of the solution that we will "dig" holes into to create the puzzle
   const grid = copyGrid(solution);
 
-  // Step 4: Apply the appropriate digging strategy based on requested difficulty
+  // Apply the appropriate digging strategy based on requested difficulty
   if (difficulty === 'extreme' && gridSize === 9) {
     // Extreme puzzles require the most advanced strategies (W-Wing, ALS, AICs)
     // Only supported on 9x9 grids
@@ -81,6 +76,5 @@ export function generateSudoku(difficulty: Difficulty, gridSize: GridSize = 9): 
     applyQuotaDigger(grid, difficulty, config);
   }
 
-  // Return the complete package
   return { grid, solution, difficulty, gridSize };
 }

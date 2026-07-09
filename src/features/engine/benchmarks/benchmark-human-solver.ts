@@ -3,23 +3,22 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { generateSudoku } from '../sudoku';
+
 /**
- * A known expert-level puzzle (requires advanced strategies to solve).
- * Note: This puzzle is notoriously difficult and requires multiple advanced
- * techniques (like X-Wings or Y-Wings) to complete logically. It's the perfect
- * stress test to ensure our solver is handling advanced logic quickly.
+ * We dynamically generate a pool of unique expert puzzles BEFORE the timer starts.
+ * This prevents the V8 JavaScript engine from using Just-In-Time (JIT) compilation
+ * to cache object shapes or perform dead-code elimination on a single static grid,
+ * which would result in deceptively fast microbenchmark times.
  */
-const expertGrid = [
-  [8, 0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 3, 6, 0, 0, 0, 0, 0],
-  [0, 7, 0, 0, 9, 0, 2, 0, 0],
-  [0, 5, 0, 0, 0, 7, 0, 0, 0],
-  [0, 0, 0, 0, 4, 5, 7, 0, 0],
-  [0, 0, 0, 1, 0, 0, 0, 3, 0],
-  [0, 0, 1, 0, 0, 0, 0, 6, 8],
-  [0, 0, 8, 5, 0, 0, 0, 1, 0],
-  [0, 9, 0, 0, 0, 0, 4, 0, 0]
-];
+function generatePuzzlePool(size: number) {
+  console.log(`Pre-generating pool of ${size} unique expert puzzles to thwart V8 JIT caching...`);
+  const pool = [];
+  for (let i = 0; i < size; i++) {
+    pool.push(generateSudoku('expert').grid);
+  }
+  return pool;
+}
 
 /**
  * Benchmark script specifically for the HumanSolver engine across difficulty tiers.
@@ -47,13 +46,17 @@ async function main() {
   }
   const timestamp = new Date().toISOString();
 
+  const puzzlePool = generatePuzzlePool(50);
+
   for (const { name, maxTier, iterations } of benchmarks) {
     console.log(`Running ${name} (${maxTier} tier) for ${iterations} iterations...`);
 
     const start = performance.now();
 
     for (let i = 0; i < iterations; i++) {
-      const solver = new HumanSolver(expertGrid);
+      // Pick a puzzle from the pool sequentially to ensure V8 processes different data
+      const grid = puzzlePool[i % puzzlePool.length];
+      const solver = new HumanSolver(grid);
       solver.solve({ maxTier });
     }
 

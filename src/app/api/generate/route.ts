@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
 import { generatePuzzlePDF } from '@/features/pdf-generation/services/pdf.service';
+import { logger } from '@/lib/logger';
 
 // Explicitly require Node.js runtime because pdfkit uses native Node APIs (fs, stream)
 export const runtime = 'nodejs';
@@ -20,6 +21,7 @@ export const runtime = 'nodejs';
  * }
  */
 export async function POST(req: NextRequest) {
+  const startTime = performance.now();
   try {
     let body;
     // Step 1: Safely parse the incoming JSON request body
@@ -82,6 +84,16 @@ export async function POST(req: NextRequest) {
     // Pass the array of generated puzzles to the PDF generator
     const pdfBuffer = await generatePuzzlePDF(puzzles);
 
+    logger.info(
+      { 
+        event: 'generation_success', 
+        counts: { easy, medium, hard, expert, extreme }, 
+        gridSize, 
+        durationMs: Math.round(performance.now() - startTime) 
+      }, 
+      'Successfully generated puzzles and PDF'
+    );
+
     // Return the generated PDF buffer directly as the HTTP response body
     return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
@@ -95,7 +107,15 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     // If anything fails during puzzle generation or PDF rendering, catch it here
     const err = error as Error;
-    console.error('Failed to generate PDF:', err);
+    logger.error(
+      { 
+        event: 'generation_failure', 
+        error: err.message, 
+        stack: err.stack,
+        durationMs: Math.round(performance.now() - startTime)
+      }, 
+      'Failed to generate PDF'
+    );
     
     // Return a 500 Internal Server Error with details
     return NextResponse.json({

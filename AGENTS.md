@@ -34,14 +34,20 @@ When operating within this codebase, AI agents MUST adhere to the following work
 
 ### 1. Architecture & Structure
 
-- **Separation of Concerns:** The UI (React/Next.js in `app/` and `components/`) must remain entirely decoupled from the core puzzle generation logic (`lib/puzzle-engine/`).
-- **The Engine:** The `lib/puzzle-engine/` directory contains pure, highly-optimized TypeScript. It relies on logical deduction (`HumanSolver`), not just brute-force backtracking.
+- **Domain-Driven Architecture:** Maintain a feature-based architecture under the `src/features/` directory rather than grouping purely by technical type (e.g., `src/features/engine/`, `src/features/pdf-generation/`). Leave `src/components/` strictly for dumb, highly reusable UI elements.
+- **Separation of Concerns (SRP):** The UI components must remain entirely decoupled from the core puzzle generation logic.
+  - Fragment large monolithic UI components into smaller composable sub-components.
+  - Extract data-fetching and complex state logic out of components into custom hooks.
+  - API routes should act merely as controllers; move generation logic into dedicated service files.
+- **Colocation:** Files that change together should be stored together. Tests (e.g., `.test.ts`) and benchmarking scripts must be placed directly beside the feature modules they test, not in a generic global folder.
+- **The Engine:** The `src/features/engine/` directory contains pure, highly-optimized TypeScript. It relies on logical deduction (`HumanSolver`), not just brute-force backtracking. Keep `HumanSolver` as a class (since it's a stateful complex entity) but strictly avoid introducing inheritance (`extends`).
 
-### 2. The Pseudocode Markdown Files (CRITICAL)
+### 2. Code Documentation Philosophy (CRITICAL)
 
-- **Mirroring:** Every core logic file in `lib/puzzle-engine/` (e.g., `human-solver.ts`, `sudoku.ts`) has a mirrored `.md` file (e.g., `human-solver.md`).
+- **Mirroring:** Every core logic file in `src/features/engine/` (e.g., `human-solver.ts`, `sudoku.ts`) and its subdirectories has a mirrored `.md` file (e.g., `human-solver.md`).
 - **Syncing:** Whenever you modify a `.ts` file, you **MUST** simultaneously update its corresponding `.md` file.
-- **Format:** The `.md` files contain "Plain English Pseudocode". For every method, write the English explanation of the logic/strategy *immediately above* the pseudocode block.
+- **Explain the "Why":** The `.md` files contain "Plain English Pseudocode". Ensure that our mirrored `.md` files focus on explaining *why* certain algorithmic paths were chosen, rather than just translating the `for` loops into English. For every method, write the English explanation of the logic/strategy *immediately above* the pseudocode block.
+- **JSDoc Usage:** Add standard JSDoc block comments (`/** */`) to the top of all major exports to enable rich tooltip hints in the IDE. Never write redundant "syntax-restating" inline comments.
 
 ### 3. Performance & Benchmarks
 
@@ -49,20 +55,27 @@ When operating within this codebase, AI agents MUST adhere to the following work
 - **When to Run:** Whenever you modify `human-solver.ts`, `sudoku.ts`, or any core solving logic, you MUST run the tiered benchmarks:
 
   ```bash
-  npx tsx scripts/benchmark-human-solver.ts
+  npx tsx src/features/engine/benchmarks/benchmark-human-solver.ts
   ```
 
-- **Logging:** The benchmark script automatically appends results to `scripts/benchmark-logs.md`. Review these logs to ensure the 'Basic', 'Advanced', and 'Extreme' tiers maintain their expected performance (e.g., Basic < 0.3ms, Extreme < 10ms).
+- **Logging:** The benchmark script automatically appends results to `src/features/engine/benchmarks/benchmark-logs.md`. Review these logs to ensure the 'Basic', 'Advanced', and 'Extreme' tiers maintain their expected performance (e.g., Basic < 0.3ms, Extreme < 10ms).
 
 ### 4. Testing & Linting
 
+- **Strict Colocation:** Test files MUST reside immediately adjacent to the source code they are validating (e.g., `PuzzleForm.test.tsx` next to `PuzzleForm.tsx`). Global `tests/` folders are banned except for E2E tests.
+- **Behavioral UI Testing:** UI tests must follow the Arrange, Act, Assert (AAA) pattern. Use accessibility-first queries (`getByRole`, `getByLabelText`) from React Testing Library to test user behavior, not implementation details.
 - **Unit Tests:** After any logic or API route changes, run `npx jest`. All tests must pass before concluding your task.
 - **Linting:** Run `npm run lint` to catch TypeScript/React issues.
-- **Markdown Linting:** Ensure all markdown files (`.md`) follow strict markdown linting rules (proper heading hierarchy, no trailing spaces, explicit code block languages).
+- **Markdown Linting:** Ensure all markdown files (`.md`) follow strict markdown linting rules (proper heading hierarchy, no trailing spaces, explicit code block languages) by running `npx markdownlint-cli "**/*.md"`.
+
+### 5. Telemetry & Profiling
+
+- **Structured Logging:** Production telemetry must use structured JSON logging (e.g., Pino) via Next.js `instrumentation.ts` or custom wrappers. Do NOT use raw `console.log` for business logic or errors. Emitting "wide events" is preferred over scattered logs.
+- **Microbenchmarking Warning:** Be cautious of V8 JIT over-optimization in synthetic loops. Benchmarks should use randomized inputs/grids to prevent V8 from caching object shapes or eliminating dead code, ensuring realistic macroscopic profiling.
 <!-- END:codebase-management-rules -->
 
 <!-- BEGIN:git-rules -->
 ## Git Rules
 
-- **Pushing Code:** ONLY run `git push` when the user explicitly requests it (e.g., "push", "commit push"). You may run `git commit` to safely checkpoint your work locally, but never push to the remote repository unprompted.
+- **Committing and Pushing Code:** ONLY run `git commit` or `git push` when the user explicitly requests it (e.g., "commit", "push", "commit push"). Do NOT commit code automatically or unprompted.
 <!-- END:git-rules -->

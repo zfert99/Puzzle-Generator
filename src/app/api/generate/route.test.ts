@@ -14,11 +14,9 @@ import { NextRequest } from 'next/server';
  * Simulates a standard POST request from the frontend PuzzleForm component.
  */
 function buildRequest(body: Record<string, unknown>): NextRequest {
-  return new NextRequest('http://localhost:3000/api/generate', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  return {
+    json: async () => body
+  } as unknown as NextRequest;
 }
 
 /**
@@ -26,9 +24,9 @@ function buildRequest(body: Record<string, unknown>): NextRequest {
  * Used exclusively for testing edge cases where the network request fails to send a body.
  */
 function buildEmptyRequest(): NextRequest {
-  return new NextRequest('http://localhost:3000/api/generate', {
-    method: 'POST',
-  });
+  return {
+    json: async () => { throw new Error('Invalid JSON'); }
+  } as unknown as NextRequest;
 }
 
 // ─── Happy Paths ──────────────────────────────────────────────────────────────
