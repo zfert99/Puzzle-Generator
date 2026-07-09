@@ -1,6 +1,6 @@
 # Benchmark Logs
 
-<!-- markdownlint-disable MD013 MD060 -->
+<!-- markdownlint-disable MD060 -->
 
 | Timestamp | Commit | Benchmark | Avg Time | Metric |
 |---|---|---|---|---|

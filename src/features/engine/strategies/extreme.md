@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # Extreme Strategies: Plain English Pseudocode
 
 This document is a pseudocode companion to [`extreme.ts`](file:///Users/morp/Documents/GitHub/Puzzle-Generator/src/features/engine/strategies/extreme.ts).

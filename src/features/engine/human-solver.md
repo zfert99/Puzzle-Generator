@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # Human Solver: Plain English Pseudocode
 
 This document is a thorough, line-by-line pseudocode companion to [`human-solver.ts`](file:///Users/morp/Documents/GitHub/Puzzle-Generator/lib/puzzle-engine/human-solver.ts). Unlike the standard `sudoku.ts` backtracking solver which uses brute-force guessing, the `HumanSolver` uses pure logical deduction — guaranteeing that any puzzle it solves can be solved by a human without guessing.

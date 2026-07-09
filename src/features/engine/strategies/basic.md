@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # Basic Strategies: Plain English Pseudocode
 
 This document is a pseudocode companion to [`basic.ts`](file:///Users/morp/Documents/GitHub/Puzzle-Generator/src/features/engine/strategies/basic.ts).

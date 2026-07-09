@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # Advanced Strategies: Plain English Pseudocode
 
 This document is a pseudocode companion to [`advanced.ts`](file:///Users/morp/Documents/GitHub/Puzzle-Generator/src/features/engine/strategies/advanced.ts).

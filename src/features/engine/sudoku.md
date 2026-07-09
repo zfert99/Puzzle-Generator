@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 -->
-
 # Sudoku Engine: Plain English Pseudocode
 
 This document explains the core logic behind our `sudoku.ts` puzzle engine. It breaks down the TypeScript syntax into plain English to help you understand *what* the code is doing and *why* it does it.

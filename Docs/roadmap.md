@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD013 MD060 -->
+<!-- markdownlint-disable MD060 -->
 
 # Puzzle Generator — Project Roadmap
 
@@ -273,6 +273,7 @@ CREATE TABLE solve_attempts (
 > Leaderboard integrity requires server-side time validation. The client sends a start timestamp and the server records completion — never trust a client-reported solve time.
 
 #### 4.3.1 — Authorization & BOLA Prevention
+
 - Implement strict ownership checks at the data-access layer.
 - Ensure API routes explicitly verify that `session.userId === requestedObject.ownerId` before permitting mutations or reads of personal data.
 
