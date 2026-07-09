@@ -4,31 +4,55 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
 
 ---
 
-## 1. Setup & State Management
+## 1. Configuration Constants
 
-**Goal:** Create a user interface that tracks how many puzzles of each difficulty the user wants, and whether we are currently generating a PDF.
-**Steps:**
+**Grid Size Options:**
+An array of supported grid sizes: `{ value: 4, label: '4×4' }`, `{ value: 6, label: '6×6' }`, `{ value: 9, label: '9×9' }`.
 
-1. Declare the component as a Client Component (`'use client'`) because it relies on user interactions and browser state.
-2. Set up state variables:
-   - `loading`: A boolean flag (true/false) to track if the PDF is currently being generated. This is used to disable the button and show a spinner.
-   - `counts`: An object storing the desired quantity for each difficulty level (`easy`, `medium`, `hard`, `expert`, `extreme`). Easy, Medium, and Hard default to 2. Expert and Extreme default to 0.
-   - `error`: A text string to hold any error messages (e.g., "Too many puzzles") to display to the user.
+**Difficulty-by-Size Map:**
+A lookup table defining which difficulties are available for each grid size:
+
+- 4x4: Easy, Medium, Hard
+- 6x6: Easy, Medium, Hard
+- 9x9: Easy, Medium, Hard, Expert, Extreme
 
 ---
 
-## 2. Handling User Input
+## 2. Setup & State Management
+
+**Goal:** Create a user interface that tracks grid size, puzzle counts, and loading state.
+**Steps:**
+
+1. Declare the component as a Client Component (`'use client'`).
+2. Set up state variables:
+   - `loading`: A boolean flag to track if the PDF is currently being generated.
+   - `gridSize`: The selected grid size (4, 6, or 9). Defaults to 9.
+   - `counts`: An object storing the desired quantity for each difficulty level. Easy, Medium, and Hard default to 2. Expert and Extreme default to 0.
+   - `error`: A text string to hold any error messages.
+
+---
+
+## 3. Handling User Input
+
+### handleGridSizeChange(size)
+
+**Goal:** Switch grid sizes and automatically disable invalid difficulty selections.
+**Steps:**
+
+1. Set the `gridSize` state to the new value.
+2. If the new size is NOT 9 (i.e. mini grid), reset `expert` and `extreme` counts to 0 since those difficulties aren't available for mini grids.
+
+### handleChange(diff, value)
 
 **Goal:** Safely update the puzzle counts when the user types in the input boxes.
 **Steps:**
 
-1. Create a `handleChange` function that takes the difficulty name and the raw input string.
-2. Convert the input string into a valid integer (`parseInt`). If the input is empty or invalid, default to `0`.
-3. Update the `counts` state object by copying the previous values and updating only the specific difficulty that changed.
+1. Convert the input string into a valid integer (`parseInt`). If the input is empty or invalid, default to `0`.
+2. Update the `counts` state object by copying the previous values and updating only the specific difficulty that changed.
 
 ---
 
-## 3. Form Validation & Submission
+## 4. Form Validation & Submission
 
 **Goal:** Check the user's request, send it to the server API, and handle downloading the resulting PDF.
 **Steps:**
@@ -38,36 +62,41 @@ This document explains the core logic behind our `PuzzleForm.tsx` React componen
    - Clear any previous error messages.
    - Add up the total number of requested puzzles across all difficulties.
    - If the total is 0, show an error: "Please select at least one puzzle."
-   - If the total is greater than 50, show an error: "Too many puzzles. Maximum is 50 per request."
+   - If the total is greater than 50, show an error: "Too many puzzles."
 3. **Execution:**
    - Set `loading` to true so the user knows something is happening.
-   - Send a `POST` request to the `/api/generate` endpoint, sending the `counts` object as the JSON body.
+   - Send a `POST` request to the `/api/generate` endpoint, sending `{ ...counts, gridSize }` as the JSON body.
 4. **Error Handling:**
-   - If the server responds with a failure code (e.g., 400 or 500), extract the error message from the response and throw an error.
+   - If the server responds with a failure code, extract the error message and throw an error.
 5. **Downloading the PDF:**
-   - If successful, convert the server's response into a raw data `blob`.
-   - Create a temporary, invisible URL for this blob in the browser memory.
-   - Create an invisible `<a>` (link) element, set its `href` to the blob URL, and set its `download` attribute to "Sudoku_Puzzles.pdf".
-   - Temporarily attach the link to the document body, simulate a click on it to trigger the download, and then immediately clean up by removing the link and revoking the blob URL to free up memory.
+   - Convert the response into a raw data blob.
+   - Create a temporary download link and trigger it to download "Sudoku_Puzzles.pdf".
+   - Clean up the temporary URL and link element.
 6. **Cleanup:**
-   - Whether the request succeeded or failed, always set `loading` back to false in the `finally` block to re-enable the button.
+   - Always set `loading` back to false in the `finally` block.
 
 ---
 
-## 4. The User Interface (Render)
+## 5. The User Interface (Render)
 
 **Goal:** Visually render the configuration panel.
 **Steps:**
 
 1. Draw a main container (a glassmorphism panel) to hold everything.
-2. **The Inputs:**
-   - Loop over an array of the difficulty names (`['easy', 'medium', 'hard', 'expert', 'extreme']`).
-   - For each difficulty, draw a label (Extreme gets a custom `Extreme 💀🔥` label) and a number input box.
-   - Hook up the input box so its value matches the state, and its `onChange` event triggers `handleChange`.
-3. Display a subtle helper text reminding the user of the 1–50 limit.
-4. If the user has requested any 'expert' puzzles (count > 0), display a yellow warning message letting them know that Expert puzzles take up to 30 seconds to generate due to advanced logical validation. If the user requested any 'extreme' puzzles (count > 0), display a red warning message letting them know that Extreme puzzles require elite-tier strategies (W-Wing, ALS, AICs) and take up to 60 seconds to generate.
-5. If there is an `error` message in the state, display it in red text.
-6. **The Submit Button:**
+2. **Grid Size Selector:**
+   - Render a row of three segmented buttons ("4×4", "6×6", "9×9").
+   - The active button has an indigo background with a glow shadow.
+   - Clicking a button calls `handleGridSizeChange`.
+3. **The Difficulty Inputs:**
+   - Loop over all five difficulty names (`['easy', 'medium', 'hard', 'expert', 'extreme']`).
+   - For each difficulty, check if it's available for the current grid size.
+   - If it's NOT available, render the row at 40% opacity with the input disabled and value forced to 0.
+   - If it IS available, render the row normally with the input value from state.
+4. Display a subtle helper text reminding the user of the 1–50 limit.
+5. If the grid size is not 9, display a note: "Expert and Extreme are only available for 9×9 grids."
+6. If the user has requested any 'extreme' puzzles, display a red warning about generation time.
+7. If there is an `error` message in the state, display it in red text.
+8. **The Submit Button:**
    - Draw a large, primary button.
    - If `loading` is true, disable the button and show a spinning SVG icon along with "Generating...".
    - If `loading` is false, make the button clickable and show "Generate PDF".

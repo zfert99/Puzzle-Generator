@@ -114,7 +114,7 @@ This phase is already designed in the [extreme_implementation_plan.md](file:///c
 
 ---
 
-## Phase 2 — Mini Puzzles (4×4, 6×6) (🚧 In Progress)
+## Phase 2 — Mini Puzzles (4×4, 6×6) (✅ Done)
 
 > **Tracks:** 🧮 Engine, 🎨 Frontend
 > **Branch:** `feature/mini-puzzles`
@@ -123,33 +123,40 @@ This phase is already designed in the [extreme_implementation_plan.md](file:///c
 
 This is the **lowest-hanging fruit** for new puzzle variety. The core backtracking and validation logic already works; it just needs to be parameterized.
 
+### Design Decisions (Resolved)
+
+1. **Difficulty Availability:** 4×4 and 6×6 restricted to Easy, Medium, Hard only.
+2. **Clue Quotas:**
+   - 4×4: Easy=9 givens, Medium=6, Hard=4 (mathematical minimum).
+   - 6×6: Easy=20 givens, Medium=16, Hard=10.
+3. **PDF Layout:** Mini grids scaled up to fill the same bounding box as 9×9.
+
 ### Phase 2 Deliverables
 
-#### 2.1 — Parameterized Engine
+#### 2.1 — Parameterized Engine ✅
 
-- Refactor `generateSudoku` to accept dynamic `gridSize` and `boxDimensions`
-  - 4×4 grid → 2×2 boxes
-  - 6×6 grid → 2×3 boxes
-  - 9×9 grid → 3×3 boxes (existing behavior)
-- Refactor `HumanSolver` constructor to accept grid dimensions
-- Update all hardcoded `9` references to use the parameterized size
+- `GridSize` type (4 | 6 | 9) and `GridConfig` interface added to `sudoku.ts`
+- All internal functions (`createEmptyGrid`, `isValid`, `fillGrid`, `countSolutions`) accept dynamic `config`
+- `HumanSolver` infers `size`, `boxWidth`, `boxHeight` from the grid's length
+- All hardcoded `9`s and `27`s replaced with dynamic `this.size` and `this.numHouses`
+- Expert/Extreme diggers restricted to 9×9 only
 
-#### 2.2 — Difficulty Calibration
+#### 2.2 — Difficulty Calibration ✅
 
-- Mini puzzles need their own difficulty curves (a 4×4 with 6 clues is hard; a 4×4 with 4 clues might be impossible)
-- Define clue-count ranges per size per difficulty
-- Simpler strategies dominate — no need for X-Wing on a 4×4
+- Dynamic clue quotas implemented via lookup table in `applyQuotaDigger`
+- Mini grids only support Easy/Medium/Hard difficulty levels
 
-#### 2.3 — PDF Rendering
+#### 2.3 — PDF Rendering ✅
 
-- Update `generator.ts` to dynamically draw grids of varying sizes
-- Adjust cell sizing, font scaling, and page layout for minis
-- Option to fit multiple mini puzzles per page (e.g., 4 × 4×4 grids per page)
+- `drawGrid` dynamically infers grid size and draws correct box borders
+- All grids (4×4, 6×6, 9×9) scale to fill the same 400px bounding box
+- Titles include grid size label for mini puzzles (e.g., "Sudoku #1 (4×4) (easy)")
 
-#### 2.4 — UI Updates
+#### 2.4 — UI Updates ✅
 
-- Add a "Puzzle Size" selector to `PuzzleForm` (4×4, 6×6, 9×9)
-- Conditionally show difficulty options based on grid size
+- Grid Size segmented button selector added to `PuzzleForm` (4×4, 6×6, 9×9)
+- Expert/Extreme inputs visually disabled (40% opacity) for mini grids
+- API validates gridSize parameter and rejects Expert/Extreme for mini grids
 
 ---
 

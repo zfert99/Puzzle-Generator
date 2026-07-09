@@ -1,4 +1,4 @@
-// Represents a basic cell coordinate in the 9x9 grid
+// Represents a basic cell coordinate in the grid
 export type Cell = { r: number; c: number };
 
 // Represents an empty cell along with its remaining possible candidates
@@ -14,8 +14,16 @@ export class HumanSolver {
   // Current state of the Sudoku grid (0 means empty cell)
   grid: number[][];
 
-  // A 2D array tracking the remaining possible candidates (1-9) for every cell
+  // A 2D array tracking the remaining possible candidates (1..size) for every cell
   candidates: Set<number>[][];
+
+  // Grid dimension properties (inferred from grid length)
+  readonly size: number;       // 4, 6, or 9
+  readonly boxWidth: number;   // columns per box
+  readonly boxHeight: number;  // rows per box
+  readonly numBoxes: number;   // total number of boxes
+  readonly numHouses: number;  // size * 3 (rows + cols + boxes)
+  readonly totalCells: number; // size * size
 
   // Flag indicating if any advanced strategies (X-Wing, Swordfish, etc.) were used during solving
   usedAdvanced: boolean = false;
@@ -23,7 +31,7 @@ export class HumanSolver {
   // Flag indicating if any extreme strategies (W-Wing, ALS-XZ, AIC) were used during solving
   usedExtreme: boolean = false;
 
-  // Tracks how many cells have been filled — avoids scanning all 81 cells to check completion
+  // Tracks how many cells have been filled — avoids scanning all cells to check completion
   private filledCount: number = 0;
 
   // ==========================================
@@ -31,11 +39,10 @@ export class HumanSolver {
   // ==========================================
 
   /**
-   * Checks if two cell coordinates fall inside the exact same 3x3 box.
-   * There are 9 boxes in a Sudoku grid, numbered roughly like a phone dial.
+   * Checks if two cell coordinates fall inside the exact same box.
    */
   private inSameBox(cell1: { r: number, c: number }, cell2: { r: number, c: number }): boolean {
-    return Math.floor(cell1.r / 3) === Math.floor(cell2.r / 3) && Math.floor(cell1.c / 3) === Math.floor(cell2.c / 3);
+    return Math.floor(cell1.r / this.boxHeight) === Math.floor(cell2.r / this.boxHeight) && Math.floor(cell1.c / this.boxWidth) === Math.floor(cell2.c / this.boxWidth);
   }
 
   /**
@@ -47,20 +54,22 @@ export class HumanSolver {
     // A cell does not "see" itself
     if (cell1.r === cell2.r && cell1.c === cell2.c) return false;
 
-    // Return true if cells share the same row, column, or 3x3 box
+    // Return true if cells share the same row, column, or box
     return cell1.r === cell2.r || cell1.c === cell2.c || this.inSameBox(cell1, cell2);
   }
 
   /**
-   * Given a box index (0 through 8), returns an array of the 9 cell coordinates within that box.
-   * Box 0 is top-left, Box 1 is top-middle, ..., Box 8 is bottom-right.
+   * Given a box index, returns an array of all cell coordinates within that box.
    */
   private getBoxCells(b: number): Cell[] {
     const cells: Cell[] = [];
-    const startRow = Math.floor(b / 3) * 3;
-    const startCol = (b % 3) * 3;
-    for (let i = 0; i < 9; i++) {
-      cells.push({ r: startRow + Math.floor(i / 3), c: startCol + (i % 3) });
+    const boxesPerRow = this.size / this.boxWidth;
+    const startRow = Math.floor(b / boxesPerRow) * this.boxHeight;
+    const startCol = (b % boxesPerRow) * this.boxWidth;
+    for (let dr = 0; dr < this.boxHeight; dr++) {
+      for (let dc = 0; dc < this.boxWidth; dc++) {
+        cells.push({ r: startRow + dr, c: startCol + dc });
+      }
     }
     return cells;
   }
@@ -72,13 +81,13 @@ export class HumanSolver {
   private getEmptyCellsInHouse(axis: 'row' | 'col' | 'box', houseIdx: number): Cell[] {
     const cells: Cell[] = [];
     if (axis === 'row') {
-      for (let c = 0; c < 9; c++) {
+      for (let c = 0; c < this.size; c++) {
         if (this.grid[houseIdx][c] === 0 && this.candidates[houseIdx][c].size > 0) {
           cells.push({ r: houseIdx, c });
         }
       }
     } else if (axis === 'col') {
-      for (let r = 0; r < 9; r++) {
+      for (let r = 0; r < this.size; r++) {
         if (this.grid[r][houseIdx] === 0 && this.candidates[r][houseIdx].size > 0) {
           cells.push({ r, c: houseIdx });
         }
@@ -96,24 +105,25 @@ export class HumanSolver {
   /**
    * Single-pass scan that buckets every candidate by all 27 houses simultaneously.
    * Returns a flat array of 243 cell lists: index = (num-1)*27 + houseIndex
-   * Houses 0-8 = rows, 9-17 = cols, 18-26 = boxes.
+   * Houses 0..size-1 = rows, size..2*size-1 = cols, 2*size..3*size-1 = boxes.
    *
    * This is the low-level data source for both conjugate pairs (length === 2)
-   * and peer weak links (length > 2). Scans 81 cells once instead of calling
-   * getCandidatePositions 27 times (2,187 cell checks).
+   * and peer weak links (length > 2). Scans all cells once instead of calling
+   * getCandidatePositions numHouses times.
    */
   private buildHousePositions(): Cell[][] {
-    const houseCells: Cell[][] = Array.from({ length: 9 * 27 }, () => []);
+    const houseCells: Cell[][] = Array.from({ length: this.size * this.numHouses }, () => []);
 
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
         if (this.grid[r][c] !== 0) continue;
-        const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+        const boxesPerRow = this.size / this.boxWidth;
+        const b = Math.floor(r / this.boxHeight) * boxesPerRow + Math.floor(c / this.boxWidth);
         for (const num of this.candidates[r][c]) {
-          const base = (num - 1) * 27;
-          houseCells[base + r].push({ r, c });        // row house
-          houseCells[base + 9 + c].push({ r, c });    // col house
-          houseCells[base + 18 + b].push({ r, c });   // box house
+          const base = (num - 1) * this.numHouses;
+          houseCells[base + r].push({ r, c });                    // row house
+          houseCells[base + this.size + c].push({ r, c });         // col house
+          houseCells[base + this.size * 2 + b].push({ r, c });     // box house
         }
       }
     }
@@ -128,13 +138,13 @@ export class HumanSolver {
    */
   private getConjugatePairs(): Map<number, [Cell, Cell][]> {
     const result = new Map<number, [Cell, Cell][]>();
-    for (let num = 1; num <= 9; num++) result.set(num, []);
+    for (let num = 1; num <= this.size; num++) result.set(num, []);
 
     const houseCells = this.buildHousePositions();
 
-    for (let num = 1; num <= 9; num++) {
-      const base = (num - 1) * 27;
-      for (let h = 0; h < 27; h++) {
+    for (let num = 1; num <= this.size; num++) {
+      const base = (num - 1) * this.numHouses;
+      for (let h = 0; h < this.numHouses; h++) {
         if (houseCells[base + h].length === 2) {
           result.get(num)!.push([houseCells[base + h][0], houseCells[base + h][1]]);
         }
@@ -150,8 +160,8 @@ export class HumanSolver {
    */
   private getCellsWithNCandidates(n: number): CandidateCell[] {
     const cells: CandidateCell[] = [];
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
         if (this.grid[r][c] === 0 && this.candidates[r][c].size === n) {
           cells.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
         }
@@ -167,14 +177,15 @@ export class HumanSolver {
    * If axis = 'box', index `b` is a list of all cells in box `b` containing `num`.
    */
   private getCandidatePositions(num: number, axis: 'row' | 'col' | 'box'): Cell[][] {
-    const positions: Cell[][] = Array.from({ length: 9 }, () => []);
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
+    const positions: Cell[][] = Array.from({ length: this.size }, () => []);
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
         if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
           if (axis === 'row') positions[r].push({ r, c });
           else if (axis === 'col') positions[c].push({ r, c });
           else if (axis === 'box') {
-            const b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+            const boxesPerRow = this.size / this.boxWidth;
+            const b = Math.floor(r / this.boxHeight) * boxesPerRow + Math.floor(c / this.boxWidth);
             positions[b].push({ r, c });
           }
         }
@@ -190,8 +201,8 @@ export class HumanSolver {
    */
   private eliminateFromCellsSeeingAll(targets: Cell[], cand: number, excludeCells: Cell[] = []): boolean {
     let changed = false;
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
         if (this.grid[r][c] !== 0) continue; // Skip filled cells
 
         // Sometimes a target cell itself (like a pivot in a Y-Wing) should be excluded from elimination
@@ -228,7 +239,7 @@ export class HumanSolver {
 
     // Find all primary indices that have 2..size positions for this candidate
     const eligible: number[] = [];
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < this.size; i++) {
       if (positions[i].length >= 2 && positions[i].length <= size) {
         eligible.push(i);
       }
@@ -254,7 +265,7 @@ export class HumanSolver {
       // Eliminate from the cover secondaries in all non-fish primary lines
       const fishSet = new Set(combo);
       for (const sec of secondarySet) {
-        for (let pri = 0; pri < 9; pri++) {
+        for (let pri = 0; pri < this.size; pri++) {
           if (fishSet.has(pri)) continue;
           const r = axis === 'row' ? pri : sec;
           const c = axis === 'row' ? sec : pri;
@@ -318,7 +329,7 @@ export class HumanSolver {
       // Y-Wing: Z is any candidate NOT in the pivot (the pincers introduce it)
       // XYZ-Wing: Z is any candidate IN the pivot
       const zCandidates = pivotSize === 2
-        ? Array.from({ length: 9 }, (_, i) => i + 1).filter(n => !pivot.cands.includes(n))
+        ? Array.from({ length: this.size }, (_, i) => i + 1).filter(n => !pivot.cands.includes(n))
         : pivot.cands;
 
       for (const z of zCandidates) {
@@ -367,19 +378,34 @@ export class HumanSolver {
   // ==========================================
 
   /**
-   * Constructor initializes the solver with a given Sudoku grid
+   * Constructor initializes the solver with a given Sudoku grid.
+   * Infers grid dimensions from the grid's row count.
    */
   constructor(initialGrid: number[][]) {
     // Deep copy the initial grid so we don't mutate the original array
     this.grid = initialGrid.map(row => [...row]);
 
-    // Initialize candidates for each cell: every cell starts with all 9 numbers possible
-    this.candidates = Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => new Set<number>([1, 2, 3, 4, 5, 6, 7, 8, 9])));
+    // Infer dimensions from grid size
+    this.size = initialGrid.length;
+    if (this.size === 4) {
+      this.boxWidth = 2; this.boxHeight = 2;
+    } else if (this.size === 6) {
+      this.boxWidth = 3; this.boxHeight = 2;
+    } else {
+      this.boxWidth = 3; this.boxHeight = 3;
+    }
+    this.numBoxes = this.size; // always equal to size (e.g. 9 boxes in a 9x9)
+    this.numHouses = this.size * 3;
+    this.totalCells = this.size * this.size;
+
+    // Initialize candidates for each cell: every cell starts with all numbers 1..size possible
+    const allCands = Array.from({ length: this.size }, (_, i) => i + 1);
+    this.candidates = Array.from({ length: this.size }, () => Array.from({ length: this.size }, () => new Set<number>(allCands)));
 
     // Process the initial grid. For every filled cell, place the number which will
     // automatically trigger the removal of that number from the candidates of its row/col/box.
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
         if (this.grid[r][c] !== 0) {
           this.placeNumber(r, c, this.grid[r][c]);
         }
@@ -389,7 +415,7 @@ export class HumanSolver {
 
   /**
    * Places a number securely in the grid and immediately updates the "pencil marks" (candidates)
-   * in the affected row, column, and 3x3 box.
+   * in the affected row, column, and box.
    */
   placeNumber(r: number, c: number, num: number) {
     // Place the number in the grid
@@ -401,29 +427,28 @@ export class HumanSolver {
     // The cell itself no longer needs candidates since it is filled
     this.candidates[r][c].clear();
 
-    // Compute box origin once (avoids allocating a 9-element array via getBoxCells)
-    const boxStartR = Math.floor(r / 3) * 3;
-    const boxStartC = Math.floor(c / 3) * 3;
-
-    // Iterate 9 times to sweep the entire row, column, and box simultaneously
-    for (let i = 0; i < 9; i++) {
-      // Eliminate this number from all other candidates in the same row
+    // Eliminate from row and column
+    for (let i = 0; i < this.size; i++) {
       this.candidates[r][i].delete(num);
-
-      // Eliminate this number from all other candidates in the same column
       this.candidates[i][c].delete(num);
+    }
 
-      // Eliminate this number from all other candidates in the same 3x3 box
-      this.candidates[boxStartR + Math.floor(i / 3)][boxStartC + (i % 3)].delete(num);
+    // Eliminate from the box
+    const boxStartR = Math.floor(r / this.boxHeight) * this.boxHeight;
+    const boxStartC = Math.floor(c / this.boxWidth) * this.boxWidth;
+    for (let dr = 0; dr < this.boxHeight; dr++) {
+      for (let dc = 0; dc < this.boxWidth; dc++) {
+        this.candidates[boxStartR + dr][boxStartC + dc].delete(num);
+      }
     }
   }
 
   /**
-   * O(1) check if every cell in the 9x9 grid has been filled.
-   * Uses a running counter incremented by placeNumber() instead of scanning all 81 cells.
+   * O(1) check if every cell in the grid has been filled.
+   * Uses a running counter incremented by placeNumber() instead of scanning all cells.
    */
   isSolved(): boolean {
-    return this.filledCount === 81;
+    return this.filledCount === this.totalCells;
   }
 
   // ==========================================
@@ -456,28 +481,30 @@ export class HumanSolver {
       // We only run these if the basic strategies are stuck.
       // If these succeed, we flag `usedAdvanced` so the engine knows this is an "Expert" puzzle.
 
-      if (this.applyXWing()) {
-        this.usedAdvanced = true;
-        changed = true;
-        continue;
-      }
+      if (this.size === 9) {
+        if (this.applyXWing()) {
+          this.usedAdvanced = true;
+          changed = true;
+          continue;
+        }
 
-      if (this.applySwordfish()) {
-        this.usedAdvanced = true;
-        changed = true;
-        continue;
-      }
+        if (this.applySwordfish()) {
+          this.usedAdvanced = true;
+          changed = true;
+          continue;
+        }
 
-      if (this.applyYWing()) {
-        this.usedAdvanced = true;
-        changed = true;
-        continue;
-      }
+        if (this.applyYWing()) {
+          this.usedAdvanced = true;
+          changed = true;
+          continue;
+        }
 
-      if (this.applyXYZWing()) {
-        this.usedAdvanced = true;
-        changed = true;
-        continue;
+        if (this.applyXYZWing()) {
+          this.usedAdvanced = true;
+          changed = true;
+          continue;
+        }
       }
 
       if (options.maxTier === 'advanced') break;
@@ -485,22 +512,24 @@ export class HumanSolver {
       // EXTREME STRATEGIES: The most computationally expensive human strategies.
       // These require deep graph-theoretic reasoning and are needed only for the hardest puzzles.
 
-      if (this.applyWWing()) {
-        this.usedExtreme = true;
-        changed = true;
-        continue;
-      }
+      if (this.size === 9) {
+        if (this.applyWWing()) {
+          this.usedExtreme = true;
+          changed = true;
+          continue;
+        }
 
-      if (this.applyALSXZ()) {
-        this.usedExtreme = true;
-        changed = true;
-        continue;
-      }
+        if (this.applyALSXZ()) {
+          this.usedExtreme = true;
+          changed = true;
+          continue;
+        }
 
-      if (this.applyAIC()) {
-        this.usedExtreme = true;
-        changed = true;
-        continue;
+        if (this.applyAIC()) {
+          this.usedExtreme = true;
+          changed = true;
+          continue;
+        }
       }
     }
 
@@ -538,12 +567,12 @@ export class HumanSolver {
    * among other possibilities.
    */
   applyHiddenSingle(): boolean {
-    // Check every number 1 through 9
-    for (let num = 1; num <= 9; num++) {
+    // Check every number 1 through size
+    for (let num = 1; num <= this.size; num++) {
       // Check its positions across every row, column, and box
       for (const axis of ['row', 'col', 'box'] as const) {
         const positions = this.getCandidatePositions(num, axis);
-        for (let i = 0; i < 9; i++) {
+        for (let i = 0; i < this.size; i++) {
           // If the candidate only appears in exactly one cell in this row/col/box
           if (positions[i].length === 1) {
             this.placeNumber(positions[i][0].r, positions[i][0].c, num);
@@ -577,7 +606,7 @@ export class HumanSolver {
 
           // Shared row: If they are in the same row, eliminate the pair from the rest of the row
           if (b1.r === b2.r) {
-            for (let c = 0; c < 9; c++) {
+            for (let c = 0; c < this.size; c++) {
               if (c !== b1.c && c !== b2.c && this.grid[b1.r][c] === 0) {
                 if (this.candidates[b1.r][c].has(cand1)) { this.candidates[b1.r][c].delete(cand1); changed = true; }
                 if (this.candidates[b1.r][c].has(cand2)) { this.candidates[b1.r][c].delete(cand2); changed = true; }
@@ -587,7 +616,7 @@ export class HumanSolver {
 
           // Shared col: If they are in the same column, eliminate the pair from the rest of the column
           if (b1.c === b2.c) {
-            for (let r = 0; r < 9; r++) {
+            for (let r = 0; r < this.size; r++) {
               if (r !== b1.r && r !== b2.r && this.grid[r][b1.c] === 0) {
                 if (this.candidates[r][b1.c].has(cand1)) { this.candidates[r][b1.c].delete(cand1); changed = true; }
                 if (this.candidates[r][b1.c].has(cand2)) { this.candidates[r][b1.c].delete(cand2); changed = true; }
@@ -597,7 +626,8 @@ export class HumanSolver {
 
           // Shared box: If they are in the same box, eliminate the pair from the rest of the box
           if (this.inSameBox(b1, b2)) {
-            const b1Box = Math.floor(b1.r / 3) * 3 + Math.floor(b1.c / 3);
+            const boxesPerRow = this.size / this.boxWidth;
+            const b1Box = Math.floor(b1.r / this.boxHeight) * boxesPerRow + Math.floor(b1.c / this.boxWidth);
             for (const { r, c } of this.getBoxCells(b1Box)) {
               if ((r !== b1.r || c !== b1.c) && (r !== b2.r || c !== b2.c) && this.grid[r][c] === 0) {
                 if (this.candidates[r][c].has(cand1)) { this.candidates[r][c].delete(cand1); changed = true; }
@@ -624,18 +654,18 @@ export class HumanSolver {
     // Check across every row, column, and box
     for (const axis of ['row', 'col', 'box'] as const) {
       
-      // Pre-calculate positions for all 9 numbers on this axis
+      // Pre-calculate positions for all numbers on this axis
       // positionsByNum[num][zoneIndex] = array of cells
       const positionsByNum: { r: number, c: number }[][][] = [];
-      for (let num = 1; num <= 9; num++) {
+      for (let num = 1; num <= this.size; num++) {
         positionsByNum[num] = this.getCandidatePositions(num, axis);
       }
 
-      // For each zone index (0-8)
-      for (let i = 0; i < 9; i++) {
+      // For each zone index
+      for (let i = 0; i < this.size; i++) {
         // Find all candidates that appear exactly twice in this zone
         const candidatesWithTwoSpots = [];
-        for (let num = 1; num <= 9; num++) {
+        for (let num = 1; num <= this.size; num++) {
           const cells = positionsByNum[num][i];
           if (cells.length === 2) {
             candidatesWithTwoSpots.push({ num, cells });
@@ -688,11 +718,11 @@ export class HumanSolver {
    */
   applyPointingPairs(): boolean {
     let changed = false;
-    for (let num = 1; num <= 9; num++) {
+    for (let num = 1; num <= this.size; num++) {
       // Find all positions of `num` grouped by box
       const boxPositions = this.getCandidatePositions(num, 'box');
 
-      for (let b = 0; b < 9; b++) {
+      for (let b = 0; b < this.numBoxes; b++) {
         const cells = boxPositions[b];
         // Only consider if the candidate is restricted to 2 or 3 cells in the box
         if (cells.length === 2 || cells.length === 3) {
@@ -702,9 +732,10 @@ export class HumanSolver {
 
           if (sameRow) {
             const r = cells[0].r;
-            for (let c = 0; c < 9; c++) {
-              // Iterate through the whole row. If a cell is NOT in our box (b % 3), eliminate the candidate.
-              if (Math.floor(c / 3) !== b % 3) {
+            const boxesPerRow = this.size / this.boxWidth;
+            for (let c = 0; c < this.size; c++) {
+              // Iterate through the whole row. If a cell is NOT in our box, eliminate the candidate.
+              if (Math.floor(c / this.boxWidth) !== b % boxesPerRow) {
                 if (this.candidates[r][c].has(num)) {
                   this.candidates[r][c].delete(num);
                   changed = true;
@@ -713,9 +744,10 @@ export class HumanSolver {
             }
           } else if (sameCol) {
             const c = cells[0].c;
-            for (let r = 0; r < 9; r++) {
+            const boxesPerRow = this.size / this.boxWidth;
+            for (let r = 0; r < this.size; r++) {
               // Iterate through the whole col. If a cell is NOT in our box (Math.floor(b/3)), eliminate.
-              if (Math.floor(r / 3) !== Math.floor(b / 3)) {
+              if (Math.floor(r / this.boxHeight) !== Math.floor(b / boxesPerRow)) {
                 if (this.candidates[r][c].has(num)) {
                   this.candidates[r][c].delete(num);
                   changed = true;
@@ -745,7 +777,7 @@ export class HumanSolver {
    */
   applyXWing(): boolean {
     let changed = false;
-    for (let num = 1; num <= 9; num++) {
+    for (let num = 1; num <= this.size; num++) {
       if (this.applyFishOnAxis(num, 'row', 2)) changed = true;
       if (this.applyFishOnAxis(num, 'col', 2)) changed = true;
     }
@@ -777,7 +809,7 @@ export class HumanSolver {
    */
   applySwordfish(): boolean {
     let changed = false;
-    for (let num = 1; num <= 9; num++) {
+    for (let num = 1; num <= this.size; num++) {
       if (this.applyFishOnAxis(num, 'row', 3)) changed = true;
       if (this.applyFishOnAxis(num, 'col', 3)) changed = true;
     }
@@ -937,7 +969,7 @@ export class HumanSolver {
 
     // Process each house type
     for (const axis of ['row', 'col', 'box'] as const) {
-      for (let houseIdx = 0; houseIdx < 9; houseIdx++) {
+      for (let houseIdx = 0; houseIdx < this.size; houseIdx++) {
         const emptyCells = this.getEmptyCellsInHouse(axis, houseIdx);
 
         // Enumerate all subsets of size 1..maxSubsetSize
@@ -1023,8 +1055,8 @@ export class HumanSolver {
 
     // Collect all active nodes AND build Type A weak links (same cell, different candidates)
     const allNodes: string[] = [];
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
         if (this.grid[r][c] !== 0) continue;
         const cands = Array.from(this.candidates[r][c]);
 
@@ -1046,12 +1078,11 @@ export class HumanSolver {
     }
 
     // Build strong + peer weak links (Type B) from a single house position scan
-    // (replaces separate getConjugatePairs() + 27 getCandidatePositions() calls)
     const housePositions = this.buildHousePositions();
 
-    for (let num = 1; num <= 9; num++) {
-      const base = (num - 1) * 27;
-      for (let h = 0; h < 27; h++) {
+    for (let num = 1; num <= this.size; num++) {
+      const base = (num - 1) * this.numHouses;
+      for (let h = 0; h < this.numHouses; h++) {
         const cells = housePositions[base + h];
         if (cells.length === 2) {
           // Strong link: conjugate pair

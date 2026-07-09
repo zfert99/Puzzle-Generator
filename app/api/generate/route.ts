@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateSudoku, Difficulty } from '@/lib/puzzle-engine/sudoku';
+import { generateSudoku, Difficulty, GridSize } from '@/lib/puzzle-engine/sudoku';
 import { generatePuzzlePDF } from '@/lib/pdf/generator';
 
 /**
@@ -8,11 +8,12 @@ import { generatePuzzlePDF } from '@/lib/pdf/generator';
  * 
  * Expected JSON Body:
  * {
- *   "easy": number,    // Number of easy puzzles to generate
- *   "medium": number,  // Number of medium puzzles to generate
- *   "hard": number,    // Number of hard puzzles to generate
- *   "expert": number,  // Number of expert puzzles to generate
- *   "extreme": number  // Number of extreme puzzles to generate
+ *   "easy": number,      // Number of easy puzzles to generate
+ *   "medium": number,    // Number of medium puzzles to generate
+ *   "hard": number,      // Number of hard puzzles to generate
+ *   "expert": number,    // Number of expert puzzles to generate
+ *   "extreme": number,   // Number of extreme puzzles to generate
+ *   "gridSize": 4 | 6 | 9  // Optional, defaults to 9
  * }
  */
 export async function POST(req: NextRequest) {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Extract puzzle counts, defaulting to 0 if not provided
-    const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0 } = body || {};
+    const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0, gridSize = 9 } = body || {};
 
     // ==========================================
     // VALIDATION
@@ -40,6 +41,16 @@ export async function POST(req: NextRequest) {
     // Ensure that all provided values are non-negative integers (no decimals, no negative amounts)
     if (easy < 0 || medium < 0 || hard < 0 || expert < 0 || extreme < 0 || !Number.isInteger(easy) || !Number.isInteger(medium) || !Number.isInteger(hard) || !Number.isInteger(expert) || !Number.isInteger(extreme)) {
       return NextResponse.json({ error: 'Invalid input: values must be non-negative integers' }, { status: 400 });
+    }
+
+    // Validate gridSize
+    if (![4, 6, 9].includes(gridSize)) {
+      return NextResponse.json({ error: 'Invalid gridSize: must be 4, 6, or 9' }, { status: 400 });
+    }
+
+    // Validate difficulty restrictions for mini grids
+    if (gridSize !== 9 && (expert > 0 || extreme > 0)) {
+      return NextResponse.json({ error: `Expert and Extreme difficulties are only available for 9x9 grids` }, { status: 400 });
     }
 
     // Ensure the user requested at least one puzzle
@@ -58,30 +69,31 @@ export async function POST(req: NextRequest) {
     // ==========================================
     
     const puzzles = [];
+    const size = gridSize as GridSize;
 
     // Generate Easy puzzles synchronously
     for (let i = 0; i < easy; i++) {
-      puzzles.push(generateSudoku('easy'));
+      puzzles.push(generateSudoku('easy', size));
     }
 
     // Generate Medium puzzles synchronously
     for (let i = 0; i < medium; i++) {
-      puzzles.push(generateSudoku('medium'));
+      puzzles.push(generateSudoku('medium', size));
     }
 
     // Generate Hard puzzles synchronously
     for (let i = 0; i < hard; i++) {
-      puzzles.push(generateSudoku('hard'));
+      puzzles.push(generateSudoku('hard', size));
     }
 
     // Generate Expert puzzles synchronously (this uses the advanced HumanSolver logic)
     for (let i = 0; i < expert; i++) {
-      puzzles.push(generateSudoku('expert'));
+      puzzles.push(generateSudoku('expert', size));
     }
 
     // Generate Extreme puzzles synchronously (uses extreme HumanSolver strategies)
     for (let i = 0; i < extreme; i++) {
-      puzzles.push(generateSudoku('extreme'));
+      puzzles.push(generateSudoku('extreme', size));
     }
 
     // ==========================================
@@ -92,7 +104,7 @@ export async function POST(req: NextRequest) {
     const pdfBuffer = await generatePuzzlePDF(puzzles);
 
     // Return the generated PDF buffer directly as the HTTP response body
-    return new NextResponse(pdfBuffer as any, {
+    return new NextResponse(pdfBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         // Content-Type tells the browser this is a binary PDF file
@@ -101,15 +113,16 @@ export async function POST(req: NextRequest) {
         'Content-Disposition': 'attachment; filename="Sudoku_Puzzles.pdf"',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If anything fails during puzzle generation or PDF rendering, catch it here
-    console.error('Failed to generate PDF:', error);
+    const err = error as Error;
+    console.error('Failed to generate PDF:', err);
     
     // Return a 500 Internal Server Error with details
     return NextResponse.json({
       error: 'Internal server error during PDF generation',
-      details: error.message,
-      stack: error.stack
+      details: err.message,
+      stack: err.stack
     }, { status: 500 });
   }
 }

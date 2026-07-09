@@ -8,7 +8,7 @@ This document is a thorough, line-by-line pseudocode companion to [`human-solver
 ## Types
 
 ```text
-Cell           = { r, c }              // A row/column coordinate on the 9×9 grid
+Cell           = { r, c }              // A row/column coordinate on the grid
 CandidateCell  = { r, c, cands[] }     // A Cell plus its sorted list of remaining candidates
 ```
 
@@ -19,8 +19,14 @@ CandidateCell  = { r, c, cands[] }     // A Cell plus its sorted list of remaini
 ### Properties
 
 ```text
-grid[][]           : 9×9 array of numbers (0 = empty)
-candidates[][]     : 9×9 array of Sets, each holding remaining possible values (1-9)
+grid[][]           : NxN array of numbers (0 = empty)
+candidates[][]     : NxN array of Sets, each holding remaining possible values (1..size)
+size               : grid dimension (4, 6, or 9) — inferred from grid length
+boxWidth           : columns per box (2, 3, or 3)
+boxHeight          : rows per box (2, 2, or 3)
+numBoxes           : total boxes = size
+numHouses          : size * 3 (rows + cols + boxes)
+totalCells         : size * size
 usedAdvanced       : boolean flag — true if X-Wing, Swordfish, Y-Wing, or XYZ-Wing was used
 usedExtreme        : boolean flag — true if W-Wing, ALS-XZ, or AIC was used
 filledCount        : private counter — incremented by placeNumber(), enables O(1) isSolved()
@@ -33,8 +39,8 @@ filledCount        : private counter — incremented by placeNumber(), enables O
 ### inSameBox(cell1, cell2) → boolean
 
 ```text
-RETURN true IF floor(cell1.r / 3) == floor(cell2.r / 3)
-              AND floor(cell1.c / 3) == floor(cell2.c / 3)
+RETURN true IF floor(cell1.r / boxHeight) == floor(cell2.r / boxHeight)
+              AND floor(cell1.c / boxWidth) == floor(cell2.c / boxWidth)
 ```
 
 ### sees(cell1, cell2) → boolean
@@ -43,7 +49,7 @@ RETURN true IF floor(cell1.r / 3) == floor(cell2.r / 3)
 IF cell1 and cell2 are the same cell → RETURN false
 RETURN true IF cell1.r == cell2.r           // same row
               OR cell1.c == cell2.c         // same column
-              OR inSameBox(cell1, cell2)    // same 3×3 box
+              OR inSameBox(cell1, cell2)    // same box
 ```
 
 ### getBoxCells(boxIndex) → Cell[]

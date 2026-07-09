@@ -41,22 +41,23 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 ## 4. Core Drawing Helper Functions
 
-### `drawGrid(grid, startX, startY, size)`
+### `drawGrid(grid, startX, startY, gridDrawSize)`
 
-**Goal:** Visually draw a 9x9 Sudoku board (either a puzzle or an answer key) on the PDF.
+**Goal:** Visually draw any Sudoku board (4x4, 6x6, or 9x9) on the PDF, scaled to fill the same bounding box.
 **Steps:**
 
-1. Calculate how big each individual cell should be by dividing the total `size` by 9.
-2. Set the font size once for the entire grid (we don't need to do this for every single cell).
-3. **Draw the Numbers:**
-   - Loop through all 9 rows and 9 columns (81 cells total).
+1. Infer the `puzzleSize` from the grid's length and look up the `GridConfig` (to get `boxWidth` and `boxHeight`).
+2. Calculate how big each individual cell should be by dividing `gridDrawSize` by `puzzleSize`.
+3. Set the font size once for the entire grid.
+4. **Draw the Numbers:**
+   - Loop through all rows and columns.
    - If the cell has a number in it (not a 0), figure out exactly how wide and tall the text is.
-   - Draw the text in the center of the cell. We apply a small vertical offset (pushing it down by 10% of the text height) to visually center it. This compensates for PDFKit including invisible "descender space" in its height calculation, which otherwise makes numbers look too high.
-4. **Draw the Grid Lines:**
-   - Loop 10 times (from 0 to 9) to draw the dividing lines.
-   - Every 3rd line (0, 3, 6, 9) is drawn thick (line width 3) to create the 3x3 box outlines.
-   - The other lines are drawn thin (line width 1).
-   - Draw the horizontal line, then draw the vertical line.
+   - Draw the text in the center of the cell with a small vertical offset (10% of text height) to visually center it.
+5. **Draw the Grid Lines:**
+   - Loop `puzzleSize + 1` times to draw the dividing lines.
+   - For horizontal lines, draw thick (line width 3) at every `boxHeight` interval (e.g. 0, 2, 4 for a 6x6 with boxHeight=2).
+   - For vertical lines, draw thick at every `boxWidth` interval (e.g. 0, 3, 6 for a 6x6 with boxWidth=3).
+   - All other lines are drawn thin (line width 1).
 
 ### `drawPuzzles(isAnswers)`
 
@@ -68,10 +69,10 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 3. If there are puzzles in this difficulty, create a sub-bookmark for it.
 4. **The Drawing Loop:** For every puzzle in this group:
    - Add a new page to the PDF.
-   - Draw the title at the top (e.g., "Sudoku #1 (easy)" or "Sudoku #1 (easy) Answer").
-   - Create a hidden named destination on the page (like an anchor link on a website) so we can link back to it later.
+   - Build a descriptive title including grid size if not 9x9 (e.g., "Sudoku #1 (4x4) (easy)").
+   - Create a hidden named destination on the page so we can link back to it.
    - Call `drawGrid` to physically draw the puzzle. If `isAnswers` is true, we draw the `solution`. Otherwise, we draw the `grid` (which has holes).
-   - **Interactive Links:** Move below the grid and draw a blue, underlined link. If we are drawing a puzzle, the link says "Go to Answer Key" and points to the answer page. If we are drawing an answer, it says "Back to Puzzle" and points to the puzzle page.
+   - **Interactive Links:** Move below the grid and draw a blue, underlined link pointing to the corresponding answer/puzzle page.
 
 ---
 
@@ -82,7 +83,7 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 1. Call `titlePage()` to create the cover.
 2. Set up the PDF Outline (the table of contents sidebar in PDF readers).
-3. Calculate the static `gridSize` and `startX` position for the grids once, since they will be exactly the same size and horizontally centered on every single page.
+3. Calculate the static `gridDrawSize` and `startX` position for the grids once. All grids (4x4, 6x6, 9x9) are scaled to fill the same bounding box.
 4. Call `drawPuzzles(false)` to draw all the blank puzzles.
 5. Call `drawPuzzles(true)` to draw all the filled-in answer keys.
 6. **Add Page Numbers:**

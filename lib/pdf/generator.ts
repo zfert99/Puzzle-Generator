@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { SudokuPuzzle } from '../puzzle-engine/sudoku';
-import { Writable } from 'stream';
+import { getGridConfig } from '../puzzle-engine/sudoku';
 
 export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -43,9 +43,12 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
     // Create outline root
     const outlineRoot = doc.outline;
 
-    // Draw a single 9x9 grid
-    const drawGrid = (grid: number[][], startX: number, startY: number, size: number) => {
-      const cellSize = size / 9;
+    // Draw a single grid of any size (4x4, 6x6, or 9x9)
+    // The grid is always scaled to fill the same bounding box (gridDrawSize)
+    const drawGrid = (grid: number[][], startX: number, startY: number, gridDrawSize: number) => {
+      const puzzleSize = grid.length;
+      const config = getGridConfig(puzzleSize as 4 | 6 | 9);
+      const cellSize = gridDrawSize / puzzleSize;
 
       doc.lineWidth(1);
 
@@ -53,8 +56,8 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
       doc.fontSize(cellSize * 0.6);
 
       // Iterate through all the cells in the grid
-      for (let i = 0; i < 9; i++) {
-        for (let j = 0; j < 9; j++) {
+      for (let i = 0; i < puzzleSize; i++) {
+        for (let j = 0; j < puzzleSize; j++) {
           // Get the value of the current cell
           const val = grid[i][j];
           // If the cell is not empty, draw the value in the cell
@@ -74,32 +77,34 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
         }
       }
 
-      // Draw 10 grid lines (horizontal and vertical)
-      for (let i = 0; i <= 9; i++) {
-        // Draw thicker lines every 3rd line to create 3x3 subgrids
-        doc.lineWidth(i % 3 === 0 ? 3 : 1);
+      // Draw grid lines (puzzleSize + 1 lines in each direction)
+      for (let i = 0; i <= puzzleSize; i++) {
+        // Draw thicker lines at box boundaries
+        const isThickRow = i % config.boxHeight === 0;
+        const isThickCol = i % config.boxWidth === 0;
 
         // Draw horizontal lines
+        doc.lineWidth(isThickRow ? 3 : 1);
         doc.moveTo(startX, startY + i * cellSize)
-          .lineTo(startX + size, startY + i * cellSize)
+          .lineTo(startX + gridDrawSize, startY + i * cellSize)
           .stroke();
 
         // Draw vertical lines
+        doc.lineWidth(isThickCol ? 3 : 1);
         doc.moveTo(startX + i * cellSize, startY)
-          .lineTo(startX + i * cellSize, startY + size)
+          .lineTo(startX + i * cellSize, startY + gridDrawSize)
           .stroke();
       }
     };
 
-    // Grid settings (static across all pages)
-    const gridSize = 400;
-    const startX = (doc.page.width - gridSize) / 2;
+    // Grid settings (static across all pages — all grids fill this bounding box)
+    const gridDrawSize = 400;
+    const startX = (doc.page.width - gridDrawSize) / 2;
 
     // Draw all puzzles (and answers) and add them to the outline
     const drawPuzzles = (isAnswers = false) => {
       // Add 'Puzzles' or 'Answer Keys' to the outline
       const parentOutline = outlineRoot.addItem(isAnswers ? 'Answer Keys' : 'Puzzles');
-      let puzzleCount = 0;
 
       // Loop through each difficulty level
       for (const diff of ['easy', 'medium', 'hard', 'expert', 'extreme']) {
@@ -111,11 +116,11 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
 
         // Loop through each puzzle in the group
         group.forEach(({ puzzle, index }) => {
-          puzzleCount++;
           doc.addPage();
 
-          // Add title to the puzzle
-          const title = `Sudoku #${index + 1} (${diff})`;
+          // Build a descriptive title including grid size if not 9x9
+          const sizeLabel = puzzle.gridSize !== 9 ? ` (${puzzle.gridSize}x${puzzle.gridSize})` : '';
+          const title = `Sudoku #${index + 1}${sizeLabel} (${diff})`;
           doc.fontSize(24).text(isAnswers ? title + ' Answer' : title, { align: 'center' });
           doc.moveDown(2);
 
@@ -127,10 +132,10 @@ export async function generatePuzzlePDF(puzzles: SudokuPuzzle[]): Promise<Buffer
           // Draw the grid
           const startY = doc.y;
 
-          drawGrid(isAnswers ? puzzle.solution : puzzle.grid, startX, startY, gridSize);
+          drawGrid(isAnswers ? puzzle.solution : puzzle.grid, startX, startY, gridDrawSize);
 
           // Move to the bottom of the grid
-          doc.y = startY + gridSize + 30;
+          doc.y = startY + gridDrawSize + 30;
 
           // Link to corresponding page
           const linkText = isAnswers ? 'Back to Puzzle' : 'Go to Answer Key';
