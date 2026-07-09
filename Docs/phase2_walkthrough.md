@@ -13,31 +13,38 @@ The system now gracefully scales down for mini puzzles while preserving the full
 - Restricted `applyExtremeDigger` and `applyExhaustiveDigger` to only run on 9x9 grids, as mini grids do not need (and cannot support) advanced strategies.
 - Implemented **Dynamic Clue Quotas** inside `applyQuotaDigger`:
   - **4x4**: Easy = 9 givens (7 holes), Medium = 6 givens, Hard = 4 givens (mathematical minimum for uniqueness).
-  - **6x6**: Easy = 20 givens, Medium = 16 givens, Hard = 10 givens.
 
-### 2. Scaled Human Solver (`human-solver.ts`)
+### Engine Refactor (`src/features/engine`)
 
-- Refactored `HumanSolver` to infer dimensions directly from the input grid.
-- Replaced the hardcoded `27` houses limit with a dynamic `this.size * 3` calculation.
-- Modified all low-level strategies (Hidden Singles, Naked Pairs, Pointing Pairs, etc.) to traverse dynamic indices instead of `0..8`.
-- Kept performance completely optimized. The dynamic dimension lookup adds zero overhead, maintaining our blazing-fast validation speeds.
+- **`sudoku.ts`**: Stripped down to orchestrate generation and export domain types (`GridConfig`, `GridSize`, etc.).
+- **`grid-utils.ts`**: Extracted low-level operations (`createEmptyGrid`, `isValid`, `fillGrid`, `shuffle`, `copyGrid`).
+- **`diggers.ts`**: Extracted strategies for removing clues (`applyExhaustiveDigger`, `applyQuotaDigger`, `applyExtremeDigger`, `countSolutions`).
+- **`human-solver.ts`**: Documented with thorough JSDoc blocks for the class and main `solve()` routine to facilitate future Strategy Course implementations.
 
-### 3. API & PDF Generator Integration
+### PDF Service (`src/features/pdf-generation`)
 
-- Updated `/api/generate` to accept a `gridSize` parameter, with comprehensive validation to ensure users cannot request Expert/Extreme difficulty on 4x4 or 6x6 grids.
-- Refactored the PDF `generator.ts` to dynamically calculate cell size and draw thicker borders specifically around the correct box edges (e.g., every 2 rows / 2 columns for a 4x4 grid).
-- Scaled the drawing output so that 4x4 and 6x6 grids stretch to fill the same elegant 400px bounding box on the PDF.
+- Deleted the monolithic `generator.ts`.
+- Extracted purely functional PDF drawing methods (`drawTitlePage`, `drawGrid`, `drawPuzzles`) into `pdf.service.ts`.
+- Separated business logic (generating grids) from presentation logic (drawing lines).
 
-### 4. Interactive Frontend Updates
+### API & Service Layer (`src/features/engine/services`)
 
-- Overhauled `PuzzleForm.tsx` to include a segmented **Grid Size Selector** (4×4, 6×6, 9×9).
-- Added logic to automatically fade out and disable the Expert and Extreme sliders if a mini grid size is selected.
-- Updated all the markdown pseudocode documentation files to accurately describe the new parameterized logic.
+- Extracted the looping logic (generating N puzzles of varying difficulties) from the Next.js API route into `generation.service.ts`.
+- Ensured the Next.js `/api/generate/route.ts` remains slim, handling only request parsing, validation, and invoking services.
+
+### UI Configuration (`src/features/puzzle-configuration`)
+
+- Broke down `PuzzleForm.tsx` into modular components:
+  - `<GridSizeSelector />`
+  - `<DifficultyConfigurator />`
+- Extracted state and API fetching logic into a `usePuzzleGeneration.ts` custom hook.
+- Composed the final `<PuzzleForm />` from these decoupled elements.
 
 ## Validation Results
 
 > [!SUCCESS]
 > **Unit Tests:** `npx jest` passed with 12/12 successful test cases, verifying that all API paths (and bad parameter rejections) work properly.
+>
 > [!SUCCESS]
 > **Benchmarks:** We ran the 5000-iteration benchmark to ensure parameterization didn't slow down the 9x9 solver.
 >
@@ -46,6 +53,7 @@ The system now gracefully scales down for mini puzzles while preserving the full
 > - **Extreme:** 7.72 ms per solve (was 8.81 ms)
 >
 > The engine is just as fast (and slightly faster on Extreme paths) as before!
+>
 > [!SUCCESS]
 > **Generation Tests:** Ran successful local generation scripts confirming that a 4x4 Easy returns exactly 9 clues, and a 6x6 Medium returns exactly 16 clues, with perfect answer key generation.
 
