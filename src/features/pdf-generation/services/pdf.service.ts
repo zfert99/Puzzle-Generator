@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import PDFDocument from 'pdfkit';
-import { SudokuPuzzle, getGridConfig } from '../../engine/sudoku';
+import { SudokuPuzzle, getGridConfig } from '@/features/engine/sudoku';
 
 export function drawTitlePage(doc: any): void {
   doc.addPage();

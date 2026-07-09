@@ -4,7 +4,7 @@ export async function register() {
     logger.info({ event: 'app_start', runtime: process.env.NEXT_RUNTIME }, 'Application initialized');
     
     // Catch global unhandled rejections to prevent silent failures
-    process.on('unhandledRejection', (reason: Error | any, promise: Promise<any>) => {
+    process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
       logger.error({ event: 'unhandled_rejection', reason, promise }, 'Unhandled Rejection at Promise');
     });
 

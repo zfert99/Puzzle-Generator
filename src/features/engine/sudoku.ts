@@ -1,13 +1,19 @@
 import { createEmptyGrid, fillGrid, copyGrid } from './grid-utils';
 import { applyExtremeDigger, applyExhaustiveDigger, applyQuotaDigger } from './diggers';
 
-// The five possible difficulty levels supported by the engine
+/**
+ * The five possible difficulty levels supported by the engine
+ */
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 
-// Supported grid sizes for puzzle generation
+/**
+ * Supported grid sizes for puzzle generation
+ */
 export type GridSize = 4 | 6 | 9;
 
-// Configuration derived from a grid size — box dimensions and total cells
+/**
+ * Configuration derived from a grid size — box dimensions and total cells
+ */
 export interface GridConfig {
   size: GridSize;
   boxWidth: number;   // How many columns per box
