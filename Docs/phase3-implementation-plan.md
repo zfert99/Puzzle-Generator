@@ -52,11 +52,15 @@ do not reimplement it:
 5. **Real-time error checking:** optional toggle that reddens incorrect placements,
    validated against the `solution` returned by the engine.
 
-### Needs your call — puzzle generation source
+### Decided — puzzle generation source: **Option A (on-demand API)** ✅
 
 The generator is **synchronous** and, for Extreme, can take up to a couple of seconds
 (digging + retries). Running it on the main thread would freeze the UI and wreck INP.
-Two viable sources:
+We use **Option A** below: `POST /api/puzzle` (built — see
+[route.ts](../src/app/api/puzzle/route.ts)) generates one puzzle server-side via
+`generateSinglePuzzle` and returns `{ grid, solution }` JSON; the client fetches it
+with the [usePuzzle](../src/features/interactive-board/hooks/usePuzzle.ts) hook. Both
+options were considered:
 
 | Option | How | Trade-offs |
 | --- | --- | --- |
@@ -97,14 +101,15 @@ better pick only if offline generation becomes a requirement.
 - **[NEW]** `src/app/play/page.tsx` — Server Component shell that renders the
   client `PlayExperience` (config screen → board).
 
-### Puzzle data (Option A)
+### Puzzle data (Option A) — ✅ built
 
-- **[NEW]** `src/app/api/puzzle/route.ts` — `export const runtime = 'nodejs'`;
-  validates `{ difficulty, gridSize }`, calls `generation.service.ts`, returns one
-  `{ grid, solution, difficulty, gridSize }` as JSON. Controller only; logs a wide
-  event via Pino.
-- **[NEW]** `src/features/interactive-board/hooks/usePuzzle.ts` — mirrors
-  `usePuzzleGeneration`: fetches `/api/puzzle`, exposes `{ puzzle, loading, error }`.
+- **[DONE]** [src/app/api/puzzle/route.ts](../src/app/api/puzzle/route.ts) —
+  `runtime = 'nodejs'`; validates `{ difficulty, gridSize }`, delegates to
+  `generateSinglePuzzle`, returns `{ grid, solution, difficulty, gridSize }` JSON;
+  Pino wide-event logging; generic 500 (no stack leak). Colocated `route.test.ts`.
+- **[DONE]** [usePuzzle.ts](../src/features/interactive-board/hooks/usePuzzle.ts) —
+  fetches `/api/puzzle`, exposes `{ puzzle, loading, error, fetchPuzzle }`. Colocated
+  `usePuzzle.test.tsx` (mocks the `fetch` boundary only).
 
 ### State
 

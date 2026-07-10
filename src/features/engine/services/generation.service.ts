@@ -1,4 +1,14 @@
-import { generateSudoku, SudokuPuzzle, GridSize } from '../sudoku';
+import { generateSudoku, SudokuPuzzle, GridSize, Difficulty } from '../sudoku';
+
+/**
+ * Service function to generate a single playable puzzle. Backs the interactive
+ * board's `/api/puzzle` route so the heavy generator stays server-side (out of the
+ * client bundle and off the browser's main thread). Returns the puzzle and its
+ * solution so the client can drive optional real-time error checking.
+ */
+export function generateSinglePuzzle(difficulty: Difficulty, gridSize: GridSize = 9): SudokuPuzzle {
+  return generateSudoku(difficulty, gridSize);
+}
 
 export interface GenerationRequest {
   easy?: number;
