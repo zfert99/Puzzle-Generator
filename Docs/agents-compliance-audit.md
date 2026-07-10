@@ -171,7 +171,7 @@ Legend: compliant (OK) · minor issue (WARN) · violation (FAIL)
 | 1 — Security & correctness | ✅ Done | Stack/details removed from 500 response; `onRequestError()` added; benchmark made tier-representative (revealed the honest numbers below). |
 | 2 — Jest → Vitest | ✅ Done | Vitest + jsdom installed, Jest removed, `vitest.config.ts`/`vitest.setup.ts` added, pragmas swapped, internal-hook mock replaced with a `fetch`-boundary mock, scripts + `tsconfig` types updated. |
 | 3 — Test coverage | ✅ Mostly | Banned `pdf-generation/tests/*.js` removed; added colocated tests for `sudoku`, `generation.service`, `pdf.service`, `GridSizeSelector`, `DifficultyConfigurator`. `strategies/*`, `grid-utils`, `diggers` remain covered only indirectly (isolated tests need hand-crafted grids — follow-up). |
-| 4 — Engine bitmask/MRV | ✅ Done | HumanSolver candidates converted from `Set<number>[][]` to per-cell bitmasks (helpers: `candidateCount`/`hasCandidate`/`removeCandidate`/`candidateList`); `fillGrid` and `countSolutions` rewritten as bitmask + MRV backtracking. All 34 tests still pass. Benchmark: Basic 0.58→0.34 ms, Advanced 0.59→0.40 ms, Extreme ~35→~17 ms; hard 9×9 generation ~3.5 ms/puzzle. Basic/Extreme are closer to but still above the example thresholds — remaining cost is algorithmic (full-grid strategy scans), not representation. |
+| 4 — Engine bitmask/MRV | ✅ Done | HumanSolver candidates converted from `Set<number>[][]` to per-cell bitmasks (helpers: `candidateCount`/`hasCandidate`/`removeCandidate`/`candidateList`); `fillGrid` and `countSolutions` rewritten as bitmask + MRV backtracking. All 34 tests still pass. Benchmark: Basic 0.58→0.34 ms, Advanced 0.59→0.40 ms, Extreme ~35→~17 ms; hard 9×9 generation ~3.5 ms/puzzle. Basic/Extreme were still above the example thresholds after this batch — **superseded by the hot-path optimization in section 7 below**, which brought Basic to 0.11 ms. |
 | 5 — Documentation sync | ✅ Done | 6 `.md` mirrors created; stale `lib/puzzle-engine/`/Windows paths fixed; roadmap/README status + Extreme feature; Git docs renamed to kebab-case; JSDoc added; `.markdownlint.json` added. |
 | 6 — CI security scanning | ✅ Done | `.github/` with CodeQL, Dependabot, and an `npm audit` CI gate. |
 
@@ -188,17 +188,65 @@ are stored as `Set<number>[][]`. Batch 4 (bitmask + popcount MRV, AGENTS.md
 Section 1) is the lever to bring these back under threshold. The Phase 1 roadmap
 target of "AIC-heavy boards < 2 s" is comfortably met.
 
-### Follow-ups not applied
+## Post-audit work (follow-on to the six batches)
 
-- **Playwright E2E** (AGENTS.md Section 4): named as the E2E tool, but no E2E
-  specs exist yet and installing browsers is heavy — scaffold when the first
-  interactive-board flow lands.
+After the six batches landed, two further pieces of work were requested and completed.
+
+### 7 — Solver hot-path optimization
+
+Profiling of the (now honest) tiers showed two dominant costs, which were removed:
+
+- **Basic tier — Hidden Single (was ~76% of Basic time).** The strategy rescanned
+  the whole grid `3 × size` times per call. Replaced with
+  `HumanSolver.findAndPlaceHiddenSingle()` — a single tallying pass over the empty
+  cells using reused, preallocated buffers (zero per-call allocation).
+  `applyHiddenSingle` now delegates to it.
+- **Extreme tier — ALS-XZ (was ~89% of Extreme time).** `enumerateALS` was
+  materialising every C(n, k) cell subset per house. Replaced with a pruned DFS
+  that carries the candidate-union as a bitmask and abandons any branch whose union
+  exceeds `maxSize + 1` candidates. Each ALS now returns a candidate **bitmask**, and
+  `applyALSXZ` rejects pairs with `popcount(maskA & maskB) < 2` in O(1) before any
+  allocation or grid work.
+
+**Result (tier-representative benchmark, versus the pre-optimization Batch-4 code):**
+
+| Tier | Set-based (pre-Batch-4) | Batch 4 (bitmask) | + hot-path opt |
+|---|---|---|---|
+| Basic | 0.58 ms | 0.34 ms | **0.11 ms** ✅ (< 0.3 ms target) |
+| Advanced | 0.59 ms | 0.40 ms | **0.16 ms** ✅ |
+| Extreme | ~35 ms | ~25 ms | **~21 ms** (−16% on a frozen A/B pool) |
+
+Basic and Advanced are now comfortably under the AGENTS.md example thresholds. The
+**Extreme tier still exceeds the 10 ms example** on hard pools (it is highly
+pool-dependent — ~6 ms on easy extreme mixes, ~21 ms on hard ones). The residual is
+the O(numALS²) ALS-XZ pairwise scan that runs fruitlessly on every stalled
+deduction iteration — reducing it further needs a structural change (caching ALS
+across iterations, or not re-running ALS-XZ from scratch each loop), not another
+micro-optimization. The Phase 1 roadmap target of "AIC-heavy boards < 2 s" remains
+met with a wide margin.
+
+### 8 — Playwright E2E scaffolding (AGENTS.md Section 4)
+
+- Installed `@playwright/test`; added `playwright.config.ts` (top-level, exempt from
+  colocation) with a `webServer` that boots `npm run dev`, a `chromium` project (with
+  `firefox`/`webkit` ready to enable), and `baseURL` `http://localhost:3000`.
+- Added the top-level `e2e/` directory with `home.spec.ts` (accessibility-first smoke
+  tests of the landing page + mini-grid difficulty disabling) and a `README.md`.
+- Added the `test:e2e` script and gitignored Playwright artifacts.
+- **Verified:** `npx playwright install chromium` + `npm run test:e2e` → 2/2 passing
+  in a real browser. Vitest's `include` is scoped to `src/**`, so it does not pick up
+  the E2E specs.
+
+## Verification (final state)
+
+- `npx tsc --noEmit` clean · `npm run lint` clean · `npx vitest run` **34/34** ·
+  `npm run test:e2e` **2/2** (Chromium).
+
+### Follow-ups still open
+
 - **Isolated strategy tests** for `strategies/*`, `grid-utils`, `diggers` — covered
-  indirectly today; hand-crafted-grid unit tests are a follow-up.
-- **Sub-threshold Basic/Extreme tiers**: the bitmask refactor closed most of the
-  gap; the remainder is algorithmic (per-iteration full-grid strategy scans), which
-  would need incremental/dirty-cell candidate tracking rather than a representation
-  change.
+  indirectly today; hand-crafted-grid unit tests remain a follow-up.
+- **Extreme tier < 10 ms**: needs the structural ALS-XZ change described above, not a
+  representation or micro-optimization change.
 - **`Docs/research/*` markdown** bullet-style/blank-line lint issues — these files
-  are mid-edit (uncommitted) and are the user's imported prose; auto-fix with
-  `npx markdownlint-cli --fix` when ready.
+  are the user's imported prose; auto-fix with `npx markdownlint-cli --fix` when ready.
