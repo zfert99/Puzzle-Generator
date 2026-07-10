@@ -28,6 +28,7 @@ The primary mechanism that makes TBD viable is the use of feature flags (or togg
 | GitLab Flow | `main`, environment branches | Environment-gated | Organizations with dedicated QA departments | Environment branches can drift out of sync [cite: 2238]. |
 | GitHub Flow | `main` | Continuous (Single target) | Web applications, SaaS, small-to-medium teams | Requires rigorous CI discipline; `main` must always be deployable [cite: 2238]. |
 | Trunk-Based | `main` (Trunk) | Continuous (Multiple per day) | High-throughput DevOps teams, large scaled organizations | Demands mature feature flag management and rapid automated testing [cite: 2238]. |
+
 *[cite: 2238]*
 
 ## The Anatomy of Commits and Semantic History [cite: 2239]
@@ -60,6 +61,7 @@ Extensive data demonstrates a direct correlation between the number of lines cha
 | 100–300 | Good — focused attention still possible | 30–60 minutes |
 | 300–500 | Declining — fatigue reduces thoroughness | 1–3 hours |
 | 500+ | Poor — reviewers skim, bugs slip through | Days (often delayed) |
+
 *[cite: 2267]*
 
 To maintain velocity, engineering teams must enforce a maximum PR size, ideally under 400 lines [cite: 2268]. When features necessitate larger changes, they should be delivered via "stacked pull requests" [cite: 2269]. Stacking involves creating a series of dependent branches where each branch targets the previous branch instead of the mainline (e.g., Branch A adds database schema, Branch B adds business logic, Branch C adds the API layer) [cite: 2270]. Each branch is reviewed and merged incrementally, preserving reviewer sanity and maintaining integration momentum [cite: 2271]. Tools like Graphite or specialized Git CLIs facilitate the automated rebasing of these dependent branches when upstream changes occur [cite: 2272].
@@ -85,6 +87,7 @@ When a fast-forward merge is impossible, Git offers several mechanisms to integr
 | Merge Commit (`--no-ff`) | Non-linear ("railroad tracks") | Created always | Integrating shared release branches where the evolution story is critical | Creates messy, difficult-to-read graphs; pollutes main with extraneous commits [cite: 2286]. |
 | Squash Merge | Linear, single synthesized commit | None (virtual copy) | High-velocity GitHub Flow; single-feature deployments | Granular commit history and atomic steps of the feature are permanently lost [cite: 2286]. |
 | Rebase and Merge | Perfectly linear | None | Local cleanup; maintaining pristine history without squashing | Rewrites commit hashes; highly destructive if applied to shared public branches [cite: 2286]. |
+
 *[cite: 2286]*
 
 A highly effective hybrid workflow involves developers locally fetching and rebasing their feature branches against the upstream `main` branch to resolve conflicts early [cite: 2287]. This is often paired with an interactive rebase (`git rebase -i`) to squash messy "work in progress" commits locally before pushing [cite: 2288]. Finally, the PR is integrated using a Squash Merge via the GitHub UI, ensuring the mainline retains a pristine history where one commit equals one deployable feature [cite: 2289].
@@ -130,6 +133,7 @@ To prevent unilateral, destructive actions on critical infrastructure, organizat
 ### Documentation Standards [cite: 2336]
 
 A repository's documentation is its first line of communication [cite: 2337]. A fully matured GitHub repository must contain several standardized files, typically housed in the root, `docs/`, or `.github/` directories, where GitHub automatically surfaces them [cite: 2337]:
+
 * **README.md:** Must provide an executive summary, local installation instructions, architectural overviews, and relative links to other documents [cite: 2338].
 * **CONTRIBUTING.md:** Dictates the workflow for submitting pull requests, executing test suites locally, and the required commit formatting [cite: 2339].
 * **CODE_OF_CONDUCT.md:** Defines acceptable community behavioral standards and the enforcement mechanisms for violations, ensuring an inclusive environment [cite: 2340].

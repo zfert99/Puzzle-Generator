@@ -123,9 +123,9 @@ Furthermore, by outright rejecting deep, classical class-based inheritance hiera
 
 ## Research Update Log (July 2026)
 
-- Removed ~170 meaningless `[cite: NNNN]` markers throughout the document (artifacts from the original research tool with no accompanying bibliography).
-- Cut the generic scene-setting intro paragraphs down to one project-specific paragraph; the removed text was pure filler that didn't inform any decision.
-- Clarified the `"use client"` guidance with a concrete mapping to this project (grid/numpad/timer as client components, static pages server-rendered) instead of leaving it abstract.
-- Verified the App Router file-convention rendering order (`layout → template → error → loading → not-found → page`) against current Next.js docs — it's accurate, no change needed.
-- Flagged that the "zero use cases for inheritance" quote comes from React's archived `legacy.reactjs.org` docs, not the current react.dev site — the guidance itself is still correct and current, but the doc previously implied it was citing live documentation.
-- Left the comments/JSDoc and file-modularization sections largely as-is; verified against current practice (JSDoc, TODO/FIXME conventions) and found no stale claims.
+* Removed ~170 meaningless `[cite: NNNN]` markers throughout the document (artifacts from the original research tool with no accompanying bibliography).
+* Cut the generic scene-setting intro paragraphs down to one project-specific paragraph; the removed text was pure filler that didn't inform any decision.
+* Clarified the `"use client"` guidance with a concrete mapping to this project (grid/numpad/timer as client components, static pages server-rendered) instead of leaving it abstract.
+* Verified the App Router file-convention rendering order (`layout → template → error → loading → not-found → page`) against current Next.js docs — it's accurate, no change needed.
+* Flagged that the "zero use cases for inheritance" quote comes from React's archived `legacy.reactjs.org` docs, not the current react.dev site — the guidance itself is still correct and current, but the doc previously implied it was citing live documentation.
+* Left the comments/JSDoc and file-modularization sections largely as-is; verified against current practice (JSDoc, TODO/FIXME conventions) and found no stale claims.

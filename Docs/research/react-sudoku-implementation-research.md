@@ -176,13 +176,13 @@ Visually, CSS Grid and Subgrid frameworks establish immutable, responsive layout
 
 ## Research Update Log (July 2026)
 
-- Removed ~90 meaningless `[cite: NNNN]` markers throughout the document (artifacts from the original research tool with no accompanying bibliography — pure noise).
-- Zustand: confirmed it's still the right default in 2026 (largest ecosystem, 50%+ adoption); added a short section naming Jotai as the main alternative and when it would actually matter (deeply derived state), so the choice isn't presented as beyond question.
-- Softened an unsourced, suspiciously precise performance stat ("70% faster, 55ms→15ms") in the Zustand section — no such benchmark could be verified, and it read as a fabricated citation.
-- Clarified `useSyncExternalStore` is a React 18 API still used under the hood in React 19, since the project will run on React 19 / Next.js 16.
-- Added a maintenance-status caveat for `zundo` (slow release cadence, effectively "finished") and pointed to `zustand-travel` as the actively maintained alternative if richer time-travel is ever needed.
-- Added a new subsection (4.4) on a real, project-specific gotcha: SSR hydration mismatches from `Math.random()`-based puzzle generation in the Next.js App Router, with two concrete fixes (client-only generation vs. seeded PRNG).
-- Confirmed CSS Subgrid reached Baseline "widely available" in March 2026 — safe for production without a fallback; added a nesting-depth caveat.
-- Confirmed the Vitest + React Testing Library recommendation matches Next.js's own official testing docs (not just a third-party opinion), and explained why Vitest over Jest for this project specifically.
-- Verified the WAI-ARIA grid/roving-tabindex/`aria-rowindex`/`aria-colindex` guidance against the current W3C ARIA Authoring Practices Guide — no changes needed, it's accurate.
-- Trimmed redundant restatements of the same point across adjacent paragraphs (e.g., Context API re-render explanation repeated in 2.1 and 2.2).
+* Removed ~90 meaningless `[cite: NNNN]` markers throughout the document (artifacts from the original research tool with no accompanying bibliography — pure noise).
+* Zustand: confirmed it's still the right default in 2026 (largest ecosystem, 50%+ adoption); added a short section naming Jotai as the main alternative and when it would actually matter (deeply derived state), so the choice isn't presented as beyond question.
+* Softened an unsourced, suspiciously precise performance stat ("70% faster, 55ms→15ms") in the Zustand section — no such benchmark could be verified, and it read as a fabricated citation.
+* Clarified `useSyncExternalStore` is a React 18 API still used under the hood in React 19, since the project will run on React 19 / Next.js 16.
+* Added a maintenance-status caveat for `zundo` (slow release cadence, effectively "finished") and pointed to `zustand-travel` as the actively maintained alternative if richer time-travel is ever needed.
+* Added a new subsection (4.4) on a real, project-specific gotcha: SSR hydration mismatches from `Math.random()`-based puzzle generation in the Next.js App Router, with two concrete fixes (client-only generation vs. seeded PRNG).
+* Confirmed CSS Subgrid reached Baseline "widely available" in March 2026 — safe for production without a fallback; added a nesting-depth caveat.
+* Confirmed the Vitest + React Testing Library recommendation matches Next.js's own official testing docs (not just a third-party opinion), and explained why Vitest over Jest for this project specifically.
+* Verified the WAI-ARIA grid/roving-tabindex/`aria-rowindex`/`aria-colindex` guidance against the current W3C ARIA Authoring Practices Guide — no changes needed, it's accurate.
+* Trimmed redundant restatements of the same point across adjacent paragraphs (e.g., Context API re-render explanation repeated in 2.1 and 2.2).

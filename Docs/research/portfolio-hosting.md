@@ -242,16 +242,18 @@ For complex full-stack applications requiring robust background job processing a
 Verified against live 2026 pricing pages and current comparison sources; original doc contained several stale figures.
 
 **Pricing corrections (confirmed wrong in the original draft):**
-- Vercel Pro bandwidth overage was stated as $40/100GB — corrected to the current $0.15/GB (~$15/100GB). Also added that Hobby tier overages now *lock* the feature for up to 30 days rather than billing, a real behavioral change from the "surprise invoice" narrative.
-- Netlify was stated as $19/user/month Pro with $55/100GB overage — Netlify moved to a credit-based, per-organization (not per-seat) model in April 2026: $20/month/org, ~150GB included, ~$13/100GB effective overage.
-- Render's per-seat fee removal was vaguely dated "early 2026" — corrected to the actual date (April 23, 2026) and flat $25/month Pro price; added that Render has a genuine always-free tier (750 hrs/month, spins down after 15 min idle), which the original doc omitted entirely.
-- Fly.io was presented as having a "~$2/mo" starting price with implied ongoing free allowances — corrected: Fly.io discontinued its free tier for new accounts (now a 2-hour/7-day trial only, credit card required); realistic minimum cost is $5-25/month depending on storage/egress, not $2/month.
-- Vercel image-optimization overage was given as a "$5 to $8 per 1,000" range — corrected to the actual flat $5/1,000 source images.
-- Clarified that Cloudflare's "$5/month flat" figure refers to the Workers Paid plan (which powers Pages Functions), distinct from Cloudflare's separate $20-25/month website/CDN Pro plan, to avoid a plausible reader mix-up.
+
+* Vercel Pro bandwidth overage was stated as $40/100GB — corrected to the current $0.15/GB (~$15/100GB). Also added that Hobby tier overages now *lock* the feature for up to 30 days rather than billing, a real behavioral change from the "surprise invoice" narrative.
+* Netlify was stated as $19/user/month Pro with $55/100GB overage — Netlify moved to a credit-based, per-organization (not per-seat) model in April 2026: $20/month/org, ~150GB included, ~$13/100GB effective overage.
+* Render's per-seat fee removal was vaguely dated "early 2026" — corrected to the actual date (April 23, 2026) and flat $25/month Pro price; added that Render has a genuine always-free tier (750 hrs/month, spins down after 15 min idle), which the original doc omitted entirely.
+* Fly.io was presented as having a "~$2/mo" starting price with implied ongoing free allowances — corrected: Fly.io discontinued its free tier for new accounts (now a 2-hour/7-day trial only, credit card required); realistic minimum cost is $5-25/month depending on storage/egress, not $2/month.
+* Vercel image-optimization overage was given as a "$5 to $8 per 1,000" range — corrected to the actual flat $5/1,000 source images.
+* Clarified that Cloudflare's "$5/month flat" figure refers to the Workers Paid plan (which powers Pages Functions), distinct from Cloudflare's separate $20-25/month website/CDN Pro plan, to avoid a plausible reader mix-up.
 
 **Additions:**
-- AWS Amplify section now includes concrete current unit pricing and free-tier figures (previously only qualitative).
-- New section: "PDF Export and Server-Side Compute" — addresses the project's actual PDF-generation need directly. Headless-browser rendering (Puppeteer/Playwright) is incompatible with Cloudflare Workers and awkward on Vercel serverless (bundle size, timeouts); native PDF libraries (pdf-lib, @react-pdf/renderer) are recommended as the default for a budget-conscious solo dev, with container hosts (Render/Railway) as the fallback if pixel-perfect CSS rendering is required.
-- Added note that Verisign's approved 7%/year .com wholesale price increases (2026-2030) reinforce, rather than undercut, the doc's "5-year cost trap" framing for legacy registrars.
+
+* AWS Amplify section now includes concrete current unit pricing and free-tier figures (previously only qualitative).
+* New section: "PDF Export and Server-Side Compute" — addresses the project's actual PDF-generation need directly. Headless-browser rendering (Puppeteer/Playwright) is incompatible with Cloudflare Workers and awkward on Vercel serverless (bundle size, timeouts); native PDF libraries (pdf-lib, @react-pdf/renderer) are recommended as the default for a budget-conscious solo dev, with container hosts (Render/Railway) as the fallback if pixel-perfect CSS rendering is required.
+* Added note that Verisign's approved 7%/year .com wholesale price increases (2026-2030) reinforce, rather than undercut, the doc's "5-year cost trap" framing for legacy registrars.
 
 **Not changed (verified still accurate):** Porkbun/Cloudflare/Dynadot/Namecheap registrar pricing table, the Cloudflare-proxy-in-front-of-Vercel SSL redirect-loop mechanics, Draco/Meshopt/KTX2 compression guidance, and R3F on-demand rendering guidance all checked out against current sources with no material changes needed.

@@ -1,6 +1,7 @@
 # Git & GitHub Best Practices: A Structured Reference for a Solo Multi-Repo Web Developer
 
 ## TL;DR
+
 - For a solo developer running several performance-isolated Next.js/TypeScript repos, adopt **GitHub Flow with light branch protection, Conventional Commits, squash-merge PRs (even self-reviewed), SemVer + Keep a Changelog, and GitHub Actions CI gating** as your default across every repo — this yields a clean, auditable history and real automation without team overhead.
 - **Keep the repos separate (polyrepo) but standardize the workflow across all of them**; only consider a Turborepo/Nx monorepo if you find yourself editing shared code in lockstep across projects. To share a UI component library, prefer a published private package over git submodules/subtrees.
 - **Never commit `.env` files** (modern `create-next-app` ignores all `.env*` by default, and Prisma's docs state verbatim: *"Do not commit your .env files into version control!"*); enable Dependabot + secret scanning + push protection; and adopt underused recovery/parallelism tools — `git worktree`, `git bisect`, `git reflog`, and `--force-with-lease` — which are disproportionately valuable when one person context-switches across many repos.
@@ -23,6 +24,7 @@
 **Conventional Commits** (spec v1.0.0, conventionalcommits.org). Format: `<type>(<optional scope>): <description>`, optional body, optional footer. Core types: `feat` (→ MINOR), `fix` (→ PATCH), plus `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`. A commit with `BREAKING CHANGE:` in the footer (or `!` after type/scope) → MAJOR bump regardless of type. Benefits: automatic changelog generation, automatic SemVer determination, machine-readable history, and CI triggering. **Solo adaptation:** use the `scope` to tag which domain/subsystem changed (e.g. `feat(generator): add backtracking solver`, `fix(three): correct camera frustum`) — a lightweight way to navigate history in a domain-driven layout. If a commit doesn't meet the spec before push, fix it with `git rebase -i` and `reword`, or `git commit --amend` for the last one.
 
 **Rebase vs merge (contested — present both).**
+
 - **Merge** is non-destructive; preserves full history and context; creates a merge commit; can clutter history with "extraneous merge commits."
 - **Rebase** rewrites history to a clean linear sequence; eliminates merge commits; makes `git log`, `git bisect`, `gitk` easier; but is "potentially catastrophic" if you rebase already-pushed/shared commits (the "Golden Rule of Rebasing"). Rebase presents conflicts one commit at a time; merge presents them all at once.
 - **Common hybrid (widely endorsed):** rebase *downstream* (update your feature branch onto `main` to stay current) and merge/squash *upstream* (integrate the finished feature). "Rebasing makes the most sense for an individual project since it's useful for streamlining a complex history."
@@ -36,6 +38,7 @@
 ### 2. Branching Strategies for Solo Multi-Repo
 
 **Comparison:**
+
 - **GitFlow** — long-lived `develop`, `release`, `hotfix`, `feature` branches. Built for versioned software supporting multiple releases in the wild. Heavy ceremony, slower cadence, larger PRs. The GitFlow author himself (see Key Finding 2) recommends a simpler flow for continuously-delivered web apps that don't support multiple field versions; git-flow "may still be as good of a fit" only if you're explicitly versioned or supporting multiple versions in the wild.
 - **GitHub Flow** — single `main` always deployable; short-lived feature branches; open PR; CI runs; merge and deploy. Relies on strong automated testing. Best fit for small teams / solo devs shipping web apps continuously.
 - **Trunk-Based Development (TBD)** — everyone commits small increments to trunk (or via very short-lived branches merged within a day); requires excellent CI + feature flags; maximum throughput. A required practice for true CI.
@@ -44,6 +47,7 @@
 **Recommendation for you:** **GitHub Flow as the default across all repos.** It matches Vercel's continuous-deploy model for Next.js, keeps `main` production-ready, and gives you a PR gate. You can drift toward trunk-based for the most stable repos as CI matures.
 
 **Per-repo philosophy may differ:**
+
 - **Puzzle-generator math engine / retro console (systems-level, algorithmically complex):** longer-lived feature branches are legitimate here — a backtracking solver or FSM rewrite is a large, coherent unit of work that shouldn't hit `main` half-done. Guard `main` with CI. Use `git worktree` to keep an experimental algorithm branch alongside `main`.
 - **3D portfolio (Three.js/R3F) / DDD solitaire app (UI-heavy, continuously deployed):** short-lived branches, frequent merges, lean on Vercel preview deploys per PR.
 
@@ -54,6 +58,7 @@
 ### 3. Pull Requests as a Solo Developer
 
 **Why still use PRs solo (strongly evidenced):**
+
 - **Self-review surface.** The PR "diff" view shows exactly what will merge; reviewing it with "fresh, critical eyes" catches accidental commits, stray debug code, partial changes, and lazy naming. "There's something about working on a solo project… that automatically lowers my quality standards."
 - **CI gate.** PRs hook into CI so lint/type-check/test/build run before merge.
 - **Documentation trail.** Each PR (ideally linked to an issue) documents *why* a change was made — invaluable when you return to a repo after months.
@@ -62,6 +67,7 @@
 **Recommended solo PR loop:** create issue → branch → commit freely → push → open PR (CI runs) → self-review the diff (jump straight to editor to fix, no inline comments needed) → squash-and-merge → delete branch.
 
 **Squash vs merge commit (contested — present the tradeoff):**
+
 - **Squash-and-merge** (recommended default): collapses a branch's WIP commits into one clean commit on `main`. Each `main` commit = one reviewed, CI-passed, revertable PR. Makes `git bisect`/`git revert` clean, and (with Conventional Commit PR titles) auto-generates changelogs. Cost: loses individual-commit granularity (still accessible via the PR link).
 - **Merge commit**: preserves full branch topology; matters for long-running integration; clutters history.
 - **Rebase-and-merge**: linear history without a merge commit; needs per-commit discipline.
@@ -81,6 +87,7 @@
 **Tagging for releases.** Use annotated tags: `git tag -a v1.2.3 -m "Release 1.2.3"` then `git push --tags`. Note SemVer's rule: `v1.2.3` is a *tag name*; the semantic version is `1.2.3`. Prefixing with `v` is a common convention.
 
 **Protecting `main` as a solo dev.** Branch protection rules (Settings → Branches, or the newer Rulesets) let you: require status checks to pass before merge, require branches be up to date, require linear history, require conversation resolution, and disable force-push/deletion (both off by default under a rule). **Solo gotchas:**
+
 - **Don't** enable "Require approvals" — GitHub prevents approving your own PR, which blocks you entirely. Skip it; rely on required status checks instead.
 - The required-status-check dropdown only shows checks that have run **on the protected branch within the last 7 days** and only from the Checks API (GitHub Actions or Checks-API apps). Per GitHub Docs, "to be required, status checks must have completed successfully within the chosen repository during the past seven days." Trigger the workflow on `push: [main]` at least once so the check name appears.
 - Job names must be unique across workflows or check results become ambiguous.
@@ -92,6 +99,7 @@
 **Changelogs (Keep a Changelog 1.1.0).** File named `CHANGELOG.md` at repo root. Group under `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`. Maintain an `Unreleased` section at top; on release, rename it to the version with an ISO-8601 date (`## [1.2.0] - 2026-03-15`). Use ISO dates (unambiguous across locales). "Don't let your friends dump git logs into changelogs" — changelogs are for humans; write entries as you ship, not after (make it a PR-template checkbox). Note breaking changes, deprecations, removals prominently; mark pulled releases `[YANKED]`.
 
 **Automated tooling (tradeoff):**
+
 - **semantic-release** — fully automated; parses Conventional Commits since last tag, bumps version, generates CHANGELOG, creates GitHub release, publishes. Zero human intervention. Version is *tightly coupled to commit messages*. No native monorepo support.
 - **changesets** — PR-based; you write intent in `.changeset/*.md` files decoupled from commits; a bot opens a "Version Packages" PR. Best-in-class monorepo/multi-package support; explicit versioning avoids accidental bumps.
 - **release-please** — Google's PR-based tool that maintains a release PR.
@@ -100,6 +108,7 @@
 **Coordinating versioning across related repos.** In a polyrepo, each repo versions independently (its own tags, its own CHANGELOG). This is a feature, not a bug: your performance-isolated repos have independent deploy cadences, so independent SemVer lines are honest. The cost is that a cross-cutting change touching two repos is two PRs, two version bumps.
 
 **Monorepo vs polyrepo versioning (arguments both ways):**
+
 - *For consolidating:* atomic cross-package commits; one version/lockfile; shared build cache (Turborepo/Nx) can cut CI time substantially; immediate propagation of shared-lib changes via workspace protocol.
 - *Against (your current choice):* performance isolation (your stated reason) is real — a heavy Three.js build won't slow the puzzle engine's CI; independent deploys; simpler mental model; no monorepo orchestration tooling to maintain; smaller, faster PRs. Monorepo PR cycle times are often longer because PRs are larger. For one developer, "the tooling overhead of a monorepo exceeds the benefit at small scale."
 
@@ -120,6 +129,7 @@
 ### 7. GitHub-Specific Features & Automation
 
 **GitHub Actions CI/CD for Next.js.** Canonical pipeline: on `pull_request` (and `push: [main]`) run install → lint → type-check (`tsc --noEmit`) → test → build. Then gate merges on these checks. Example jobs: `actions/checkout@v4`, `actions/setup-node@v4` with `cache: "npm"`, `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
+
 - **Next.js-specific gotchas:** run `next typegen` (or a build) before `tsc --noEmit` so `next-env.d.ts` exists; type-check jobs may need env vars provided as GitHub Secrets. Split fast checks (lint/unit/type on `pull_request`) from slow E2E (Playwright on Vercel's `deployment_status` preview) to keep feedback fast.
 - **Vercel deploys automatically from GitHub** — you usually don't deploy from Actions; instead use Actions for gating and notify Vercel of check results (Vercel deployment checks). For non-Vercel hosts or Prisma migrations, add a deploy workflow on `push: [main]` (e.g. `npx prisma migrate deploy` with `DATABASE_URL` from Secrets).
 
@@ -136,7 +146,8 @@
 ### 8. Repository Hygiene & Organization
 
 **The exact default `create-next-app` .gitignore** (Next.js 14.1+, current). Note the Feb-2024 change (PR #61920 by leerob) to ignore *all* env files by default:
-```
+
+```gitignore
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
@@ -179,11 +190,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 ```
+
 The older template used `.env*.local` + `.env` instead of `.env*`.
 
 **Secrets / environment variables.** Prisma's docs warn verbatim: **"Do not commit your .env files into version control!"** and `prisma init` adds `.env` to `.gitignore` (with the comment "# Keep environment variables out of version control"). Modern Next.js docs now agree, stating in the Environment Variables guide: **"Warning: The default `create-next-app` template ensures all `.env` files are added to your `.gitignore`. You almost never want to commit these files to your repository."** (Older Next.js docs said the opposite — "`.env`, `.env.development`, and `.env.production` files should be included in your repository as they define defaults. `.env*.local` should be added to `.gitignore`" — this guidance was superseded by PR #61920; be aware of the conflict if you follow older tutorials.) Store production secrets in Vercel env settings and CI secrets in GitHub Secrets; never hardcode. Commit a `.env.example` with dummy values to document required variables.
 
 **Monorepo tooling (comparison point, though you prefer polyrepo).**
+
 - **Turborepo** (Vercel, Rust) — minimal config (`turbo.json`), task orchestration + caching, low learning curve, free remote cache on Vercel; "stays out of your way" but provides no architecture enforcement, generators, or graph visualization. Best default for JS/TS workspaces under ~20 packages.
 - **Nx** — full build *platform*: project graph, affected commands, generators, module-boundary enforcement, distributed task execution, `nx release`. More power, more opinion, more migration cost. Better past a real scale ceiling or for polyglot repos.
 - **Bazel** — hermetic, polyglot, for very large orgs; overkill here.
@@ -202,6 +215,7 @@ The older template used `.env*.local` + `.env` instead of `.env*`.
 **`.gitignore` vs `.gitattributes` vs sparse-checkout.** `.gitignore` = which untracked files to ignore. `.gitattributes` = per-path behavior (line-ending normalization, diff/merge drivers, marking generated/binary files, `linguist` language overrides). Sparse-checkout = materialize only part of a repo's tree in your working directory — useful in a large monorepo, less so in your small polyrepos.
 
 **Submodules vs subtrees (relevant for sharing your UI component library across repos).**
+
 - **Submodule** = a pointer to a specific commit of an external repo, stored as a link (`.gitmodules`). Precise version pinning; each consuming repo chooses when to update. Costs: extra commands, easy-to-break CI, a learning-curve tax; contributors "always forget."
 - **Subtree** = the external repo's code (and optionally history) copied into a subdirectory; no metadata file; invisible to anyone who just clones/pulls; you can edit in place and push back upstream. Costs: a new merge strategy to learn, more complex upstream contribution, larger repo.
 - **The advice most Git articles bury:** for Node.js/TypeScript projects, **a published (private) npm package is usually the better answer** than either — publish your shared UI library to a registry (or GitHub Packages) and version it with SemVer. Reach for a **subtree** if you want a self-contained copy with local edits and infrequent updates; reach for a **submodule** only if you need strict per-repo version pinning of independently-developed shared code.
@@ -209,6 +223,7 @@ The older template used `.env*.local` + `.env` instead of `.env*`.
 ## Recommendations
 
 **Stage 1 — Standardize a baseline across every repo (do this now):**
+
 1. Adopt **GitHub Flow**: `main` always deployable, short-lived `feat/…`, `fix/…` branches, PR per change.
 2. Add a **CI workflow** (`.github/workflows/ci.yml`) running lint + `tsc --noEmit` (after `next typegen`) + test + build on PR and on `push: [main]`.
 3. Turn on **branch protection** on `main`: require status checks + linear history; **leave "require approvals" OFF**; disable force-push.
@@ -227,12 +242,14 @@ The older template used `.env*.local` + `.env` instead of `.env*`.
 12. Extract the shared UI components into a **versioned private npm package** rather than duplicating.
 
 **Thresholds that would change the advice:**
+
 - **Consolidate into a Turborepo monorepo** *if* you find yourself making the same change across ≥2 repos in lockstep repeatedly, or shared-library version drift becomes painful. Below that, stay polyrepo.
 - **Move to trunk-based development** once CI is fast and trustworthy and you want higher throughput on the stable UI repos.
 - **Switch semantic-release → changesets** if any repo grows into a multi-package workspace.
 - **Add "require approvals"** only if/when you add a second contributor (and enable "require approval from someone other than last pusher").
 
 ## Caveats
+
 - **Rebase vs merge and squash vs merge are genuinely contested**; the recommendations above (rebase locally, squash to integrate) are a defensible default, not dogma. Some experienced devs deliberately merge everything and skip self-review on solo repos — that's a valid, lower-ceremony choice.
 - **`--force-with-lease` is safer but not foolproof**: a `git fetch` right before it silently weakens the guarantee. Use `git pull --rebase` to sync.
 - **Next.js's own env-file guidance changed** (Feb 2024) and older tutorials still show the pre-change advice to commit `.env`/`.env.development`/`.env.production`. Follow the current default: ignore all `.env*`.

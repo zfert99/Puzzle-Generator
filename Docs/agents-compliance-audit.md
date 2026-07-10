@@ -170,7 +170,7 @@ Legend: compliant (OK) · minor issue (WARN) · violation (FAIL)
 |---|---|---|
 | 1 — Security & correctness | ✅ Done | Stack/details removed from 500 response; `onRequestError()` added; benchmark made tier-representative (revealed the honest numbers below). |
 | 2 — Jest → Vitest | ✅ Done | Vitest + jsdom installed, Jest removed, `vitest.config.ts`/`vitest.setup.ts` added, pragmas swapped, internal-hook mock replaced with a `fetch`-boundary mock, scripts + `tsconfig` types updated. |
-| 3 — Test coverage | ✅ Mostly | Banned `pdf-generation/tests/*.js` removed; added colocated tests for `sudoku`, `generation.service`, `pdf.service`, `GridSizeSelector`, `DifficultyConfigurator`. `strategies/*`, `grid-utils`, `diggers` remain covered only indirectly (isolated tests need hand-crafted grids — follow-up). |
+| 3 — Test coverage | ✅ Done | Banned `pdf-generation/tests/*.js` removed; colocated tests added for `sudoku`, `generation.service`, `pdf.service`, `GridSizeSelector`, `DifficultyConfigurator`, and now `grid-utils`, `diggers`, and every strategy tier — see section 9. |
 | 4 — Engine bitmask/MRV | ✅ Done | HumanSolver candidates converted from `Set<number>[][]` to per-cell bitmasks (helpers: `candidateCount`/`hasCandidate`/`removeCandidate`/`candidateList`); `fillGrid` and `countSolutions` rewritten as bitmask + MRV backtracking. All 34 tests still pass. Benchmark: Basic 0.58→0.34 ms, Advanced 0.59→0.40 ms, Extreme ~35→~17 ms; hard 9×9 generation ~3.5 ms/puzzle. Basic/Extreme were still above the example thresholds after this batch — **superseded by the hot-path optimization in section 7 below**, which brought Basic to 0.11 ms. |
 | 5 — Documentation sync | ✅ Done | 6 `.md` mirrors created; stale `lib/puzzle-engine/`/Windows paths fixed; roadmap/README status + Extreme feature; Git docs renamed to kebab-case; JSDoc added; `.markdownlint.json` added. |
 | 6 — CI security scanning | ✅ Done | `.github/` with CodeQL, Dependabot, and an `npm audit` CI gate. |
@@ -243,20 +243,41 @@ puzzles that genuinely require extreme strategies. The Phase 1 roadmap target of
   in a real browser. Vitest's `include` is scoped to `src/**`, so it does not pick up
   the E2E specs.
 
+### 9 — Remaining test coverage + markdown lint
+
+- **Isolated strategy / engine-utility tests** added (closing the Batch 3 gap):
+  - `grid-utils.test.ts` — `popcount`, `isValid`, `createEmptyGrid`, `copyGrid`,
+    `shuffle`, and `fillGrid` producing valid complete 4×4/6×6/9×9 solutions.
+  - `diggers.test.ts` — `countSolutions` uniqueness (1 for a complete grid / a
+    generated puzzle, ≥2 for an under-constrained grid; no caller-grid mutation).
+  - `strategies/basic.test.ts` — **white-box, deterministic** unit tests that set
+    candidates directly to isolate Naked Single, Hidden Single, Naked Pair, and
+    Pointing Pairs.
+  - `strategies/advanced.test.ts` — a deterministic **X-Wing** white-box test, plus a
+    soundness+completeness sweep over generated Expert puzzles.
+  - `strategies/extreme.test.ts` — soundness (solve == solution) and **necessity**
+    (advanced tier cannot solve an extreme puzzle) over generated Extreme puzzles.
+  - Generation-based assertions were made flake-proof (deterministic where possible;
+    generous search caps otherwise) — verified stable across repeated runs.
+- **Markdown lint — clean.** Ran `markdownlint-cli --fix` across the docs (cosmetic
+  bullet-style/blank-line fixes) and hand-fixed the few structural issues (a missing
+  code-fence language and table caption lines mis-parsed as table rows in the two
+  `git-github-best-practices*.md` files). The `Docs/research/*` files were read-only
+  (mode 0400); they were temporarily made writable and **restored to 0400** afterward.
+  `markdownlint-cli` now reports **zero errors** repo-wide, including AGENTS.md.
+
 ## Verification (final state)
 
-- `npx tsc --noEmit` clean · `npm run lint` clean · `npx vitest run` **34/34** ·
-  `npm run test:e2e` **2/2** (Chromium).
+- `npx tsc --noEmit` clean · `npm run lint` clean · `npx vitest run` **58/58**
+  (13 files) · `npm run test:e2e` **2/2** (Chromium) ·
+  `markdownlint-cli "**/*.md"` **0 errors**.
 
 ### Follow-ups still open
 
-- **Isolated strategy tests** for `strategies/*`, `grid-utils`, `diggers` — covered
-  indirectly today; hand-crafted-grid unit tests remain a follow-up.
-- **Extreme tier performance — closed.** Averages ~10 ms/solve with strength provably
-  unchanged; all three tiers now meet the AGENTS.md example thresholds. The hardest
-  pools can still edge marginally over 10 ms, but this is considered good enough and
-  is not being pursued further. (A hard guarantee would need reusing ALS state across
-  deduction iterations rather than re-enumerating at each stall — noted only as a
-  theoretical next step, not planned work.)
-- **`Docs/research/*` markdown** bullet-style/blank-line lint issues — these files
-  are the user's imported prose; auto-fix with `npx markdownlint-cli --fix` when ready.
+- **Extreme tier — considered closed.** Averages ~10 ms/solve with strength provably
+  unchanged; all three tiers meet the AGENTS.md example thresholds. The hardest pools
+  can still edge marginally over 10 ms; a hard guarantee would need reusing ALS state
+  across deduction iterations rather than re-enumerating at each stall — noted as a
+  theoretical next step, not planned work.
+
+_All other audit follow-ups have been completed._
