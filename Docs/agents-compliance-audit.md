@@ -252,9 +252,11 @@ puzzles that genuinely require extreme strategies. The Phase 1 roadmap target of
 
 - **Isolated strategy tests** for `strategies/*`, `grid-utils`, `diggers` — covered
   indirectly today; hand-crafted-grid unit tests remain a follow-up.
-- **Extreme tier on the hardest pools** occasionally edges just over 10 ms. Getting a
-  hard guarantee would need a further structural change (e.g. reusing ALS state across
-  deduction iterations rather than re-enumerating each stall); the current per-call
-  precomputation already brought the average to ~10 ms with strength unchanged.
+- **Extreme tier performance — closed.** Averages ~10 ms/solve with strength provably
+  unchanged; all three tiers now meet the AGENTS.md example thresholds. The hardest
+  pools can still edge marginally over 10 ms, but this is considered good enough and
+  is not being pursued further. (A hard guarantee would need reusing ALS state across
+  deduction iterations rather than re-enumerating at each stall — noted only as a
+  theoretical next step, not planned work.)
 - **`Docs/research/*` markdown** bullet-style/blank-line lint issues — these files
   are the user's imported prose; auto-fix with `npx markdownlint-cli --fix` when ready.
