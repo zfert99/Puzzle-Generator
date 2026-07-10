@@ -29,6 +29,7 @@ export interface BoardState {
   selectCell: (r: number, c: number) => void;
   inputDigit: (digit: number) => void;
   clearCell: () => void;
+  hint: () => void;
   togglePencilMode: () => void;
   toggleRealTimeErrors: () => void;
   tick: () => void;
@@ -140,6 +141,38 @@ export const useBoardStore = create<BoardState>()(
         nextGrid[r][c] = 0;
         nextCandidates[r][c] = 0;
         set({ grid: nextGrid, candidates: nextCandidates });
+      },
+
+      hint: () => {
+        const { status, grid, solution, givens, selectedCell, candidates, peers, config } = get();
+        if (status !== 'playing') return;
+
+        // Prefer the selected empty cell; otherwise reveal the first empty cell.
+        const isEditableEmpty = (r: number, c: number) => grid[r][c] === 0 && !givens[r][c];
+        let target: { r: number; c: number } | null = null;
+        if (selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c)) {
+          target = selectedCell;
+        } else {
+          for (let r = 0; r < config.size && !target; r++) {
+            for (let c = 0; c < config.size; c++) {
+              if (isEditableEmpty(r, c)) { target = { r, c }; break; }
+            }
+          }
+        }
+        if (!target) return;
+
+        const { r, c } = target;
+        const value = solution[r][c];
+        const nextGrid = grid.map(row => [...row]);
+        const nextCandidates = candidates.map(row => [...row]);
+        nextGrid[r][c] = value;
+        nextCandidates[r][c] = 0;
+        const bit = ~(1 << (value - 1));
+        for (const peer of peers[r * config.size + c]) {
+          nextCandidates[Math.floor(peer / config.size)][peer % config.size] &= bit;
+        }
+        const solved = nextGrid.every((row, rr) => row.every((v, cc) => v === solution[rr][cc]));
+        set({ grid: nextGrid, candidates: nextCandidates, selectedCell: target, status: solved ? 'solved' : 'playing' });
       },
 
       togglePencilMode: () => set(state => ({ pencilMode: !state.pencilMode })),

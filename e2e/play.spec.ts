@@ -34,4 +34,18 @@ test.describe('Interactive play', () => {
     await expect(page.getByRole('button', { name: 'expert' })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'extreme' })).toBeDisabled();
   });
+
+  test('solving via Hint triggers the celebration', async ({ page }) => {
+    await page.goto('/play');
+    await page.getByRole('button', { name: '4×4' }).click();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+    await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible();
+
+    // A 4x4 has at most 16 holes; each Hint fills one, extras are no-ops once solved.
+    const hintButton = page.getByRole('button', { name: /hint/i });
+    for (let i = 0; i < 16; i++) await hintButton.click();
+
+    await expect(page.getByText(/solved/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /new puzzle/i })).toBeVisible();
+  });
 });

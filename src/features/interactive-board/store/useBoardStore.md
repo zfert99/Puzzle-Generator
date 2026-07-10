@@ -39,6 +39,12 @@ inputDigit(digit):
 
 clearCell(): empty the selected non-given cell (value + candidates).
 
+hint():
+  reveal one correct cell — the selected empty cell if there is one, else the first
+  empty cell. Place its value from the solution (stripping peers' candidates, same as
+  a normal placement) and re-check for completion. (A strategy-aware "why" hint is a
+  Phase 5 concern; this reveal-a-cell hint keeps the heavy solver out of the client.)
+
 togglePencilMode / toggleRealTimeErrors: flip the respective flag.
 
 tick(): +1 second, but only while playing.

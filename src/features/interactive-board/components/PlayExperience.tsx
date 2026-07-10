@@ -110,8 +110,11 @@ export default function PlayExperience() {
       <Numpad />
 
       {status === 'solved' && (
-        <div role="status" className="mt-6 text-center">
-          <p className="text-2xl font-bold text-green-500 mb-3">🎉 Solved!</p>
+        <div role="status" className="celebrate mt-6 text-center">
+          <p className="text-5xl mb-2" aria-hidden="true">
+            <span className="celebrate-emoji">🎉</span>
+          </p>
+          <p className="text-2xl font-bold text-green-500 mb-3">Solved!</p>
           <button type="button" onClick={() => configure()} className="btn-primary">
             New Puzzle
           </button>

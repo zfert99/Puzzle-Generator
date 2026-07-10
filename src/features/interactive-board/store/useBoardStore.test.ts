@@ -76,6 +76,29 @@ describe('placing digits', () => {
   });
 });
 
+describe('hint', () => {
+  it('reveals the correct value for the selected empty cell', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 0);
+    store.hint();
+    expect(useBoardStore.getState().grid[0][0]).toBe(SOLUTION[0][0]); // 1
+  });
+
+  it('fills the first empty cell when nothing is selected', () => {
+    useBoardStore.getState().hint();
+    const s = useBoardStore.getState();
+    // (0,0) is the first empty cell in row-major order.
+    expect(s.grid[0][0]).toBe(SOLUTION[0][0]);
+  });
+
+  it('can solve the puzzle when applied to every hole', () => {
+    const store = useBoardStore.getState();
+    store.hint();
+    store.hint();
+    expect(useBoardStore.getState().status).toBe('solved');
+  });
+});
+
 describe('undo/redo (zundo)', () => {
   it('reverts a placement but not the timer', () => {
     const store = useBoardStore.getState();

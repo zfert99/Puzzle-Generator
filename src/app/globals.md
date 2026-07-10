@@ -81,3 +81,13 @@ By using these variables everywhere else in our CSS, our entire site instantly s
 3. Add padding and softly rounded corners.
 4. Make the input take up 100% of the width available to it.
 5. **Focus State:** When the user clicks into the box (`:focus`), remove the ugly default browser outline and highlight the border with our `--accent` color. Add a smooth transition so the color change looks elegant.
+
+### Completion Celebration (`.celebrate`, `.celebrate-emoji`)
+
+**Goal:** Give the interactive board a small reward moment when a puzzle is solved.
+**Steps:**
+
+1. Define a `pop-in` keyframe that scales an element up from small/transparent, slightly overshoots, then settles — a satisfying "pop".
+2. `.celebrate` runs `pop-in` once (used on the whole "Solved!" panel).
+3. `.celebrate-emoji` runs `pop-in` once and then a gentle infinite `bounce-soft`, so the 🎉 keeps bobbing.
+4. **Accessibility:** under `@media (prefers-reduced-motion: reduce)`, disable both animations so motion-sensitive users get a static celebration.
