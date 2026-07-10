@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import PuzzleForm from '@/features/puzzle-configuration/components/PuzzleForm';
 
 /**
@@ -36,6 +37,14 @@ export default function Home() {
         as a fast, statically renderable server component.
       */}
       <PuzzleForm />
+
+      {/* Cross-link to the interactive play mode (Phase 3). */}
+      <p className="mt-8 text-sm text-gray-600 dark:text-gray-400">
+        Prefer to solve in your browser?{' '}
+        <Link href="/play" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          Play online →
+        </Link>
+      </p>
 
       {/* Simple, unobtrusive footer pushed to the bottom */}
       <footer className="mt-20 text-sm text-gray-500">

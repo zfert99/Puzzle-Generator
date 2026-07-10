@@ -1,0 +1,37 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * End-to-end coverage of the interactive board flow (Phase 3): navigate in, generate
+ * a real puzzle via /api/puzzle, and interact with the board in a real browser.
+ */
+test.describe('Interactive play', () => {
+  test('links from the landing page into play mode', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('link', { name: /play online/i }).click();
+    await expect(page).toHaveURL(/\/play$/);
+    await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
+  });
+
+  test('generates a 4x4 board and accepts a digit', async ({ page }) => {
+    await page.goto('/play');
+
+    await page.getByRole('button', { name: '4×4' }).click();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+
+    const grid = page.getByRole('grid', { name: /sudoku board/i });
+    await expect(grid).toBeVisible();
+    await expect(grid.getByRole('gridcell')).toHaveCount(16);
+
+    // Select an empty cell and enter a digit; it must appear on the board.
+    await grid.getByRole('gridcell', { name: /^Empty/ }).first().click();
+    await page.keyboard.press('1');
+    await expect(grid.getByRole('gridcell', { name: /value 1/i }).first()).toBeVisible();
+  });
+
+  test('disables Expert/Extreme for mini grids', async ({ page }) => {
+    await page.goto('/play');
+    await page.getByRole('button', { name: '4×4' }).click();
+    await expect(page.getByRole('button', { name: 'expert' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'extreme' })).toBeDisabled();
+  });
+});
