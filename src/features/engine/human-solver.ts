@@ -354,6 +354,21 @@ export class HumanSolver {
     return this.filledCount === this.totalCells;
   }
 
+  /**
+   * Runs the deduction loop until the puzzle is solved or no further progress can
+   * be made. Strategies are attempted cheapest-first; on any successful
+   * elimination or placement the loop restarts from the cheapest strategy
+   * (`continue`), so simple ripple effects are always exhausted before an
+   * expensive strategy is tried again.
+   *
+   * @param options.maxTier Caps how expensive the solver is allowed to get:
+   *   `'basic'` stops after singles/pairs/pointing-pairs; `'advanced'` adds
+   *   X-Wing/Swordfish/Y-Wing/XYZ-Wing; `'extreme'` (default) adds W-Wing/ALS-XZ/AIC.
+   *   Advanced and extreme strategies are 9x9-only. Capping the tier is what lets
+   *   the generator classify a puzzle by the hardest strategy it truly requires.
+   * @returns Whether the puzzle was fully solved, and whether it required any
+   *   advanced or extreme strategies (used to rate difficulty during generation).
+   */
   public solve(options: { maxTier?: 'basic' | 'advanced' | 'extreme' } = {}): { solved: boolean, requiresAdvanced: boolean, requiresExtreme: boolean } {
     let changed = true;
 
@@ -392,12 +407,25 @@ export class HumanSolver {
   }
 }
 
+/**
+ * True only if the grid is fully solvable with logical deduction up to the
+ * advanced tier AND genuinely needs at least one advanced strategy. The
+ * "requires advanced" clause is what makes a puzzle *rate* as Expert rather than
+ * merely being solvable — an easier puzzle that happens to be solvable at the
+ * advanced cap would return false here because it never needed an advanced step.
+ */
 export function canHumanSolveExpert(grid: number[][]): boolean {
   const solver = new HumanSolver(grid);
   const result = solver.solve({ maxTier: 'advanced' });
   return result.solved && result.requiresAdvanced;
 }
 
+/**
+ * True only if the grid is fully solvable at the extreme tier AND genuinely
+ * requires at least one extreme strategy (W-Wing, ALS-XZ, or AIC). Used by the
+ * generator to accept a dug grid as a true Extreme puzzle. See
+ * {@link canHumanSolveExpert} for why the "requires" clause matters.
+ */
 export function canHumanSolveExtreme(grid: number[][]): boolean {
   const solver = new HumanSolver(grid);
   const result = solver.solve({ maxTier: 'extreme' });

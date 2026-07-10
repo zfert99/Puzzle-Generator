@@ -1,0 +1,21 @@
+# Dependabot keeps dependencies patched automatically (SCA — Software Composition
+# Analysis). Free on public and private repos. See AGENTS.md Section 6,
+# "CI Security Scanning".
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # Batch minor/patch bumps into a single PR to reduce review noise.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

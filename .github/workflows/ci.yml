@@ -1,0 +1,55 @@
+# Continuous integration: lint, tests, and a dependency vulnerability audit on
+# every push and PR to main. `npm audit` is the zero-cost SCA baseline called for
+# in AGENTS.md Section 6, "CI Security Scanning".
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Markdown lint
+        run: npx markdownlint-cli --ignore node_modules "**/*.md"
+
+      - name: Unit tests
+        run: npm test
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fail the job on any high-or-critical severity advisory in the dependency
+      # tree. Lower severities are surfaced by Dependabot PRs instead of blocking.
+      - name: npm audit (high+)
+        run: npm audit --audit-level=high

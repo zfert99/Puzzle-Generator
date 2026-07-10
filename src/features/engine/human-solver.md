@@ -1,6 +1,6 @@
 # Human Solver: Plain English Pseudocode
 
-This document is a thorough, line-by-line pseudocode companion to [`human-solver.ts`](file:///Users/morp/Documents/GitHub/Puzzle-Generator/lib/puzzle-engine/human-solver.ts). Unlike the standard `sudoku.ts` backtracking solver which uses brute-force guessing, the `HumanSolver` uses pure logical deduction — guaranteeing that any puzzle it solves can be solved by a human without guessing.
+This document is the pseudocode companion to [`human-solver.ts`](./human-solver.ts). Unlike the standard `sudoku.ts` backtracking solver which uses brute-force guessing, the `HumanSolver` uses pure logical deduction — guaranteeing that any puzzle it solves can be solved by a human without guessing.
 
 ---
 
@@ -16,6 +16,17 @@ CandidateCell  = { r, c, cands[] }     // A Cell plus its sorted list of remaini
 ## Class: HumanSolver
 
 ### Properties
+
+The solver's state is deliberately split into two mutable structures that evolve
+together — `grid` (what is placed) and `candidates` (what remains possible) — plus
+a set of immutable geometry fields derived once from the grid's length. Deriving
+`size`/`boxWidth`/`boxHeight` from the grid rather than hard-coding 9 is what lets
+the exact same engine solve 4x4, 6x6, and 9x9 boards without branching. The
+`filledCount` counter exists purely so `isSolved()` is O(1) instead of rescanning
+the whole grid on every deduction loop — a hot path run thousands of times per
+generated puzzle. The `usedAdvanced`/`usedExtreme` flags are how a solve run
+reports back *which tier of difficulty the puzzle actually demanded*, which is the
+signal the generator uses to rate difficulty.
 
 ```text
 grid[][]           : NxN array of numbers (0 = empty)

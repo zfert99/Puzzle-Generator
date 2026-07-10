@@ -10,7 +10,7 @@ This document explains the core logic behind our `benchmark.ts` script. It break
 
 **Steps:**
 
-1. Import the `generateSudoku` function from our puzzle engine (`../lib/puzzle-engine/sudoku.ts`).
+1. Import the `generateSudoku` function from our puzzle engine (`../sudoku.ts`).
 
 ---
 

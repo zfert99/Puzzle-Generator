@@ -6,7 +6,7 @@ Unlike typical brute-force generators, this project features a custom-built, pur
 
 ## Features
 
-- **Custom Puzzle Books**: Choose exactly how many Easy, Medium, Hard, and Expert puzzles you want in your book.
+- **Custom Puzzle Books**: Choose exactly how many Easy, Medium, Hard, Expert, and Extreme puzzles you want in your book (plus 4×4 and 6×6 mini grids).
 - **PDF Generation**: Instantly compiles your selected puzzles into a clean, print-ready PDF.
 - **Logical Solver Engine (`HumanSolver`)**: An advanced deduction engine capable of performing sophisticated Sudoku strategies:
   - Naked Singles & Hidden Singles
@@ -30,7 +30,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Testing & Benchmarks
 
-The project includes a robust Jest test suite and benchmarking tools to measure the performance of the logical solver engine.
+The project includes a robust Vitest test suite and benchmarking tools to measure the performance of the logical solver engine.
 
 ### Run Tests
 
@@ -71,7 +71,7 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 | :---: | --- | --- | :---: |
 | **1** | **Extreme Difficulty** 💀🔥 — W-Wing, ALS, AICs | 🧮 Engine | ✅ Done |
 | **2** | **Mini Puzzles** — 4×4 & 6×6 grids | 🧮 Engine + 🎨 UI | ✅ Done |
-| **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | 📋 Planned |
+| **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | 🚧 In Progress |
 | **4** | **Dailies & Leaderboards** — DB, Auth, Speed Runs | 🗄️ Infrastructure | 📋 Planned |
 | **5** | **Strategy Courses** — Visual solver teaching | 🎨 UI + 🧮 Engine | 📋 Planned |
 
@@ -82,4 +82,4 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 - Next.js (App Router)
 - React
 - TypeScript
-- Jest (Testing)
+- Vitest (Testing)

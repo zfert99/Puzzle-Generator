@@ -3,19 +3,27 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { generateSudoku } from '../sudoku';
+import { generateSudoku, Difficulty } from '../sudoku';
 
 /**
- * We dynamically generate a pool of unique expert puzzles BEFORE the timer starts.
+ * We dynamically generate a pool of unique puzzles BEFORE the timer starts.
  * This prevents the V8 JavaScript engine from using Just-In-Time (JIT) compilation
  * to cache object shapes or perform dead-code elimination on a single static grid,
  * which would result in deceptively fast microbenchmark times.
+ *
+ * Crucially, each tier is benchmarked against a puzzle pool of a REPRESENTATIVE
+ * difficulty. A prior version measured every tier against expert-only puzzles,
+ * which made the "extreme" tier meaningless: expert puzzles are fully solvable by
+ * advanced strategies, so the expensive extreme strategies (W-Wing, ALS-XZ, AIC)
+ * were never actually invoked and the tier reported deceptively fast times. Giving
+ * each tier puzzles that genuinely require that tier's strategies is what makes the
+ * per-tier thresholds (Basic < 0.3ms, Extreme < 10ms) meaningful.
  */
-function generatePuzzlePool(size: number) {
-  console.log(`Pre-generating pool of ${size} unique expert puzzles to thwart V8 JIT caching...`);
+function generatePuzzlePool(size: number, difficulty: Difficulty) {
+  console.log(`Pre-generating pool of ${size} unique ${difficulty} puzzles to thwart V8 JIT caching...`);
   const pool = [];
   for (let i = 0; i < size; i++) {
-    pool.push(generateSudoku('expert').grid);
+    pool.push(generateSudoku(difficulty).grid);
   }
   return pool;
 }
@@ -32,9 +40,9 @@ async function main() {
   console.log('Running HumanSolver benchmarks across difficulty tiers...\n');
 
   const benchmarks = [
-    { name: 'HumanSolver Basic', maxTier: 'basic' as const, iterations: 5000 },
-    { name: 'HumanSolver Advanced', maxTier: 'advanced' as const, iterations: 5000 },
-    { name: 'HumanSolver Extreme', maxTier: 'extreme' as const, iterations: 1000 }
+    { name: 'HumanSolver Basic', maxTier: 'basic' as const, difficulty: 'hard' as const, poolSize: 50, iterations: 5000 },
+    { name: 'HumanSolver Advanced', maxTier: 'advanced' as const, difficulty: 'expert' as const, poolSize: 50, iterations: 5000 },
+    { name: 'HumanSolver Extreme', maxTier: 'extreme' as const, difficulty: 'extreme' as const, poolSize: 10, iterations: 1000 }
   ];
 
   const logEntries: string[] = [];
@@ -46,9 +54,11 @@ async function main() {
   }
   const timestamp = new Date().toISOString();
 
-  const puzzlePool = generatePuzzlePool(50);
+  for (const { name, maxTier, difficulty, poolSize, iterations } of benchmarks) {
+    // Each tier gets a fresh pool of puzzles at a difficulty that genuinely
+    // exercises that tier's strategies (see generatePuzzlePool docstring).
+    const puzzlePool = generatePuzzlePool(poolSize, difficulty);
 
-  for (const { name, maxTier, iterations } of benchmarks) {
     console.log(`Running ${name} (${maxTier} tier) for ${iterations} iterations...`);
 
     const start = performance.now();

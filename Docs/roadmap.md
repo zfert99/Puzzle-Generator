@@ -28,8 +28,8 @@ The app is a **stateless PDF pipeline**. The user picks puzzle counts, the serve
 | **Engine** | `HumanSolver` — Naked/Hidden Singles & Pairs, Pointing Pairs, X-Wing, Swordfish, Y-Wing, XYZ-Wing, W-Wing, ALS-XZ, AICs | ✅ Shipped |
 | **API** | `/api/generate` — accepts difficulty counts (including extreme), returns PDF stream | ✅ Shipped |
 | **Frontend** | `PuzzleForm` — glassmorphism UI with difficulty selectors | ✅ Shipped |
-| **PDF** | `generator.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
-| **Testing** | Jest suite + benchmark scripts with auto-logging | ✅ Shipped |
+| **PDF** | `pdf.service.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
+| **Testing** | Vitest suite + benchmark scripts with auto-logging | ✅ Shipped |
 
 ---
 
@@ -42,8 +42,8 @@ This roadmap is organized into **three parallel tracks** that correspond to the 
 Expanding the algorithmic solver and generator to support new puzzle types and extreme difficulty levels.
 
 **Key files:**
-- [sudoku.ts](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/lib/puzzle-engine/sudoku.ts)
-- [human-solver.ts](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/lib/puzzle-engine/human-solver.ts)
+- [sudoku.ts](../src/features/engine/sudoku.ts)
+- [human-solver.ts](../src/features/engine/human-solver.ts)
 <!-- slide -->
 ### 🗄️ Track B — Backend Infrastructure
 Introducing state, persistence, authentication, and scheduled jobs. Transforming the app from stateless to stateful.
@@ -57,8 +57,8 @@ Introducing state, persistence, authentication, and scheduled jobs. Transforming
 Building interactive play surfaces, visual strategy courses, and real-time competitive features.
 
 **Key files:**
-- [page.tsx](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/app/page.tsx)
-- [PuzzleForm.tsx](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/components/PuzzleForm.tsx)
+- [page.tsx](../src/app/page.tsx)
+- [PuzzleForm.tsx](../src/features/puzzle-configuration/components/PuzzleForm.tsx)
 ````
 
 ---
@@ -71,7 +71,7 @@ Building interactive play surfaces, visual strategy courses, and real-time compe
 > **Estimated effort:** Large (1–2 weeks)
 > **Prerequisite:** None — this is the next step.
 
-This phase is already designed in the [extreme_implementation_plan.md](file:///c:/Users/user/Documents/BiscuittArcade/Puzzle-Generator/Docs/archive/extreme-implementation-plan.md). It extends the `HumanSolver` with three elite-tier strategies and adds a new difficulty level to the entire pipeline.
+This phase is already designed in the [extreme-implementation-plan.md](archive/extreme-implementation-plan.md). It extends the `HumanSolver` with three elite-tier strategies and adds a new difficulty level to the entire pipeline.
 
 ### Deliverables
 
@@ -164,6 +164,7 @@ This is the **lowest-hanging fruit** for new puzzle variety. The core backtracki
 
 > **Tracks:** 🎨 Frontend, 🗄️ Infrastructure
 > **Branch:** `feature/interactive-board`
+> **Status:** 🚧 In Progress
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** None — but Phase 4 and 5 build on top of this.
 

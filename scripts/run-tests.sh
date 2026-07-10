@@ -16,11 +16,11 @@ echo "Running tests..."
 echo "Results will be saved to: ${LOGFILE}"
 echo ""
 
-# Run Jest with verbose output.
+# Run Vitest once (non-watch) with the default reporter.
 # 'tee' prints to the terminal AND writes to the log file at the same time.
-npx jest --verbose 2>&1 | tee "$LOGFILE"
+npx vitest run --reporter=verbose 2>&1 | tee "$LOGFILE"
 
-# Capture the exit code from Jest (not from tee)
+# Capture the exit code from Vitest (not from tee)
 EXIT_CODE=${PIPESTATUS[0]}
 
 # Append a footer to the log file

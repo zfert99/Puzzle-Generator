@@ -117,11 +117,12 @@ export async function POST(req: NextRequest) {
       'Failed to generate PDF'
     );
     
-    // Return a 500 Internal Server Error with details
+    // Return a generic 500 to the client. The full error message and stack are
+    // captured server-side by logger.error above; leaking them in the HTTP
+    // response is an information-disclosure weakness (OWASP Security
+    // Misconfiguration) — see AGENTS.md Section 6.
     return NextResponse.json({
       error: 'Internal server error during PDF generation',
-      details: err.message,
-      stack: err.stack
     }, { status: 500 });
   }
 }

@@ -1,77 +1,78 @@
-/** @jest-environment jsdom */
-import React from 'react';
+// @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PuzzleForm from './PuzzleForm';
-import { usePuzzleGeneration } from '../hooks/usePuzzleGeneration';
 
-// Mock the hook
-jest.mock('../hooks/usePuzzleGeneration');
-const mockUsePuzzleGeneration = usePuzzleGeneration as jest.MockedFunction<typeof usePuzzleGeneration>;
-
+/**
+ * These tests drive the REAL usePuzzleGeneration hook and mock only `fetch` —
+ * the application's network boundary. AGENTS.md Section 4 ("Mocking Boundaries")
+ * forbids mocking internal modules like the hook itself; doing so would let the
+ * hook's real behaviour (validation, loading state, error handling) rot untested.
+ */
 describe('PuzzleForm Component', () => {
-  const mockGenerate = jest.fn();
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockUsePuzzleGeneration.mockReturnValue({
-      loading: false,
-      error: '',
-      generate: mockGenerate,
-    });
+    // jsdom does not implement object-URL APIs used by the download path.
+    window.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    window.URL.revokeObjectURL = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('renders correctly with default values', () => {
     render(<PuzzleForm />);
     expect(screen.getByRole('heading', { name: /sudoku configuration/i })).toBeInTheDocument();
-    
-    // Check if the generate button is present
     expect(screen.getByRole('button', { name: /generate pdf/i })).toBeInTheDocument();
   });
 
-  it('calls generate with correct configuration when submitted', async () => {
+  it('POSTs the correct configuration to /api/generate when submitted', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['%PDF'], { type: 'application/pdf' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
     const user = userEvent.setup();
     render(<PuzzleForm />);
 
-    // In a real app we'd interact with sliders here, but let's just test submission with default counts
+    await user.click(screen.getByRole('button', { name: /generate pdf/i }));
+
     // Defaults: gridSize=9, easy=2, medium=2, hard=2, expert=0, extreme=0
-    const generateBtn = screen.getByRole('button', { name: /generate pdf/i });
-    await user.click(generateBtn);
-
-    expect(mockGenerate).toHaveBeenCalledTimes(1);
-    expect(mockGenerate).toHaveBeenCalledWith({
-      gridSize: 9,
-      easy: 2,
-      medium: 2,
-      hard: 2,
-      expert: 0,
-      extreme: 0
-    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/generate', expect.objectContaining({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0, gridSize: 9 }),
+    }));
   });
 
-  it('displays loading state correctly', () => {
-    mockUsePuzzleGeneration.mockReturnValue({
-      loading: true,
-      error: '',
-      generate: mockGenerate,
-    });
+  it('shows the loading state while a request is in flight', async () => {
+    // A fetch that never resolves keeps the hook in its loading state.
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
 
+    const user = userEvent.setup();
     render(<PuzzleForm />);
-    
-    const generateBtn = screen.getByRole('button', { name: /generating/i });
-    expect(generateBtn).toBeDisabled();
-    expect(generateBtn).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /generate pdf/i }));
+
+    const busyButton = await screen.findByRole('button', { name: /generating/i });
+    expect(busyButton).toBeDisabled();
   });
 
-  it('displays error message when error is present', () => {
-    mockUsePuzzleGeneration.mockReturnValue({
-      loading: false,
-      error: 'Too many puzzles.',
-      generate: mockGenerate,
-    });
+  it('displays an error message when the server rejects the request', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Too many puzzles.' }),
+    }));
 
+    const user = userEvent.setup();
     render(<PuzzleForm />);
-    
-    expect(screen.getByText('Too many puzzles.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /generate pdf/i }));
+
+    expect(await screen.findByText('Too many puzzles.')).toBeInTheDocument();
   });
 });

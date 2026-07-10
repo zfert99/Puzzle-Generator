@@ -78,5 +78,11 @@ This document explains the core logic behind our `route.ts` API endpoint for the
 
 1. The entire process (Steps 1-5) is wrapped in a `try...catch` block.
 2. If any function throws an error, the code immediately jumps to the `catch` block.
-3. Log the error to the server's console so developers can investigate.
-4. Send a `500 Internal Server Error` response back to the frontend, including the error details and stack trace.
+3. Log the full error message and stack trace **server-side only** via the
+   structured Pino logger (`event: 'generation_failure'`), so developers can
+   investigate from the logs.
+4. Send a **generic** `500 Internal Server Error` response to the frontend — it
+   contains only a safe, non-specific message. We deliberately do **not** include
+   the error message or stack trace in the HTTP response: leaking internals to the
+   client is an information-disclosure weakness (OWASP Security Misconfiguration,
+   AGENTS.md Section 6). The stack lives in the server logs, never on the wire.

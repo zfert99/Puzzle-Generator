@@ -1,4 +1,4 @@
-/** @jest-environment node */
+// @vitest-environment node
 import { HumanSolver } from './human-solver';
 import { generateSudoku } from './sudoku';
 
