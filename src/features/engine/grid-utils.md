@@ -47,21 +47,27 @@ For each index i from the end of the array down to 1:
 Return the shuffled array.
 ```
 
+## `popcount(mask)`
+
+**Why:** Counts the set bits in a candidate bitmask (Brian Kernighan's algorithm).
+It is the metric the MRV heuristic minimises — "how many digits are still legal for
+this cell?" — and is shared by `fillGrid` and `countSolutions`.
+
 ## `fillGrid(grid, config)`
 
-**Why:** We generate puzzles by starting with a completely solved, valid grid, and then digging holes into it. This function uses backtracking to randomly traverse the empty grid and fill it with valid numbers.
+**Why:** We generate puzzles by starting with a completely solved, valid grid, and then digging holes into it. It uses **bitmask-based backtracking with a Minimum Remaining Values (MRV) heuristic**. The old version filled cells in index order and rescanned the whole row/column/box (`isValid`) for every candidate — O(size) per test. Instead we keep a used-digit bitmask per row, column, and box (so each legality test is a single O(1) bit-AND) and always branch on the empty cell with the FEWEST legal digits first. Most-constrained-first collapses the search tree, and this is the representation AGENTS.md Section 1 mandates for the generator core.
 
 ```text
-For every cell in the grid (using a flat index to simplify the loop):
-  If the cell is empty:
-    Generate an array of numbers from 1 to the maximum allowed number.
-    Shuffle the array to ensure the solution is random.
-    For each number in the shuffled array:
-      If placing the number is valid:
-        Place the number in the cell.
-        Recursively call fillGrid to attempt to fill the rest of the puzzle.
-        If the recursive call succeeds, return true.
-        Otherwise (backtrack): reset the cell to empty (0).
-    If no numbers worked, return false (dead end).
-If we checked every cell and none were empty, the grid is full; return true.
+Seed rowMask/colMask/boxMask from any pre-placed clues.
+recurse():
+  MRV scan: over all empty cells, compute allowed = full & ~(rowMask | colMask | boxMask).
+    If any cell has 0 allowed digits → dead end, return false.
+    Track the cell with the fewest allowed digits; a cell with exactly 1 is unbeatable, stop scanning.
+  If there were no empty cells → the grid is full, return true.
+  Extract the chosen cell's allowed digits from its mask and shuffle them (keeps solutions random).
+  For each candidate digit:
+    Place it; set the bit in rowMask/colMask/boxMask.
+    If recurse() succeeds, return true.
+    Otherwise backtrack: clear the cell and the three mask bits.
+  Return false (dead end).
 ```

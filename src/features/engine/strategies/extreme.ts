@@ -68,8 +68,8 @@ export function applyALSXZ(solver: HumanSolver): boolean {
       const excludeCells = [...alsA.cells, ...alsB.cells];
 
       for (const x of commonCands) {
-        const xInA = alsA.cells.filter((c: Cell) => solver.candidates[c.r][c.c].has(x));
-        const xInB = alsB.cells.filter((c: Cell) => solver.candidates[c.r][c.c].has(x));
+        const xInA = alsA.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, x));
+        const xInB = alsB.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, x));
 
         if (xInA.length === 0 || xInB.length === 0) continue;
 
@@ -79,8 +79,8 @@ export function applyALSXZ(solver: HumanSolver): boolean {
         for (const z of commonCands) {
           if (z === x) continue;
 
-          const zInA = alsA.cells.filter((c: Cell) => solver.candidates[c.r][c.c].has(z));
-          const zInB = alsB.cells.filter((c: Cell) => solver.candidates[c.r][c.c].has(z));
+          const zInA = alsA.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, z));
+          const zInB = alsB.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, z));
 
           if (zInA.length === 0 || zInB.length === 0) continue;
 
@@ -122,7 +122,7 @@ export function applyAIC(solver: HumanSolver): boolean {
   for (let r = 0; r < solver.size; r++) {
     for (let c = 0; c < solver.size; c++) {
       if (solver.grid[r][c] !== 0) continue;
-      const cands = Array.from(solver.candidates[r][c]);
+      const cands = solver.candidateList(r, c);
 
       for (const num of cands) {
         allNodes.push(nodeKey(r, c, num));
@@ -208,20 +208,17 @@ export function applyAIC(solver: HumanSolver): boolean {
           } else if (startLinkType === 'weak' && lastLink === 'weak') {
             if (startParsed.num === endParsed.num &&
                 startCell.r === endCell.r && startCell.c === endCell.c) {
-              if (solver.candidates[startCell.r][startCell.c].has(startParsed.num)) {
-                solver.candidates[startCell.r][startCell.c].delete(startParsed.num);
+              if (solver.removeCandidate(startCell.r, startCell.c, startParsed.num)) {
                 return true;
               }
             }
 
             if (startParsed.num === endParsed.num && solver.sees(startCell, endCell)) {
               let elim = false;
-              if (solver.candidates[startCell.r][startCell.c].has(startParsed.num)) {
-                solver.candidates[startCell.r][startCell.c].delete(startParsed.num);
+              if (solver.removeCandidate(startCell.r, startCell.c, startParsed.num)) {
                 elim = true;
               }
-              if (solver.candidates[endCell.r][endCell.c].has(endParsed.num)) {
-                solver.candidates[endCell.r][endCell.c].delete(endParsed.num);
+              if (solver.removeCandidate(endCell.r, endCell.c, endParsed.num)) {
                 elim = true;
               }
               if (elim) return true;

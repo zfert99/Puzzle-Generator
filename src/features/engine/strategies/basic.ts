@@ -58,8 +58,8 @@ export function applyNakedPair(solver: HumanSolver): boolean {
         if (b1.r === b2.r) {
           for (let c = 0; c < solver.size; c++) {
             if (c !== b1.c && c !== b2.c && solver.grid[b1.r][c] === 0) {
-              if (solver.candidates[b1.r][c].has(cand1)) { solver.candidates[b1.r][c].delete(cand1); changed = true; }
-              if (solver.candidates[b1.r][c].has(cand2)) { solver.candidates[b1.r][c].delete(cand2); changed = true; }
+              if (solver.removeCandidate(b1.r, c, cand1)) changed = true;
+              if (solver.removeCandidate(b1.r, c, cand2)) changed = true;
             }
           }
         }
@@ -67,8 +67,8 @@ export function applyNakedPair(solver: HumanSolver): boolean {
         if (b1.c === b2.c) {
           for (let r = 0; r < solver.size; r++) {
             if (r !== b1.r && r !== b2.r && solver.grid[r][b1.c] === 0) {
-              if (solver.candidates[r][b1.c].has(cand1)) { solver.candidates[r][b1.c].delete(cand1); changed = true; }
-              if (solver.candidates[r][b1.c].has(cand2)) { solver.candidates[r][b1.c].delete(cand2); changed = true; }
+              if (solver.removeCandidate(r, b1.c, cand1)) changed = true;
+              if (solver.removeCandidate(r, b1.c, cand2)) changed = true;
             }
           }
         }
@@ -78,8 +78,8 @@ export function applyNakedPair(solver: HumanSolver): boolean {
           const b1Box = Math.floor(b1.r / solver.boxHeight) * boxesPerRow + Math.floor(b1.c / solver.boxWidth);
           for (const { r, c } of solver.getBoxCells(b1Box)) {
             if ((r !== b1.r || c !== b1.c) && (r !== b2.r || c !== b2.c) && solver.grid[r][c] === 0) {
-              if (solver.candidates[r][c].has(cand1)) { solver.candidates[r][c].delete(cand1); changed = true; }
-              if (solver.candidates[r][c].has(cand2)) { solver.candidates[r][c].delete(cand2); changed = true; }
+              if (solver.removeCandidate(r, c, cand1)) changed = true;
+              if (solver.removeCandidate(r, c, cand2)) changed = true;
             }
           }
         }
@@ -125,11 +125,10 @@ export function applyHiddenPair(solver: HumanSolver): boolean {
               candA.cells[1].r === candB.cells[1].r && candA.cells[1].c === candB.cells[1].c
             ) {
               for (const cell of candA.cells) {
-                const cellCandidates = solver.candidates[cell.r][cell.c];
-                if (cellCandidates.size > 2) {
-                  for (const c of Array.from(cellCandidates)) {
+                if (solver.candidateCount(cell.r, cell.c) > 2) {
+                  for (const c of solver.candidateList(cell.r, cell.c)) {
                     if (c !== candA.num && c !== candB.num) {
-                      cellCandidates.delete(c);
+                      solver.removeCandidate(cell.r, cell.c, c);
                       changed = true;
                     }
                   }
@@ -168,8 +167,7 @@ export function applyPointingPairs(solver: HumanSolver): boolean {
           const boxesPerRow = solver.size / solver.boxWidth;
           for (let c = 0; c < solver.size; c++) {
             if (Math.floor(c / solver.boxWidth) !== b % boxesPerRow) {
-              if (solver.candidates[r][c].has(num)) {
-                solver.candidates[r][c].delete(num);
+              if (solver.removeCandidate(r, c, num)) {
                 changed = true;
               }
             }
@@ -179,8 +177,7 @@ export function applyPointingPairs(solver: HumanSolver): boolean {
           const boxesPerRow = solver.size / solver.boxWidth;
           for (let r = 0; r < solver.size; r++) {
             if (Math.floor(r / solver.boxHeight) !== Math.floor(b / boxesPerRow)) {
-              if (solver.candidates[r][c].has(num)) {
-                solver.candidates[r][c].delete(num);
+              if (solver.removeCandidate(r, c, num)) {
                 changed = true;
               }
             }

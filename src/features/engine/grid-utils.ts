@@ -1,6 +1,20 @@
 import type { GridConfig } from './sudoku';
 
 /**
+ * Population count (number of set bits) via Brian Kernighan's algorithm. Used to
+ * measure how many digits are still legal for a cell (popcount over a candidate
+ * bitmask) — the metric the MRV heuristic minimises. See AGENTS.md Section 1.
+ */
+export function popcount(mask: number): number {
+  let count = 0;
+  while (mask !== 0) {
+    mask &= mask - 1;
+    count++;
+  }
+  return count;
+}
+
+/**
  * Creates an empty NxN Sudoku grid filled with 0s.
  * 0 is used throughout the engine to represent an empty cell.
  */
@@ -62,43 +76,81 @@ export function shuffle(array: number[]): number[] {
 }
 
 /**
- * Uses a backtracking algorithm to generate a fully solved, valid Sudoku grid.
- * It randomly tries numbers in empty cells and backtracks when it hits a dead end.
- * Modifies the `grid` argument in place.
+ * Uses bitmask-based backtracking with a Minimum Remaining Values (MRV) heuristic
+ * to generate a fully solved, valid Sudoku grid in place. Rather than filling
+ * cells in index order and rescanning row/col/box on every candidate test (the
+ * old O(size) `isValid` approach), we maintain a used-digit bitmask per row,
+ * column, and box and always branch on the empty cell with the FEWEST legal
+ * digits first. Most-constrained-first collapses the search tree dramatically and
+ * bit operations make each legality test O(1). Digits are still tried in random
+ * order so every generated solution is unique. See AGENTS.md Section 1.
  */
 export function fillGrid(grid: number[][], config: GridConfig): boolean {
-  const { size, totalCells, maxNum } = config;
+  const { size, boxWidth, boxHeight, maxNum } = config;
+  const fullMask = (1 << maxNum) - 1;
+  const boxesPerRow = size / boxWidth;
+  const boxOf = (r: number, c: number) =>
+    Math.floor(r / boxHeight) * boxesPerRow + Math.floor(c / boxWidth);
 
-  // Iterate through all cells in the NxN grid using a flat index
-  for (let i = 0; i < totalCells; i++) {
-    // Convert the flat index into 2D row and column coordinates
-    const row = Math.floor(i / size);
-    const col = i % size;
-    
-    // If the cell is empty, try to fill it
-    if (grid[row][col] === 0) {
-      // Shuffle the numbers 1-N to ensure the generated solution is completely random
-      const numbers = shuffle(Array.from({ length: maxNum }, (_, k) => k + 1));
-      
-      // Try placing each number
-      for (const num of numbers) {
-        if (isValid(grid, row, col, num, config)) {
-          // Place the number tentatively
-          grid[row][col] = num;
-          
-          // Recursively attempt to fill the rest of the grid.
-          // If the recursive call returns true, it means the grid was successfully filled.
-          if (fillGrid(grid, config)) return true;
-          
-          // BACKTRACK: If the recursive call returned false, this placement led to a dead end.
-          // Reset the cell to 0 and try the next number in the shuffled list.
-          grid[row][col] = 0;
-        }
+  const rowMask = new Array<number>(size).fill(0);
+  const colMask = new Array<number>(size).fill(0);
+  const boxMask = new Array<number>(size).fill(0);
+
+  // Seed the masks from any pre-placed clues (usually none for a blank grid).
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const v = grid[r][c];
+      if (v !== 0) {
+        const bit = 1 << (v - 1);
+        rowMask[r] |= bit;
+        colMask[c] |= bit;
+        boxMask[boxOf(r, c)] |= bit;
       }
-      // If we've tried all numbers and none led to a valid full grid, this branch is a dead end
-      return false;
     }
   }
-  // If we loop through all cells without finding a 0, the grid is completely filled
-  return true;
+
+  const recurse = (): boolean => {
+    // MRV: find the empty cell with the fewest legal candidates.
+    let bestR = -1, bestC = -1, bestAllowed = 0, bestCount = maxNum + 1;
+    search:
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (grid[r][c] !== 0) continue;
+        const allowed = fullMask & ~(rowMask[r] | colMask[c] | boxMask[boxOf(r, c)]);
+        const count = popcount(allowed);
+        if (count === 0) return false; // dead end — this branch cannot be completed
+        if (count < bestCount) {
+          bestCount = count; bestR = r; bestC = c; bestAllowed = allowed;
+          if (count === 1) break search; // cannot do better than a forced cell
+        }
+      }
+    }
+
+    if (bestR === -1) return true; // no empty cells remain → grid is full
+
+    // Try the legal digits in random order so solutions stay uniformly varied.
+    const candidates: number[] = [];
+    let m = bestAllowed;
+    while (m !== 0) {
+      const lowestBit = m & -m;
+      candidates.push(31 - Math.clz32(lowestBit) + 1);
+      m &= m - 1;
+    }
+    shuffle(candidates);
+
+    const b = boxOf(bestR, bestC);
+    for (const num of candidates) {
+      const bit = 1 << (num - 1);
+      grid[bestR][bestC] = num;
+      rowMask[bestR] |= bit; colMask[bestC] |= bit; boxMask[b] |= bit;
+
+      if (recurse()) return true;
+
+      grid[bestR][bestC] = 0;
+      rowMask[bestR] &= ~bit; colMask[bestC] &= ~bit; boxMask[b] &= ~bit;
+    }
+    return false;
+  };
+
+  return recurse();
 }

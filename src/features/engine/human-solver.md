@@ -30,7 +30,8 @@ signal the generator uses to rate difficulty.
 
 ```text
 grid[][]           : NxN array of numbers (0 = empty)
-candidates[][]     : NxN array of Sets, each holding remaining possible values (1..size)
+candidates[][]     : NxN array of bitmasks — bit (n-1) set means digit n is still possible
+                     (accessed via candidateCount / hasCandidate / removeCandidate / candidateList)
 size               : grid dimension (4, 6, or 9) — inferred from grid length
 boxWidth           : columns per box (2, 3, or 3)
 boxHeight          : rows per box (2, 2, or 3)
@@ -45,6 +46,22 @@ filledCount        : private counter — incremented by placeNumber(), enables O
 ---
 
 ## 1. Helper Methods
+
+### Candidate bitmask accessors
+
+Candidates are stored as one integer per cell (bit `n-1` set means digit `n` is
+still possible). Strategies never touch the raw mask; they go through these four
+accessors, which keep the bit-twiddling in one place and let the representation
+stay an implementation detail. The `popcount` (Brian Kernighan's algorithm) behind
+`candidateCount` is why "how many candidates does this cell have?" is O(set bits)
+instead of the O(grid size) it was under the old `Set<number>[][]`.
+
+```text
+candidateCount(r, c)          → number of set bits in the cell's mask
+hasCandidate(r, c, num)       → is bit (num-1) set?
+removeCandidate(r, c, num)    → clear bit (num-1); RETURN true if it was set (state changed)
+candidateList(r, c)           → ascending array of the cell's candidate digits
+```
 
 ### inSameBox(cell1, cell2) → boolean
 

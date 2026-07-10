@@ -6,6 +6,21 @@ export type Cell = { r: number; c: number };
 export type CandidateCell = { r: number; c: number; cands: number[] };
 
 /**
+ * Population count (number of set bits) via Brian Kernighan's algorithm. This is
+ * how a cell's remaining-candidate count is computed in O(set bits) instead of
+ * O(grid size) — the core win of storing candidates as a bitmask rather than the
+ * previous `Set<number>[][]`. See AGENTS.md Section 1 (bitmask engine mandate).
+ */
+function popcount(mask: number): number {
+  let count = 0;
+  while (mask !== 0) {
+    mask &= mask - 1;
+    count++;
+  }
+  return count;
+}
+
+/**
  * HumanSolver is a pure logical deduction engine for solving Sudoku puzzles.
  * Unlike backtracking algorithms which use brute-force guessing to quickly find a solution,
  * this solver mimics how a human plays by systematically applying increasingly complex strategies.
@@ -13,7 +28,10 @@ export type CandidateCell = { r: number; c: number; cands: number[] };
  */
 export class HumanSolver {
   grid: number[][];
-  candidates: Set<number>[][];
+  // Candidates are stored as a bitmask per cell: bit (n-1) set means digit n is
+  // still possible. Access via candidateCount/hasCandidate/removeCandidate/
+  // candidateList rather than treating this as a Set.
+  candidates: number[][];
   readonly size: number;
   readonly boxWidth: number;
   readonly boxHeight: number;
@@ -39,8 +57,8 @@ export class HumanSolver {
     this.numHouses = this.size * 3;
     this.totalCells = this.size * this.size;
 
-    const allCands = Array.from({ length: this.size }, (_, i) => i + 1);
-    this.candidates = Array.from({ length: this.size }, () => Array.from({ length: this.size }, () => new Set<number>(allCands)));
+    const fullMask = (1 << this.size) - 1;
+    this.candidates = Array.from({ length: this.size }, () => new Array<number>(this.size).fill(fullMask));
 
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
@@ -49,6 +67,40 @@ export class HumanSolver {
         }
       }
     }
+  }
+
+  /** Number of remaining candidates in a cell (popcount of its bitmask). */
+  public candidateCount(r: number, c: number): number {
+    return popcount(this.candidates[r][c]);
+  }
+
+  /** Whether digit `num` is still a candidate for the cell. */
+  public hasCandidate(r: number, c: number, num: number): boolean {
+    return (this.candidates[r][c] & (1 << (num - 1))) !== 0;
+  }
+
+  /**
+   * Removes digit `num` from a cell's candidates. Returns true when the digit was
+   * actually present (state changed), so strategies can track whether they made
+   * progress without a separate read.
+   */
+  public removeCandidate(r: number, c: number, num: number): boolean {
+    const bit = 1 << (num - 1);
+    if ((this.candidates[r][c] & bit) === 0) return false;
+    this.candidates[r][c] &= ~bit;
+    return true;
+  }
+
+  /** A cell's candidates as an ascending array (empty when none remain). */
+  public candidateList(r: number, c: number): number[] {
+    const result: number[] = [];
+    let mask = this.candidates[r][c];
+    while (mask !== 0) {
+      const lowestBit = mask & -mask;
+      result.push(31 - Math.clz32(lowestBit) + 1);
+      mask &= mask - 1;
+    }
+    return result;
   }
 
   public inSameBox(cell1: { r: number, c: number }, cell2: { r: number, c: number }): boolean {
@@ -77,19 +129,19 @@ export class HumanSolver {
     const cells: Cell[] = [];
     if (axis === 'row') {
       for (let c = 0; c < this.size; c++) {
-        if (this.grid[houseIdx][c] === 0 && this.candidates[houseIdx][c].size > 0) {
+        if (this.grid[houseIdx][c] === 0 && this.candidates[houseIdx][c] !== 0) {
           cells.push({ r: houseIdx, c });
         }
       }
     } else if (axis === 'col') {
       for (let r = 0; r < this.size; r++) {
-        if (this.grid[r][houseIdx] === 0 && this.candidates[r][houseIdx].size > 0) {
+        if (this.grid[r][houseIdx] === 0 && this.candidates[r][houseIdx] !== 0) {
           cells.push({ r, c: houseIdx });
         }
       }
     } else {
       for (const { r, c } of this.getBoxCells(houseIdx)) {
-        if (this.grid[r][c] === 0 && this.candidates[r][c].size > 0) {
+        if (this.grid[r][c] === 0 && this.candidates[r][c] !== 0) {
           cells.push({ r, c });
         }
       }
@@ -105,7 +157,7 @@ export class HumanSolver {
         if (this.grid[r][c] !== 0) continue;
         const boxesPerRow = this.size / this.boxWidth;
         const b = Math.floor(r / this.boxHeight) * boxesPerRow + Math.floor(c / this.boxWidth);
-        for (const num of this.candidates[r][c]) {
+        for (const num of this.candidateList(r, c)) {
           const base = (num - 1) * this.numHouses;
           houseCells[base + r].push({ r, c });
           houseCells[base + this.size + c].push({ r, c });
@@ -139,8 +191,8 @@ export class HumanSolver {
     const cells: CandidateCell[] = [];
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
-        if (this.grid[r][c] === 0 && this.candidates[r][c].size === n) {
-          cells.push({ r, c, cands: Array.from(this.candidates[r][c]).sort() });
+        if (this.grid[r][c] === 0 && this.candidateCount(r, c) === n) {
+          cells.push({ r, c, cands: this.candidateList(r, c) });
         }
       }
     }
@@ -151,7 +203,7 @@ export class HumanSolver {
     const positions: Cell[][] = Array.from({ length: this.size }, () => []);
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
-        if (this.grid[r][c] === 0 && this.candidates[r][c].has(num)) {
+        if (this.grid[r][c] === 0 && this.hasCandidate(r, c, num)) {
           if (axis === 'row') positions[r].push({ r, c });
           else if (axis === 'col') positions[c].push({ r, c });
           else if (axis === 'box') {
@@ -171,10 +223,10 @@ export class HumanSolver {
       for (let c = 0; c < this.size; c++) {
         if (this.grid[r][c] !== 0) continue;
         if (excludeCells.some(e => e.r === r && e.c === c)) continue;
-        if (!this.candidates[r][c].has(cand)) continue;
+        if (!this.hasCandidate(r, c, cand)) continue;
 
         if (targets.every(t => this.sees({ r, c }, t))) {
-          this.candidates[r][c].delete(cand);
+          this.removeCandidate(r, c, cand);
           changed = true;
         }
       }
@@ -213,8 +265,7 @@ export class HumanSolver {
           if (fishSet.has(pri)) continue;
           const r = axis === 'row' ? pri : sec;
           const c = axis === 'row' ? sec : pri;
-          if (this.candidates[r][c].has(num)) {
-            this.candidates[r][c].delete(num);
+          if (this.removeCandidate(r, c, num)) {
             changed = true;
           }
         }
@@ -298,7 +349,7 @@ export class HumanSolver {
           for (const subset of subsets) {
             const unionCands = new Set<number>();
             for (const cell of subset) {
-              for (const cand of this.candidates[cell.r][cell.c]) {
+              for (const cand of this.candidateList(cell.r, cell.c)) {
                 unionCands.add(cand);
               }
             }
@@ -334,18 +385,19 @@ export class HumanSolver {
   public placeNumber(r: number, c: number, num: number) {
     this.grid[r][c] = num;
     this.filledCount++;
-    this.candidates[r][c].clear();
+    this.candidates[r][c] = 0;
 
+    const clearBit = ~(1 << (num - 1));
     for (let i = 0; i < this.size; i++) {
-      this.candidates[r][i].delete(num);
-      this.candidates[i][c].delete(num);
+      this.candidates[r][i] &= clearBit;
+      this.candidates[i][c] &= clearBit;
     }
 
     const boxStartR = Math.floor(r / this.boxHeight) * this.boxHeight;
     const boxStartC = Math.floor(c / this.boxWidth) * this.boxWidth;
     for (let dr = 0; dr < this.boxHeight; dr++) {
       for (let dc = 0; dc < this.boxWidth; dc++) {
-        this.candidates[boxStartR + dr][boxStartC + dc].delete(num);
+        this.candidates[boxStartR + dr][boxStartC + dc] &= clearBit;
       }
     }
   }

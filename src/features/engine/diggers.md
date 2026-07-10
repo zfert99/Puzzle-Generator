@@ -4,25 +4,25 @@ This module is responsible for transforming a fully solved Sudoku grid into a pl
 
 ## `countSolutions(grid, config, limit)`
 
-**Why:** A valid Sudoku puzzle must have exactly ONE unique solution. The standard diggers (Easy/Medium/Hard) use this brute-force backtracking solver to verify uniqueness after every clue removal. We set a limit (default 2) because counting all 500 solutions for a sparse grid would crash the browser; the moment we see a second solution, we know the puzzle is invalid and can abort early.
+**Why:** A valid Sudoku puzzle must have exactly ONE unique solution. The standard diggers (Easy/Medium/Hard) call this after every clue removal, so it is a hot path. It uses the same **bitmask + MRV backtracking** as `fillGrid` (see `grid-utils.md`): O(1) legality tests via row/column/box bitmasks and always branching on the most-constrained empty cell first. We set a limit (default 2) because counting all solutions for a sparse grid would be a massive waste of CPU; the moment we see a second solution the puzzle is non-unique and we abort early.
 
 ```text
+Seed rowMask/colMask/boxMask from the grid's existing clues.
 Initialize a counter to 0.
 
-Define a recursive solve function:
+solve():
   If the counter has reached the limit, stop early.
-  For every cell in the grid:
-    If the cell is empty:
-      For every possible number from 1 to maxNum:
-        If placing the number is valid:
-          Place the number in the cell.
-          Call the solve function recursively.
-          Remove the number (backtrack).
-      Return from the function because we must try the other branches.
-  If the loop finishes without finding an empty cell, increment the counter.
+  MRV scan over empty cells: allowed = full & ~(rowMask | colMask | boxMask).
+    If any empty cell has 0 allowed digits → dead end, return.
+    Pick the empty cell with the fewest allowed digits (stop early on a forced single).
+  If there were no empty cells → a complete solution; increment the counter and return.
+  For each allowed digit of the chosen cell:
+    Place it and set the row/column/box mask bits.
+    Recurse.
+    Backtrack: clear the cell and mask bits.
+    If the counter reached the limit, return.
 
-Start the recursion with the initial grid.
-Return the counter.
+Start the recursion and return the counter.
 ```
 
 ## `applyExhaustiveDigger(grid, config)`

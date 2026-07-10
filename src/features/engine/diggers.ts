@@ -1,45 +1,87 @@
 import { HumanSolver, canHumanSolveExtreme } from './human-solver';
 import type { GridConfig, Difficulty, GridSize } from './sudoku';
-import { copyGrid, createEmptyGrid, fillGrid, shuffle, isValid } from './grid-utils';
+import { copyGrid, createEmptyGrid, fillGrid, shuffle, popcount } from './grid-utils';
 
 /**
  * Counts how many valid solutions exist for a given partially-filled grid.
  * Used to ensure our generated puzzles have EXACTLY ONE unique solution.
  * We set a limit (default 2) because we only care if it has 1 solution or >1 solution.
  * Continuing to count past 2 would be a massive waste of CPU.
+ *
+ * Like {@link fillGrid}, this uses bitmask-based backtracking with an MRV
+ * heuristic: used-digit bitmasks per row/column/box make each legality test O(1),
+ * and always branching on the most-constrained empty cell first prunes the tree
+ * hard — which matters because `applyQuotaDigger` calls this after every candidate
+ * clue removal. See AGENTS.md Section 1.
  */
 export function countSolutions(grid: number[][], config: GridConfig, limit = 2): number {
-  const { size, totalCells, maxNum } = config;
-  let count = 0;
-  
-  // Inner recursive solver
-  function solve(g: number[][]) {
-    // Optimization: Stop immediately if we've already found more solutions than our limit
-    if (count >= limit) return;
-    
-    for (let i = 0; i < totalCells; i++) {
-      const row = Math.floor(i / size);
-      const col = i % size;
-      
-      if (g[row][col] === 0) {
-        // Try each number 1-N in standard order (randomness isn't needed for counting)
-        for (let num = 1; num <= maxNum; num++) {
-          if (isValid(g, row, col, num, config)) {
-            g[row][col] = num; // Tentative placement
-            solve(g);          // Recurse deeper
-            g[row][col] = 0;   // Backtrack
-          }
-        }
-        // After trying all numbers, if we reach this point, we must backtrack
-        return;
+  const { size, boxWidth, boxHeight, maxNum } = config;
+  const fullMask = (1 << maxNum) - 1;
+  const boxesPerRow = size / boxWidth;
+  const boxOf = (r: number, c: number) =>
+    Math.floor(r / boxHeight) * boxesPerRow + Math.floor(c / boxWidth);
+
+  const rowMask = new Array<number>(size).fill(0);
+  const colMask = new Array<number>(size).fill(0);
+  const boxMask = new Array<number>(size).fill(0);
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const v = grid[r][c];
+      if (v !== 0) {
+        const bit = 1 << (v - 1);
+        rowMask[r] |= bit;
+        colMask[c] |= bit;
+        boxMask[boxOf(r, c)] |= bit;
       }
     }
-    // If we make it through all cells without finding a 0, we found a valid solution!
-    count++;
   }
-  
-  // Kick off the recursion
-  solve(grid);
+
+  let count = 0;
+
+  const solve = (): void => {
+    if (count >= limit) return;
+
+    // MRV: branch on the empty cell with the fewest legal candidates.
+    let bestR = -1, bestC = -1, bestAllowed = 0, bestCount = maxNum + 1;
+    search:
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (grid[r][c] !== 0) continue;
+        const allowed = fullMask & ~(rowMask[r] | colMask[c] | boxMask[boxOf(r, c)]);
+        const cnt = popcount(allowed);
+        if (cnt === 0) return; // dead end — no solution down this branch
+        if (cnt < bestCount) {
+          bestCount = cnt; bestR = r; bestC = c; bestAllowed = allowed;
+          if (cnt === 1) break search;
+        }
+      }
+    }
+
+    if (bestR === -1) {
+      // No empty cells left → a complete, valid solution.
+      count++;
+      return;
+    }
+
+    const b = boxOf(bestR, bestC);
+    let m = bestAllowed;
+    while (m !== 0) {
+      const lowestBit = m & -m;
+      const num = 31 - Math.clz32(lowestBit) + 1;
+      const bit = 1 << (num - 1);
+
+      grid[bestR][bestC] = num;
+      rowMask[bestR] |= bit; colMask[bestC] |= bit; boxMask[b] |= bit;
+      solve();
+      grid[bestR][bestC] = 0;
+      rowMask[bestR] &= ~bit; colMask[bestC] &= ~bit; boxMask[b] &= ~bit;
+
+      if (count >= limit) return;
+      m &= m - 1;
+    }
+  };
+
+  solve();
   return count;
 }
 

@@ -171,7 +171,7 @@ Legend: compliant (OK) · minor issue (WARN) · violation (FAIL)
 | 1 — Security & correctness | ✅ Done | Stack/details removed from 500 response; `onRequestError()` added; benchmark made tier-representative (revealed the honest numbers below). |
 | 2 — Jest → Vitest | ✅ Done | Vitest + jsdom installed, Jest removed, `vitest.config.ts`/`vitest.setup.ts` added, pragmas swapped, internal-hook mock replaced with a `fetch`-boundary mock, scripts + `tsconfig` types updated. |
 | 3 — Test coverage | ✅ Mostly | Banned `pdf-generation/tests/*.js` removed; added colocated tests for `sudoku`, `generation.service`, `pdf.service`, `GridSizeSelector`, `DifficultyConfigurator`. `strategies/*`, `grid-utils`, `diggers` remain covered only indirectly (isolated tests need hand-crafted grids — follow-up). |
-| 4 — Engine bitmask/MRV | ⏸️ Deferred | Large, higher-risk refactor of the whole engine + strategies. Recommended as its own PR. See note below. |
+| 4 — Engine bitmask/MRV | ✅ Done | HumanSolver candidates converted from `Set<number>[][]` to per-cell bitmasks (helpers: `candidateCount`/`hasCandidate`/`removeCandidate`/`candidateList`); `fillGrid` and `countSolutions` rewritten as bitmask + MRV backtracking. All 34 tests still pass. Benchmark: Basic 0.58→0.34 ms, Advanced 0.59→0.40 ms, Extreme ~35→~17 ms; hard 9×9 generation ~3.5 ms/puzzle. Basic/Extreme are closer to but still above the example thresholds — remaining cost is algorithmic (full-grid strategy scans), not representation. |
 | 5 — Documentation sync | ✅ Done | 6 `.md` mirrors created; stale `lib/puzzle-engine/`/Windows paths fixed; roadmap/README status + Extreme feature; Git docs renamed to kebab-case; JSDoc added; `.markdownlint.json` added. |
 | 6 — CI security scanning | ✅ Done | `.github/` with CodeQL, Dependabot, and an `npm audit` CI gate. |
 
@@ -193,7 +193,12 @@ target of "AIC-heavy boards < 2 s" is comfortably met.
 - **Playwright E2E** (AGENTS.md Section 4): named as the E2E tool, but no E2E
   specs exist yet and installing browsers is heavy — scaffold when the first
   interactive-board flow lands.
-- **Batch 4** engine refactor (above).
+- **Isolated strategy tests** for `strategies/*`, `grid-utils`, `diggers` — covered
+  indirectly today; hand-crafted-grid unit tests are a follow-up.
+- **Sub-threshold Basic/Extreme tiers**: the bitmask refactor closed most of the
+  gap; the remainder is algorithmic (per-iteration full-grid strategy scans), which
+  would need incremental/dirty-cell candidate tracking rather than a representation
+  change.
 - **`Docs/research/*` markdown** bullet-style/blank-line lint issues — these files
   are mid-edit (uncommitted) and are the user's imported prose; auto-fix with
   `npx markdownlint-cli --fix` when ready.
