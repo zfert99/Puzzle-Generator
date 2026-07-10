@@ -82,4 +82,5 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 - Next.js (App Router)
 - React
 - TypeScript
-- Vitest (Testing)
+- Vitest (unit/integration) + Playwright (E2E)
+- Pino (structured logging)
