@@ -24,12 +24,18 @@ The app is a **stateless PDF pipeline**. The user picks puzzle counts, the serve
 
 | Layer | Component | Status |
 |---|---|---|
-| **Engine** | Backtracking generator + unique-solution validator | ✅ Shipped |
-| **Engine** | `HumanSolver` — Naked/Hidden Singles & Pairs, Pointing Pairs, X-Wing, Swordfish, Y-Wing, XYZ-Wing, W-Wing, ALS-XZ, AICs | ✅ Shipped |
+| **Engine** | Bitmask + MRV backtracking generator + unique-solution validator | ✅ Shipped |
+| **Engine** | `HumanSolver` — Naked/Hidden Singles & Pairs, Pointing Pairs, X-Wing, Swordfish, Y-Wing, XYZ-Wing, W-Wing, ALS-XZ, AICs (bitmask candidates; Basic ~0.11ms / Extreme ~10ms) | ✅ Shipped |
 | **API** | `/api/generate` — accepts difficulty counts (including extreme), returns PDF stream | ✅ Shipped |
 | **Frontend** | `PuzzleForm` — glassmorphism UI with difficulty selectors | ✅ Shipped |
 | **PDF** | `pdf.service.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
-| **Testing** | Vitest suite + benchmark scripts with auto-logging | ✅ Shipped |
+| **Testing** | Vitest unit suite (58 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
+| **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) | ✅ Shipped |
+
+> **Hardening pass (landed):** a full audit against `AGENTS.md` plus remediation —
+> Jest→Vitest migration, an API stack-trace-leak fix, the bitmask/MRV engine rework,
+> broad test coverage, and CI. Details in
+> [agents-compliance-audit.md](agents-compliance-audit.md).
 
 ---
 
