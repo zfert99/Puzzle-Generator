@@ -14,6 +14,14 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Stay on TypeScript 5.x. TS 6 is out of typescript-eslint's peer range
+      # (>=4.8.4 <6.1.0), and TS 7 is the native (Go) preview compiler, which does
+      # not expose the JS `typescript` API that Next.js's `next build` type-check
+      # step loads — a major bump breaks the Vercel build. Revisit when the Next.js
+      # + typescript-eslint toolchain officially supports the newer major.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
