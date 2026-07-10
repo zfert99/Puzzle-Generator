@@ -135,8 +135,11 @@ better pick only if offline generation becomes a requirement.
 - **[NEW]** `.../components/Board/Cell.tsx` — `role="gridcell"`,
   `tabIndex={isActive ? 0 : -1}`; subscribes via `useShallow` to only its slice;
   synthesizes `aria-label` ("Given clue 7, row 2, column 4" / "Candidates 2, 5, 8");
-  conditional styles for `isSelected`/`isPeer`/`isError`/`isGiven`; **CSS Subgrid**
-  for pencil-mark alignment (Baseline-available in 2026; don't nest subgrid >2 deep).
+  conditional styles for `isSelected`/`isPeer`/`isError`/`isGiven`; pencil marks in a
+  fixed per-cell grid (digit `d` always at slot `d-1`), so marks are cleanly anchored
+  and readable. _(True cross-cell **CSS Subgrid** alignment was considered per the
+  research; it needs a full board-grid restructure for a subtle gain and is deferred —
+  the fixed-slot layout already reads well, confirmed by screenshot.)_
 - **[NEW]** `.../components/Controls/Numpad.tsx` — numeric pad + Undo/Redo/Pencil
   (`aria-pressed`)/Hint.
 - **[NEW]** `.../components/Header/GameHeader.tsx` — difficulty, grid size, live
