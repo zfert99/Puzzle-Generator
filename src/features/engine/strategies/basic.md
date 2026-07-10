@@ -20,15 +20,12 @@ RETURN false
 
 Sometimes a cell has multiple candidates (e.g., it could be 4, 7, or 9). However, if you look at the entire row (or column, or box) and notice that NO OTHER CELL in that house can possibly be a 7, then the 7 MUST go here. It's a "single" that's just "hidden" among other possibilities.
 
+**Why it delegates:** This is the single hottest strategy in the deduction loop (profiling put it at ~76% of Basic-tier time), so it is **not** implemented here as the obvious per-(digit, axis) scan — that rescans the whole grid `3 × size` times per call. Instead it delegates to `HumanSolver.findAndPlaceHiddenSingle()`, which does one pass over the empty cells, tallying each candidate digit's position count in its three houses using reused buffers. Moving to the single-pass version cut the Basic tier from ~0.34 ms to ~0.11 ms. See `human-solver.md`.
+
 ```text
-FOR each number 1-9:
-    FOR each axis (row, col, box):
-        positions = solver.getCandidatePositions(num, axis)
-        FOR each zone i:
-            IF positions[i] has exactly 1 cell:
-                solver.placeNumber that cell with num
-                RETURN true
-RETURN false
+RETURN solver.findAndPlaceHiddenSingle()
+    // single pass: for every empty cell, for every candidate digit, increment a
+    // per-(house, digit) tally; any tally that equals 1 is a hidden single → place it.
 ```
 
 ## 3. applyNakedPair(solver) → boolean

@@ -23,18 +23,11 @@ export function applyNakedSingle(solver: HumanSolver): boolean {
  * among other possibilities.
  */
 export function applyHiddenSingle(solver: HumanSolver): boolean {
-  for (let num = 1; num <= solver.size; num++) {
-    for (const axis of ['row', 'col', 'box'] as const) {
-      const positions = solver.getCandidatePositions(num, axis);
-      for (let i = 0; i < solver.size; i++) {
-        if (positions[i].length === 1) {
-          solver.placeNumber(positions[i][0].r, positions[i][0].c, num);
-          return true;
-        }
-      }
-    }
-  }
-  return false;
+  // Delegates to the solver's single-pass, allocation-free implementation. This
+  // is the hottest strategy in the deduction loop; see
+  // HumanSolver.findAndPlaceHiddenSingle for why it is not implemented as the
+  // naive per-(digit, axis) grid scan.
+  return solver.findAndPlaceHiddenSingle();
 }
 
 /**

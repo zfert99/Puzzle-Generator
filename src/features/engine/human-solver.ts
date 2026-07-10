@@ -41,6 +41,11 @@ export class HumanSolver {
   usedAdvanced: boolean = false;
   usedExtreme: boolean = false;
   private filledCount: number = 0;
+  // Reused scratch buffers for the single-pass hidden-single scan, so that the
+  // solver's hottest strategy allocates nothing per call. Indexed by
+  // (globalHouseIndex * size + digitIndex); length is numHouses * size.
+  private readonly hsCount: number[];
+  private readonly hsPos: number[];
 
   constructor(initialGrid: number[][]) {
     this.grid = initialGrid.map(row => [...row]);
@@ -59,6 +64,9 @@ export class HumanSolver {
 
     const fullMask = (1 << this.size) - 1;
     this.candidates = Array.from({ length: this.size }, () => new Array<number>(this.size).fill(fullMask));
+
+    this.hsCount = new Array<number>(this.numHouses * this.size).fill(0);
+    this.hsPos = new Array<number>(this.numHouses * this.size).fill(0);
 
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
@@ -101,6 +109,64 @@ export class HumanSolver {
       mask &= mask - 1;
     }
     return result;
+  }
+
+  /**
+   * Finds the first Hidden Single — a digit with exactly one legal position in
+   * some house (row, column, or box) — places it, and returns true; returns false
+   * if none exists.
+   *
+   * This is the solver's hottest strategy: it runs on every deduction-loop
+   * iteration, so its cost dominates the Basic tier. The naive implementation
+   * rescanned the whole grid once per (digit, axis) — 3 × size full O(size²)
+   * scans per call. Instead this does a SINGLE pass over the empty cells, tallying
+   * for every candidate digit how many positions it has in each of its three
+   * houses (into reused, preallocated buffers so nothing is allocated per call).
+   * Any tally of exactly 1 is a hidden single. This is the change that brought the
+   * Basic tier under its performance target — see AGENTS.md Section 3.
+   */
+  public findAndPlaceHiddenSingle(): boolean {
+    const size = this.size;
+    const count = this.hsCount;
+    const pos = this.hsPos;
+    count.fill(0);
+
+    const boxesPerRow = size / this.boxWidth;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (this.grid[r][c] !== 0) continue;
+
+        const box = Math.floor(r / this.boxHeight) * boxesPerRow + Math.floor(c / this.boxWidth);
+        const rowBase = r * size;
+        const colBase = (size + c) * size;
+        const boxBase = (2 * size + box) * size;
+        const cellCode = r * size + c;
+
+        let mask = this.candidates[r][c];
+        while (mask !== 0) {
+          const lowestBit = mask & -mask;
+          const digitIndex = 31 - Math.clz32(lowestBit); // 0-based digit
+          const ri = rowBase + digitIndex;
+          const ci = colBase + digitIndex;
+          const bi = boxBase + digitIndex;
+          count[ri]++; pos[ri] = cellCode;
+          count[ci]++; pos[ci] = cellCode;
+          count[bi]++; pos[bi] = cellCode;
+          mask &= mask - 1;
+        }
+      }
+    }
+
+    const totalEntries = this.numHouses * size;
+    for (let h = 0; h < totalEntries; h++) {
+      if (count[h] === 1) {
+        const cellCode = pos[h];
+        const digit = (h % size) + 1;
+        this.placeNumber(Math.floor(cellCode / size), cellCode % size, digit);
+        return true;
+      }
+    }
+    return false;
   }
 
   public inSameBox(cell1: { r: number, c: number }, cell2: { r: number, c: number }): boolean {
@@ -336,29 +402,50 @@ export class HumanSolver {
     return changed;
   }
 
-  public enumerateALS(): { cells: Cell[]; candidates: Set<number> }[] {
-    const result: { cells: Cell[]; candidates: Set<number> }[] = [];
+  /**
+   * Enumerates every Almost Locked Set (ALS) in the grid — a group of N cells in a
+   * house whose combined candidates number exactly N+1.
+   *
+   * This is by far the most expensive step in the extreme tier, so rather than
+   * materialising all C(n, k) cell combinations per house and testing each (the
+   * old approach), it walks the subsets as a DFS that carries the running
+   * candidate-union as a bitmask. The key prune: a valid ALS of size ≤ maxSubsetSize
+   * has ≤ maxSubsetSize+1 candidates, and a subset's union only grows as cells are
+   * added — so the moment the union's popcount exceeds that cap, the whole branch is
+   * abandoned. This collapses the combinatorial blow-up (a 9-cell house has 511
+   * subsets) down to the handful that can actually be ALSes. See AGENTS.md Section 1.
+   */
+  public enumerateALS(): { cells: Cell[]; mask: number }[] {
+    const result: { cells: Cell[]; mask: number }[] = [];
     const maxSubsetSize = 5;
+    const candidateCap = maxSubsetSize + 1;
 
     for (const axis of ['row', 'col', 'box'] as const) {
       for (let houseIdx = 0; houseIdx < this.size; houseIdx++) {
         const emptyCells = this.getEmptyCellsInHouse(axis, houseIdx);
+        const chosen: Cell[] = [];
 
-        for (let size = 1; size <= Math.min(maxSubsetSize, emptyCells.length); size++) {
-          const subsets = this.combinationsOfCells(emptyCells, size);
-          for (const subset of subsets) {
-            const unionCands = new Set<number>();
-            for (const cell of subset) {
-              for (const cand of this.candidateList(cell.r, cell.c)) {
-                unionCands.add(cand);
-              }
-            }
-
-            if (unionCands.size === subset.length + 1) {
-              result.push({ cells: [...subset], candidates: unionCands });
-            }
+        const dfs = (start: number, unionMask: number) => {
+          if (chosen.length >= 1 && popcount(unionMask) === chosen.length + 1) {
+            // An ALS: its candidate set is carried as a bitmask so consumers can
+            // intersect two ALS in O(1) with a bitwise AND + popcount.
+            result.push({ cells: [...chosen], mask: unionMask });
           }
-        }
+          if (chosen.length === maxSubsetSize) return;
+
+          for (let i = start; i < emptyCells.length; i++) {
+            const cell = emptyCells[i];
+            const newMask = unionMask | this.candidates[cell.r][cell.c];
+            // Prune: the union can only grow, and no ALS of size ≤ maxSubsetSize can
+            // have more than maxSubsetSize+1 candidates, so this branch is dead.
+            if (popcount(newMask) > candidateCap) continue;
+            chosen.push(cell);
+            dfs(i + 1, newMask);
+            chosen.pop();
+          }
+        };
+
+        dfs(0, 0);
       }
     }
 

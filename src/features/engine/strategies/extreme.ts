@@ -1,4 +1,5 @@
 import type { HumanSolver, Cell } from '../human-solver';
+import { popcount } from '../grid-utils';
 
 /**
  * W-Wing:
@@ -53,17 +54,27 @@ export function applyALSXZ(solver: HumanSolver): boolean {
   const allALS = solver.enumerateALS();
 
   for (let i = 0; i < allALS.length; i++) {
+    const alsA = allALS[i];
     for (let j = i + 1; j < allALS.length; j++) {
-      const alsA = allALS[i];
       const alsB = allALS[j];
 
+      // Cheap O(1) reject first: ALS-XZ requires at least two shared candidates.
+      // A bitwise AND + popcount skips the vast majority of pairs before any
+      // allocation or grid work.
+      const commonMask = alsA.mask & alsB.mask;
+      if (popcount(commonMask) < 2) continue;
+
+      // Skip overlapping ALS (sharing a cell).
       if (alsA.cells.some((a: Cell) => alsB.cells.some((b: Cell) => a.r === b.r && a.c === b.c))) continue;
 
+      // Expand the shared candidate bitmask into the actual digit list.
       const commonCands: number[] = [];
-      for (const cand of alsA.candidates) {
-        if (alsB.candidates.has(cand)) commonCands.push(cand);
+      let m = commonMask;
+      while (m !== 0) {
+        const lowestBit = m & -m;
+        commonCands.push(31 - Math.clz32(lowestBit) + 1);
+        m &= m - 1;
       }
-      if (commonCands.length < 2) continue;
 
       const excludeCells = [...alsA.cells, ...alsB.cells];
 

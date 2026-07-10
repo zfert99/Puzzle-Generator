@@ -63,6 +63,26 @@ removeCandidate(r, c, num)    → clear bit (num-1); RETURN true if it was set (
 candidateList(r, c)           → ascending array of the cell's candidate digits
 ```
 
+### findAndPlaceHiddenSingle() → boolean
+
+Places the first Hidden Single found and returns true, else false. A hidden single
+is a digit with exactly one legal position within some house (row, column, or box).
+This lives on the solver (not in `strategies/basic.ts`) because it owns the bitmask
+and the reused scratch buffers. It is the deduction loop's hottest strategy, so it
+avoids the naive `3 × size` full-grid scans in favour of a single tallying pass —
+the change that brought the Basic tier under its target (see `basic.md`).
+
+```text
+Reset the reused count buffer (indexed by globalHouse * size + digitIndex).
+FOR each empty cell (r, c):
+    Determine its row-house, column-house, and box-house.
+    FOR each candidate digit d in the cell (iterate the bitmask directly):
+        Increment count for each of the three houses at digit d; record the cell.
+FOR each (house, digit) entry:
+    IF its count == 1 → that digit has one home in that house: placeNumber, RETURN true.
+RETURN false
+```
+
 ### inSameBox(cell1, cell2) → boolean
 
 ```text
@@ -253,7 +273,30 @@ RETURN changed
 
 ```text
 Same as combinations() but operates on Cell objects.
-Used by ALS enumeration to generate cell subsets.
+General-purpose helper (ALS enumeration no longer uses it — see enumerateALS below).
+```
+
+### enumerateALS() → { cells, mask }[]
+
+Finds every Almost Locked Set (a group of N cells in a house whose combined
+candidates number exactly N+1). This is the costliest input to the extreme tier, so
+it does **not** materialise all C(n, k) subsets per house. Instead it walks the
+subsets as a DFS carrying the running candidate-union as a bitmask, and prunes any
+branch whose union already exceeds `maxSubsetSize + 1` candidates — impossible for a
+valid ALS, and the union only grows. Each returned ALS carries its candidate `mask`
+so `applyALSXZ` can intersect two ALS in O(1).
+
+```text
+FOR each house (all rows, cols, boxes):
+    emptyCells = empty cells in the house
+    DFS(startIndex, unionMask, chosenCells):
+        IF chosen ≥ 1 AND popcount(unionMask) == chosen.length + 1:
+            emit { cells: chosen, mask: unionMask }        // a valid ALS
+        IF chosen.length == maxSubsetSize (5): RETURN
+        FOR i from startIndex:
+            newMask = unionMask OR candidates[emptyCells[i]]
+            IF popcount(newMask) > maxSubsetSize + 1: SKIP  // prune — branch is dead
+            recurse with emptyCells[i] added
 ```
 
 ---

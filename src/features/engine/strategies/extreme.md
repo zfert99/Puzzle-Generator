@@ -41,16 +41,19 @@ RETURN false
 
 An Almost Locked Set (ALS) is a group of N cells within a single house containing exactly N+1 candidates. If two ALS groups share a "Restricted Common Candidate" (RCC) x — meaning ALL cells containing x in Set A see ALL cells containing x in Set B — then x is "locked" between them: it can't be true in both sets simultaneously. This locks the remaining candidates in both sets, allowing any OTHER common candidate z to be eliminated from cells that see all z-locations in BOTH sets. This is one of the most powerful elimination techniques in human Sudoku solving.
 
+**Performance:** this is the single most expensive strategy in the engine — it runs an O(numALS²) pairwise scan every time the cheaper strategies stall. Two things keep it in check. `enumerateALS` carries each ALS's candidate set as a **bitmask** (not a `Set`), and the pair loop's very first test is a one-instruction reject — `popcount(alsA.mask & alsB.mask) < 2` — which discards the large majority of pairs before any allocation, cell-overlap check, or grid work. See `human-solver.md` for how the ALS list itself is enumerated with a pruned DFS.
+
 ```text
-// 1. Enumerate all ALS groups
+// 1. Enumerate all ALS groups (each carries a candidate bitmask)
 allALS = solver.enumerateALS()
 
 // 2. Check every pair of ALS groups
 FOR each pair (alsA, alsB):
+    commonMask = alsA.mask AND alsB.mask          // bitwise
+    IF popcount(commonMask) < 2 → SKIP            // cheap O(1) reject, need RCC + elim candidate
     IF they share any cells → SKIP
 
-    commonCands = intersection of alsA.candidates and alsB.candidates
-    IF commonCands.length < 2 → SKIP   // need RCC + elimination candidate
+    commonCands = the digits set in commonMask
 
     // 3. Find Restricted Common Candidates (RCCs)
     // excludeCells is the same for all candidates in this pair — hoist here
