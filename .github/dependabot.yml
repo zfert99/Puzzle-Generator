@@ -22,6 +22,14 @@ updates:
       # + typescript-eslint toolchain officially supports the newer major.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # ESLint 10 is outside eslint-config-next@16's supported range (it expects
+      # ESLint 9) and would break `npm run lint`. Hold until Next.js supports it.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # Keep @types/node aligned to the deployment runtime (Node 20); a major bump
+      # to Node 26 types introduces APIs the runtime doesn't have.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

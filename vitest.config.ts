@@ -12,11 +12,9 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
-  // React 19 uses the automatic JSX runtime; esbuild handles the transform for
-  // component tests without needing the Babel-based @vitejs/plugin-react.
-  esbuild: {
-    jsx: 'automatic',
-  },
+  // React 19 uses the automatic JSX runtime. Vitest's esbuild transform picks up
+  // `"jsx": "react-jsx"` from tsconfig.json, so no explicit jsx option is needed
+  // (and Vitest 4 no longer types one on `esbuild`).
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
