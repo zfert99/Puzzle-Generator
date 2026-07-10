@@ -41,11 +41,23 @@ RETURN false
 
 An Almost Locked Set (ALS) is a group of N cells within a single house containing exactly N+1 candidates. If two ALS groups share a "Restricted Common Candidate" (RCC) x — meaning ALL cells containing x in Set A see ALL cells containing x in Set B — then x is "locked" between them: it can't be true in both sets simultaneously. This locks the remaining candidates in both sets, allowing any OTHER common candidate z to be eliminated from cells that see all z-locations in BOTH sets. This is one of the most powerful elimination techniques in human Sudoku solving.
 
-**Performance:** this is the single most expensive strategy in the engine — it runs an O(numALS²) pairwise scan every time the cheaper strategies stall. Two things keep it in check. `enumerateALS` carries each ALS's candidate set as a **bitmask** (not a `Set`), and the pair loop's very first test is a one-instruction reject — `popcount(alsA.mask & alsB.mask) < 2` — which discards the large majority of pairs before any allocation, cell-overlap check, or grid work. See `human-solver.md` for how the ALS list itself is enumerated with a pruned DFS.
+**Performance:** this is the single most expensive strategy in the engine — it runs an O(numALS²) pairwise scan every time the cheaper strategies stall (measured at ~234 ALS per call → ~55k pairs). Four things keep it in check, and none of them change *which* eliminations are found (solver strength is byte-for-byte identical — verified against a frozen fingerprint of `{solved, requiresExtreme}` over a fixed pool):
+
+1. `enumerateALS` carries each ALS's candidate set as a **bitmask**, so the pair loop's first test is a one-instruction reject — `popcount(alsA.mask & alsB.mask) < 2` — discarding most pairs before any real work.
+2. **Per-ALS `digit → cells` maps are precomputed once.** The old code re-filtered an ALS's cells (`cells.filter(has digit)`) for every one of its ~234 partners; now each ALS's cells-per-digit are looked up.
+3. **Eliminations scan only relevant cells.** Instead of walking all size×size cells and testing `hasCandidate(z)`, a grid-wide `digit → empty cells` list is precomputed once, so the z-elimination iterates only the ~10–25 cells that actually hold z.
+4. **ALS-cell exclusion is allocation-free**, via a tagged `Int32Array` marker per pair rather than building/clearing a Set.
+
+Together these took the extreme tier from ~18.7 ms to ~10 ms/solve on a frozen pool (−46%), with an identical solve fingerprint.
 
 ```text
 // 1. Enumerate all ALS groups (each carries a candidate bitmask)
 allALS = solver.enumerateALS()
+
+// Precompute ONCE:
+//   cellsByDigit[als][digit]      → that ALS's cells containing the digit
+//   emptyCellsByDigit[digit]      → all empty grid cells containing the digit
+//   excludedMark (Int32Array)     → per-pair allocation-free exclusion tags
 
 // 2. Check every pair of ALS groups
 FOR each pair (alsA, alsB):
@@ -54,25 +66,18 @@ FOR each pair (alsA, alsB):
     IF they share any cells → SKIP
 
     commonCands = the digits set in commonMask
-
-    // 3. Find Restricted Common Candidates (RCCs)
-    // excludeCells is the same for all candidates in this pair — hoist here
-    excludeCells = alsA.cells + alsB.cells
+    tag alsA.cells and alsB.cells in excludedMark for this pair
 
     FOR each x in commonCands:
-        xInA = cells in alsA containing x
-        xInB = cells in alsB containing x
-        IF NOT every cell in xInA sees every cell in xInB → SKIP  // not restricted
+        xInA / xInB = cellsByDigit lookups (no re-filtering)
+        IF NOT every cell in xInA sees every cell in xInB → SKIP  // not a restricted RCC
 
-        // x is a valid RCC → check other common candidates for elimination
         FOR each z in commonCands where z != x:
-            zInA = cells in alsA containing z
-            zInB = cells in alsB containing z
-            allZLocations = zInA + zInB
-
-            // Eliminate z from cells seeing ALL z-locations (excluding ALS cells)
-            IF solver.eliminateFromCellsSeeingAll(allZLocations, z, excludeCells):
-                RETURN true
+            zInA / zInB = cellsByDigit lookups
+            // scan only emptyCellsByDigit[z], skip tagged ALS cells
+            FOR each candidate cell that sees ALL of zInA and ALL of zInB:
+                remove z from it
+            IF any removed → RETURN true
 
 RETURN false
 ```

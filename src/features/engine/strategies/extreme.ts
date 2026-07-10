@@ -52,20 +52,64 @@ export function applyWWing(solver: HumanSolver): boolean {
  */
 export function applyALSXZ(solver: HumanSolver): boolean {
   const allALS = solver.enumerateALS();
+  const size = solver.size;
+
+  // Precompute, per ALS, which of its cells hold each candidate digit. Done once so
+  // an ALS's cells are not re-filtered for every one of its ~N partner ALS — that
+  // repeated filtering was the bulk of the old per-call cost.
+  const cellsByDigit: Map<number, Cell[]>[] = allALS.map((als) => {
+    const map = new Map<number, Cell[]>();
+    for (const cell of als.cells) {
+      let m = solver.candidates[cell.r][cell.c];
+      while (m !== 0) {
+        const lowestBit = m & -m;
+        const digit = 31 - Math.clz32(lowestBit) + 1;
+        const list = map.get(digit);
+        if (list) list.push(cell);
+        else map.set(digit, [cell]);
+        m &= m - 1;
+      }
+    }
+    return map;
+  });
+
+  // Precompute grid-wide: the empty cells holding each candidate digit, in row-major
+  // order, so an elimination scans only cells that actually contain the digit rather
+  // than all size×size cells.
+  const emptyCellsByDigit: Cell[][] = Array.from({ length: size + 1 }, () => []);
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (solver.grid[r][c] !== 0) continue;
+      let m = solver.candidates[r][c];
+      while (m !== 0) {
+        const lowestBit = m & -m;
+        const digit = 31 - Math.clz32(lowestBit) + 1;
+        emptyCellsByDigit[digit].push({ r, c });
+        m &= m - 1;
+      }
+    }
+  }
+
+  // Allocation-free ALS-cell exclusion: tag the current pair's ALS cells with a
+  // monotonically increasing marker rather than building a Set (and clearing it)
+  // per pair.
+  const excludedMark = new Int32Array(size * size);
+  let pairTag = 0;
 
   for (let i = 0; i < allALS.length; i++) {
     const alsA = allALS[i];
+    const byA = cellsByDigit[i];
     for (let j = i + 1; j < allALS.length; j++) {
       const alsB = allALS[j];
 
-      // Cheap O(1) reject first: ALS-XZ requires at least two shared candidates.
-      // A bitwise AND + popcount skips the vast majority of pairs before any
-      // allocation or grid work.
+      // Cheap O(1) reject: ALS-XZ requires at least two shared candidates.
       const commonMask = alsA.mask & alsB.mask;
       if (popcount(commonMask) < 2) continue;
 
       // Skip overlapping ALS (sharing a cell).
       if (alsA.cells.some((a: Cell) => alsB.cells.some((b: Cell) => a.r === b.r && a.c === b.c))) continue;
+
+      const byB = cellsByDigit[j];
 
       // Expand the shared candidate bitmask into the actual digit list.
       const commonCands: number[] = [];
@@ -76,30 +120,49 @@ export function applyALSXZ(solver: HumanSolver): boolean {
         m &= m - 1;
       }
 
-      const excludeCells = [...alsA.cells, ...alsB.cells];
+      // Mark this pair's ALS cells as excluded elimination targets.
+      pairTag++;
+      for (const cell of alsA.cells) excludedMark[cell.r * size + cell.c] = pairTag;
+      for (const cell of alsB.cells) excludedMark[cell.r * size + cell.c] = pairTag;
 
       for (const x of commonCands) {
-        const xInA = alsA.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, x));
-        const xInB = alsB.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, x));
-
+        const xInA = byA.get(x) ?? [];
+        const xInB = byB.get(x) ?? [];
         if (xInA.length === 0 || xInB.length === 0) continue;
 
-        const isRestricted = xInA.every((a: Cell) => xInB.every((b: Cell) => solver.sees(a, b)));
-        if (!isRestricted) continue;
+        // Restricted Common Candidate: every x-cell in A sees every x-cell in B.
+        let restricted = true;
+        for (const a of xInA) {
+          for (const b of xInB) {
+            if (!solver.sees(a, b)) { restricted = false; break; }
+          }
+          if (!restricted) break;
+        }
+        if (!restricted) continue;
 
         for (const z of commonCands) {
           if (z === x) continue;
-
-          const zInA = alsA.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, z));
-          const zInB = alsB.cells.filter((c: Cell) => solver.hasCandidate(c.r, c.c, z));
-
+          const zInA = byA.get(z) ?? [];
+          const zInB = byB.get(z) ?? [];
           if (zInA.length === 0 || zInB.length === 0) continue;
 
-          const allZLocations = [...zInA, ...zInB];
+          // Eliminate z from every cell that sees all z-locations in BOTH ALS,
+          // excluding the ALS cells themselves.
+          let changed = false;
+          for (const cell of emptyCellsByDigit[z]) {
+            if (excludedMark[cell.r * size + cell.c] === pairTag) continue;
 
-          if (solver.eliminateFromCellsSeeingAll(allZLocations, z, excludeCells)) {
-            return true;
+            let seesAll = true;
+            for (const t of zInA) { if (!solver.sees(cell, t)) { seesAll = false; break; } }
+            if (seesAll) {
+              for (const t of zInB) { if (!solver.sees(cell, t)) { seesAll = false; break; } }
+            }
+            if (seesAll) {
+              solver.removeCandidate(cell.r, cell.c, z);
+              changed = true;
+            }
           }
+          if (changed) return true;
         }
       }
     }

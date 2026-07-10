@@ -201,29 +201,35 @@ Profiling of the (now honest) tiers showed two dominant costs, which were remove
   `HumanSolver.findAndPlaceHiddenSingle()` — a single tallying pass over the empty
   cells using reused, preallocated buffers (zero per-call allocation).
   `applyHiddenSingle` now delegates to it.
-- **Extreme tier — ALS-XZ (was ~89% of Extreme time).** `enumerateALS` was
-  materialising every C(n, k) cell subset per house. Replaced with a pruned DFS
-  that carries the candidate-union as a bitmask and abandons any branch whose union
-  exceeds `maxSize + 1` candidates. Each ALS now returns a candidate **bitmask**, and
-  `applyALSXZ` rejects pairs with `popcount(maskA & maskB) < 2` in O(1) before any
-  allocation or grid work.
+- **Extreme tier — ALS-XZ (was ~89% of Extreme time).** Addressed in two passes:
+  - `enumerateALS` was materialising every C(n, k) cell subset per house. Replaced
+    with a pruned DFS that carries the candidate-union as a bitmask and abandons any
+    branch whose union exceeds `maxSize + 1` candidates. Each ALS returns a candidate
+    **bitmask**, and `applyALSXZ` rejects pairs with `popcount(maskA & maskB) < 2` in
+    O(1).
+  - Diagnostics then showed the residual was **per-call**, not call-frequency
+    (~5.8 calls/solve, ~234 ALS/call → ~55k pairs). So `applyALSXZ` now **precomputes**
+    the work that was repeated per pair: a per-ALS `digit → cells` map (instead of
+    re-filtering an ALS's cells for each of its ~234 partners) and a grid-wide
+    `digit → empty cells` list (so eliminations scan only the ~10–25 cells that hold
+    the digit, not all 81), with allocation-free ALS-cell exclusion via a tagged
+    `Int32Array`.
 
 **Result (tier-representative benchmark, versus the pre-optimization Batch-4 code):**
 
 | Tier | Set-based (pre-Batch-4) | Batch 4 (bitmask) | + hot-path opt |
 |---|---|---|---|
 | Basic | 0.58 ms | 0.34 ms | **0.11 ms** ✅ (< 0.3 ms target) |
-| Advanced | 0.59 ms | 0.40 ms | **0.16 ms** ✅ |
-| Extreme | ~35 ms | ~25 ms | **~21 ms** (−16% on a frozen A/B pool) |
+| Advanced | 0.59 ms | 0.40 ms | **0.13 ms** ✅ |
+| Extreme | ~35 ms | ~25 ms | **~10 ms** ✅ (18.7 → 10.1 ms on a frozen A/B pool, −46%) |
 
-Basic and Advanced are now comfortably under the AGENTS.md example thresholds. The
-**Extreme tier still exceeds the 10 ms example** on hard pools (it is highly
-pool-dependent — ~6 ms on easy extreme mixes, ~21 ms on hard ones). The residual is
-the O(numALS²) ALS-XZ pairwise scan that runs fruitlessly on every stalled
-deduction iteration — reducing it further needs a structural change (caching ALS
-across iterations, or not re-running ALS-XZ from scratch each loop), not another
-micro-optimization. The Phase 1 roadmap target of "AIC-heavy boards < 2 s" remains
-met with a wide margin.
+All three tiers now sit at or under the AGENTS.md example thresholds; extreme is
+pool-dependent (under 10 ms on easier extreme mixes, marginally over on the hardest).
+**Solver strength is provably unchanged** — the ALS-XZ rework was validated by a
+byte-identical fingerprint of `{solved, requiresExtreme}` over a frozen 40-grid pool
+before and after, plus a re-verification that extreme generation still produces
+puzzles that genuinely require extreme strategies. The Phase 1 roadmap target of
+"AIC-heavy boards < 2 s" remains met with a wide margin.
 
 ### 8 — Playwright E2E scaffolding (AGENTS.md Section 4)
 
@@ -246,7 +252,9 @@ met with a wide margin.
 
 - **Isolated strategy tests** for `strategies/*`, `grid-utils`, `diggers` — covered
   indirectly today; hand-crafted-grid unit tests remain a follow-up.
-- **Extreme tier < 10 ms**: needs the structural ALS-XZ change described above, not a
-  representation or micro-optimization change.
+- **Extreme tier on the hardest pools** occasionally edges just over 10 ms. Getting a
+  hard guarantee would need a further structural change (e.g. reusing ALS state across
+  deduction iterations rather than re-enumerating each stall); the current per-call
+  precomputation already brought the average to ~10 ms with strength unchanged.
 - **`Docs/research/*` markdown** bullet-style/blank-line lint issues — these files
   are the user's imported prose; auto-fix with `npx markdownlint-cli --fix` when ready.
