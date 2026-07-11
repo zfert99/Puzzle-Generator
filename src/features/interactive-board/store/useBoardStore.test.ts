@@ -66,6 +66,15 @@ describe('placing digits', () => {
     expect(useBoardStore.getState().grid[0][2]).toBe(3);
   });
 
+  it('counts a mistake only when a wrong value is placed', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 0); // answer is 1
+    store.inputDigit(2);    // wrong
+    expect(useBoardStore.getState().mistakes).toBe(1);
+    store.inputDigit(1);    // correct (overwrites) — no new mistake
+    expect(useBoardStore.getState().mistakes).toBe(1);
+  });
+
   it('detects completion when the grid matches the solution', () => {
     const store = useBoardStore.getState();
     store.selectCell(0, 0);

@@ -26,5 +26,12 @@ ELSE (playing / paused / solved):
   abandon the current puzzle and return to the play menu at any time.
   Render <GameHeader>, then <Board> (or a "Paused" placeholder when paused), then
   <Numpad>, then <KeyboardHints> (a legend of the keyboard controls).
-  When solved, also show a celebration and a "New Puzzle" button -> configure().
+  When solved (and not "viewing"), show a MODAL popup over the board with the final
+  time + mistakes and two choices:
+    "New puzzle" -> configure() (back to the menu)
+    "View puzzle" -> dismiss the modal (local viewingSolved = true) to inspect the
+                     completed, now-locked board.
+
+A mounted guard (useSyncExternalStore) defers rendering until the client has hydrated
+the persisted store, so a resumed game never causes an SSR/client mismatch.
 ```

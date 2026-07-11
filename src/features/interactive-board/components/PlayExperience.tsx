@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { GridSizeSelector } from '@/features/puzzle-configuration/components/GridSizeSelector';
 import type { Difficulty } from '@/features/engine/sudoku';
@@ -13,15 +13,33 @@ import { KeyboardHints } from './KeyboardHints';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
+// Hydration-safe "are we on the client yet?" — false during SSR/hydration, true
+// afterward — without a setState-in-effect. Gates rendering of persisted store state.
+const noopSubscribe = () => () => {};
+function useHasMounted(): boolean {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false);
+}
+
+function formatTime(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 /**
  * Client-side orchestrator for `/play`. It owns the config screen, fetches a puzzle
- * via `usePuzzle` (server-side generation — no puzzle is computed during SSR, so no
- * hydration mismatch), hands it to the store, and drives the per-second timer while
- * the game is playing. The `/play` route itself stays a Server Component.
+ * via `usePuzzle` (server-side generation — no puzzle computed during SSR), hands it
+ * to the store, drives the per-second timer, and shows the solved modal. The `/play`
+ * route itself stays a Server Component.
+ *
+ * A `mounted` guard defers rendering until the client has hydrated the persisted
+ * store, so a resumed (localStorage-backed) game never causes an SSR/client mismatch.
  */
 export default function PlayExperience() {
+  const mounted = useHasMounted();
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [viewingSolved, setViewingSolved] = useState(false);
 
   const { loading, error, fetchPuzzle } = usePuzzle();
   const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
@@ -45,8 +63,21 @@ export default function PlayExperience() {
 
   const handlePlay = async () => {
     const puzzle = await fetchPuzzle({ difficulty, gridSize });
-    if (puzzle) startNewGame(puzzle);
+    if (puzzle) {
+      setViewingSolved(false);
+      startNewGame(puzzle);
+    }
   };
+
+  const newPuzzle = () => {
+    setViewingSolved(false);
+    configure();
+  };
+
+  // Avoid a hydration mismatch: render a neutral placeholder until mounted.
+  if (!mounted) {
+    return <div className="glass-panel p-8 max-w-md w-full mx-auto h-48" aria-hidden="true" />;
+  }
 
   // ---- Config screen ----
   if (status === 'configuring') {
@@ -101,14 +132,14 @@ export default function PlayExperience() {
       <div className="w-full max-w-[520px] mx-auto mb-2">
         <button
           type="button"
-          onClick={() => configure()}
+          onClick={newPuzzle}
           className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:underline"
         >
           ← New game
         </button>
       </div>
 
-      <GameHeader difficulty={difficulty} />
+      <GameHeader />
 
       {status === 'paused' ? (
         <div className="w-[min(92vw,520px)] aspect-square flex items-center justify-center rounded-lg bg-white/5 text-gray-400">
@@ -122,15 +153,37 @@ export default function PlayExperience() {
 
       <KeyboardHints />
 
-      {status === 'solved' && (
-        <div role="status" className="celebrate mt-6 text-center">
-          <p className="text-5xl mb-2" aria-hidden="true">
-            <span className="celebrate-emoji">🎉</span>
-          </p>
-          <p className="text-2xl font-bold text-green-500 mb-3">Solved!</p>
-          <button type="button" onClick={() => configure()} className="btn-primary">
-            New Puzzle
-          </button>
+      {status === 'solved' && !viewingSolved && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="solved-title"
+        >
+          <div className="celebrate rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-gray-900 p-8 max-w-sm w-full text-center shadow-2xl">
+            <p className="text-5xl mb-2" aria-hidden="true">
+              <span className="celebrate-emoji">🎉</span>
+            </p>
+            <h2 id="solved-title" className="text-2xl font-bold text-green-500 mb-2">
+              Solved!
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              {formatTime(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
+              mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button type="button" onClick={newPuzzle} className="btn-primary">
+                New puzzle
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingSolved(true)}
+                className="px-5 py-3 rounded-lg border border-gray-300 dark:border-white/20 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+              >
+                View puzzle
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

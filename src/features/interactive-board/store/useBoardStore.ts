@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { temporal } from 'zundo';
-import type { SudokuPuzzle, GridSize, GridConfig } from '@/features/engine/sudoku';
+import { persist } from 'zustand/middleware';
+import type { SudokuPuzzle, GridSize, GridConfig, Difficulty } from '@/features/engine/sudoku';
 import { getGridConfig } from '@/features/engine/sudoku';
 import { computePeers, toggleBit } from '../board-utils';
 
@@ -17,11 +18,13 @@ export interface BoardState {
   peers: number[][];       // flat peer indices per cell
 
   // UI / session state (deliberately NOT tracked by undo/redo)
+  difficulty: Difficulty;
   selectedCell: { r: number; c: number } | null;
   pencilMode: boolean;
   realTimeErrors: boolean;
   status: GameStatus;
   elapsedTime: number;
+  mistakes: number;
 
   // Actions
   startNewGame: (puzzle: SudokuPuzzle) => void;
@@ -55,7 +58,8 @@ const initialConfig = getGridConfig(9);
  */
 export const useBoardStore = create<BoardState>()(
   temporal(
-    (set, get) => ({
+    persist(
+      (set, get) => ({
       gridSize: 9,
       config: initialConfig,
       grid: emptyGrid(9),
@@ -64,11 +68,13 @@ export const useBoardStore = create<BoardState>()(
       solution: emptyGrid(9),
       peers: [],
 
+      difficulty: 'easy' as Difficulty,
       selectedCell: null,
       pencilMode: false,
       realTimeErrors: false,
       status: 'configuring',
       elapsedTime: 0,
+      mistakes: 0,
 
       startNewGame: (puzzle: SudokuPuzzle) => {
         const size = puzzle.gridSize as GridSize;
@@ -81,10 +87,12 @@ export const useBoardStore = create<BoardState>()(
           givens: puzzle.grid.map(row => row.map(v => v !== 0)),
           solution: puzzle.solution.map(row => [...row]),
           peers: computePeers(config),
+          difficulty: puzzle.difficulty,
           selectedCell: null,
           pencilMode: false,
           status: 'playing',
           elapsedTime: 0,
+          mistakes: 0,
         });
         // Drop any history from a previous game so the first move can't be undone
         // "before" the puzzle started.
@@ -96,7 +104,7 @@ export const useBoardStore = create<BoardState>()(
       selectCell: (r, c) => set({ selectedCell: { r, c } }),
 
       inputDigit: (digit: number) => {
-        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution } = get();
+        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution, mistakes } = get();
         if (status !== 'playing' || !selectedCell) return;
         const { r, c } = selectedCell;
         if (givens[r][c]) return; // never edit a given clue
@@ -112,6 +120,7 @@ export const useBoardStore = create<BoardState>()(
         // Pen mode: place the digit, or toggle it off if it's already there.
         const nextGrid = grid.map(row => [...row]);
         const nextCandidates = candidates.map(row => [...row]);
+        let mistakeIncrement = 0;
 
         if (nextGrid[r][c] === digit) {
           nextGrid[r][c] = 0;
@@ -131,10 +140,17 @@ export const useBoardStore = create<BoardState>()(
             const pc = peer % config.size;
             nextCandidates[pr][pc] &= bit;
           }
+          // A placement that doesn't match the solution is a mistake.
+          if (digit !== solution[r][c]) mistakeIncrement = 1;
         }
 
         const solved = nextGrid.every((row, rr) => row.every((v, cc) => v === solution[rr][cc]));
-        set({ grid: nextGrid, candidates: nextCandidates, status: solved ? 'solved' : 'playing' });
+        set({
+          grid: nextGrid,
+          candidates: nextCandidates,
+          status: solved ? 'solved' : 'playing',
+          mistakes: mistakes + mistakeIncrement,
+        });
       },
 
       clearCell: () => {
@@ -188,6 +204,32 @@ export const useBoardStore = create<BoardState>()(
       pause: () => set(state => (state.status === 'playing' ? { status: 'paused' } : {})),
       resume: () => set(state => (state.status === 'paused' ? { status: 'playing' } : {})),
     }),
+      {
+        // Persist the in-progress game to localStorage so a refresh resumes it.
+        // Actions are dropped by JSON serialization and re-supplied by the creator;
+        // peers are recomputed on rehydration rather than stored.
+        name: 'sudoku-board',
+        version: 1,
+        partialize: (state) => ({
+          gridSize: state.gridSize,
+          config: state.config,
+          grid: state.grid,
+          candidates: state.candidates,
+          givens: state.givens,
+          solution: state.solution,
+          difficulty: state.difficulty,
+          selectedCell: state.selectedCell,
+          pencilMode: state.pencilMode,
+          realTimeErrors: state.realTimeErrors,
+          status: state.status,
+          elapsedTime: state.elapsedTime,
+          mistakes: state.mistakes,
+        }),
+        onRehydrateStorage: () => (state) => {
+          if (state && state.config) state.peers = computePeers(state.config);
+        },
+      }
+    ),
     {
       // Only puzzle progress is time-travelled; ephemeral UI/session state is excluded.
       partialize: (state) => ({ grid: state.grid, candidates: state.candidates }),

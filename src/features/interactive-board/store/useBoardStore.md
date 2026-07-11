@@ -16,8 +16,20 @@ The interactive board's single source of truth — a Zustand store wrapped in th
 ## State
 
 `grid`, `candidates` (bitmask/cell), `givens` (immutable clues), `solution`, `peers`
-(precomputed), plus session state `selectedCell`, `pencilMode`, `realTimeErrors`,
-`status` (`configuring | playing | paused | solved`), `elapsedTime`.
+(precomputed), plus session state `difficulty`, `selectedCell`, `pencilMode`,
+`realTimeErrors`, `status` (`configuring | playing | paused | solved`), `elapsedTime`,
+and `mistakes` (count of wrong placements).
+
+## Persistence
+
+The store is wrapped in Zustand's `persist` middleware (key `sudoku-board`,
+localStorage) so a refresh resumes the in-progress game. `partialize` saves the game
+data (grid, candidates, givens, solution, difficulty, status, timer, mistakes, …) but
+not `peers`, which are recomputed from `config` in `onRehydrateStorage`. Actions are
+dropped by JSON serialization and re-supplied by the store creator. `persist` sits
+*inside* `temporal`, so undo/redo still works and `useBoardStore.temporal` is intact.
+Because the persisted state only exists on the client, `PlayExperience` gates its
+first render on a mounted check to avoid an SSR/hydration mismatch.
 
 ## Key actions
 
@@ -36,8 +48,9 @@ inputDigit(digit):
   ELSE (pen): if the cell already holds this digit, clear it; otherwise place it —
     UNLESS all `size` instances of that digit are already on the board (lockout:
     matches the grayed-out numpad button) — clear its pencil marks, and strip the
-    digit from every peer's candidates. Then, if the grid equals the solution,
-    status = solved.
+    digit from every peer's candidates. A placement that doesn't match the solution
+    increments `mistakes`. Then, if the grid equals the solution, status = solved
+    (which locks the board — the play actions all require status === 'playing').
 
 clearCell(): empty the selected non-given cell (value + candidates).
 

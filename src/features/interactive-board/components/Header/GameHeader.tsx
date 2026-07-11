@@ -2,7 +2,6 @@
 
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
-import type { Difficulty } from '@/features/engine/sudoku';
 
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -10,19 +9,19 @@ function formatTime(totalSeconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-interface GameHeaderProps {
-  difficulty: Difficulty;
-}
-
 /**
- * Game status bar: difficulty + grid size, a live timer, Pause/Resume (pausing hides
- * the board — see PlayExperience), and the real-time-error-checking toggle.
+ * Game status bar: difficulty + grid size, a live timer, a mistakes counter,
+ * Pause/Resume (pausing hides the board — see PlayExperience), and the
+ * real-time-error-checking toggle. Reads everything (including difficulty) from the
+ * store so it survives a persisted refresh.
  */
-export function GameHeader({ difficulty }: GameHeaderProps) {
-  const { size, elapsedTime, status, realTimeErrors } = useBoardStore(
+export function GameHeader() {
+  const { size, difficulty, elapsedTime, mistakes, status, realTimeErrors } = useBoardStore(
     useShallow((s) => ({
       size: s.config.size,
+      difficulty: s.difficulty,
       elapsedTime: s.elapsedTime,
+      mistakes: s.mistakes,
       status: s.status,
       realTimeErrors: s.realTimeErrors,
     }))
@@ -37,9 +36,18 @@ export function GameHeader({ difficulty }: GameHeaderProps) {
         {difficulty} · {size}×{size}
       </span>
 
-      <span className="font-mono tabular-nums text-base" aria-live="off" aria-label="Elapsed time">
-        {formatTime(elapsedTime)}
-      </span>
+      <div className="flex items-center gap-3">
+        <span className="font-mono tabular-nums text-base" aria-live="off" aria-label="Elapsed time">
+          {formatTime(elapsedTime)}
+        </span>
+        <span
+          className="text-gray-500 dark:text-gray-400 tabular-nums"
+          aria-label={`${mistakes} mistake${mistakes === 1 ? '' : 's'}`}
+          title="Mistakes"
+        >
+          ✗ {mistakes}
+        </span>
+      </div>
 
       <div className="flex items-center gap-2">
         <button
