@@ -180,8 +180,18 @@ The playable board shipped at `/play` — 4×4/6×6/9×9, keyboard/mouse/touch i
 pencil marks, undo/redo, hints, real-time errors, number lockout, same-number
 highlight, a timer with pause, a mistakes counter, a solved modal, and localStorage
 persistence. Full write-up in
-[phase3-walkthrough.md](archive/phase3-walkthrough.md). Optional polish (e.g. CSS
-Subgrid pencil alignment, a mistakes limit, sound) may follow.
+[phase3-walkthrough.md](archive/phase3-walkthrough.md).
+
+### Deferred polish (revisit after Phase 4)
+
+These were consciously skipped to ship the core; come back to them:
+
+- [ ] **CSS Subgrid** for cross-cell pencil-mark alignment (currently fixed per-cell
+      slots — needs a board-grid restructure).
+- [ ] **Mistakes limit / lives** — optionally end the game after N mistakes.
+- [ ] **Sound effects** for placement / error / win.
+- [ ] **Strategy-aware "why" hints** — name the technique instead of just revealing a
+      cell (overlaps Phase 5's solver-step serialization).
 
 This is the **architectural pivot point**. Everything after this phase depends on having a playable, in-browser Sudoku board instead of a PDF-only output.
 
