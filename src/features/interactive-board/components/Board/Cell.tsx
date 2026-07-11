@@ -51,14 +51,15 @@ export function Cell({ r, c }: CellProps) {
   const thickRight = (c + 1) % boxWidth === 0 && c + 1 !== size;
   const thickBottom = (r + 1) % boxHeight === 0 && r + 1 !== size;
 
-  // One background wins, by precedence: selected > error > same-number > peer.
+  // One background wins, by precedence: error > selected > same-number > peer.
+  // Errors take priority so a wrong value reads red even while it's the selected cell.
   const classes = [styles.cell];
   if (isGiven) classes.push(styles.given);
-  if (isSelected) classes.push(styles.selected);
-  else if (isError) classes.push(styles.error);
+  if (isError) classes.push(styles.error);
+  else if (isSelected) classes.push(styles.selected);
   else if (isSameNumber) classes.push(styles.sameNumber);
   else if (isPeer) classes.push(styles.peer);
-  if (isError && isSelected) classes.push(styles.errorText); // keep wrong values red even when focused
+  if (isSelected && isError) classes.push(styles.selectedRing); // still show selection on a red cell
   if (thickRight) classes.push(styles.thickRight);
   if (thickBottom) classes.push(styles.thickBottom);
   const className = classes.join(' ');

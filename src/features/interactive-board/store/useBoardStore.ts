@@ -116,6 +116,12 @@ export const useBoardStore = create<BoardState>()(
         if (nextGrid[r][c] === digit) {
           nextGrid[r][c] = 0;
         } else {
+          // Lockout: once all `size` instances of a digit are on the board, it can't
+          // be placed again (mirrors the grayed-out numpad button).
+          let placed = 0;
+          for (const row of grid) for (const v of row) if (v === digit) placed++;
+          if (placed >= config.size) return;
+
           nextGrid[r][c] = digit;
           nextCandidates[r][c] = 0; // a placed value has no pencil marks
           // Strip the placed digit from every peer's candidates (O(1) peer lookup).

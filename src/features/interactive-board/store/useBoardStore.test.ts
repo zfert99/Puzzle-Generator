@@ -76,6 +76,34 @@ describe('placing digits', () => {
   });
 });
 
+describe('digit lockout', () => {
+  // Full solution with one hole at (0,3), whose answer is 4 — so all four 1s are
+  // already on the board but 4 is not yet complete.
+  const lockoutPuzzle = (): SudokuPuzzle => ({
+    grid: [
+      [1, 2, 3, 0],
+      [3, 4, 1, 2],
+      [2, 1, 4, 3],
+      [4, 3, 2, 1],
+    ],
+    solution: SOLUTION,
+    difficulty: 'easy',
+    gridSize: 4,
+  });
+
+  it('blocks placing a digit once all of it is on the board', () => {
+    useBoardStore.getState().startNewGame(lockoutPuzzle());
+    const store = useBoardStore.getState();
+    store.selectCell(0, 3);
+
+    store.inputDigit(1); // all four 1s already placed -> blocked
+    expect(useBoardStore.getState().grid[0][3]).toBe(0);
+
+    store.inputDigit(4); // 4 still available -> allowed
+    expect(useBoardStore.getState().grid[0][3]).toBe(4);
+  });
+});
+
 describe('hint', () => {
   it('reveals the correct value for the selected empty cell', () => {
     const store = useBoardStore.getState();

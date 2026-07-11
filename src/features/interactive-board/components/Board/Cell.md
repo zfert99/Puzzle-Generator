@@ -19,8 +19,9 @@ Select from the store (shallow):
   isSameNumber  = this cell holds the same non-zero value as the selected cell
                   (highlights every matching number across the board).
 
-Choose ONE background by precedence: selected > error > same-number > peer.
-(A wrong value stays red even when it is the selected/focused cell.)
+Choose ONE background by precedence: error > selected > same-number > peer.
+Errors win, so a wrong value reads red even while it is the selected cell; a thin
+selection ring is added on top in that case so the selection is still visible.
 
 Compute thick-border flags from box geometry (adapts to 4/6/9 grids).
 

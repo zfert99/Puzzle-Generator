@@ -33,9 +33,11 @@ selectCell(r, c): set the selection.
 inputDigit(digit):
   ignore unless playing with a selected, non-given cell.
   IF pencil mode AND the cell is empty: toggle that candidate bit.
-  ELSE (pen): if the cell already holds this digit, clear it; otherwise place it,
-    clear its pencil marks, and strip the digit from every peer's candidates.
-    Then, if the grid now equals the solution, status = solved.
+  ELSE (pen): if the cell already holds this digit, clear it; otherwise place it —
+    UNLESS all `size` instances of that digit are already on the board (lockout:
+    matches the grayed-out numpad button) — clear its pencil marks, and strip the
+    digit from every peer's candidates. Then, if the grid equals the solution,
+    status = solved.
 
 clearCell(): empty the selected non-given cell (value + candidates).
 

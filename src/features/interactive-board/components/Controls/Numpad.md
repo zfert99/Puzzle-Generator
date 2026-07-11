@@ -4,6 +4,8 @@ On-screen controls for mouse/touch users. Client component.
 
 ```text
 Render digit buttons 1..size -> inputDigit(digit).
+  A digit button is DISABLED once all `size` instances of it are on the board
+  (completion lockout) — counts are derived from the grid via a useShallow selector.
 Render Erase -> clearCell.
 Render Pencil toggle with aria-pressed = pencilMode -> togglePencilMode.
 Render Hint -> hint() (reveal one correct cell).

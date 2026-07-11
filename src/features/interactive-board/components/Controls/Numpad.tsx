@@ -1,6 +1,7 @@
 'use client';
 
 import { useStore } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 
 /**
@@ -12,6 +13,14 @@ import { useBoardStore } from '../../store/useBoardStore';
 export function Numpad() {
   const size = useBoardStore((s) => s.config.size);
   const pencilMode = useBoardStore((s) => s.pencilMode);
+  // Which digits have all `size` instances placed (locked out).
+  const completed = useBoardStore(
+    useShallow((s) => {
+      const counts = new Array<number>(s.config.size).fill(0);
+      for (const row of s.grid) for (const v of row) if (v > 0) counts[v - 1]++;
+      return counts.map((n) => n >= s.config.size);
+    })
+  );
   const inputDigit = useBoardStore((s) => s.inputDigit);
   const clearCell = useBoardStore((s) => s.clearCell);
   const togglePencilMode = useBoardStore((s) => s.togglePencilMode);
@@ -32,8 +41,9 @@ export function Numpad() {
           <button
             key={digit}
             type="button"
+            disabled={completed[digit - 1]}
             onClick={() => inputDigit(digit)}
-            className="py-3 rounded-lg bg-white/10 hover:bg-white/20 text-lg font-semibold transition-colors"
+            className="py-3 rounded-lg bg-white/10 hover:bg-white/20 text-lg font-semibold transition-colors disabled:opacity-30 disabled:hover:bg-white/10 disabled:cursor-not-allowed"
           >
             {digit}
           </button>
