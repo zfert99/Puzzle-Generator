@@ -33,8 +33,19 @@ Phase 'playing':
     arrive later; offer a return to the difficulty picker.
 ```
 
-## Note
+## Ranked flow (4.4 UI)
 
-The solved modal is intentionally daily-specific and simpler than `/play`'s — in 4.4 it
-gains the ranked-time / streak / rank-reveal treatment, at which point the solve is also
-submitted to the server for validation.
+**Why:** For a signed-in player the daily is competitive, so the component drives the ranked
+endpoints around the reused board:
+
+- On **Play**, it POSTs `/api/daily/start` **unconditionally** (not gated on the client
+  `session`, which may still be loading — the auth cookie is what matters; a signed-out
+  caller just gets a harmless 401). This stamps the server-side start time.
+- On **solved**, a one-shot guard (`submittedRef`) POSTs `/api/solve` once with the completed
+  grid + mistakes, and the returned rank is shown in the modal.
+- The "submitting…" and signed-out states are **derived in render** from `session` + the
+  submit result, so the effect never calls setState synchronously
+  (`react-hooks/set-state-in-effect`).
+
+The solved modal shows the rank (or a "sign in to be ranked" prompt when signed out) plus a
+link to the leaderboard. The header carries the `AccountBadge` and a leaderboard link.

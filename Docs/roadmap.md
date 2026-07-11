@@ -233,7 +233,7 @@ graph TD
 
 > **Tracks:** 🗄️ Infrastructure, 🎨 Frontend
 > **Branch:** `feature/daily-leaderboards`
-> **Status:** 🚧 In Progress — **4.1 (Database)** and **4.2 (Daily Cron)** deployed; **4.3 (Auth)** code-complete (migration + OAuth creds pending); 4.3.1–4.4 planned. Running log: [phase4-walkthrough.md](phase4-walkthrough.md)
+> **Status:** 🚧 In Progress — all slices **4.1–4.4 code-complete & verified** (DB, daily cron, auth, BOLA, leaderboards + UI). 4.1/4.2 deployed to prod; 4.3/4.3.1/4.4 on the branch (need Vercel auth env before deploy). Running log: [phase4-walkthrough.md](phase4-walkthrough.md)
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** Phase 3 (Interactive Board)
 
@@ -315,13 +315,14 @@ CREATE TABLE solve_attempts (
 - Ownership-scoped data access ([attempts.service.ts](../src/features/leaderboards/attempts.service.ts)): every function requires a `userId` and filters `WHERE user_id = …` in the query; no "get by id" that could skip the check.
 - Reference route [`GET /api/me/attempts`](../src/app/api/me/attempts/route.ts): 401 unauthenticated; verified two users each see only their own attempts on the same puzzle. Writes (recording solves) follow the same rule in 4.4.
 
-#### 4.4 — Leaderboards, streaks & anti-cheat 🚧 Backend done
+#### 4.4 — Leaderboards, streaks & anti-cheat ✅ Done (backend + UI)
 
 - **Anti-cheat solve** ([solve.service.ts](../src/features/leaderboards/solve.service.ts)): server-measured time (start stamped by [`/api/daily/start`](../src/app/api/daily/start/route.ts), single app clock), grid verified against the stored solution, plausibility floor, one ranked attempt/user. [`POST /api/solve`](../src/app/api/solve/route.ts). Pragmatic posture — solution still served so board hints work.
 - **Leaderboards** ([leaderboard.service.ts](../src/features/leaderboards/leaderboard.service.ts)): per-day, per-difficulty board + caller's own rank via [`GET /api/leaderboard`](../src/app/api/leaderboard/route.ts).
 - **Streaks** ([streak.ts](../src/features/leaderboards/streak.ts) + [`GET /api/me/streak`](../src/app/api/me/streak/route.ts)): consecutive UTC-day completions with a yesterday grace.
 - Ranked = signed in; anonymous play stays unranked. All writes ownership-scoped (4.3.1).
-- **Deferred to the UI pass:** leaderboard page, animated rank reveal, personal bests, wiring solve submission into the daily board — plus the sign-in UI (4.3) the ranked flow needs in-app.
+- **UI shipped:** auth UI ([AuthPanel](../src/features/auth/components/AuthPanel.tsx) at `/signin`, [AccountBadge](../src/features/auth/components/AccountBadge.tsx)), ranked wiring in the [daily board](../src/features/dailies/components/DailyExperience.tsx), and the [leaderboard page](../src/app/leaderboard/page.tsx). Verified via headless Chromium.
+- **Small follow-ups:** animated rank reveal, all-time personal bests, the missing `bg-pattern.svg` asset (pre-existing).
 
 ---
 

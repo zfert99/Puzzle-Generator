@@ -12,7 +12,8 @@
 | 4.2 | Daily puzzle cron + `/daily` | ✅ Done, deployed |
 | 4.3 | Authentication & sessions (better-auth) | ✅ Verified locally; prod deploy pending |
 | 4.3.1 | Authorization (BOLA) | ✅ Verified (pattern + primitives) |
-| 4.4 | Leaderboards, streaks & anti-cheat | 🚧 Backend done + verified; UI pending |
+| 4.4 | Leaderboards, streaks & anti-cheat | ✅ Backend + UI done + verified |
+| — | Auth UI (sign-in/up, account badge) — was deferred from 4.3 | ✅ Done + verified |
 
 **Confirmed stack:** Neon Postgres · Drizzle ORM · better-auth (passkeys-first) · Vercel
 Cron · Upstash (4.4). **Daily rules:** anonymous play, 00:00 UTC rollover, difficulties
@@ -220,10 +221,48 @@ it also needs the deferred sign-in UI).
 - Streak: 1 after today's completion. Test users deleted (cascade) — prod DB clean.
 - `tsc` / `eslint` / `next build` (4 new dynamic routes) / markdownlint clean; **120 tests**.
 
-### Deferred to the UI pass
+---
 
-Leaderboard page, wiring `/api/daily/start` + `/api/solve` into the daily board, streak
-display, rank reveal — and a sign-in UI (from 4.3), which the ranked flow needs in-app.
+## UI pass — auth UI + ranked daily + leaderboard
+
+Ships the client layer that makes the whole ranked flow usable in-app, including the sign-in
+UI deferred from 4.3.
+
+### What shipped
+
+- **Auth client** (`auth-client.ts`): better-auth React client (same-origin) + passkey plugin.
+  **`AuthPanel`** (`/signin`): passkey / Google / email-password, passkeys-first. **`AccountBadge`**:
+  reactive `useSession` — name + sign-out + "add passkey", or a Sign-in link.
+- **Ranked daily** (`DailyExperience`): POSTs `/api/daily/start` on Play (unconditional — the
+  cookie, not the client session, is authoritative) and `/api/solve` once on solve (one-shot
+  guard); shows the returned rank, or a sign-in prompt when signed out.
+- **Leaderboard page** (`/leaderboard` + `LeaderboardView`): difficulty tabs, today's board,
+  the caller's highlighted row + rank + streak.
+
+### Key decisions
+
+- **Fetch effects never setState synchronously** (`react-hooks/set-state-in-effect`): state is
+  set only in async callbacks; loading/derived states come from event handlers and render.
+- **Start call is cookie-authoritative**, not gated on the (possibly still-loading) session.
+
+### Verified (headless Chromium + real Neon)
+
+- Sign-up through the form → redirect to `/daily` → `AccountBadge` shows the user + Sign out.
+- `/signin`, `/daily`, `/leaderboard` render with **no hydration/console errors** (bar a
+  pre-existing `bg-pattern.svg` 404, which `/play` also has).
+- Signed-in Play fires `POST /api/daily/start` → **200** (board→ranked wiring).
+- `tsc` / `eslint` / `next build` (adds `/signin`, `/leaderboard`) / markdownlint clean; 120 tests.
+
+### Not done (small follow-ups)
+
+- Animated rank reveal (currently a static "Ranked #N"); all-time personal-bests view.
+- The missing `bg-pattern.svg` asset (pre-existing, cosmetic).
+- Full browser automation of an actual board solve (impractical to drive 81 cells; the solve
+  API and submit wiring are verified separately).
+
+---
+
+## Cross-cutting notes
 
 - **Dev-only audit advisory:** `drizzle-kit` pulls a transitive esbuild dev-server advisory
   (moderate). Dev tooling only — `npm audit --omit=dev` is clean.
