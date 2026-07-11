@@ -233,17 +233,21 @@ graph TD
 
 > **Tracks:** 🗄️ Infrastructure, 🎨 Frontend
 > **Branch:** `feature/daily-leaderboards`
+> **Status:** 🚧 In Progress — slice **4.1 (Database Layer)** landed; 4.2–4.4 planned
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** Phase 3 (Interactive Board)
 
-This phase introduces **state and persistence**. The app goes from stateless to having a database, user accounts, and scheduled puzzle generation.
+This phase introduces **state and persistence**. The app goes from stateless to having a database, user accounts, and scheduled puzzle generation. It ships in independently-mergeable slices (4.1 → 4.4); see [phase4-implementation-plan.md](phase4-implementation-plan.md) for the security-first plan and confirmed stack (Neon Postgres · Drizzle · better-auth · Vercel Cron · Upstash).
 
 ### Phase 4 Deliverables
 
-#### 4.1 — Database Layer (Secure by Design)
+#### 4.1 — Database Layer (Secure by Design) ✅ Done
 
-- Set up PostgreSQL (Supabase or Vercel Postgres)
-- Integrate a type-safe ORM (Prisma or Drizzle) to guarantee parameterized queries and prevent SQL injection.
+- **PostgreSQL via Neon** (Vercel Marketplace integration), accessed through the Neon HTTP driver for serverless.
+- **Drizzle ORM** for type-safe, parameterized queries (no string-built SQL). Schema in [schema.ts](../src/lib/db/schema.ts); server-only client in [client.ts](../src/lib/db/client.ts) (guarded by `server-only`).
+- Checked-in SQL migration (`drizzle-kit generate`) under `src/lib/db/migrations`; scripts: `db:generate`, `db:migrate`, `db:studio`, `db:seed`.
+- Idempotent local seed ([seed.ts](../src/lib/db/seed.ts)) generating today's dailies; pure row-mapping helpers ([daily-row.ts](../src/lib/db/daily-row.ts)) with unit tests.
+- Required env documented in [.env.example](../.env.example). Auth-identity tables (accounts/passkeys/sessions) are deferred to 4.3 (owned by better-auth's adapter).
 - Schema design:
 
 ```sql
