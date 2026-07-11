@@ -322,7 +322,7 @@ CREATE TABLE solve_attempts (
 - **Streaks** ([streak.ts](../src/features/leaderboards/streak.ts) + [`GET /api/me/streak`](../src/app/api/me/streak/route.ts)): consecutive UTC-day completions with a yesterday grace.
 - Ranked = signed in; anonymous play stays unranked. All writes ownership-scoped (4.3.1).
 - **UI shipped:** auth UI ([AuthPanel](../src/features/auth/components/AuthPanel.tsx) at `/signin`, [AccountBadge](../src/features/auth/components/AccountBadge.tsx)), ranked wiring in the [daily board](../src/features/dailies/components/DailyExperience.tsx), and the [leaderboard page](../src/app/leaderboard/page.tsx). Verified via headless Chromium.
-- **Small follow-ups:** animated rank reveal, all-time personal bests, the missing `bg-pattern.svg` asset (pre-existing).
+- **Polish done:** animated rank reveal, all-time personal bests ([`/api/me/bests`](../src/app/api/me/bests/route.ts)), and the `bg-pattern.svg` background asset.
 
 ---
 

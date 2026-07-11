@@ -239,7 +239,7 @@ export default function DailyExperience() {
                   to be ranked on the leaderboard.
                 </span>
               ) : submit.status === 'done' ? (
-                <span className="text-indigo-400 font-semibold">
+                <span className="rank-reveal text-indigo-400 font-semibold">
                   {submit.rank ? `🏆 Ranked #${submit.rank} today` : 'Time recorded!'}
                 </span>
               ) : submit.status === 'error' ? (

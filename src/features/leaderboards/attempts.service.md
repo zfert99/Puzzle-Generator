@@ -30,9 +30,22 @@ ranked attempt (one per user per puzzle). Compound filter on both ids.
 SELECT * FROM solve_attempts WHERE user_id = userId AND puzzle_id = puzzleId LIMIT 1  (or null)
 ```
 
+## `getPersonalBests(db, userId)`
+
+**Why:** Backs the "your personal bests" view — the user's fastest completed time per
+difficulty across all days. Scoped to `userId` and `completed`, grouped by the puzzle's
+difficulty via a join to `daily_puzzles`.
+
+```text
+SELECT daily_puzzles.difficulty, MIN(time_ms)
+  FROM solve_attempts JOIN daily_puzzles
+  WHERE user_id = userId AND completed
+  GROUP BY difficulty
+```
+
 ## Note
 
-Writes (recording a *verified* solve) arrive in 4.4 and follow the same rule: the `userId`
-is server-supplied, and `UNIQUE(user_id, puzzle_id)` caps one ranked attempt per user per
-puzzle. The unit tests capture the `.where()` filter and assert it is the user-id predicate,
-so dropping the ownership filter fails the build.
+Writes (recording a *verified* solve) live in the solve service (4.4) and follow the same
+rule: the `userId` is server-supplied, and `UNIQUE(user_id, puzzle_id)` caps one ranked
+attempt per user per puzzle. The unit tests capture the `.where()` filter and assert it is the
+user-id predicate, so dropping the ownership filter fails the build.

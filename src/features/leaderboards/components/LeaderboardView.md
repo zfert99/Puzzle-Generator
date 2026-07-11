@@ -14,7 +14,7 @@ synchronous reset. All ranking/ownership is decided server-side; this is a pure 
 
 ```text
 effect [difficulty] -> GET /api/leaderboard -> setEntries/setMe (async)
-effect [session]    -> if signed in, GET /api/me/streak -> setStreak (async)
+effect [session]    -> if signed in, GET /api/me/streak + /api/me/bests -> setStreak/setBests (async)
 tab click           -> setLoading(true) + setDifficulty (event handler)
-render              -> tabs · (streak · your rank) · table with the caller's row highlighted
+render              -> tabs · (streak · your rank) · personal bests · table (caller's row highlighted)
 ```

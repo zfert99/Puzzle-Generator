@@ -95,9 +95,22 @@ body {
   50% { transform: translateY(-8px); }
 }
 
+/* Ranked-daily result: the rank pops in a beat after the modal (a small reveal). */
+@keyframes rank-reveal {
+  0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }
+  55% { transform: scale(1.25) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.rank-reveal {
+  display: inline-block;
+  animation: rank-reveal 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .celebrate,
-  .celebrate-emoji {
+  .celebrate-emoji,
+  .rank-reveal {
     animation: none;
   }
 }

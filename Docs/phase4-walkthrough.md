@@ -253,10 +253,18 @@ UI deferred from 4.3.
 - Signed-in Play fires `POST /api/daily/start` → **200** (board→ranked wiring).
 - `tsc` / `eslint` / `next build` (adds `/signin`, `/leaderboard`) / markdownlint clean; 120 tests.
 
-### Not done (small follow-ups)
+### Polish (done)
 
-- Animated rank reveal (currently a static "Ranked #N"); all-time personal-bests view.
-- The missing `bg-pattern.svg` asset (pre-existing, cosmetic).
+- **Animated rank reveal** — the "🏆 Ranked #N" pops in via a `rank-reveal` CSS animation
+  (respects `prefers-reduced-motion`).
+- **Personal bests** — `getPersonalBests` + `GET /api/me/bests` (ownership-scoped, min time per
+  difficulty); shown as chips on `/leaderboard` when signed in. Verified: 401 unauthenticated,
+  correct data signed in.
+- **`bg-pattern.svg`** — added the missing background asset (a subtle dot texture); the 404 is
+  gone (verified 200).
+
+### Still open (optional)
+
 - Full browser automation of an actual board solve (impractical to drive 81 cells; the solve
   API and submit wiring are verified separately).
 

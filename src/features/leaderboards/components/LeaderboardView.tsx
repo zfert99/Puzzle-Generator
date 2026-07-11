@@ -37,6 +37,7 @@ export function LeaderboardView() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
+  const [bests, setBests] = useState<{ difficulty: string; bestMs: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -71,7 +72,8 @@ export function LeaderboardView() {
     };
   }, [difficulty]);
 
-  // Streak only when signed in; render gates on `session`, so no synchronous reset is needed.
+  // Streak + personal bests, only when signed in; render gates on `session`, so no
+  // synchronous reset is needed. setState happens only in async callbacks.
   useEffect(() => {
     if (!session) return;
     let active = true;
@@ -79,6 +81,12 @@ export function LeaderboardView() {
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (active) setStreak(d?.streak ?? null);
+      })
+      .catch(() => {});
+    fetch('/api/me/bests')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active) setBests(d?.bests ?? []);
       })
       .catch(() => {});
     return () => {
@@ -110,10 +118,27 @@ export function LeaderboardView() {
       </div>
 
       {session && (streak !== null || me) && (
-        <p className="text-center text-sm text-gray-400 mb-4">
+        <p className="text-center text-sm text-gray-400 mb-3">
           {streak !== null ? `🔥 ${streak}-day streak` : ''}
           {me ? `${streak !== null ? ' · ' : ''}Your rank: #${me.rank} (${formatMs(me.timeMs)})` : ''}
         </p>
+      )}
+
+      {session && bests.length > 0 && (
+        <div className="mb-4 text-center">
+          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Your personal bests</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {DAILY_DIFFICULTIES.filter((d) => bests.some((b) => b.difficulty === d)).map((d) => {
+              const best = bests.find((b) => b.difficulty === d)!;
+              return (
+                <span key={d} className="px-2 py-1 rounded-md bg-white/5 text-xs">
+                  <span className="capitalize text-gray-400">{d}</span>{' '}
+                  <span className="tabular-nums font-medium">{formatMs(best.bestMs)}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {loading ? (

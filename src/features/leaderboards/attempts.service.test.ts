@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts } from '@/lib/db/schema';
-import { getUserAttempts, getUserAttemptForPuzzle } from './attempts.service';
+import { getUserAttempts, getUserAttemptForPuzzle, getPersonalBests } from './attempts.service';
 
 /**
  * BOLA guarantee under test: every read is scoped by `userId` via a WHERE filter — never
@@ -58,5 +58,25 @@ describe('getUserAttemptForPuzzle', () => {
     // A WHERE was applied (the `and(userId, puzzleId)` compound) — not an unscoped lookup.
     expect(captured.calls).toBe(1);
     expect(captured.filter).toBeDefined();
+  });
+});
+
+describe('getPersonalBests', () => {
+  it('scopes to the user and returns min time per difficulty', async () => {
+    let captured: unknown;
+    const groupBy = async () => [{ difficulty: 'easy', bestMs: 90_000 }];
+    const where = (filter: unknown) => {
+      captured = filter;
+      return { groupBy };
+    };
+    const db = {
+      select: () => ({ from: () => ({ innerJoin: () => ({ where }) }) }),
+    } as unknown as Database;
+
+    const bests = await getPersonalBests(db, 'user-A');
+
+    expect(bests).toEqual([{ difficulty: 'easy', bestMs: 90_000 }]);
+    // A WHERE (user_id + completed) was applied — never an unscoped aggregate.
+    expect(captured).toBeDefined();
   });
 });

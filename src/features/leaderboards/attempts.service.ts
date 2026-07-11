@@ -1,6 +1,6 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
-import { solveAttempts, type SolveAttempt } from '@/lib/db/schema';
+import { solveAttempts, dailyPuzzles, type SolveAttempt } from '@/lib/db/schema';
 
 /**
  * Ownership-scoped reads of a user's solve attempts — the data-access half of the BOLA
@@ -38,4 +38,25 @@ export async function getUserAttemptForPuzzle(
     .where(and(eq(solveAttempts.userId, userId), eq(solveAttempts.puzzleId, puzzleId)))
     .limit(1);
   return row ?? null;
+}
+
+export interface PersonalBest {
+  difficulty: string;
+  bestMs: number;
+}
+
+/**
+ * A user's best (fastest) completed time per difficulty, across all days — their all-time
+ * personal bests. Scoped to `userId` (BOLA); grouped by the puzzle's difficulty via a join.
+ */
+export function getPersonalBests(db: Database, userId: string): Promise<PersonalBest[]> {
+  return db
+    .select({
+      difficulty: dailyPuzzles.difficulty,
+      bestMs: sql<number>`min(${solveAttempts.timeMs})`.mapWith(Number),
+    })
+    .from(solveAttempts)
+    .innerJoin(dailyPuzzles, eq(solveAttempts.puzzleId, dailyPuzzles.id))
+    .where(and(eq(solveAttempts.userId, userId), eq(solveAttempts.completed, true)))
+    .groupBy(dailyPuzzles.difficulty);
 }
