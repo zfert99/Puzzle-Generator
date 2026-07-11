@@ -97,6 +97,16 @@ export default function PlayExperience() {
   // ---- Game ----
   return (
     <div className="w-full flex flex-col items-center">
+      <div className="w-full max-w-[520px] mx-auto mb-2">
+        <button
+          type="button"
+          onClick={() => configure()}
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:underline"
+        >
+          ← New game
+        </button>
+      </div>
+
       <GameHeader difficulty={difficulty} />
 
       {status === 'paused' ? (

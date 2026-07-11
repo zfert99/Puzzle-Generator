@@ -28,6 +28,19 @@ test.describe('Interactive play', () => {
     await expect(grid.getByRole('gridcell', { name: /value 1/i }).first()).toBeVisible();
   });
 
+  test('can return from a game to the play menu', async ({ page }) => {
+    await page.goto('/play');
+    await page.getByRole('button', { name: '4×4' }).click();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+    await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /new game/i }).click();
+
+    // Back on the config screen.
+    await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Play$/ })).toBeVisible();
+  });
+
   test('disables Expert/Extreme for mini grids', async ({ page }) => {
     await page.goto('/play');
     await page.getByRole('button', { name: '4×4' }).click();

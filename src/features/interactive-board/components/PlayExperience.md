@@ -22,6 +22,8 @@ IF store status === 'configuring':
   Show a loading label while generating and any error message.
 
 ELSE (playing / paused / solved):
+  Render a "← New game" button (always available) -> configure(), so the player can
+  abandon the current puzzle and return to the play menu at any time.
   Render <GameHeader>, then <Board> (or a "Paused" placeholder when paused), then <Numpad>.
-  When solved, show a celebration and a "New Puzzle" button -> configure().
+  When solved, also show a celebration and a "New Puzzle" button -> configure().
 ```
