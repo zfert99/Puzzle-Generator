@@ -13,9 +13,14 @@ INP (research §2.3).
 ```text
 Select from the store (shallow):
   value, candidate mask, isGiven,
-  isSelected  = the store's selectedCell is this cell,
-  isPeer      = selectedCell shares this cell's row/column/box,
-  isError     = real-time errors ON and a wrong, non-given value is present.
+  isSelected    = the store's selectedCell is this cell,
+  isPeer        = selectedCell shares this cell's row/column/box,
+  isError       = real-time errors ON and a wrong, non-given value is present,
+  isSameNumber  = this cell holds the same non-zero value as the selected cell
+                  (highlights every matching number across the board).
+
+Choose ONE background by precedence: selected > error > same-number > peer.
+(A wrong value stays red even when it is the selected/focused cell.)
 
 Compute thick-border flags from box geometry (adapts to 4/6/9 grids).
 

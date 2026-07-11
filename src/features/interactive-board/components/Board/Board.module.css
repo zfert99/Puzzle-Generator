@@ -13,6 +13,7 @@
   --cell-user: #4f46e5;
   --cell-selected: #c7d2fe;
   --cell-peer: #eef2ff;
+  --cell-same: #fde68a;
   --cell-error-bg: #fee2e2;
   --cell-error-fg: #dc2626;
   --cell-candidate: #64748b;
@@ -27,6 +28,7 @@
     --cell-user: #a5b4fc;
     --cell-selected: #3730a3;
     --cell-peer: #1e1b4b;
+    --cell-same: #78350f;
     --cell-error-bg: #7f1d1d;
     --cell-error-fg: #fecaca;
     --cell-candidate: #94a3b8;
@@ -60,7 +62,9 @@
 .given { font-weight: 700; color: var(--cell-given); }
 .selected { background: var(--cell-selected); }
 .peer { background: var(--cell-peer); }
+.sameNumber { background: var(--cell-same); }
 .error { background: var(--cell-error-bg); color: var(--cell-error-fg); }
+.errorText { color: var(--cell-error-fg); }
 
 .candidates {
   position: absolute;

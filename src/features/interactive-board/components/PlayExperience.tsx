@@ -9,6 +9,7 @@ import { usePuzzle } from '../hooks/usePuzzle';
 import { Board } from './Board/Board';
 import { Numpad } from './Controls/Numpad';
 import { GameHeader } from './Header/GameHeader';
+import { KeyboardHints } from './KeyboardHints';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
@@ -118,6 +119,8 @@ export default function PlayExperience() {
       )}
 
       <Numpad />
+
+      <KeyboardHints />
 
       {status === 'solved' && (
         <div role="status" className="celebrate mt-6 text-center">

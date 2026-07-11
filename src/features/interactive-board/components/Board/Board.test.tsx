@@ -60,6 +60,21 @@ describe('Board', () => {
     expect(screen.getByRole('gridcell', { name: /value 1, row 1, column 1/i })).toBeInTheDocument();
   });
 
+  it('highlights every other cell holding the selected value', async () => {
+    const user = userEvent.setup();
+    render(<Board />);
+
+    // Select the given 3 at (0,2). The solution places 3 also at (1,0), (2,3), (3,1).
+    await user.click(screen.getByRole('gridcell', { name: /given clue 3, row 1, column 3/i }));
+
+    const otherThree = screen.getByRole('gridcell', { name: /given clue 3, row 2, column 1/i });
+    expect(otherThree).toHaveAttribute('data-highlight', 'same');
+
+    // A cell with a different value is not same-highlighted.
+    const four = screen.getByRole('gridcell', { name: /given clue 4, row 1, column 4/i });
+    expect(four).not.toHaveAttribute('data-highlight');
+  });
+
   it('refuses to overwrite a given clue', async () => {
     const user = userEvent.setup();
     render(<Board />);
