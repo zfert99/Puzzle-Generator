@@ -1,93 +1,175 @@
 # Phase 3: The Interactive React Sudoku Board
 
-Transforming the application from a stateless PDF generator into an interactive, stateful puzzle platform. We will build a fully responsive, playable Sudoku board in the browser.
+Transforming the application from a stateless PDF generator into an interactive,
+stateful puzzle platform: a fully responsive, playable Sudoku board in the browser
+at `/play`, alongside the existing PDF flow at `/`.
 
-## User Review Required
+> **What changed since this plan was first drafted:** the engine was hardened and
+> refactored (see [agents-compliance-audit.md](agents-compliance-audit.md)). It now
+> has a **bitmask + MRV generator**, a fast bitmask `HumanSolver`, structured Pino
+> logging, a **Vitest** unit suite, and a **Playwright** E2E harness. This plan is
+> updated to **reuse** that work rather than rebuild it, and to follow the newer
+> `AGENTS.md` rules (hydration safety, INP, server/client component boundaries).
 
-- **State Management:** I propose using **Zustand** over React Context. Sudoku boards have 81 cells that update frequently (timer, cell selection, pencil marks). Zustand allows us to select specific slices of state via `useShallow` to prevent whole-board re-renders on every keystroke, which is critical for performance. It also makes implementing an Undo/Redo stack trivial via `zundo`.
+## Reuse from the existing codebase (do NOT rebuild)
 
-## Decisions Made
+The research doc's section 4 ("Algorithmic Constraints and Dynamic Puzzle
+Generation") describes building a backtracking generator with MRV, unique-solution
+validation, and deductive difficulty grading. **This is already built and tested** —
+do not reimplement it:
 
-1. **Grid Size Scope:** We will support 4x4, 6x6, and 9x9 from the start. We will use CSS Grid to dynamically size the board based on the selected configuration.
-2. **Start Flow:** When the user navigates to `/play`, they will first see a Difficulty and Grid Size configuration screen (similar to the PDF generator). Pressing "Play" will generate the board and start the game.
-3. **Controls:** We will support a hybrid control scheme. Users can navigate via Keyboard (Arrows, Numbers, Backspace, Spacebar for pencil marks), and via Mouse/Touch (Clicking cells to select, using an on-screen numpad for entry, and an on-screen toggle button for pencil mode).
-4. **Real-Time Error Checking:** We will include an optional "Real-Time Error Checking" toggle in the game settings that immediately turns incorrect placements red.
+- `generateSudoku(difficulty, gridSize)` and `getGridConfig(size)` from
+  [sudoku.ts](../src/features/engine/sudoku.ts) — bitmask + MRV generation, unique
+  solutions, difficulty graded by the `HumanSolver`. Returns
+  `{ grid, solution, difficulty, gridSize }`.
+- `HumanSolver` geometry from [human-solver.ts](../src/features/engine/human-solver.ts)
+  — `sees(a, b)`, `inSameBox(a, b)`, `getBoxCells(b)`, and the bitmask candidate
+  accessors (`candidateList`, `hasCandidate`, `removeCandidate`). Reuse these for
+  peer detection and pencil-mark auto-strip instead of writing new geometry.
+- [generation.service.ts](../src/features/engine/services/generation.service.ts) —
+  the server-side batch generator, ready to back a puzzle API route.
+- [GridSizeSelector.tsx](../src/features/puzzle-configuration/components/GridSizeSelector.tsx)
+  — a presentational 4/6/9 selector; reuse it on the `/play` config screen.
+- [usePuzzleGeneration.ts](../src/features/puzzle-configuration/hooks/usePuzzleGeneration.ts)
+  — the existing "fetch from an API, drive loading/error state" hook is the pattern
+  to mirror for fetching a playable puzzle.
+
+## Decisions
+
+### Decided
+
+1. **State:** **Zustand** (not Context) with `useShallow` selectors and `zundo` for
+   undo/redo. Per-cell selective subscription is what keeps an 81-cell grid from
+   re-rendering on every keystroke. _Caveat (from research §3.1):_ `zundo` is stable
+   but effectively "finished" — verify its open issues against React 19 before
+   committing; `zustand-travel` is the maintained fallback if richer time-travel is
+   ever needed.
+2. **Grid sizes:** 4×4, 6×6, 9×9 from the start, via CSS Grid sized off `gridSize`.
+3. **Start flow:** `/play` first shows a Size + Difficulty config screen (reusing
+   `GridSizeSelector`), then generates and starts the game.
+4. **Controls:** hybrid — keyboard (arrows, digits, backspace, space→pencil) and
+   mouse/touch (click to select, on-screen numpad, pencil toggle).
+5. **Real-time error checking:** optional toggle that reddens incorrect placements,
+   validated against the `solution` returned by the engine.
+
+### Decided — puzzle generation source: **Option A (on-demand API)** ✅
+
+The generator is **synchronous** and, for Extreme, can take up to a couple of seconds
+(digging + retries). Running it on the main thread would freeze the UI and wreck INP.
+We use **Option A** below: `POST /api/puzzle` (built — see
+[route.ts](../src/app/api/puzzle/route.ts)) generates one puzzle server-side via
+`generateSinglePuzzle` and returns `{ grid, solution }` JSON; the client fetches it
+with the [usePuzzle](../src/features/interactive-board/hooks/usePuzzle.ts) hook. Both
+options were considered:
+
+| Option | How | Trade-offs |
+| --- | --- | --- |
+| **A — On-demand API (recommended)** | New `POST /api/puzzle` route → `generation.service.ts`, returns `{ grid, solution }` JSON. Board fetches it client-side after mount. | Reuses the server engine; keeps the solver/generator **out of the client bundle**; no main-thread jank; no hydration risk (nothing generated during SSR). Costs one network round trip. Matches the existing `/api/generate` architecture. |
+| **B — Client-side in a Web Worker** | Import the engine into a Web Worker; generate off the main thread; post the puzzle back. | Fully offline, no server; but bundles the engine (+solver) into client JS and is more moving parts. |
+
+**Recommendation: Option A** — it reuses `generation.service.ts`, keeps the heavy
+engine server-side, and fits the current stateless architecture. Option B is the
+better pick only if offline generation becomes a requirement.
+
+## Architecture rules to honor (AGENTS.md)
+
+- **Hydration-Safe Generation (§1 AI Pitfall + research §4.4):** the board is
+  **client-only**. Never generate during SSR. Mark the board container
+  `"use client"`, fetch/generate **after mount** (in `useEffect` or on the config
+  screen's "Play" click), and render a skeleton until the grid exists. This avoids
+  the `Math.random()` server/client mismatch class of bugs entirely.
+- **Server vs. Client Components (§1):** `src/app/play/page.tsx` stays a **Server
+  Component** shell (routing/layout only); `"use client"` lives only on the
+  interactive leaves (the board, numpad, header). Do not mark the whole route client.
+- **INP ≤ 200ms (§3):** the interaction budget is the real target here. Keep cell
+  `onClick`/`onKeyDown` cheap; never recompute whole-board derived state (error
+  highlighting, peer highlighting) on every keystroke — derive per-cell via narrow
+  `useShallow` selectors. Generate off the main thread (Option A or B above).
+- **Structure (§1):** new `src/features/interactive-board/` feature module.
+  Components as `Board/Board.tsx` (no `index.ts` barrels). Colocate Vitest tests
+  next to source; E2E specs go in the top-level `e2e/`.
+- **Telemetry (§5):** the puzzle API route logs via the existing Pino logger.
+  Client-side error tracking (if added) belongs in `instrumentation-client.ts`
+  (browser-only), **not** the server logger.
 
 ## Proposed Changes
 
-We will create a new feature module at `src/features/interactive-board` to contain all the game logic, keeping it decoupled from the PDF generation features.
+### Routing & navigation
 
-### Routing & Navigation
+- **[MODIFY]** [src/app/page.tsx](../src/app/page.tsx) — add a prominent "Play Online"
+  action beside "Generate PDF Book". Stays a Server Component.
+- **[NEW]** `src/app/play/page.tsx` — Server Component shell that renders the
+  client `PlayExperience` (config screen → board).
 
-#### [MODIFY] src/app/page.tsx
+### Puzzle data (Option A) — ✅ built
 
-- Update the landing page to act as a split hub. Add a prominent "Play Online" button alongside the existing "Generate PDF Book" flow.
+- **[DONE]** [src/app/api/puzzle/route.ts](../src/app/api/puzzle/route.ts) —
+  `runtime = 'nodejs'`; validates `{ difficulty, gridSize }`, delegates to
+  `generateSinglePuzzle`, returns `{ grid, solution, difficulty, gridSize }` JSON;
+  Pino wide-event logging; generic 500 (no stack leak). Colocated `route.test.ts`.
+- **[DONE]** [usePuzzle.ts](../src/features/interactive-board/hooks/usePuzzle.ts) —
+  fetches `/api/puzzle`, exposes `{ puzzle, loading, error, fetchPuzzle }`. Colocated
+  `usePuzzle.test.tsx` (mocks the `fetch` boundary only).
 
-#### [NEW] src/app/play/page.tsx
+### State
 
-- The main entry point for the interactive experience. It will initially render a configuration screen (Size & Difficulty). Once configured, it switches to rendering the `interactive-board` feature components.
+- **[NEW]** `src/features/interactive-board/store/useBoardStore.ts` — Zustand store.
+  - **State:** `grid`, `candidates` (pencil bitmask/array per cell), `givens`
+    (immutability mask), `solution`, `selectedCell`, `settings` (real-time errors),
+    `status` (`configuring | playing | paused | solved`), `elapsedTime`.
+  - **Actions:** `startNewGame(puzzle)`, `selectCell(r,c)`, `setCellValue(v)`,
+    `toggleCandidate(v)`, `undo()`, `redo()`, `toggleRealTimeErrors()`,
+    `tick()`, `pause()`.
+  - **Rules:** `zundo` with `partialize` tracking only `grid`/`candidates` (exclude
+    `elapsedTime`, `status`, `selectedCell` so the timer doesn't pollute history);
+    optional `handleSet` debounce for rapid pencil toggles. Build a precomputed
+    **O(1) peer map** at `startNewGame` (or reuse `HumanSolver.sees`) so placing a
+    digit strips it from peers' candidates instantly.
 
----
+### UI components (composition, no inheritance)
 
-### Interactive Board Feature (State)
-
-#### [NEW] src/features/interactive-board/store/useBoardStore.ts
-
-- A Zustand store managing the entire game state.
-- **State:** `grid` (current values), `candidates` (pencil marks per cell), `initialGrid` (to detect givens), `solution` (to drive real-time error checking), `settings` (toggle for real-time error checking), `selectedCell` (row/col), `status` (configuring, playing, paused, solved), `history` (for undo/redo via `zundo`), `elapsedTime` (timer in seconds).
-- **Actions:** `selectCell(r, c)`, `setCellValue(val)`, `toggleCandidate(val)`, `undo()`, `redo()`, `toggleRealTimeErrors()`, `startNewGame(config)`, `tickTimer()`, `pauseTimer()`.
-- **Architectural Rules:**
-  - Utilize `zundo` middleware for snapshot-based undo/redo.
-  - Configure `zundo`'s `partialize` to omit `elapsedTime`, `status`, and `selectedCell` to prevent the timer from polluting the history stack.
-  - Implement a precomputed $O(1)$ peer-lookup map during initialization to make automatic candidate stripping (when a number is placed) completely instantaneous.
-
----
-
-### Interactive Board Feature (UI Components)
-
-Following the rule to use composition and avoid deep inheritance:
-
-#### [NEW] src/features/interactive-board/components/Board/Board.tsx
-
-- The primary layout component using CSS Grid. It dynamically adjusts columns/rows based on `gridSize` (4, 6, or 9).
-- Uses `:nth-child` pseudo-classes to render the thick 3x3 block borders cleanly without extra wrapper divs.
-- Maps over the 1D or 2D array from the store to render `Cell` components.
-- Implements strict WAI-ARIA guidelines: `<div role="grid">`.
-- Implements a centralized `keydown` listener to manage a **Roving Tabindex** for the grid cells, suppressing default browser scrolling.
-
-#### [NEW] src/features/interactive-board/components/Board/Cell.tsx
-
-- Renders an individual square. `<div role="gridcell" tabIndex={isActive ? 0 : -1}>`.
-- Subscribes only to its specific state in the store using `useShallow` to prevent unnecessary re-renders.
-- Dynamically synthesizes an `aria-label` (e.g., "Given clue 7", "Candidates 2, 5, and 8").
-- Handles complex conditional styling for:
-  - `isSelected` (highlight cell)
-  - `isPeer` (highlight same row/col/box as selected cell)
-  - `isError` (conflicts with another cell)
-  - `isGiven` (immutable starting numbers)
-- Utilizes **CSS Subgrid** (`display: grid`, `grid-template-columns: subgrid`) to render a mini 3x3 grid inside itself for pencil-mark candidates, ensuring flawless typographic alignment with the master board.
-
-#### [NEW] src/features/interactive-board/components/Controls/Numpad.tsx
-
-- On-screen number pad for mouse/touch users.
-- Includes action buttons: Undo, Redo, Toggle Pencil Mode (with `aria-pressed`), and Hint.
-
-#### [NEW] src/features/interactive-board/components/Header/GameHeader.tsx
-
-- Displays the current difficulty, grid size, and a **live updating Timer component**.
-- Includes **Pause/Resume controls** (pausing hides the board to prevent cheating).
-- Includes a Settings gear (to toggle Real-Time Error Checking).
+- **[NEW]** `.../components/Board/Board.tsx` — CSS Grid sized by `gridSize`;
+  `:nth-child` for thick block borders (no wrapper divs); `role="grid"`; centralized
+  `keydown` listener implementing a **roving tabindex** with
+  `preventDefault()`/`stopPropagation()` on arrows.
+- **[NEW]** `.../components/Board/Cell.tsx` — `role="gridcell"`,
+  `tabIndex={isActive ? 0 : -1}`; subscribes via `useShallow` to only its slice;
+  synthesizes `aria-label` ("Given clue 7, row 2, column 4" / "Candidates 2, 5, 8");
+  conditional styles for `isSelected`/`isPeer`/`isError`/`isGiven`; pencil marks in a
+  fixed per-cell grid (digit `d` always at slot `d-1`), so marks are cleanly anchored
+  and readable. _(True cross-cell **CSS Subgrid** alignment was considered per the
+  research; it needs a full board-grid restructure for a subtle gain and is deferred —
+  the fixed-slot layout already reads well, confirmed by screenshot.)_
+- **[NEW]** `.../components/Controls/Numpad.tsx` — numeric pad + Undo/Redo/Pencil
+  (`aria-pressed`)/Hint.
+- **[NEW]** `.../components/Header/GameHeader.tsx` — difficulty, grid size, live
+  timer, Pause/Resume (hides the board when paused), settings toggle.
 
 ## Verification Plan
 
-### Automated Tests
+### Vitest (unit / behavioral — colocated, jsdom via `// @vitest-environment jsdom`)
 
-- Build a global Zustand mock (`src/__mocks__/zustand.ts`) that intercepts store creation and resets state via an `afterEach` hook to prevent state leakage between Vitest cases.
-- Unit tests for `useBoardStore` verifying state transitions (e.g., placing a number clears corresponding candidates in peers, undo reverts state).
-- Behavioral UI tests for `Board.tsx` using `@testing-library/user-event` to asynchronously simulate keyboard navigation (`await userEvent.keyboard('[ArrowRight]')`) and validate the Roving Tabindex.
+- `useBoardStore.test.ts` — state transitions: placing a digit strips it from peer
+  candidates; `undo`/`redo` revert grid but **not** the timer; real-time-error toggle
+  flags only wrong cells. Use the Vitest `zustand` reset mock (`src/__mocks__/zustand.ts`)
+  — this mocks the **external** `zustand` package to reset store state in `afterEach`
+  (a boundary mock, allowed by §4; it resets state, it does not replace store logic).
+- `Board.test.tsx` — accessibility-first, AAA, `@testing-library/user-event`:
+  `await userEvent.keyboard('[ArrowRight]')` moves focus (roving tabindex);
+  `expect(cell).toHaveFocus()`; a single `Tab` exits the grid.
+- Hydration guard — a test (or the E2E below) confirming no puzzle is computed during
+  SSR (the board renders a skeleton first).
 
-### Manual Verification
+### Playwright E2E (`e2e/play.spec.ts` — real browser)
 
-- Playtest a 9x9 game to completion to verify the celebration animation triggers.
-- Verify touch targets and layout responsiveness on mobile viewports via Chrome DevTools.
-- Verify that performance is smooth (no input lag) by recording a session in the React DevTools Profiler during rapid numeric input. Validate that only the targeted cell turns green/yellow, and the remaining 80 cells bypass rendering.
+- Full flow: open `/play` → pick size + difficulty → **Play** → board renders (not a
+  skeleton) → keyboard-enter a few digits → complete a 4×4 to trigger the win state.
+- Mini-grid gating and responsive layout (mobile viewport) checks.
+- Runs via the existing `playwright.config.ts` (`npm run test:e2e`).
+
+### Manual / profiling
+
+- React DevTools Profiler during rapid numeric input: only the mutated cell (and its
+  affected peers) should re-render; the other ~80 cells stay gray. If not, audit
+  `useShallow` selectors and `React.memo`/`useCallback` referential stability.
+- Sanity-check INP in the browser performance panel during sustained input.

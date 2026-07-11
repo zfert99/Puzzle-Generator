@@ -1,6 +1,14 @@
 # Generation Service
 
-This module acts as the orchestrator for generating multiple puzzles in a single request. It abstracts the looping logic away from the API controller.
+This module abstracts puzzle-generation logic away from the API controllers. It backs both the PDF batch route (`/api/generate`) and the interactive board's single-puzzle route (`/api/puzzle`).
+
+## `generateSinglePuzzle(difficulty, gridSize)`
+
+**Why:** The interactive board (Phase 3) needs one playable puzzle at a time. This thin service wrapper generates a single puzzle (and its solution) server-side, so the heavy solver/generator stays out of the client bundle and off the browser's main thread. It exists as a service function — rather than the route calling the engine directly — to keep the Controller-Service separation consistent with `generatePuzzleBatch`.
+
+```text
+Return generateSudoku(difficulty, gridSize)  // a { grid, solution, difficulty, gridSize } object
+```
 
 ## `generatePuzzleBatch(request)`
 
