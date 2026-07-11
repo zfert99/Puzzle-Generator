@@ -1,16 +1,18 @@
 # DB Schema (`schema.ts`)
 
-The Drizzle/Postgres schema for Phase 4's stateful pivot. Three tables define what the
-app now remembers: the shared daily puzzles, the users who solve them, and each user's
+The Drizzle/Postgres schema for the app domain: the shared daily puzzles and each user's
 ranked solve attempt.
 
 ## Why these tables and not more
 
-Auth-identity tables (OAuth accounts, passkeys, sessions) are **deliberately absent**.
-They are owned by better-auth's Drizzle adapter and land in slice 4.3. Defining them
-here too would create two competing sources of truth for the same tables. `users` is
-kept minimal for the same reason — no `password_hash` column exists yet, and if password
-auth is ever added it must be Argon2id + a 16-byte salt (AGENTS.md §6), never a raw hash.
+Auth-identity tables (the canonical `user`, OAuth accounts, passkeys, sessions) live in
+[auth-schema.ts](./auth-schema.ts), owned by better-auth's Drizzle adapter (4.3) — keeping
+them separate avoids two competing sources of truth. `solve_attempts` references that
+`user`.
+
+**History:** 4.1 shipped a minimal custom `users` (uuid) table here. 4.3 replaced it with
+better-auth's string-id `user`, so `solve_attempts.user_id` is now `text` (not uuid) and
+FKs to `user.id`.
 
 ## `dailyPuzzles`
 
@@ -30,14 +32,8 @@ created_at  timestamptz
 UNIQUE (date, difficulty)
 ```
 
-## `users`
-
-**Why:** A stable identity to attach solve attempts and streaks to. Minimal on purpose —
-authentication details live in better-auth's adapter tables.
-
-```text
-id, username (unique), created_at
-```
+> Users are no longer defined here — see [auth-schema.ts](./auth-schema.ts) for the
+> canonical `user` table (better-auth).
 
 ## `solveAttempts`
 
@@ -48,7 +44,7 @@ each user to one ranked attempt per puzzle; the `(puzzle_id, time_ms)` index bac
 puzzle so no orphaned attempts survive an account/puzzle deletion.
 
 ```text
-id, user_id -> users (cascade), puzzle_id -> daily_puzzles (cascade)
+id, user_id (text) -> user (cascade), puzzle_id -> daily_puzzles (cascade)
 time_ms (server-computed), completed, mistakes, created_at
 UNIQUE (user_id, puzzle_id)
 INDEX (puzzle_id, time_ms)

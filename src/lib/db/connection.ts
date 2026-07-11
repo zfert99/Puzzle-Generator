@@ -1,6 +1,12 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import * as schema from './schema';
+import * as appSchema from './schema';
+import * as authSchema from './auth-schema';
+
+// App tables (daily_puzzles, solve_attempts) plus better-auth's identity tables
+// (user, session, account, verification, passkey) — one combined schema so every
+// query is typed and better-auth's Drizzle adapter can resolve its tables via `db`.
+const schema = { ...appSchema, ...authSchema };
 
 /**
  * Unguarded Drizzle-over-Neon-HTTP client factory.

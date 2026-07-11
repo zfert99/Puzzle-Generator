@@ -10,15 +10,18 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { user } from './auth-schema';
 
 /**
- * Phase 4.1 — core persistence schema (Drizzle / Postgres).
+ * Phase 4 — app persistence schema (Drizzle / Postgres).
  *
  * This is the stateful pivot for the app: one shared daily puzzle per difficulty
- * per day, the users who solve them, and their ranked solve attempts. Auth-identity
- * tables (OAuth accounts, passkeys, sessions) are intentionally NOT defined here —
- * they are owned by better-auth's Drizzle adapter and land in slice 4.3. Keeping them
- * out now avoids two competing definitions of the same tables.
+ * per day, and each user's ranked solve attempt. Auth-identity tables (the canonical
+ * `user`, OAuth accounts, passkeys, sessions) live in [auth-schema.ts](./auth-schema.ts),
+ * owned by better-auth's Drizzle adapter (4.3). `solve_attempts` references that `user`.
+ *
+ * Historical note: 4.1 shipped a minimal custom `users` (uuid) table; 4.3 replaced it
+ * with better-auth's string-id `user`, so `solve_attempts.user_id` is now `text`.
  *
  * Security posture (AGENTS.md §6): every column is reached only through Drizzle's
  * parameterized query builder — never string-built SQL. `solution` is server-only and
@@ -53,29 +56,20 @@ export const dailyPuzzles = pgTable(
 );
 
 /**
- * Application users. Deliberately minimal: auth identities live in better-auth's
- * adapter tables (4.3). No local `password_hash` column unless password auth is added
- * later — and if so, it is Argon2id + a 16-byte salt (AGENTS.md §6), never a raw hash.
- */
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  username: text('username').notNull().unique(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
-
-/**
  * A user's ranked attempt at a daily puzzle. `time_ms` is SERVER-COMPUTED (4.4) — a
  * client-reported solve time is never trusted. `UNIQUE(user_id, puzzle_id)` enforces
  * one ranked attempt per user per puzzle; the `(puzzle_id, time_ms)` index backs
  * leaderboard ordering. Rows cascade-delete with their user or puzzle.
+ *
+ * `user_id` is `text` and references better-auth's `user.id` (a string id), not a uuid.
  */
 export const solveAttempts = pgTable(
   'solve_attempts',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => user.id, { onDelete: 'cascade' }),
     puzzleId: uuid('puzzle_id')
       .notNull()
       .references(() => dailyPuzzles.id, { onDelete: 'cascade' }),
@@ -94,7 +88,5 @@ export const solveAttempts = pgTable(
 
 export type DailyPuzzle = typeof dailyPuzzles.$inferSelect;
 export type NewDailyPuzzle = typeof dailyPuzzles.$inferInsert;
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
 export type SolveAttempt = typeof solveAttempts.$inferSelect;
 export type NewSolveAttempt = typeof solveAttempts.$inferInsert;

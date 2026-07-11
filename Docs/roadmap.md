@@ -233,7 +233,7 @@ graph TD
 
 > **Tracks:** 🗄️ Infrastructure, 🎨 Frontend
 > **Branch:** `feature/daily-leaderboards`
-> **Status:** 🚧 In Progress — slices **4.1 (Database Layer)** and **4.2 (Daily Puzzle Cron)** landed; 4.3–4.4 planned
+> **Status:** 🚧 In Progress — **4.1 (Database)** and **4.2 (Daily Cron)** deployed; **4.3 (Auth)** code-complete (migration + OAuth creds pending); 4.3.1–4.4 planned. Running log: [phase4-walkthrough.md](phase4-walkthrough.md)
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** Phase 3 (Interactive Board)
 
@@ -298,12 +298,13 @@ CREATE TABLE solve_attempts (
 > adds ranked solves, the solution stops being served and completion is validated
 > server-side against the stored solution.
 
-#### 4.3 — User Authentication & Session Security
+#### 4.3 — User Authentication & Session Security 🚧 Code-complete
 
-- NextAuth / Auth.js integration
-- OAuth providers: Google, GitHub (start with these)
-- **Token Security:** strictly enforce the Hybrid Token Architecture. Use `HttpOnly`, `Secure`, `SameSite=Strict` cookies for all persistent session state. JWTs must NEVER touch `localStorage`.
-- **Anti-cheat:** solve time validated server-side, puzzle state checksums
+- **better-auth** (not Auth.js — its passkey provider is production-ready; Auth.js's is experimental) with the **Drizzle adapter** and **database sessions**. Config in [auth.ts](../src/features/auth/auth.ts); catch-all handler at [`/api/auth/[...all]`](../src/app/api/auth/[...all]/route.ts).
+- **Passkeys-first** ([@better-auth/passkey](../src/features/auth/auth.ts)); **email/password** bootstrap hashed with **Argon2id** ([password.ts](../src/features/auth/password.ts), OWASP m=19456/t=2/p=1); **Google OAuth** registered conditionally on env creds.
+- better-auth's identity tables ([auth-schema.ts](../src/lib/db/auth-schema.ts)) replace the 4.1 `users` table; `solve_attempts.user_id` repointed uuid→text (migration `0001_auth_tables`). Session accessor: [session.ts](../src/features/auth/session.ts).
+- **Cookies:** `HttpOnly`/`Secure`/`SameSite=Lax` (better-auth defaults); no tokens in web storage.
+- **Pending:** apply `0001` to Neon (destructive: drops the empty `users`/`solve_attempts`), then live endpoint checks; `GOOGLE_CLIENT_ID`/`SECRET` for OAuth.
 
 > [!IMPORTANT]
 > Leaderboard integrity requires server-side time validation. The client sends a start timestamp and the server records completion — never trust a client-reported solve time.

@@ -19,7 +19,9 @@ belongs.
 ```text
 createDb(databaseUrl):
   Build a Neon HTTP client from the URL.
-  Wrap it in Drizzle with the schema (fully typed queries).
+  Wrap it in Drizzle with the COMBINED schema — app tables (schema.ts) plus better-auth's
+    identity tables (auth-schema.ts) — so every query is typed and better-auth's adapter
+    can resolve its tables via `db`.
   Return it.
 ```
 

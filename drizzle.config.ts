@@ -14,7 +14,8 @@ config({ path: ['.env.local', '.env'] });
  * hold least privilege (no DDL at runtime — AGENTS.md §6).
  */
 export default defineConfig({
-  schema: './src/lib/db/schema.ts',
+  // Both the app tables and better-auth's identity tables (auth-schema.ts).
+  schema: ['./src/lib/db/schema.ts', './src/lib/db/auth-schema.ts'],
   out: './src/lib/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {

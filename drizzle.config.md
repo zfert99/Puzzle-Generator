@@ -13,7 +13,7 @@ reviewed as checked-in SQL and run under a privileged role, while the app's runt
 role holds least privilege with no DDL rights (AGENTS.md §6).
 
 ```text
-schema  -> ./src/lib/db/schema.ts   (source of truth for table shapes)
+schema  -> [./src/lib/db/schema.ts, ./src/lib/db/auth-schema.ts]  (app + auth tables)
 out     -> ./src/lib/db/migrations  (checked-in versioned SQL)
 dialect -> postgresql
 url     -> DATABASE_URL from the environment (used by `migrate`, not `generate`)
