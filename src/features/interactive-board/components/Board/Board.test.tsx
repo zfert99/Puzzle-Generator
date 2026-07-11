@@ -75,6 +75,21 @@ describe('Board', () => {
     expect(four).not.toHaveAttribute('data-highlight');
   });
 
+  it('undoes and redoes placements with Ctrl+Z / Ctrl+Y', async () => {
+    const user = userEvent.setup();
+    render(<Board />);
+
+    await user.click(screen.getByRole('gridcell', { name: /row 1, column 1/i }));
+    await user.keyboard('1');
+    expect(screen.getByRole('gridcell', { name: /value 1, row 1, column 1/i })).toBeInTheDocument();
+
+    await user.keyboard('{Control>}z{/Control}'); // undo
+    expect(screen.getByRole('gridcell', { name: /empty, row 1, column 1/i })).toBeInTheDocument();
+
+    await user.keyboard('{Control>}y{/Control}'); // redo
+    expect(screen.getByRole('gridcell', { name: /value 1, row 1, column 1/i })).toBeInTheDocument();
+  });
+
   it('refuses to overwrite a given clue', async () => {
     const user = userEvent.setup();
     render(<Board />);

@@ -3,6 +3,8 @@ const HINTS: ReadonlyArray<readonly [string, string]> = [
   ['1–9', 'Enter number'],
   ['Backspace', 'Erase cell'],
   ['Space / P', 'Toggle pencil marks'],
+  ['⌘Z / Ctrl+Z', 'Undo'],
+  ['⇧⌘Z / Ctrl+Y', 'Redo'],
 ];
 
 /**

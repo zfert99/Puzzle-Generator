@@ -20,4 +20,10 @@ On keydown:
 
 Effect: whenever the selected cell changes, call .focus() on its DOM node so
 keyboard and screen-reader focus track the selection.
+
+Second effect: a window-level keydown listener for undo/redo, so they work no
+matter which control has focus:
+  Cmd/Ctrl+Z               -> undo
+  Shift+Cmd/Ctrl+Z, Ctrl+Y -> redo
+It requires a modifier key, so ordinary typing is never affected.
 ```

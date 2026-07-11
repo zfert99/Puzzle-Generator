@@ -9,6 +9,8 @@ Render a compact list mapping keys -> action:
   1–9           -> enter number
   Backspace     -> erase cell
   Space / P     -> toggle pencil marks
+  Cmd/Ctrl+Z              -> undo
+  Shift+Cmd/Ctrl+Z / Ctrl+Y -> redo
 ```
 
 Purely presentational (no store access). Harmless on touch devices, where the numpad

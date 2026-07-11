@@ -38,6 +38,29 @@ export function Board() {
     node?.focus();
   }, [selectedR, selectedC, size]);
 
+  // Undo/redo shortcuts, at the window level so they work regardless of which
+  // control currently has focus: Cmd/Ctrl+Z (undo), Shift+Cmd/Ctrl+Z or Ctrl+Y
+  // (redo). Requires a modifier, so ordinary typing is never affected.
+  useEffect(() => {
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      const temporal = useBoardStore.temporal.getState();
+
+      if (key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) temporal.redo();
+        else temporal.undo();
+      } else if (key === 'y') {
+        e.preventDefault();
+        temporal.redo();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
       const r = selectedR ?? 0;
