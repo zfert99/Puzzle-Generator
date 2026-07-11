@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { getDailyPuzzle } from '@/features/dailies/dailies.service';
-import { DAILY_DIFFICULTIES, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { isDailyDifficulty, toUtcDateString } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
 // Touches the DB (Node-only driver) and reads server time — keep off the Edge runtime.
 export const runtime = 'nodejs';
 // Always compute "today" fresh; never let the platform cache a day-stale response.
 export const dynamic = 'force-dynamic';
-
-function isDailyDifficulty(value: string | null): value is DailyDifficulty {
-  return value !== null && (DAILY_DIFFICULTIES as readonly string[]).includes(value);
-}
 
 /**
  * GET /api/daily?difficulty=easy|medium|hard|expert

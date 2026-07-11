@@ -12,7 +12,7 @@
 | 4.2 | Daily puzzle cron + `/daily` | ✅ Done, deployed |
 | 4.3 | Authentication & sessions (better-auth) | ✅ Verified locally; prod deploy pending |
 | 4.3.1 | Authorization (BOLA) | ✅ Verified (pattern + primitives) |
-| 4.4 | Leaderboards, streaks & anti-cheat | 📋 Planned |
+| 4.4 | Leaderboards, streaks & anti-cheat | 🚧 Backend done + verified; UI pending |
 
 **Confirmed stack:** Neon Postgres · Drizzle ORM · better-auth (passkeys-first) · Vercel
 Cron · Upstash (4.4). **Daily rules:** anonymous play, 00:00 UTC rollover, difficulties
@@ -182,7 +182,48 @@ slice establishes the pattern and primitives that every personal-data route in 4
 
 ---
 
-## Cross-cutting notes
+## 4.4 — Leaderboards, streaks & anti-cheat (backend)
+
+Makes the daily competitive: ranked solve times, per-day boards, and streaks. **Decision:**
+pragmatic anti-cheat — keep serving the solution (hints/mistakes keep working) and rely on
+server-side checks, rather than hiding it (a sudoku is externally solvable anyway). Ranked =
+signed in; anonymous play stays unranked. Scope this pass: **backend APIs** (UI later, since
+it also needs the deferred sign-in UI).
+
+### What shipped
+
+- Pure rules (unit-tested): `solve-rules.ts` (`gridsMatch`, `isImplausiblyFast`, per-difficulty
+  `MIN_SOLVE_MS`) and `streak.ts` (`currentStreak` with a yesterday grace day).
+- `solve.service.ts` — `startAttempt` (stamps server start time, idempotent) and `recordSolve`
+  (server-timed, grid-verified, plausibility floor, one attempt; throws typed `SolveError`s).
+- `leaderboard.service.ts` — `getLeaderboard` (top N, joins `user` for names) + `getUserRank`
+  (COUNT-based, ties share a rank). `streak.service.ts` — scoped date fetch → pure helper.
+- Routes: `POST /api/daily/start`, `POST /api/solve`, `GET /api/leaderboard`,
+  `GET /api/me/streak`. Shared `isDailyDifficulty` guard in `daily-row.ts`.
+
+### Key decisions
+
+- **Single clock for timing.** `created_at` is stamped from the **app** clock at start (not
+  the DB's `now()`), and the solve time uses the app clock too. Verification caught a ~36s
+  app↔DB clock skew that mixing the two produced — recorded times were wrong until fixed.
+- **All writes ownership-scoped** (4.3.1): `userId` is always the session id, never from the
+  request. Solve rejections are typed 4xx, not 500s.
+
+### Verified end-to-end (real Neon)
+
+- Unauth: start / solve / streak all **401**.
+- Anti-cheat: wrong grid → **400 INCORRECT_SOLUTION**; solve without start → **400
+  NOT_STARTED**; instant solve → **400 TOO_FAST**; second solve → **409 ALREADY_COMPLETED**.
+- Success: backdated start → **200** with an accurate server-computed `timeMs` (~88s), rank 1.
+- Leaderboard: two users ordered by time (fastest rank 1); signed-in caller gets `me.rank`;
+  signed-out gets `me: null`. Bad difficulty/date → 400.
+- Streak: 1 after today's completion. Test users deleted (cascade) — prod DB clean.
+- `tsc` / `eslint` / `next build` (4 new dynamic routes) / markdownlint clean; **120 tests**.
+
+### Deferred to the UI pass
+
+Leaderboard page, wiring `/api/daily/start` + `/api/solve` into the daily board, streak
+display, rank reveal — and a sign-in UI (from 4.3), which the ranked flow needs in-app.
 
 - **Dev-only audit advisory:** `drizzle-kit` pulls a transitive esbuild dev-server advisory
   (moderate). Dev tooling only — `npm audit --omit=dev` is clean.

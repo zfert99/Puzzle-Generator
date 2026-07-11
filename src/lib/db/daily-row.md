@@ -10,6 +10,10 @@ reuse them and so they are trivially unit-testable at the boundary.
 `hard`, `expert`. `extreme` is excluded: a daily should be beatable by a broad audience in
 one sitting (Phase 4 decision). Exported so the seed, cron, and UI all agree on the set.
 
+`isDailyDifficulty(value)` is the narrowing guard routes use to validate the `difficulty`
+input (query or body) against this set — shared so every daily/solve/leaderboard route
+validates identically.
+
 ## `countClues(grid)`
 
 **Why:** `clue_count` is denormalized onto the row for cheap display/sorting, so we count

@@ -1,0 +1,88 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db/client';
+import { requireUserId } from '@/features/auth/session';
+import { UnauthorizedError } from '@/features/auth/errors';
+import { getDailyPuzzle } from '@/features/dailies/dailies.service';
+import { recordSolve, SolveError } from '@/features/leaderboards/solve.service';
+import { getUserRank } from '@/features/leaderboards/leaderboard.service';
+import { isDailyDifficulty, toUtcDateString } from '@/lib/db/daily-row';
+import type { Grid } from '@/lib/db/schema';
+import { logger } from '@/lib/logger';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+/** A valid submission grid is 9 rows × 9 cells of integers 1–9 (a completed board). */
+function isCompletedGrid(value: unknown): value is Grid {
+  return (
+    Array.isArray(value) &&
+    value.length === 9 &&
+    value.every(
+      (row) =>
+        Array.isArray(row) &&
+        row.length === 9 &&
+        row.every((n) => Number.isInteger(n) && n >= 1 && n <= 9),
+    )
+  );
+}
+
+/**
+ * POST /api/solve — submit a completed daily for ranking. Sign-in required.
+ *
+ * The server owns the truth (4.4 anti-cheat): it computes the time from its own clock
+ * (start recorded by /api/daily/start), verifies the grid against the stored solution,
+ * rejects implausibly fast times, and allows one ranked attempt per user per puzzle.
+ * Body: `{ difficulty, grid, mistakes? }`. Returns `{ timeMs, rank }`.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const userId = await requireUserId();
+
+    const body = await req.json().catch(() => null);
+    const difficulty = body?.difficulty;
+    const grid = body?.grid;
+    const mistakes = typeof body?.mistakes === 'number' ? body.mistakes : 0;
+
+    if (!isDailyDifficulty(difficulty)) {
+      return NextResponse.json({ error: 'Invalid or missing difficulty' }, { status: 400 });
+    }
+    if (!isCompletedGrid(grid)) {
+      return NextResponse.json({ error: 'Invalid grid: expected a completed 9x9 board' }, { status: 400 });
+    }
+
+    const isoDate = toUtcDateString(new Date());
+    const puzzle = await getDailyPuzzle(db, isoDate, difficulty);
+    if (!puzzle) {
+      return NextResponse.json({ error: `No daily puzzle for ${isoDate} (${difficulty})` }, { status: 404 });
+    }
+
+    const attempt = await recordSolve(db, {
+      userId,
+      puzzle,
+      difficulty,
+      submittedGrid: grid,
+      mistakes,
+      now: Date.now(),
+    });
+
+    const rank = await getUserRank(db, puzzle.id, userId);
+
+    logger.info(
+      { event: 'solve_success', difficulty, timeMs: attempt.timeMs, rank: rank?.rank },
+      'Recorded daily solve',
+    );
+
+    return NextResponse.json({ timeMs: attempt.timeMs, mistakes: attempt.mistakes, rank: rank?.rank ?? null }, { status: 200 });
+  } catch (error: unknown) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (error instanceof SolveError) {
+      // Expected rejections (wrong grid, too fast, not started, already done) — 4xx, not 500.
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
+    const err = error as Error;
+    logger.error({ event: 'solve_failure', error: err.message, stack: err.stack }, 'Failed to record solve');
+    return NextResponse.json({ error: 'Internal server error while recording solve' }, { status: 500 });
+  }
+}
