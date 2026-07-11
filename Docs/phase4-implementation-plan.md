@@ -42,7 +42,7 @@ the word to switch.
 > contradiction. **better-auth** ships passkeys as a first-class plugin, and 4.3.1's
 > ownership checks are auth-library-agnostic (they only need `session.userId`), so this
 > swap costs nothing architecturally.
-
+>
 > Passkeys-first: offer passkey sign-in (better-auth's passkey plugin) as the
 > **primary** option with OAuth as fallback — not passwords. If local email/password is
 > ever added, hash with **Argon2id** (OWASP baseline m=19456/t=2/p=1) + a 16-byte salt.
