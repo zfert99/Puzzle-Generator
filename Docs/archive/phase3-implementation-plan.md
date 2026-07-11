@@ -1,11 +1,15 @@
 # Phase 3: The Interactive React Sudoku Board
 
+> **Status: ✅ Completed and merged to `main`** (archived). This was the planning
+> document; for what actually shipped, see the
+> [Phase 3 walkthrough](phase3-walkthrough.md).
+
 Transforming the application from a stateless PDF generator into an interactive,
 stateful puzzle platform: a fully responsive, playable Sudoku board in the browser
 at `/play`, alongside the existing PDF flow at `/`.
 
 > **What changed since this plan was first drafted:** the engine was hardened and
-> refactored (see [agents-compliance-audit.md](agents-compliance-audit.md)). It now
+> refactored (see [agents-compliance-audit.md](../agents-compliance-audit.md)). It now
 > has a **bitmask + MRV generator**, a fast bitmask `HumanSolver`, structured Pino
 > logging, a **Vitest** unit suite, and a **Playwright** E2E harness. This plan is
 > updated to **reuse** that work rather than rebuild it, and to follow the newer
@@ -19,18 +23,18 @@ validation, and deductive difficulty grading. **This is already built and tested
 do not reimplement it:
 
 - `generateSudoku(difficulty, gridSize)` and `getGridConfig(size)` from
-  [sudoku.ts](../src/features/engine/sudoku.ts) — bitmask + MRV generation, unique
+  [sudoku.ts](../../src/features/engine/sudoku.ts) — bitmask + MRV generation, unique
   solutions, difficulty graded by the `HumanSolver`. Returns
   `{ grid, solution, difficulty, gridSize }`.
-- `HumanSolver` geometry from [human-solver.ts](../src/features/engine/human-solver.ts)
+- `HumanSolver` geometry from [human-solver.ts](../../src/features/engine/human-solver.ts)
   — `sees(a, b)`, `inSameBox(a, b)`, `getBoxCells(b)`, and the bitmask candidate
   accessors (`candidateList`, `hasCandidate`, `removeCandidate`). Reuse these for
   peer detection and pencil-mark auto-strip instead of writing new geometry.
-- [generation.service.ts](../src/features/engine/services/generation.service.ts) —
+- [generation.service.ts](../../src/features/engine/services/generation.service.ts) —
   the server-side batch generator, ready to back a puzzle API route.
-- [GridSizeSelector.tsx](../src/features/puzzle-configuration/components/GridSizeSelector.tsx)
+- [GridSizeSelector.tsx](../../src/features/puzzle-configuration/components/GridSizeSelector.tsx)
   — a presentational 4/6/9 selector; reuse it on the `/play` config screen.
-- [usePuzzleGeneration.ts](../src/features/puzzle-configuration/hooks/usePuzzleGeneration.ts)
+- [usePuzzleGeneration.ts](../../src/features/puzzle-configuration/hooks/usePuzzleGeneration.ts)
   — the existing "fetch from an API, drive loading/error state" hook is the pattern
   to mirror for fetching a playable puzzle.
 
@@ -57,9 +61,9 @@ do not reimplement it:
 The generator is **synchronous** and, for Extreme, can take up to a couple of seconds
 (digging + retries). Running it on the main thread would freeze the UI and wreck INP.
 We use **Option A** below: `POST /api/puzzle` (built — see
-[route.ts](../src/app/api/puzzle/route.ts)) generates one puzzle server-side via
+[route.ts](../../src/app/api/puzzle/route.ts)) generates one puzzle server-side via
 `generateSinglePuzzle` and returns `{ grid, solution }` JSON; the client fetches it
-with the [usePuzzle](../src/features/interactive-board/hooks/usePuzzle.ts) hook. Both
+with the [usePuzzle](../../src/features/interactive-board/hooks/usePuzzle.ts) hook. Both
 options were considered:
 
 | Option | How | Trade-offs |
@@ -96,18 +100,18 @@ better pick only if offline generation becomes a requirement.
 
 ### Routing & navigation
 
-- **[MODIFY]** [src/app/page.tsx](../src/app/page.tsx) — add a prominent "Play Online"
+- **[MODIFY]** [src/app/page.tsx](../../src/app/page.tsx) — add a prominent "Play Online"
   action beside "Generate PDF Book". Stays a Server Component.
 - **[NEW]** `src/app/play/page.tsx` — Server Component shell that renders the
   client `PlayExperience` (config screen → board).
 
 ### Puzzle data (Option A) — ✅ built
 
-- **[DONE]** [src/app/api/puzzle/route.ts](../src/app/api/puzzle/route.ts) —
+- **[DONE]** [src/app/api/puzzle/route.ts](../../src/app/api/puzzle/route.ts) —
   `runtime = 'nodejs'`; validates `{ difficulty, gridSize }`, delegates to
   `generateSinglePuzzle`, returns `{ grid, solution, difficulty, gridSize }` JSON;
   Pino wide-event logging; generic 500 (no stack leak). Colocated `route.test.ts`.
-- **[DONE]** [usePuzzle.ts](../src/features/interactive-board/hooks/usePuzzle.ts) —
+- **[DONE]** [usePuzzle.ts](../../src/features/interactive-board/hooks/usePuzzle.ts) —
   fetches `/api/puzzle`, exposes `{ puzzle, loading, error, fetchPuzzle }`. Colocated
   `usePuzzle.test.tsx` (mocks the `fetch` boundary only).
 
