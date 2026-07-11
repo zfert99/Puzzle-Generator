@@ -31,14 +31,21 @@ the word to switch.
 
 | Decision | Recommended | Alternatives / trade-offs |
 | --- | --- | --- |
-| **Database** | **Postgres on Neon** (Vercel Postgres) — tightest Vercel integration, serverless driver, generous free tier | **Supabase** (Postgres + built-in auth/storage; heavier but batteries-included). See [portfolio-hosting.md](research/portfolio-hosting.md). |
+| **Database** | **Neon Postgres** — installed via the **Vercel Marketplace integration** (Vercel's first-party "Vercel Postgres" was retired and migrated to Neon in Dec 2024; there is no "Storage → Postgres" button anymore). Serverless driver, generous free tier. | **Supabase** (Postgres + built-in auth/storage; heavier but batteries-included). See [portfolio-hosting.md](research/portfolio-hosting.md). |
 | **ORM** | **Drizzle** — lightweight, SQL-first, type-safe, serverless/edge-friendly, parameterized by default | **Prisma** — more mature, richer tooling, heavier bundle/cold start. Both satisfy the "type-safe ORM, parameterized queries" rule. |
-| **Auth** | **Auth.js (NextAuth v5)** with a Drizzle adapter, OAuth (Google/GitHub) **and** a Passkey/WebAuthn provider (SimpleWebAuthn under the hood) | Roll-your-own with SimpleWebAuthn + Lucia. Auth.js is less code and battle-tested. |
+| **Auth** | **better-auth** with the Drizzle adapter — TypeScript-first, with **first-class (production-ready) passkeys** + 2FA plugins and OAuth. Neon's official Vercel+Neon starter ships better-auth + Drizzle for exactly this stack. | **Auth.js (NextAuth v5)** — its OAuth is battle-tested, but its **WebAuthn/passkey provider is explicitly experimental / "not recommended for production,"** which undermines a passkeys-first mandate. Or keep Auth.js for OAuth and bolt on a dedicated passkey service (Hanko/Corbado) — more moving parts. |
 | **Cron** | **Vercel Cron** (`vercel.json`) hitting a secret-guarded route | Supabase scheduled functions / external scheduler. |
 
-> Passkeys-first (AGENTS.md Section 6): offer passkey sign-in as the **primary**
-> option with OAuth as fallback — not passwords. If local email/password is ever
-> added, hash with **Argon2id** (baseline m=19456/t=2/p=1) + a 16-byte salt.
+> **Why not Auth.js for passkeys?** The passkeys-first mandate (AGENTS.md Section 6) is
+> the deciding factor. Auth.js is "battle-tested" for OAuth but its passkey provider is
+> the one part it labels experimental — so recommending it *for passkeys* would be a
+> contradiction. **better-auth** ships passkeys as a first-class plugin, and 4.3.1's
+> ownership checks are auth-library-agnostic (they only need `session.userId`), so this
+> swap costs nothing architecturally.
+
+> Passkeys-first: offer passkey sign-in (better-auth's passkey plugin) as the
+> **primary** option with OAuth as fallback — not passwords. If local email/password is
+> ever added, hash with **Argon2id** (OWASP baseline m=19456/t=2/p=1) + a 16-byte salt.
 
 ## Architecture
 
@@ -47,7 +54,7 @@ New feature modules, keeping domains separate (Section 1):
 ```text
 src/lib/db.ts                      # ORM client + connection (server-only)
 src/features/dailies/             # daily puzzle service, /daily UI glue
-src/features/auth/                # Auth.js config, session helpers, passkey flow
+src/features/auth/                # better-auth config, session helpers, passkey flow
 src/features/leaderboards/        # solve submission + leaderboard queries/UI
 src/app/api/daily/route.ts        # GET today's puzzle
 src/app/api/solve/route.ts        # POST a solve attempt (server-validated)
@@ -83,7 +90,7 @@ CREATE TABLE users (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username    TEXT UNIQUE NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT now()
-  -- auth identities (OAuth accounts, passkeys, sessions) live in Auth.js's
+  -- auth identities (OAuth accounts, passkeys, sessions) live in better-auth's
   -- adapter tables; no local password column unless password auth is added
   -- (then: password_hash via Argon2id).
 );
@@ -118,14 +125,19 @@ client validates locally only after the server confirms completion (see anti-che
 
 ### 4.3 Authentication & sessions
 
-- Auth.js (NextAuth v5) with the Drizzle adapter and **database sessions**.
-- **Passkeys-first**: a WebAuthn/passkey provider as the primary sign-in, OAuth
+- **better-auth** with the Drizzle adapter and **database sessions**. Chosen over
+  Auth.js specifically because its passkey support is a first-class, production-ready
+  plugin — Auth.js's own WebAuthn provider is still marked experimental / not for
+  production, which would undermine the passkeys-first mandate.
+- **Passkeys-first**: better-auth's passkey plugin as the primary sign-in, OAuth
   (Google/GitHub) as fallback. Session cookies are `HttpOnly`, `Secure`,
   `SameSite=Lax` (or `Strict` where UX allows) — no tokens in `localStorage`.
-- If JWT sessions are chosen instead of DB sessions, apply the **Hybrid Token
-  Architecture**: short-lived access token in memory, long-lived refresh token in an
-  `HttpOnly`/`Secure`/`SameSite` cookie, with rotation. Enforce **PKCE** on OAuth.
-- Server-side `getSession()` helper in `src/features/auth/` for use in route handlers.
+- Prefer DB sessions; if JWT sessions are used, apply the **Hybrid Token
+  Architecture** (short-lived access token in memory, long-lived refresh token in an
+  `HttpOnly`/`Secure`/`SameSite` cookie, with rotation) and enforce **PKCE** on OAuth.
+- Server-side `getSession()` helper in `src/features/auth/`. Everything downstream —
+  including the BOLA layer (4.3.1) — depends only on `session.userId`, so the auth
+  library choice stays isolated here.
 
 ### 4.3.1 Authorization (BOLA) — the highest-risk item
 
@@ -164,7 +176,9 @@ at the data-access layer:
 - [ ] **Sessions**: `HttpOnly`/`Secure`/`SameSite` cookies; no tokens in web storage;
       refresh-token rotation + PKCE if using JWTs.
 - [ ] **Anti-cheat**: server-side time validation; grid verified against stored solution.
-- [ ] **Rate limiting** on auth + `/api/solve` (Upstash/Vercel KV or middleware).
+- [ ] **Rate limiting** on auth + `/api/solve` — **Upstash Redis** directly (Vercel KV
+      is the same Upstash product with an extra proprietary layer; going direct avoids
+      the kind of first-party-lock-in that just bit "Vercel Postgres").
 - [ ] **Secrets** in env only (`DATABASE_URL`, auth secrets, `CRON_SECRET`); never
       committed, never shipped to the client.
 - [ ] **Input validation** on every route (reuse the existing validate-then-500-generic
