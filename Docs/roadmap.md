@@ -28,6 +28,8 @@ The app is a **stateless PDF pipeline**. The user picks puzzle counts, the serve
 | **Engine** | `HumanSolver` — Naked/Hidden Singles & Pairs, Pointing Pairs, X-Wing, Swordfish, Y-Wing, XYZ-Wing, W-Wing, ALS-XZ, AICs (bitmask candidates; Basic ~0.11ms / Extreme ~10ms) | ✅ Shipped |
 | **API** | `/api/generate` — accepts difficulty counts (including extreme), returns PDF stream | ✅ Shipped |
 | **Frontend** | `PuzzleForm` — glassmorphism UI with difficulty selectors | ✅ Shipped |
+| **Frontend** | Interactive board at `/play` — Zustand+zundo store, playable grid, pencil marks, undo/redo, hints, timer, mistakes, persistence | ✅ Shipped |
+| **API** | `/api/puzzle` — on-demand single-puzzle JSON for the interactive board | ✅ Shipped |
 | **PDF** | `pdf.service.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
 | **Testing** | Vitest unit suite (58 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
 | **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) | ✅ Shipped |
@@ -169,10 +171,17 @@ This is the **lowest-hanging fruit** for new puzzle variety. The core backtracki
 ## Phase 3 — The Interactive Board
 
 > **Tracks:** 🎨 Frontend, 🗄️ Infrastructure
-> **Branch:** `feature/interactive-board`
-> **Status:** 🚧 In Progress
+> **Branch:** `feature/interactive-board` (merged to `main`)
+> **Status:** ✅ Done (core) — further polish may still be applied
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** None — but Phase 4 and 5 build on top of this.
+
+The playable board shipped at `/play` — 4×4/6×6/9×9, keyboard/mouse/touch input,
+pencil marks, undo/redo, hints, real-time errors, number lockout, same-number
+highlight, a timer with pause, a mistakes counter, a solved modal, and localStorage
+persistence. Full write-up in
+[phase3-walkthrough.md](archive/phase3-walkthrough.md). Optional polish (e.g. CSS
+Subgrid pencil alignment, a mistakes limit, sound) may follow.
 
 This is the **architectural pivot point**. Everything after this phase depends on having a playable, in-browser Sudoku board instead of a PDF-only output.
 

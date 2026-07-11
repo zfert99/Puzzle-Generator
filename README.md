@@ -71,11 +71,13 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 | :---: | --- | --- | :---: |
 | **1** | **Extreme Difficulty** 💀🔥 — W-Wing, ALS, AICs | 🧮 Engine | ✅ Done |
 | **2** | **Mini Puzzles** — 4×4 & 6×6 grids | 🧮 Engine + 🎨 UI | ✅ Done |
-| **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | 🚧 In Progress |
+| **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | ✅ Done\* |
 | **4** | **Dailies & Leaderboards** — DB, Auth, Speed Runs | 🗄️ Infrastructure | 📋 Planned |
 | **5** | **Strategy Courses** — Visual solver teaching | 🎨 UI + 🧮 Engine | 📋 Planned |
 
 > Phases 1 & 2 can run in parallel. Phases 4 & 5 both depend on Phase 3.
+>
+> \* Phase 3 core is shipped at `/play`; optional polish may still be applied.
 
 ## Tech Stack
 
