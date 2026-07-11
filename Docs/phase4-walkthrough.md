@@ -10,10 +10,15 @@
 | --- | --- | --- |
 | 4.1 | Database layer (Neon + Drizzle) | ✅ Done, deployed |
 | 4.2 | Daily puzzle cron + `/daily` | ✅ Done, deployed |
-| 4.3 | Authentication & sessions (better-auth) | ✅ Verified locally; prod deploy pending |
-| 4.3.1 | Authorization (BOLA) | ✅ Verified (pattern + primitives) |
-| 4.4 | Leaderboards, streaks & anti-cheat | ✅ Backend + UI done + verified |
-| — | Auth UI (sign-in/up, account badge) — was deferred from 4.3 | ✅ Done + verified |
+| 4.3 | Authentication & sessions (better-auth) | ✅ Deployed + verified in prod |
+| 4.3.1 | Authorization (BOLA) | ✅ Deployed + verified |
+| 4.4 | Leaderboards, streaks & anti-cheat | ✅ Deployed + verified |
+| — | Auth UI (sign-in/up, account badge) — was deferred from 4.3 | ✅ Deployed + verified |
+
+> **Deployed to production** (`puzzles.biscuitlab.net`) on 2026-07-11. Verified live: email/
+> password sign-up + 7-day session, Google auth URL with the prod `redirect_uri` + PKCE,
+> `/signin` + `/leaderboard` + `bg-pattern.svg` all 200. Prod env set: `BETTER_AUTH_SECRET`,
+> `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID/SECRET`.
 
 **Confirmed stack:** Neon Postgres · Drizzle ORM · better-auth (passkeys-first) · Vercel
 Cron · Upstash (4.4). **Daily rules:** anonymous play, 00:00 UTC rollover, difficulties

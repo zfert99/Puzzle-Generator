@@ -233,7 +233,7 @@ graph TD
 
 > **Tracks:** 🗄️ Infrastructure, 🎨 Frontend
 > **Branch:** `feature/daily-leaderboards`
-> **Status:** 🚧 In Progress — all slices **4.1–4.4 code-complete & verified** (DB, daily cron, auth, BOLA, leaderboards + UI). 4.1/4.2 deployed to prod; 4.3/4.3.1/4.4 on the branch (need Vercel auth env before deploy). Running log: [phase4-walkthrough.md](phase4-walkthrough.md)
+> **Status:** ✅ Done — all slices **4.1–4.4 deployed to production** (`puzzles.biscuitlab.net`) and verified live: DB, daily cron, passkeys-first auth (email/password + Google), BOLA ownership, anti-cheat leaderboards + streaks, and the full UI. Running log: [phase4-walkthrough.md](phase4-walkthrough.md)
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** Phase 3 (Interactive Board)
 
