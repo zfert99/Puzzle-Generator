@@ -233,7 +233,7 @@ graph TD
 
 > **Tracks:** 🗄️ Infrastructure, 🎨 Frontend
 > **Branch:** `feature/daily-leaderboards`
-> **Status:** 🚧 In Progress — slice **4.1 (Database Layer)** landed; 4.2–4.4 planned
+> **Status:** 🚧 In Progress — slices **4.1 (Database Layer)** and **4.2 (Daily Puzzle Cron)** landed; 4.3–4.4 planned
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** Phase 3 (Interactive Board)
 
@@ -285,12 +285,18 @@ CREATE TABLE solve_attempts (
 );
 ```
 
-#### 4.2 — Daily Puzzle Cron
+#### 4.2 — Daily Puzzle Cron ✅ Done
 
-- Scheduled job runs at midnight UTC
-- Generates one puzzle per difficulty level (Easy, Medium, Hard, Expert)
-- Stores in `daily_puzzles` table
-- All users worldwide get the exact same boards
+- **Vercel Cron** ([vercel.json](../vercel.json)) hits [`/api/cron/daily`](../src/app/api/cron/daily/route.ts) at 00:00 UTC, guarded by a constant-time `CRON_SECRET` check (fails closed if unset).
+- Idempotent generation service ([dailies.service.ts](../src/features/dailies/dailies.service.ts)) — one puzzle per daily difficulty (Easy/Medium/Hard/Expert; Extreme excluded), upserted on `UNIQUE(date, difficulty)`. The seed script now shares this service so it can't drift.
+- [`GET /api/daily`](../src/app/api/daily/route.ts) serves today's shared board; [`/daily`](../src/app/daily/page.tsx) plays it on the reused Phase 3 board ([DailyExperience](../src/features/dailies/components/DailyExperience.tsx)). Anonymous & unranked for now.
+- All users worldwide get the exact same boards.
+
+> [!NOTE]
+> **4.2 anti-cheat carve-out:** `/api/daily` currently returns `solution` so the board can
+> do local hint/mistake checking. Play is unranked, so nothing is at stake yet. When 4.4
+> adds ranked solves, the solution stops being served and completion is validated
+> server-side against the stored solution.
 
 #### 4.3 — User Authentication & Session Security
 

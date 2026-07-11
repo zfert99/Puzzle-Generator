@@ -15,12 +15,8 @@ constraint plus `onConflictDoNothing` turn a repeat run into a no-op.
 Load env from .env.local (via the load-env side-effect import, kept first).
 Build a db client with createDb(DATABASE_URL) — the unguarded factory, since the
   server-only app client cannot be imported from a plain tsx script.
-Compute today's date as a UTC YYYY-MM-DD string.
-For each daily difficulty (easy, medium, hard, expert):
-  Generate a puzzle with the engine.
-  Map it to a daily_puzzles insert row for today's date.
-Insert all rows in one statement, skipping any that collide with an existing
-  (date, difficulty) pair.
+Call generateDailyPuzzles(db, today's UTC date) — the SAME service the cron uses,
+  so seed and cron can never drift.
 Log how many were newly inserted (and how many already existed).
 Exit 0 on success, 1 on failure.
 ```

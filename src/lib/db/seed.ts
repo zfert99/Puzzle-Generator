@@ -1,17 +1,16 @@
 import './load-env'; // MUST be first — loads DATABASE_URL before it is read below.
-import { generateSudoku } from '@/features/engine/sudoku';
 import { createDb } from './connection';
-import { dailyPuzzles } from './schema';
-import { DAILY_DIFFICULTIES, toDailyPuzzleRow, toUtcDateString } from './daily-row';
+import { toUtcDateString } from './daily-row';
+import { generateDailyPuzzles } from '@/features/dailies/dailies.service';
 
 /**
  * Local seed script — generates today's (UTC) daily puzzle for each eligible
  * difficulty and upserts them, so a fresh local database has something for the /daily
- * route to load before the 4.2 cron exists.
+ * route to load before the 4.2 cron fires (or when developing without cron).
  *
- * Idempotent by design: the `UNIQUE(date, difficulty)` constraint plus
- * `onConflictDoNothing` make re-running a no-op rather than a duplicate. Run with:
- *   npm run db:seed
+ * Delegates to the same `generateDailyPuzzles` service the cron uses, so seed and cron
+ * can never drift. Idempotent: the `UNIQUE(date, difficulty)` constraint plus
+ * `onConflictDoNothing` make a re-run a no-op. Run with: npm run db:seed
  */
 async function seed() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -20,20 +19,11 @@ async function seed() {
   }
   const db = createDb(databaseUrl);
 
-  const isoDate = toUtcDateString(new Date());
-  const rows = DAILY_DIFFICULTIES.map((difficulty) =>
-    toDailyPuzzleRow(generateSudoku(difficulty), isoDate),
-  );
-
-  const inserted = await db
-    .insert(dailyPuzzles)
-    .values(rows)
-    .onConflictDoNothing({ target: [dailyPuzzles.date, dailyPuzzles.difficulty] })
-    .returning({ id: dailyPuzzles.id, difficulty: dailyPuzzles.difficulty });
+  const { isoDate, requested, inserted } = await generateDailyPuzzles(db, toUtcDateString(new Date()));
 
   console.log(
-    `Seeded ${isoDate}: ${inserted.length} new daily puzzle(s)` +
-      (inserted.length < rows.length ? ` (${rows.length - inserted.length} already existed)` : ''),
+    `Seeded ${isoDate}: ${inserted} new daily puzzle(s)` +
+      (inserted < requested ? ` (${requested - inserted} already existed)` : ''),
   );
 }
 
