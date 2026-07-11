@@ -309,10 +309,11 @@ CREATE TABLE solve_attempts (
 > [!IMPORTANT]
 > Leaderboard integrity requires server-side time validation. The client sends a start timestamp and the server records completion — never trust a client-reported solve time.
 
-#### 4.3.1 — Authorization & BOLA Prevention
+#### 4.3.1 — Authorization & BOLA Prevention ✅ Done (pattern + primitives)
 
-- Implement strict ownership checks at the data-access layer.
-- Ensure API routes explicitly verify that `session.userId === requestedObject.ownerId` before permitting mutations or reads of personal data.
+- `requireUserId()` ([session.ts](../src/features/auth/session.ts)) derives identity from the session — protected routes never take a `userId` from the request.
+- Ownership-scoped data access ([attempts.service.ts](../src/features/leaderboards/attempts.service.ts)): every function requires a `userId` and filters `WHERE user_id = …` in the query; no "get by id" that could skip the check.
+- Reference route [`GET /api/me/attempts`](../src/app/api/me/attempts/route.ts): 401 unauthenticated; verified two users each see only their own attempts on the same puzzle. Writes (recording solves) follow the same rule in 4.4.
 
 #### 4.4 — Leaderboard UI
 

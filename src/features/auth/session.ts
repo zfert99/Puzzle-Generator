@@ -1,6 +1,7 @@
 import 'server-only';
 import { headers } from 'next/headers';
 import { auth } from './auth';
+import { UnauthorizedError } from './errors';
 
 /**
  * Server-side session accessor. The single place the app asks "who is the current user?"
@@ -20,4 +21,18 @@ export async function getSession() {
 export async function getCurrentUserId(): Promise<string | null> {
   const session = await getSession();
   return session?.user.id ?? null;
+}
+
+/**
+ * The current user's id, or throw `UnauthorizedError` (→ 401) if signed out.
+ *
+ * This is the BOLA (4.3.1) entry point: a protected route calls `requireUserId()` and
+ * then passes the returned id — the SERVER's notion of "who is calling" — into the data
+ * layer. A route must never take a `userId` from the request body/query; ownership is
+ * always derived here so a caller can never act as another user.
+ */
+export async function requireUserId(): Promise<string> {
+  const userId = await getCurrentUserId();
+  if (!userId) throw new UnauthorizedError();
+  return userId;
 }

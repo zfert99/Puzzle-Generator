@@ -11,7 +11,7 @@
 | 4.1 | Database layer (Neon + Drizzle) | ✅ Done, deployed |
 | 4.2 | Daily puzzle cron + `/daily` | ✅ Done, deployed |
 | 4.3 | Authentication & sessions (better-auth) | ✅ Verified locally; prod deploy pending |
-| 4.3.1 | Authorization (BOLA) | 📋 Next |
+| 4.3.1 | Authorization (BOLA) | ✅ Verified (pattern + primitives) |
 | 4.4 | Leaderboards, streaks & anti-cheat | 📋 Planned |
 
 **Confirmed stack:** Neon Postgres · Drizzle ORM · better-auth (passkeys-first) · Vercel
@@ -143,6 +143,42 @@ registered).
 
 **New env vars:** `BETTER_AUTH_SECRET` (required), `BETTER_AUTH_URL`, optional
 `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. See `.env.example`.
+
+---
+
+## 4.3.1 — Authorization (BOLA)
+
+The highest-risk item in the plan: verifying *ownership*, not just *authentication*. This
+slice establishes the pattern and primitives that every personal-data route in 4.4 will use.
+
+### What shipped
+
+- `src/features/auth/errors.ts` — `UnauthorizedError` (dependency-free so the guard, routes,
+  and tests all share it).
+- `src/features/auth/session.ts` — added `requireUserId()`: returns the session user id or
+  throws `UnauthorizedError` (→ 401). The single place identity is derived for protected routes.
+- `src/features/leaderboards/attempts.service.ts` — ownership-scoped reads
+  (`getUserAttempts`, `getUserAttemptForPuzzle`); **every function takes a `userId` and filters
+  by it in the query**. No "get by id" that could skip the ownership predicate.
+- `src/app/api/me/attempts/route.ts` — the reference protected route: identity from
+  `requireUserId()`, never a request parameter; there is no `?userId=`.
+
+### Key decisions
+
+- **Identity is server-derived, never client-supplied.** The one rule that prevents BOLA —
+  encoded structurally (the service signatures force a `userId`; the route has no way to pass one).
+- **Filter in the query, not after.** `WHERE user_id = …` at the data layer, per AGENTS.md §6.
+- **Writes deferred to 4.4** — `attempts.service` is read-only for now; the solve-recording
+  write (with server-side time/grid validation) lands in 4.4 following the same ownership rule.
+
+### Verified
+
+- Unit: the ownership tests capture the `.where()` filter and assert it is the user-id
+  predicate (drop the filter → the build fails).
+- End-to-end against real Neon: `/api/me/attempts` returns **401** unauthenticated; two users
+  (Alice, Bob) with attempts on the **same** puzzle each saw **only their own** row — no way to
+  request another user's data. Both test users deleted (cascade) afterward.
+- `tsc` / `eslint` / `next build` (`/api/me/attempts` dynamic) / markdownlint clean; 107 tests.
 
 ---
 
