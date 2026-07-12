@@ -50,6 +50,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // The pre-paint script sets `data-theme` on <html> before hydration, so React would
+      // otherwise flag an attribute mismatch on this element. The mutation is intentional.
+      suppressHydrationWarning
       className={`${fredoka.variable} ${manrope.variable} ${spaceMono.variable} ${permanentMarker.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

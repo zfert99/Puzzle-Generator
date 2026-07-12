@@ -31,7 +31,7 @@ export function AppHeader() {
           <Link href="/daily" className="text-paper/90 hover:underline">Daily</Link>
           <Link href="/leaderboard" className="text-paper/90 hover:underline">Leaderboard</Link>
           <Link href="/play" className="text-paper/90 hover:underline">Play</Link>
-          <Link href="/" className="text-paper/90 hover:underline hidden md:inline">PDF</Link>
+          <Link href="/generate" className="text-paper/90 hover:underline hidden md:inline">PDF</Link>
           <ThemeToggle />
           <AccountBadge />
         </nav>
