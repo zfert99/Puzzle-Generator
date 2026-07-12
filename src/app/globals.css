@@ -24,6 +24,10 @@
   --mint: #2FAE86; --cherry: #D8453F;
   --r-sm: 8px; --r-md: 14px; --r-lg: 20px;
 
+  /* Chaos-layer "wildcard" sticker colors (5.5) — DECORATION ONLY (stickers, tape,
+     pins, marginalia). Never text/buttons/functional UI. Same in both themes. */
+  --sticker-pink: #FF5FA2; --sticker-lime: #B4E23C; --sticker-sky: #4FC3E8;
+
   /* Legacy tokens (existing UI) — retired per-surface in 5.2 */
   --background: #ffffff;
   --foreground: #111111;
@@ -56,6 +60,9 @@
   --color-grape-dark: var(--grape-dark);
   --color-mint: var(--mint);
   --color-cherry: var(--cherry);
+  --color-sticker-pink: var(--sticker-pink);
+  --color-sticker-lime: var(--sticker-lime);
+  --color-sticker-sky: var(--sticker-sky);
 
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);

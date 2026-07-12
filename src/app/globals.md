@@ -21,6 +21,10 @@ bakes values at build time. The solution:
 @theme inline            -> --color-*/--radius-*/--shadow-chunky/--font-* = var(--token)
 ```
 
+The **sticker tokens** (`--sticker-pink/lime/sky`) are also defined but **quarantined —
+decoration only** (the 5.5 chaos layer: stickers, tape, pins, marginalia), never text/
+buttons/functional UI, and they do **not** flip by theme.
+
 ## 2. `dark:` follows the toggle
 
 **Why:** `@custom-variant dark (&:where([data-theme="dark"], …))` overrides Tailwind's default

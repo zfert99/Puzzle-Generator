@@ -2,9 +2,9 @@
 <html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<title>biscuit lab — design system mockup</title>
+<title>biscuit lab — v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Permanent+Marker&family=Caveat:wght@600&display=swap" rel="stylesheet">
 <style>
   :root {
     --paper: #FBF3E3; --paper-2: #F5E7C8;
@@ -12,6 +12,7 @@
     --butterscotch: #E8A33D; --butterscotch-dark: #C97F1E;
     --grape: #5A3E96; --grape-dark: #3E2A69;
     --mint: #2FAE86; --cherry: #D8453F;
+    --sticker-pink: #FF5FA2; --sticker-lime: #B4E23C; --sticker-sky: #4FC3E8;
     --r-sm: 8px; --r-md: 14px; --r-lg: 20px;
   }
   [data-theme="dark"] {
@@ -24,74 +25,153 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--paper); color: var(--ink);
-    font-family: 'Manrope', sans-serif; padding: 40px 24px 80px;
+    font-family: 'Manrope', sans-serif; padding: 0 24px 90px;
     transition: background .25s ease, color .25s ease;
   }
-  .wrap { max-width: 920px; margin: 0 auto; }
-  h1.logo {
-    font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 2.4rem;
-    margin: 0; letter-spacing: -0.5px;
+  [data-theme="light"] body { background-image: radial-gradient(rgba(43,27,18,0.09) 0.6px, transparent 0.6px); background-size: 15px 15px; }
+  [data-theme="dark"] body { background-image: radial-gradient(rgba(245,233,206,0.07) 0.6px, transparent 0.6px); background-size: 15px 15px; }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding-top: 32px; }
+  svg.defs { position: absolute; width: 0; height: 0; }
+
+  .marker-note {
+    font-family: 'Permanent Marker', cursive; color: var(--sticker-pink); font-size: 1rem;
+    transform: rotate(-4deg); display: inline-block; margin-left: 10px;
   }
-  h1.logo span { color: var(--grape); }
-  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .tagline { color: var(--ink-soft); font-size: 0.95rem; margin: 0 0 40px; font-weight: 500; }
+
+  .webring {
+    display: flex; gap: 10px; align-items: center; background: var(--ink); color: var(--paper);
+    padding: 6px 14px; font-family: 'Space Mono'; font-size: 0.62rem; overflow-x: auto;
+    border-bottom: 3px solid var(--butterscotch); white-space: nowrap;
+  }
+  .webring .b { background: var(--paper); color: var(--ink); padding: 3px 8px; border: 1px solid var(--ink-soft); }
+
+  .marquee {
+    background: var(--ink); color: var(--paper); overflow: hidden; white-space: nowrap;
+    margin: 0 0 36px; position: relative; border-top: 2px solid var(--butterscotch); border-bottom: 2px solid var(--butterscotch);
+  }
+  .marquee-track {
+    display: inline-block; padding: 7px 0; font-family: 'Space Mono'; font-weight: 700; font-size: 0.78rem;
+    animation: scroll-left 16s linear infinite;
+  }
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+  .marquee-track span { padding: 0 20px; }
+  .marquee-track span:nth-child(3n) { color: var(--sticker-lime); }
+  @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+  .marquee-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2px; position: relative; }
+  h1.logo {
+    font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 2.5rem;
+    margin: 0; letter-spacing: -0.5px; display: inline-block; transform: rotate(-2.5deg);
+  }
+  h1.logo span { color: var(--grape); display: inline-block; }
+  h1.logo span i { display: inline-block; animation: letter-bounce 2.6s ease-in-out infinite; font-style: normal; }
+  h1.logo span i:nth-child(1){animation-delay:0s} h1.logo span i:nth-child(2){animation-delay:.08s}
+  h1.logo span i:nth-child(3){animation-delay:.16s}
+  @keyframes letter-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  @media (prefers-reduced-motion: reduce) { h1.logo span i { animation: none; } }
+
+  .tagline { color: var(--ink-soft); font-size: 0.95rem; margin: 8px 0 12px; font-weight: 500; }
+  .strike { text-decoration: line-through; text-decoration-color: var(--cherry); text-decoration-thickness: 2px; opacity: 0.6; }
+  .correction { font-family: 'Caveat', cursive; color: var(--cherry); font-size: 1.15rem; transform: rotate(-3deg); display: inline-block; margin-left: 4px; }
+
   .toggle {
     font-family: 'Manrope'; font-weight: 600; font-size: 0.85rem;
     background: var(--paper-2); color: var(--ink); border: 3px solid var(--ink);
     border-radius: var(--r-sm); padding: 8px 14px; cursor: pointer;
     box-shadow: 3px 3px 0 0 var(--ink); transition: transform .09s ease, box-shadow .09s ease;
+    transform: rotate(2deg);
   }
-  .toggle:active { transform: translate(3px, 3px); box-shadow: 0 0 0 0 var(--ink); }
+  .toggle:hover { transform: rotate(-1deg) translate(-1px,-1px); }
+  .toggle:active { transform: translate(3px, 3px) rotate(0); box-shadow: 0 0 0 0 var(--ink); }
 
-  section { margin-bottom: 48px; }
+  section { margin-bottom: 56px; position: relative; }
   h2.section-title {
     font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 1.3rem;
-    margin: 0 0 16px; color: var(--ink);
+    margin: 0 0 16px; color: var(--ink); display: inline-block;
   }
 
-  /* palette */
-  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
-  .swatch { border-radius: var(--r-md); padding: 14px 12px; border: 3px solid var(--ink); }
-  .swatch .name { font-weight: 700; font-size: 0.8rem; display: block; }
-  .swatch .hex { font-family: 'Space Mono', monospace; font-size: 0.72rem; opacity: 0.85; }
+  .wobble-frame { position: absolute; inset: -6px; pointer-events: none; filter: url(#wobble); }
+  .wobble-frame rect { fill: none; stroke: var(--ink); stroke-width: 3; }
 
-  /* type specimen */
-  .specimen { display: flex; flex-direction: column; gap: 10px; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 14px; }
+  .swatch { position: relative; border-radius: var(--r-md); padding: 14px 12px; }
+  .swatch:nth-child(odd) { transform: rotate(-2deg); }
+  .swatch:nth-child(even) { transform: rotate(2deg); }
+  .swatch:nth-child(3n) { transform: rotate(-1deg); }
+  .swatch .name { font-weight: 700; font-size: 0.8rem; display: block; position: relative; z-index: 1; }
+  .swatch .hex { font-family: 'Space Mono', monospace; font-size: 0.72rem; opacity: 0.85; position: relative; z-index: 1; }
+
+  .specimen { display: flex; flex-direction: column; gap: 10px; position: relative; padding: 10px 0; }
+  .coffee-stain { position: absolute; top: -10px; right: 30px; width: 90px; height: 90px; opacity: 0.35; pointer-events: none; }
+  [data-theme="dark"] .coffee-stain { opacity: 0.5; }
   .display-xl { font-family: 'Fredoka'; font-weight: 600; font-size: 2.6rem; margin: 0; line-height: 1.05; }
   .display-m { font-family: 'Fredoka'; font-weight: 600; font-size: 1.4rem; margin: 0; }
   .body-copy { font-size: 1rem; line-height: 1.6; color: var(--ink-soft); max-width: 60ch; margin: 0; }
   .mono-demo { font-family: 'Space Mono'; font-weight: 700; font-size: 1.5rem; margin: 0; }
 
-  /* bento puzzle picker */
-  .bento { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-  .puzzle-card {
-    background: var(--paper-2); border: 3px solid var(--ink); border-radius: var(--r-lg);
-    padding: 18px; cursor: pointer; box-shadow: 5px 5px 0 0 var(--ink);
-    transition: transform .1s ease, box-shadow .1s ease;
+  .desk { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 20px 14px; padding: 18px 6px 6px; position: relative; }
+  .polaroid {
+    background: var(--paper-2); padding: 8px 8px 10px; position: relative;
+    box-shadow: 4px 4px 0 0 rgba(43,27,18,0.85);
   }
-  .puzzle-card:active { transform: translate(5px, 5px); box-shadow: 0 0 0 0 var(--ink); }
-  .puzzle-card .title { font-family: 'Fredoka'; font-weight: 600; font-size: 1.15rem; margin: 0 0 4px; }
-  .puzzle-card .desc { font-size: 0.82rem; color: var(--ink-soft); margin: 0 0 12px; }
+  [data-theme="dark"] .polaroid { box-shadow: 4px 4px 0 0 rgba(0,0,0,0.6); }
+  .polaroid:nth-child(1) { transform: rotate(-2deg); }
+  .polaroid:nth-child(2) { transform: rotate(1.5deg); }
+  .polaroid:nth-child(3) { transform: rotate(-1deg); }
+  .polaroid:hover { transform: rotate(0deg) translateY(-2px); z-index: 5; }
+  .polaroid .thumb {
+    height: 62px; border-radius: 2px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Fredoka'; font-weight: 700; font-size: 0.68rem; color: var(--ink); text-align: center; padding: 6px;
+    border: 2px solid var(--ink);
+  }
+  .polaroid .cap { font-family: 'Caveat'; font-size: 0.98rem; margin: 7px 1px 0; color: var(--ink); }
+  .polaroid .desc { font-size: 0.64rem; color: var(--ink-soft); margin: 1px 1px 0; }
+  .sticker {
+    position: absolute; font-family: 'Fredoka'; font-weight: 700;
+    font-size: 0.52rem; color: var(--ink); padding: 3px 7px; border: 1.5px solid var(--ink);
+    border-radius: 11px 3px 11px 3px; z-index: 6; box-shadow: 1.5px 1.5px 0 0 var(--ink);
+  }
+  .sticker.pink { background: var(--sticker-pink); top: -9px; right: -8px; transform: rotate(13deg); }
+  .sticker.lime { background: var(--sticker-lime); top: -8px; left: -10px; transform: rotate(-11deg); }
+  .sticker.sky { background: var(--sticker-sky); bottom: -8px; right: 6px; transform: rotate(-8deg); }
+  .tape { position: absolute; width: 34px; height: 14px; top: -8px; left: 50%; background: rgba(255,255,255,0.4);
+    border: 1px dashed rgba(43,27,18,0.4); transform: translateX(-50%) rotate(-5deg); z-index: 2; }
+  .pin { position: absolute; top: -5px; left: 12px; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--cherry); box-shadow: 0 1px 2px rgba(0,0,0,0.4), inset -1.5px -1.5px 0 rgba(0,0,0,0.15); z-index: 3; }
   .badge {
-    display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 700;
-    background: var(--paper); border-radius: 999px; padding: 4px 10px;
+    display: inline-flex; align-items: center; gap: 5px; font-size: 0.6rem; font-weight: 700;
+    background: var(--paper); border-radius: 999px; padding: 2px 7px; margin-top: 5px;
   }
-  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
 
-  /* buttons */
   .btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .btn {
     font-family: 'Manrope'; font-weight: 700; font-size: 0.92rem; border-radius: var(--r-md);
     padding: 12px 22px; cursor: pointer; border: 3px solid var(--ink);
-    transition: transform .09s ease, box-shadow .09s ease;
+    transition: transform .09s ease, box-shadow .09s ease; position: relative; z-index: 1;
   }
-  .btn-primary { background: var(--butterscotch); color: var(--ink); box-shadow: 4px 4px 0 0 var(--ink); }
-  .btn-primary:active { transform: translate(4px, 4px); box-shadow: 0 0 0 0 var(--ink); }
+  .btn-primary { background: var(--butterscotch); color: var(--ink); box-shadow: 4px 4px 0 0 var(--ink); transform: rotate(-1.5deg); }
+  .btn-primary:hover { transform: rotate(1deg); }
+  .btn-primary:active { transform: translate(4px, 4px) rotate(0); box-shadow: 0 0 0 0 var(--ink); }
   .btn-secondary { background: var(--paper-2); color: var(--grape); border-color: var(--grape); box-shadow: 4px 4px 0 0 var(--grape); }
   .btn-secondary:active { transform: translate(4px, 4px); box-shadow: 0 0 0 0 var(--grape); }
   .btn-ghost { background: transparent; color: var(--ink-soft); border-color: transparent; box-shadow: none; text-decoration: underline; }
+  .cta-wrap { position: relative; display: inline-block; }
+  .circle-doodle { position: absolute; inset: -14px -20px; pointer-events: none; z-index: 0; }
+  .doodle-note { font-family: 'Caveat'; color: var(--cherry); font-size: 1.3rem; position: absolute; top: -26px; left: 60%;
+    transform: rotate(-6deg); white-space: nowrap; }
 
-  /* puzzle grid demo */
+  .notebook {
+    background: var(--paper-2); padding: 18px 22px 26px; margin: 26px 0; position: relative;
+    clip-path: polygon(0% 2%, 3% 0%, 8% 1.5%, 14% 0%, 20% 1.2%, 26% 0%, 33% 1.5%, 40% 0%, 47% 1%, 54% 0%, 61% 1.4%, 68% 0%, 75% 1%, 82% 0%, 89% 1.3%, 96% 0%, 100% 2%, 100% 98%, 95% 100%, 88% 98.5%, 81% 100%, 74% 98.7%, 67% 100%, 60% 98.5%, 53% 100%, 46% 99%, 39% 100%, 32% 98.6%, 25% 100%, 18% 98.8%, 11% 100%, 4% 98.5%, 0% 100%);
+    transform: rotate(-0.6deg);
+  }
+  .notebook p { font-family: 'Caveat'; font-size: 1.3rem; margin: 0; color: var(--ink); line-height: 1.5; }
+  .notebook .signed { text-align: right; margin-top: 8px; color: var(--ink-soft); }
+
   .grid-demo-row { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
   .cage-grid {
     display: grid; grid-template-columns: repeat(4, 56px); grid-template-rows: repeat(4, 56px);
@@ -108,111 +188,227 @@
   .cell.selected { background: var(--butterscotch); }
   .cell.correct { animation: pop-correct 0.22s ease; }
   .cell.wrong { animation: shake-wrong 0.18s ease-in-out 2; }
-  @keyframes pop-correct {
-    0% { transform: scale(1); background: var(--mint); }
-    50% { transform: scale(1.08); background: var(--mint); }
-    100% { transform: scale(1); }
-  }
-  @keyframes shake-wrong {
-    0%, 100% { transform: translateX(0); background: var(--cherry); }
-    50% { transform: translateX(4px); background: var(--cherry); }
-  }
+  @keyframes pop-correct { 0%{transform:scale(1);background:var(--mint)} 50%{transform:scale(1.08);background:var(--mint)} 100%{transform:scale(1)} }
+  @keyframes shake-wrong { 0%,100%{transform:translateX(0);background:var(--cherry)} 50%{transform:translateX(4px);background:var(--cherry)} }
   .demo-controls { display: flex; flex-direction: column; gap: 10px; }
   .demo-controls .hint { font-size: 0.82rem; color: var(--ink-soft); max-width: 26ch; margin: 0; }
+  .clean-label { font-family: 'Permanent Marker'; color: var(--ink-soft); font-size: 0.85rem; transform: rotate(-2deg); display: inline-block; margin-bottom: 10px; }
 
-  /* streak card */
-  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .stat-card {
-    background: var(--paper-2); border-radius: var(--r-md); padding: 14px 20px; min-width: 120px;
-  }
+  .stats-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .stat-card { background: var(--paper-2); border-radius: var(--r-md); padding: 14px 20px; min-width: 120px; border: 2.5px dashed var(--ink-soft); position: relative; }
+  .stat-card:nth-child(2) { transform: rotate(2deg); }
+  .stat-card:nth-child(1) { transform: rotate(-1.5deg); }
   .stat-card .label { font-size: 0.78rem; color: var(--ink-soft); font-weight: 600; display: block; margin-bottom: 4px; }
   .stat-card .value { font-family: 'Space Mono'; font-weight: 700; font-size: 1.6rem; }
+  .flame-doodle { position: absolute; top: -14px; right: -8px; font-size: 1.1rem; animation: flame-wobble 1.8s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .flame-doodle { animation: none; } }
+  @keyframes flame-wobble { 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(6deg)} }
 
-  /* solved stamp */
-  .stamp-zone { position: relative; height: 140px; display: flex; align-items: center; justify-content: center; }
+  .stamp-zone { position: relative; height: 170px; display: flex; align-items: center; justify-content: center; }
+  .burst { position: absolute; width: 200px; height: 200px; opacity: 0; }
+  .burst.show { animation: burst-in 0.6s ease-out forwards; }
+  @keyframes burst-in { 0%{opacity:0;transform:scale(0.5) rotate(0deg)} 40%{opacity:0.9} 100%{opacity:0.75;transform:scale(1) rotate(10deg)} }
   .stamp {
     font-family: 'Fredoka'; font-weight: 700; font-size: 1.4rem; color: var(--ink);
-    background: var(--mint); border: 3px solid var(--ink); border-radius: var(--r-lg);
-    padding: 14px 28px; box-shadow: 5px 5px 0 0 var(--ink);
-    opacity: 0; transform: scale(0.4) rotate(-8deg);
+    background: var(--mint); padding: 14px 30px; opacity: 0; transform: scale(0.4) rotate(-10deg);
+    position: relative; z-index: 2;
   }
   .stamp.show { animation: stamp-in 0.6s cubic-bezier(.34,1.56,.64,1) forwards; }
-  @keyframes stamp-in {
-    0% { opacity: 0; transform: scale(0.4) rotate(-8deg); }
-    60% { opacity: 1; transform: scale(1.12) rotate(2deg); }
-    100% { opacity: 1; transform: scale(1) rotate(0deg); }
-  }
+  @keyframes stamp-in { 0%{opacity:0;transform:scale(0.4) rotate(-10deg)} 60%{opacity:1;transform:scale(1.14) rotate(3deg)} 100%{opacity:1;transform:scale(1) rotate(0deg)} }
   .crumb { position: absolute; border-radius: 2px; opacity: 0; pointer-events: none; }
+
+  footer.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 50px; padding-top: 20px; border-top: 2px dashed var(--ink-soft); }
+  .webbadge { width: 88px; height: 31px; border: 1px solid var(--ink); background: var(--paper-2); display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono'; font-size: 0.55rem; text-align: center; color: var(--ink-soft); line-height: 1.1; }
+
+  /* parody banner ads — deliberately tacky, clearly fake, dismissible */
+  .fake-ad {
+    font-family: 'Arial', sans-serif; border: 3px solid #000; position: relative;
+    box-shadow: 0 0 0 2px #ffe600, 3px 3px 0 0 rgba(0,0,0,0.4);
+  }
+  .fake-ad .close-ad {
+    position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; background: #fff; color: #000;
+    border: 1px solid #000; font-size: 10px; line-height: 14px; text-align: center; cursor: pointer; font-weight: 700;
+  }
+  .fake-ad .disclaim { font-size: 8px; color: rgba(255,255,255,0.75); text-align: center; padding: 2px 4px; }
+  .fake-ad .blink { animation: ad-blink 1s steps(1) infinite; }
+  @media (prefers-reduced-motion: reduce) { .fake-ad .blink { animation: none; } }
+  @keyframes ad-blink { 50% { opacity: 0; } }
+
+  .skyscraper {
+    position: fixed; top: 120px; width: 120px; z-index: 10;
+    background: repeating-linear-gradient(-45deg, #ff5fa2, #ff5fa2 8px, #ffe600 8px, #ffe600 16px);
+    padding: 8px 7px; text-align: center; border-radius: 4px;
+  }
+  .skyscraper.left { left: 14px; }
+  .skyscraper.right { right: 14px; background: repeating-linear-gradient(-45deg, #4fc3e8, #4fc3e8 8px, #b4e23c 8px, #b4e23c 16px); }
+  .skyscraper .inner { background: #fff; border: 2px solid #000; padding: 8px 6px; margin-top: 4px; }
+  .skyscraper h4 { font-size: 11px; margin: 0 0 4px; color: #000; line-height: 1.2; }
+  .skyscraper p { font-size: 9px; margin: 4px 0; color: #333; line-height: 1.3; }
+  .skyscraper .cookie-spin { display: inline-block; font-size: 26px; animation: spin 3s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .skyscraper .cookie-spin { animation: none; } }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .skyscraper .fake-btn {
+    display: block; background: #ffe600; border: 2px solid #000; font-weight: 700; font-size: 10px;
+    padding: 5px; margin-top: 6px; color: #000;
+  }
+  @media (max-width: 1500px) { .skyscraper { display: none; } }
+
+  .leaderboard-ad {
+    max-width: 940px; margin: 40px auto 0; display: flex; align-items: center; justify-content: center; gap: 14px;
+    background: repeating-linear-gradient(90deg, #ffe600, #ffe600 10px, #ff5fa2 10px, #ff5fa2 20px);
+    padding: 10px 16px; flex-wrap: wrap;
+  }
+  .leaderboard-ad .inner { background: #fff; border: 2px solid #000; padding: 8px 18px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  .leaderboard-ad h4 { font-size: 13px; margin: 0; color: #000; }
+  .leaderboard-ad .fake-btn { background: #4fc3e8; border: 2px solid #000; font-weight: 700; font-size: 11px; padding: 6px 12px; color: #000; }
+  .leaderboard-ad .bar { width: 90px; height: 10px; background: #ddd; border: 1px solid #000; position: relative; }
+  .leaderboard-ad .bar span { position: absolute; left: 0; top: 0; bottom: 0; width: 14%; background: #b4e23c; }
 </style>
 </head>
 <body>
+
+<svg class="defs" aria-hidden="true">
+  <defs>
+    <filter id="wobble" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="5"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="skyscraper left fake-ad" id="adLeft">
+  <span class="close-ad" id="closeAdLeft">x</span>
+  <div class="blink" style="font-size:10px; font-weight:700; color:#000;">*** ALERT ***</div>
+  <div class="inner">
+    <h4>YOU ARE VISITOR<br>#048,213</h4>
+    <span class="cookie-spin">🍪</span>
+    <p>Congratulations!! Click below to claim your prize (there is no prize)</p>
+    <span class="fake-btn">CLAIM NOW &gt;&gt;</span>
+  </div>
+  <p class="disclaim">definitely not a real ad</p>
+</div>
+
+<div class="skyscraper right fake-ad" id="adRight">
+  <span class="close-ad" id="closeAdRight">x</span>
+  <div class="blink" style="font-size:10px; font-weight:700; color:#000;">!! WARNING !!</div>
+  <div class="inner">
+    <h4>IS YOUR CAGE SUM AT RISK?</h4>
+    <p>92% of puzzlers don't know this ONE weird trick. Scientists hate it.</p>
+    <span class="fake-btn">SCAN NOW</span>
+  </div>
+  <p class="disclaim">definitely not a real ad</p>
+</div>
+
+<div class="webring">
+  <span>biscuitlab webring</span><span class="b">prev</span><span class="b">random</span><span class="b">next</span>
+  <span class="b">best viewed at any size</span><span class="b">100% flash-free</span><span class="b">est. 2026</span>
+</div>
+
+<div class="marquee">
+  <div class="marquee-track" aria-hidden="true">
+    <span>new puzzle daily</span><span>*</span><span>3-day streak, don't break it</span><span>*</span><span>128 solved</span><span>*</span>
+    <span>new puzzle daily</span><span>*</span><span>3-day streak, don't break it</span><span>*</span><span>128 solved</span><span>*</span>
+  </div>
+  <p class="marquee-sr">New puzzle daily. Current streak: 3 days. Puzzles solved: 128.</p>
+</div>
+
 <div class="wrap">
 
   <div class="topbar">
-    <h1 class="logo">biscuit<span>lab</span></h1>
+    <div>
+      <h1 class="logo">biscuit<span aria-hidden="false"><i>l</i><i>a</i><i>b</i></span></h1>
+      <span class="marker-note">est. today, mostly stable</span>
+    </div>
     <button class="toggle" id="themeToggle">dark mode</button>
   </div>
-  <p class="tagline">Modern puzzle app, flash-portal juice.</p>
+  <p class="tagline">Modern puzzle app, <span class="strike">tidy</span><span class="correction">chaotic!</span></p>
 
   <section>
     <h2 class="section-title">Palette</h2>
     <div class="swatches">
-      <div class="swatch" style="background:var(--paper); color:var(--ink);"><span class="name">paper</span><span class="hex">#FBF3E3</span></div>
-      <div class="swatch" style="background:var(--paper-2); color:var(--ink);"><span class="name">paper-2</span><span class="hex">#F5E7C8</span></div>
-      <div class="swatch" style="background:var(--ink); color:var(--paper);"><span class="name">ink</span><span class="hex">#2B1B12</span></div>
-      <div class="swatch" style="background:var(--butterscotch); color:var(--ink);"><span class="name">butterscotch</span><span class="hex">#E8A33D</span></div>
-      <div class="swatch" style="background:var(--grape); color:var(--paper);"><span class="name">grape</span><span class="hex">#5A3E96</span></div>
-      <div class="swatch" style="background:var(--mint); color:var(--ink);"><span class="name">mint</span><span class="hex">#2FAE86</span></div>
-      <div class="swatch" style="background:var(--cherry); color:var(--paper);"><span class="name">cherry</span><span class="hex">#D8453F</span></div>
+      <div class="swatch" style="background:var(--paper); color:var(--ink);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">paper</span><span class="hex">#FBF3E3</span></div>
+      <div class="swatch" style="background:var(--paper-2); color:var(--ink);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">paper-2</span><span class="hex">#F5E7C8</span></div>
+      <div class="swatch" style="background:var(--ink); color:var(--paper);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">ink</span><span class="hex">#2B1B12</span></div>
+      <div class="swatch" style="background:var(--butterscotch); color:var(--ink);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">butterscotch</span><span class="hex">#E8A33D</span></div>
+      <div class="swatch" style="background:var(--grape); color:var(--paper);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">grape</span><span class="hex">#5A3E96</span></div>
+      <div class="swatch" style="background:var(--mint); color:var(--ink);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">mint</span><span class="hex">#2FAE86</span></div>
+      <div class="swatch" style="background:var(--cherry); color:var(--paper);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">cherry</span><span class="hex">#D8453F</span></div>
+      <div class="swatch" style="background:var(--sticker-pink); color:var(--ink);"><div class="wobble-frame"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="12"/></div><span class="name">sticker pink</span><span class="hex">wildcard</span></div>
     </div>
   </section>
 
   <section>
     <h2 class="section-title">Type specimen</h2>
     <div class="specimen">
+      <svg class="coffee-stain" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="#8a5a2b" stroke-width="3" filter="url(#wobble)"/>
+        <circle cx="50" cy="50" r="30" fill="none" stroke="#8a5a2b" stroke-width="2" filter="url(#wobble)"/>
+      </svg>
       <p class="display-xl">Today's Killer Sudoku</p>
       <p class="display-m">3-day streak — nice work</p>
-      <p class="body-copy">Manrope carries every functional word in the app: navigation, buttons, settings, and body copy. It stays out of the way so Fredoka can do the shouting.</p>
+      <p class="body-copy">Manrope carries every functional word. Fredoka shouts the headlines. Caveat and Permanent Marker scribble in the margins — decorative only, never load-bearing.</p>
       <p class="mono-demo">07:42&nbsp;&nbsp;&nbsp;cage sum 17</p>
     </div>
   </section>
 
   <section>
-    <h2 class="section-title">Puzzle hub — bento picker</h2>
-    <div class="bento">
-      <div class="puzzle-card">
-        <p class="title">Killer Sudoku</p>
-        <p class="desc">Cage sums, no repeats, daily grid.</p>
+    <h2 class="section-title">Puzzle hub — scattered on the desk</h2>
+    <div class="desk">
+      <div class="polaroid">
+        <div class="tape"></div>
+        <div class="sticker pink">new!</div>
+        <div class="thumb" style="background:var(--butterscotch);">killer<br>sudoku</div>
+        <p class="cap">Killer Sudoku</p>
+        <p class="desc">Cage sums, no repeats.</p>
         <span class="badge"><span class="dot" style="background:var(--butterscotch)"></span>Medium</span>
       </div>
-      <div class="puzzle-card">
-        <p class="title">Classic Sudoku</p>
-        <p class="desc">Rows, columns, boxes. The original.</p>
+      <div class="polaroid">
+        <div class="pin"></div>
+        <div class="thumb" style="background:var(--mint);">classic<br>sudoku</div>
+        <p class="cap">Classic Sudoku</p>
+        <p class="desc">The original grid.</p>
         <span class="badge"><span class="dot" style="background:var(--mint)"></span>Easy</span>
       </div>
-      <div class="puzzle-card">
-        <p class="title">Kakuro</p>
-        <p class="desc">Cross-sum grid, no digit repeats.</p>
+      <div class="polaroid">
+        <div class="tape"></div>
+        <div class="sticker lime">hot streak</div>
+        <div class="sticker sky" style="top:auto; bottom:-10px; right:auto; left:-10px;">try me</div>
+        <div class="thumb" style="background:var(--cherry); color:var(--paper);">kakuro</div>
+        <p class="cap">Kakuro</p>
+        <p class="desc">Cross-sum, no repeats.</p>
         <span class="badge"><span class="dot" style="background:var(--cherry)"></span>Hard</span>
       </div>
     </div>
   </section>
 
+  <div class="notebook">
+    <p>"lab notebook, day 41 — the biscuit cages keep escaping. still delicious. still solvable."</p>
+    <p class="signed">— head scientist</p>
+  </div>
+
   <section>
     <h2 class="section-title">Buttons</h2>
     <div class="btn-row">
-      <button class="btn btn-primary">Start puzzle</button>
+      <div class="cta-wrap">
+        <svg class="circle-doodle" viewBox="0 0 160 90" aria-hidden="true">
+          <ellipse cx="80" cy="45" rx="72" ry="36" fill="none" stroke="var(--cherry)" stroke-width="3" filter="url(#wobble)"/>
+        </svg>
+        <span class="doodle-note">click this one!!</span>
+        <button class="btn btn-primary">Start puzzle</button>
+      </div>
       <button class="btn btn-secondary">View archive</button>
       <button class="btn btn-ghost">Skip today</button>
     </div>
   </section>
 
   <section>
-    <h2 class="section-title">Cage grid + juice (click cells, try the buttons)</h2>
+    <h2 class="section-title">Cage grid + juice</h2>
+    <span class="clean-label">this part stays clean on purpose &#8594;</span>
     <div class="grid-demo-row">
       <div class="cage-grid" id="cageGrid"></div>
       <div class="demo-controls">
-        <p class="hint">Click a cell to select it. Then try "mark correct" or "mark wrong" to see the calibrated feedback — no screen shake, just local, medium-intensity juice.</p>
+        <p class="hint">Click a cell, then mark it correct or wrong. Even at max chaos, the solving surface stays untouched.</p>
         <div class="btn-row">
           <button class="btn btn-secondary" id="markCorrect">mark correct</button>
           <button class="btn btn-secondary" id="markWrong" style="border-color:var(--cherry); color:var(--cherry); box-shadow:4px 4px 0 0 var(--cherry);">mark wrong</button>
@@ -224,7 +420,7 @@
   <section>
     <h2 class="section-title">Stats</h2>
     <div class="stats-row">
-      <div class="stat-card"><span class="label">streak</span><span class="value">3</span></div>
+      <div class="stat-card"><span class="flame-doodle">&#128293;</span><span class="label">streak</span><span class="value">3</span></div>
       <div class="stat-card"><span class="label">solved</span><span class="value">128</span></div>
       <div class="stat-card"><span class="label">best time</span><span class="value">4:12</span></div>
     </div>
@@ -236,14 +432,37 @@
       <button class="btn btn-primary" id="triggerSolve">trigger solved stamp</button>
     </div>
     <div class="stamp-zone" id="stampZone">
-      <div class="stamp" id="stamp">solved! 🍪</div>
+      <svg class="burst" id="burst" viewBox="0 0 100 100"><path d="M50 2 L58 38 L92 30 L64 52 L88 78 L54 62 L50 98 L46 62 L12 78 L36 52 L8 30 L42 38 Z" fill="var(--sticker-lime)" filter="url(#wobble)"/></svg>
+      <div class="stamp" id="stamp">
+        <svg style="position:absolute; inset:-4px; z-index:-1;" aria-hidden="true"><rect x="4" y="4" width="calc(100% - 8px)" height="calc(100% - 8px)" rx="18" fill="var(--mint)" stroke="var(--ink)" stroke-width="3" filter="url(#wobble)"/></svg>
+        solved! &#127850;
+      </div>
     </div>
   </section>
 
+  <footer class="badges">
+    <div class="webbadge">made with<br>next.js</div>
+    <div class="webbadge">100%<br>hand-baked</div>
+    <div class="webbadge">wcag<br>aa checked</div>
+    <div class="webbadge">no cookies*<br>*except biscuits</div>
+  </footer>
+
+</div>
+
+<div class="leaderboard-ad fake-ad" id="adBottom">
+  <span class="close-ad" id="closeAdBottom">x</span>
+  <div class="inner">
+    <span class="blink" style="font-size:16px;">★</span>
+    <h4>DOWNLOAD MORE CAGES — your brain deserves it</h4>
+    <div class="bar"><span></span></div>
+    <span style="font-size:9px; color:#333;">loading... 14%</span>
+    <span class="fake-btn">GET NOW</span>
+    <span class="blink" style="font-size:16px;">★</span>
+  </div>
+  <p class="disclaim" style="color:#000;">100% fake — we just think old banner ads were funny</p>
 </div>
 
 <script>
-  // theme toggle
   const root = document.documentElement;
   const toggle = document.getElementById('themeToggle');
   toggle.addEventListener('click', () => {
@@ -252,7 +471,13 @@
     toggle.textContent = isDark ? 'dark mode' : 'light mode';
   });
 
-  // build mini cage grid: two cages (A = top-left 2x2-ish, B = rest) just for visual demo
+  ['closeAdLeft','closeAdRight','closeAdBottom'].forEach((id, i) => {
+    const targetIds = ['adLeft','adRight','adBottom'];
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById(targetIds[i]).style.display = 'none';
+    });
+  });
+
   const cageGrid = document.getElementById('cageGrid');
   const cageMap = ['a','a','b','b', 'a','a','b','b', 'a','b','b','b', 'a','b','b','b'];
   const labels = {0:'11', 2:'7', 8:'14'};
@@ -278,28 +503,22 @@
   document.getElementById('markCorrect').addEventListener('click', () => {
     if (!selectedCell) return;
     if (!selectedCell.textContent.trim()) selectedCell.textContent = '4';
-    selectedCell.classList.remove('wrong');
-    void selectedCell.offsetWidth;
-    selectedCell.classList.add('correct');
+    selectedCell.classList.remove('wrong'); void selectedCell.offsetWidth; selectedCell.classList.add('correct');
   });
   document.getElementById('markWrong').addEventListener('click', () => {
     if (!selectedCell) return;
     if (!selectedCell.textContent.trim()) selectedCell.textContent = '9';
-    selectedCell.classList.remove('correct');
-    void selectedCell.offsetWidth;
-    selectedCell.classList.add('wrong');
+    selectedCell.classList.remove('correct'); void selectedCell.offsetWidth; selectedCell.classList.add('wrong');
   });
 
-  // solved stamp + crumb confetti
   document.getElementById('triggerSolve').addEventListener('click', () => {
     const stamp = document.getElementById('stamp');
+    const burst = document.getElementById('burst');
     const zone = document.getElementById('stampZone');
-    stamp.classList.remove('show');
-    void stamp.offsetWidth;
-    stamp.classList.add('show');
+    [stamp, burst].forEach(el => { el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); });
 
-    const colors = ['#E8A33D', '#5A3E96', '#2FAE86'];
-    for (let i = 0; i < 24; i++) {
+    const colors = ['#E8A33D', '#5A3E96', '#2FAE86', '#FF5FA2'];
+    for (let i = 0; i < 30; i++) {
       const crumb = document.createElement('div');
       crumb.className = 'crumb';
       const size = 5 + Math.random() * 5;
@@ -310,7 +529,7 @@
       crumb.style.top = '50%';
       zone.appendChild(crumb);
       const angle = Math.random() * Math.PI * 2;
-      const dist = 60 + Math.random() * 70;
+      const dist = 60 + Math.random() * 90;
       const dx = Math.cos(angle) * dist;
       const dy = Math.sin(angle) * dist - 20;
       crumb.animate([

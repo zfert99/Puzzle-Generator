@@ -354,11 +354,15 @@ Replace the current indigo/glassmorphism theme with the **[Biscuit Lab design sy
 
 #### 5.4 — Puzzle hub (bento)
 
-- A landing "puzzle hub" of bento cards — Sudoku (Play / Daily / Leaderboard) now, built to accept Killer and future types — as the new front door; the PDF generator becomes one entry on it.
+- A landing "puzzle hub" of **compact** bento cards (`minmax(128px, 1fr)`, aligned grid) — Sudoku (Play / Daily / Leaderboard) now, built to accept Killer and future types — as the new front door; the PDF generator becomes one entry on it.
 
-#### 5.5 — Polish & QA
+#### 5.5 — Chaos layer (corkboard chrome)
 
-- Accessibility pass (contrast, focus, motion), an INP budget for interactions, visual QA across all routes, and a Playwright smoke of the key flows under the new theme.
+- The design system's "chaos layer" (stickers, tape, hand-inked wobble frames, doodle marginalia, off-grid rotation, marquee ticker, retro badges) applied to **chrome/hub only — never the solve grid**. Adds decorative-only fonts (Permanent Marker, Caveat) + quarantined sticker tokens. Optional stretch: the §9 parody-ad "old internet mode" easter egg (off by default).
+
+#### 5.6 — Polish & QA
+
+- Accessibility pass (contrast, focus, motion, + the chaos a11y carve-out), an INP budget for interactions, visual QA across all routes, and a Playwright smoke of the key flows under the new theme.
 
 Full plan (with resolved decisions): [phase5-implementation-plan.md](phase5-implementation-plan.md).
 
