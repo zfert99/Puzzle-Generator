@@ -472,13 +472,15 @@ User-generated puzzles with a rating system — players can create, share, and r
 
 ---
 
-## Open Questions
+## Key Decisions
 
-> [!IMPORTANT]
-> **Database provider:** Supabase vs. Vercel Postgres vs. PlanetScale? This decision affects Phase 4's auth integration and hosting architecture.
+> These were open questions earlier in the roadmap; all are now resolved.
+
+> [!NOTE]
+> **Database provider:** ✅ Decided — **Neon Postgres**, added via the Vercel Marketplace integration, with **Drizzle** as the ORM and **better-auth** for auth (Phase 4). (Vercel's first-party "Vercel Postgres" was retired and migrated to Neon in Dec 2024.)
 >
-> [!IMPORTANT]
-> **Phase 3 scope:** Should the Interactive Board support all grid sizes (4×4, 6×6, 9×9) from the start, or ship with 9×9 only and add mini-board support later?
+> [!NOTE]
+> **Phase 3 scope:** ✅ Decided — the Interactive Board shipped supporting **all grid sizes** (4×4, 6×6, 9×9) from the start.
 >
 > [!NOTE]
 > **Killer Sudoku timing:** ✅ Decided — Killer Sudoku is now **up next** (post-Phase 4). Engine research is complete ([killer-sudoku.md](research/killer-sudoku.md)); it will be built as a new module (`killer-sudoku.ts`), not an extension of `sudoku.ts`.
