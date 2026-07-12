@@ -14,8 +14,9 @@ solved** — the effect stays meaningful by being rare.
 on mount (if not reduced-motion): fireConfetti()
 render:
   screen-flash overlay  -> opacity 0 → 0.28 → 0 (skipped under reduced motion)
-  badge (Motion)        -> scale [0,1.15,1] + rotate squash; butterscotch, ink border, chunky
-                           shadow, -3deg tilt, Fredoka label
+  badge (Motion)        -> scale [0,1.15,1] + rotate squash; butterscotch fill, -3deg tilt,
+                           Fredoka label, edged by a hand-inked WobbleFrame (chaos §8)
+  a scrawled "nice work!" Caveat aside (decorative, aria-hidden)
 ```
 
 ## Reduced motion

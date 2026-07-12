@@ -23,7 +23,10 @@ bakes values at build time. The solution:
 
 The **sticker tokens** (`--sticker-pink/lime/sky`) are also defined but **quarantined —
 decoration only** (the 5.5 chaos layer: stickers, tape, pins, marginalia), never text/
-buttons/functional UI, and they do **not** flip by theme.
+buttons/functional UI, and they do **not** flip by theme. The chaos layer also adds
+`--font-marker`/`--font-caveat` and CSS helpers — `.tilt-a…d` (a fixed set of rotations),
+`.wobble-hover`, `.idle-wobble`, `.marquee*` — all disabled under `prefers-reduced-motion`
+and all for chrome only (never the solve grid).
 
 ## 2. `dark:` follows the toggle
 

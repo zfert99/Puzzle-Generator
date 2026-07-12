@@ -1,4 +1,5 @@
 import PuzzleForm from '@/features/puzzle-configuration/components/PuzzleForm';
+import { RetroBadges } from '@/features/chaos/RetroBadges';
 
 /**
  * Home Page (/)
@@ -37,9 +38,10 @@ export default function Home() {
       */}
       <PuzzleForm />
 
-      {/* Simple, unobtrusive footer pushed to the bottom */}
-      <footer className="mt-20 text-sm text-ink-soft">
-        Minimalist Premium Design &copy; 2026
+      {/* Footer — retro badge strip (chaos layer flavor) + copyright. */}
+      <footer className="mt-16 flex flex-col items-center gap-3">
+        <RetroBadges />
+        <span className="text-xs text-ink-soft">Puzzle Lab &copy; 2026</span>
       </footer>
     </main>
   );

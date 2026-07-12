@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Fredoka, Manrope, Space_Mono } from "next/font/google";
+import { Fredoka, Manrope, Space_Mono, Permanent_Marker, Caveat } from "next/font/google";
 import { THEME_PRE_PAINT_SCRIPT } from "@/features/theme/theme";
 import { AppHeader } from "@/features/chrome/AppHeader";
+import { WobbleDefs } from "@/features/chaos/Wobble";
 import "./globals.css";
 
 /**
@@ -30,6 +31,11 @@ const spaceMono = Space_Mono({
   variable: "--font-space-mono",
 });
 
+// Chaos-layer marginalia (5.5) — DECORATIVE only, never body copy. Marker for bold scrawl,
+// Caveat for lighter cursive notes.
+const permanentMarker = Permanent_Marker({ subsets: ["latin"], weight: "400", variable: "--font-permanent-marker" });
+const caveat = Caveat({ subsets: ["latin"], variable: "--font-caveat" });
+
 export const metadata: Metadata = {
   title: "Puzzle Generator",
   description:
@@ -44,11 +50,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fredoka.variable} ${manrope.variable} ${spaceMono.variable} h-full antialiased`}
+      className={`${fredoka.variable} ${manrope.variable} ${spaceMono.variable} ${permanentMarker.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {/* Applies data-theme before paint — must be the first thing to run. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_PRE_PAINT_SCRIPT }} />
+        <WobbleDefs />
         <AppHeader />
         {children}
       </body>

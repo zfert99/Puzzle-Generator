@@ -74,6 +74,9 @@
   --font-display: var(--font-fredoka), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, monospace;
+  /* Chaos-layer marginalia (decorative only). */
+  --font-marker: var(--font-permanent-marker), ui-rounded, cursive;
+  --font-caveat: var(--font-caveat), ui-rounded, cursive;
 }
 
 body {
@@ -107,6 +110,38 @@ h1, h2, .font-display {
   .pressable {
     transition: none;
   }
+}
+
+/* ============================================================================
+   Chaos layer (5.5) — decorative "corkboard" helpers. CHROME ONLY, never the
+   solve grid. A fixed set of tilts (not per-render random) keeps it stable.
+   ============================================================================ */
+.tilt-a { --tilt: -2deg; transform: rotate(var(--tilt)); }
+.tilt-b { --tilt: 1.5deg; transform: rotate(var(--tilt)); }
+.tilt-c { --tilt: -1deg; transform: rotate(var(--tilt)); }
+.tilt-d { --tilt: 2.5deg; transform: rotate(var(--tilt)); }
+
+/* On hover, decorative chrome gets a small extra rotation on top of its base tilt. */
+.wobble-hover { transition: transform 140ms ease-out; }
+.wobble-hover:hover { transform: rotate(calc(var(--tilt, 0deg) + 1.5deg)) translateY(-2px); }
+
+@keyframes idle-wobble {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.idle-wobble { animation: idle-wobble 2.6s ease-in-out infinite; transform-origin: center; display: inline-block; }
+
+/* Old-portal scrolling ticker — the track is duplicated so it loops seamlessly. */
+@keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee { overflow: hidden; }
+.marquee-track { display: inline-flex; white-space: nowrap; animation: marquee-scroll 22s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wobble-hover { transition: none; }
+  .wobble-hover:hover { transform: rotate(var(--tilt, 0deg)); }
+  .idle-wobble { animation: none; }
+  .marquee-track { animation: none; }
 }
 
 /* ============================================================================

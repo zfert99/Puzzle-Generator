@@ -10,6 +10,9 @@ import { GameHeader } from '@/features/interactive-board/components/Header/GameH
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
+import { Sticker } from '@/features/chaos/Sticker';
+import { Tape } from '@/features/chaos/Tape';
+import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
 import { DAILY_DIFFICULTIES, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useDaily } from '../hooks/useDaily';
@@ -157,8 +160,18 @@ export default function DailyExperience() {
   if (phase === 'select') {
     return (
       <div className="w-full max-w-md mx-auto">
+        <div className="mb-4">
+          <MarqueeTicker
+            items={['new puzzle daily', 'easy → extreme', 'beat your streak', 'no cookies, only biscuits']}
+          />
+        </div>
         <UsernamePrompt />
-        <div className="glass-panel p-8">
+        <div className="glass-panel p-8 relative">
+          {/* Chaos decoration (chrome only — the board itself stays clean). */}
+          <Tape rotate={-8} className="absolute -top-2 left-1/2 -translate-x-1/2" />
+          <Sticker color="pink" rotate={-12} className="absolute -top-3 -right-3 z-10">
+            play me!
+          </Sticker>
           <h2 className="text-2xl font-semibold mb-1 text-center">Today&apos;s Daily</h2>
           <p className="text-xs text-ink-soft text-center mb-6">
             One shared puzzle per difficulty · resets at 00:00 UTC

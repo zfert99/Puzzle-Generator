@@ -61,3 +61,5 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 1. Draw a `<footer>` tag below the form.
 2. Push it down slightly with a top margin (`mt-20`), make the text small (`text-sm`), and color it gray (`text-gray-500`).
 3. Display the text: "Minimalist Premium Design © 2026".
+
+> Chaos layer (5.5): the footer shows a RetroBadges strip (faux 88x31 nostalgia badges).

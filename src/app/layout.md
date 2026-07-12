@@ -9,12 +9,16 @@ Each is loaded via `next/font/google` — self-hosted, so **no layout shift and 
 request** — and exposed as a CSS var that `@theme` maps to a Tailwind font family:
 
 ```text
-Fredoka     -> --font-fredoka     -> font-display   (chunky arcade display: logo, headlines, wins)
-Manrope     -> --font-manrope     -> font-sans      (body/UI default)
-Space Mono  -> --font-space-mono  -> font-mono      (grid digits, timers, stats)
+Fredoka          -> font-display   (chunky arcade display: logo, headlines, wins)
+Manrope          -> font-sans      (body/UI default)
+Space Mono       -> font-mono      (grid digits, timers, stats)
+Permanent Marker -> font-marker    (chaos §8 marginalia — DECORATIVE only)
+Caveat           -> font-caveat    (chaos §8 cursive notes — DECORATIVE only)
 ```
 
-Space Mono is not a variable font, so its weights (`400`, `700`) are pinned.
+Space Mono + Permanent Marker are not variable, so their weights are pinned. The two marker
+fonts are decorative only (never body copy). The layout also renders `<WobbleDefs/>` once —
+the SVG filter for the hand-inked wobble (chaos §8).
 
 ## Pre-paint theme script (why it must run first)
 

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { useReducedMotion } from './useReducedMotion';
 import { fireConfetti } from './confetti';
+import { WobbleFrame } from '@/features/chaos/Wobble';
 
 /**
  * The completion "stamp" — the design system's win moment (§4): a chunky rounded badge that
@@ -38,10 +39,24 @@ export function SolvedStamp({ label }: { label: string }) {
         initial={reduced ? false : { scale: 0, rotate: -8 }}
         animate={reduced ? {} : { scale: [0, 1.15, 1], rotate: [-8, 3, -3] }}
         transition={{ duration: 0.55, ease: 'easeOut', times: [0, 0.6, 1] }}
-        className="bg-butterscotch text-ink border-4 border-ink rounded-lg px-6 py-2.5 shadow-chunky -rotate-3"
+        className="-rotate-3"
       >
-        <span className="font-display text-2xl sm:text-3xl">{label}</span>
+        {/* The stamp's outline is a hand-inked wobble frame (chaos §8), not a crisp border. */}
+        <WobbleFrame className="p-2">
+          <div className="bg-butterscotch rounded-md px-6 py-2">
+            <span className="font-display text-2xl sm:text-3xl text-ink">{label}</span>
+          </div>
+        </WobbleFrame>
       </motion.div>
+
+      {/* A scrawled Caveat aside (decorative). */}
+      <span
+        aria-hidden
+        style={{ fontFamily: 'var(--font-caveat, cursive)' }}
+        className="absolute -bottom-5 right-2 text-lg text-grape -rotate-6"
+      >
+        nice work!
+      </span>
     </div>
   );
 }
