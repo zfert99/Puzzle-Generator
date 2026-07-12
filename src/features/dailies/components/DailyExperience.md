@@ -63,3 +63,5 @@ when selected, a "✓ Solved in m:ss · come back tomorrow" panel with a leaderb
 
 **Why:** The game view renders `<Numpad showHint={false} />` — hints are disabled for the
 competitive daily (they'd hand out answers), while free play keeps them.
+
+> The solved modal now renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge + confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).

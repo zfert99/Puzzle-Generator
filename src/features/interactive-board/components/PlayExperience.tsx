@@ -10,6 +10,7 @@ import { Board } from './Board/Board';
 import { Numpad } from './Controls/Numpad';
 import { GameHeader } from './Header/GameHeader';
 import { KeyboardHints } from './KeyboardHints';
+import { SolvedStamp } from '@/features/juice/SolvedStamp';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
@@ -158,15 +159,10 @@ export default function PlayExperience() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="solved-title"
+          aria-label="Solved"
         >
-          <div className="celebrate rounded-2xl border border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-2xl">
-            <p className="text-5xl mb-2" aria-hidden="true">
-              <span className="celebrate-emoji">🎉</span>
-            </p>
-            <h2 id="solved-title" className="text-2xl font-bold text-mint mb-2">
-              Solved!
-            </h2>
+          <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
+            <SolvedStamp label="Solved!" />
             <p className="text-sm text-ink-soft mb-6">
               {formatTime(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
               mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}

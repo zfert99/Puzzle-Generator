@@ -59,6 +59,7 @@ ink givens, grape user entries, butterscotch selection, grape same-number, cherr
 
 ## 4. Keyframes
 
-The Phase 3/4 celebration keyframes (`pop-in`, `bounce-soft`, `rank-reveal`, `celebrate`)
-remain until 5.3 replaces the solved moment with the Motion "stamp" sequence. All disabled
-under `prefers-reduced-motion`.
+Only `rank-reveal` remains (the "Ranked #N" text pop). The old solved-celebration keyframes
+(`pop-in`/`bounce-soft`/`celebrate`) were removed in 5.3a — the solved moment is now the
+Motion [SolvedStamp](../../features/juice/SolvedStamp.md) + confetti. `rank-reveal` is
+disabled under `prefers-reduced-motion`.

@@ -9,6 +9,7 @@ import { Numpad } from '@/features/interactive-board/components/Controls/Numpad'
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
+import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { useSession } from '@/features/auth/auth-client';
 import { DAILY_DIFFICULTIES, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useDaily } from '../hooks/useDaily';
@@ -252,15 +253,10 @@ export default function DailyExperience() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="daily-solved-title"
+          aria-label="Daily solved"
         >
-          <div className="celebrate rounded-2xl border border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-2xl">
-            <p className="text-5xl mb-2" aria-hidden="true">
-              <span className="celebrate-emoji">🎉</span>
-            </p>
-            <h2 id="daily-solved-title" className="text-2xl font-bold text-mint mb-2">
-              Daily solved!
-            </h2>
+          <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
+            <SolvedStamp label="Daily solved!" />
             <p className="text-sm text-ink-soft mb-3">
               {formatTime(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
               mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}

@@ -200,28 +200,8 @@ h1, h2, .font-display {
   }
 }
 
-/* Completion celebration for the interactive board. */
-@keyframes pop-in {
-  0% { transform: scale(0.6); opacity: 0; }
-  60% { transform: scale(1.08); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.celebrate {
-  animation: pop-in 0.4s ease-out both;
-}
-
-.celebrate-emoji {
-  display: inline-block;
-  animation: pop-in 0.4s ease-out both, bounce-soft 1.2s ease-in-out 0.4s infinite;
-}
-
-@keyframes bounce-soft {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-/* Ranked-daily result: the rank pops in a beat after the modal (a small reveal). */
+/* Ranked-daily result: the rank pops in a beat after the solved stamp (a small reveal).
+   The solved celebration itself is now the Motion SolvedStamp (features/juice). */
 @keyframes rank-reveal {
   0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }
   55% { transform: scale(1.25) rotate(2deg); opacity: 1; }
@@ -234,8 +214,6 @@ h1, h2, .font-display {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .celebrate,
-  .celebrate-emoji,
   .rank-reveal {
     animation: none;
   }

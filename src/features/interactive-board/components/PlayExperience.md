@@ -35,3 +35,5 @@ ELSE (playing / paused / solved):
 A mounted guard (useSyncExternalStore) defers rendering until the client has hydrated
 the persisted store, so a resumed game never causes an SSR/client mismatch.
 ```
+
+> The solved modal now renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge + confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).
