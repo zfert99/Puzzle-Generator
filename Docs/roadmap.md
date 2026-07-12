@@ -191,7 +191,7 @@ These were consciously skipped to ship the core; come back to them:
 - [ ] **Mistakes limit / lives** — optionally end the game after N mistakes.
 - [ ] **Sound effects** for placement / error / win.
 - [ ] **Strategy-aware "why" hints** — name the technique instead of just revealing a
-      cell (overlaps Phase 5's solver-step serialization).
+      cell (overlaps Phase 6's solver-step serialization).
 
 This is the **architectural pivot point**. Everything after this phase depends on having a playable, in-browser Sudoku board instead of a PDF-only output.
 
@@ -326,18 +326,50 @@ CREATE TABLE solve_attempts (
 
 ---
 
-## Phase 5 — Interactive Strategy Courses
+## Phase 5 — Visual Redesign (Biscuit Lab) 📋 Next
+
+> **Tracks:** 🎨 Frontend
+> **Branch:** `feature/biscuit-lab-redesign`
+> **Status:** 📋 Next — this is the next phase.
+> **Estimated effort:** Medium–Large (1.5–2 weeks)
+> **Prerequisite:** Phase 4 (all app surfaces exist to restyle)
+
+Replace the current indigo/glassmorphism theme with the **[Biscuit Lab design system](design/design-system.md)** — a warm biscuit/butterscotch palette with a bold grape "lab" accent, chunky Flash-portal-era UI (thick outlines, hard offset shadows, squash-and-stretch), and a defined "juice" interaction language, all on an accessible (WCAG 2.2 AA) Next.js + Tailwind foundation. Grounded in [web-design-and-game-juice.md](research/web-design-and-game-juice.md); see the [visual mockup](design/design-system-mockup.html).
+
+### Phase 5 Deliverables
+
+#### 5.1 — Design tokens & theming foundation
+
+- Encode the design system's color / type / space / radius / shadow tokens as CSS variables + a Tailwind theme; wire light and dark ("lab at night"); adopt the display, body, and mono type families.
+
+#### 5.2 — Component restyle
+
+- Restyle every shared surface to the new system: buttons, inputs, cards/panels, the puzzle board + numpad, headers/nav, and the daily / leaderboard / auth UIs. Retire the `glass-panel` + indigo utilities.
+
+#### 5.3 — The juice layer
+
+- Implement the signature interaction language — chunky pressable buttons, squash-and-stretch, hit-pause, confetti/particles on solve, and sound — at **medium** intensity (the research's calibration sweet spot), respecting `prefers-reduced-motion`.
+
+#### 5.4 — Polish & QA
+
+- Accessibility pass (contrast, focus, motion), an INP budget for interactions, visual QA across all routes, and a Playwright smoke of the key flows under the new theme.
+
+Full plan: [phase5-implementation-plan.md](phase5-implementation-plan.md).
+
+---
+
+## Phase 6 — Interactive Strategy Courses
 
 > **Tracks:** 🎨 Frontend, 🧮 Engine
 > **Branch:** `feature/strategy-courses`
 > **Estimated effort:** Large (2–3 weeks)
-> **Prerequisite:** Phase 3 (Interactive Board)
+> **Prerequisite:** Phase 3 (Interactive Board); best after Phase 5 so lessons use the new design system
 
 This is the **crown jewel** — turning the `HumanSolver` into a visual teaching tool. Instead of running silently in the backend, the solver's step-by-step deductions are exposed to the React frontend as an interactive, animated course.
 
-### Phase 5 Deliverables
+### Phase 6 Deliverables
 
-#### 5.1 — Solver Step Serialization
+#### 6.1 — Solver Step Serialization
 
 - Refactor `HumanSolver.solve()` to emit a `SolveStep[]` array:
 
@@ -360,7 +392,7 @@ type SolveStep = {
 };
 ```
 
-#### 5.2 — Course Player Component
+#### 6.2 — Course Player Component
 
 - Step-through UI: "Previous / Next / Auto-Play" controls
 - Board state updates one step at a time
@@ -368,7 +400,7 @@ type SolveStep = {
 - Sidebar panel with the strategy name and plain-English explanation
 - Speed slider for auto-play mode
 
-#### 5.3 — Curated Lesson Library
+#### 6.3 — Curated Lesson Library
 
 - Pre-built puzzle boards that specifically require each strategy:
   - Lesson 1: Naked Singles & Hidden Singles
@@ -395,14 +427,15 @@ gantt
 
     section 🎨 Frontend
     Phase 3 - Interactive Board         :p3, after p2, 21d
-    Phase 5 - Strategy Courses          :p5, after p3, 21d
+    Phase 5 - Visual Redesign           :p5, after p4, 14d
+    Phase 6 - Strategy Courses          :p6, after p5, 21d
 
     section 🗄️ Infrastructure
     Phase 4 - Dailies & Leaderboards    :p4, after p3, 21d
 ```
 
 > [!NOTE]
-> Phases 1 and 2 can run **in parallel** since they touch different parts of the engine. Phases 4 and 5 can also run in parallel since they depend on Phase 3 but not on each other.
+> Phases 1 and 2 ran **in parallel** (different parts of the engine). Phases 5 (redesign) and 6 (strategy courses) are sequential — the courses inherit the new design system.
 
 ---
 
@@ -416,21 +449,24 @@ graph TD
     P2["Phase 2<br/>Mini Puzzles<br/><i>4×4, 6×6 grids</i>"]
     P3["Phase 3<br/>Interactive Board<br/><i>React play surface</i>"]
     P4["Phase 4<br/>Dailies & Leaderboards<br/><i>DB, Auth, Cron</i>"]
-    P5["Phase 5<br/>Strategy Courses<br/><i>Visual solver teaching</i>"]
+    P5["Phase 5<br/>Visual Redesign 🎨<br/><i>Biscuit Lab design system</i>"]
+    P6["Phase 6<br/>Strategy Courses<br/><i>Visual solver teaching</i>"]
 
     V1 --> P1
     V1 --> P2
     V1 --> P3
     P3 --> P4
-    P3 --> P5
-    P1 -.->|"Unlocks W-Wing & ALS lessons"| P5
+    P4 --> P5
+    P5 --> P6
+    P1 -.->|"Unlocks W-Wing & ALS lessons"| P6
 
     style V1 fill:#1a1a2e,stroke:#e94560,color:#fff
     style P1 fill:#16213e,stroke:#e94560,color:#fff
     style P2 fill:#16213e,stroke:#0f3460,color:#fff
     style P3 fill:#0f3460,stroke:#e94560,color:#fff
     style P4 fill:#533483,stroke:#e94560,color:#fff
-    style P5 fill:#533483,stroke:#0f3460,color:#fff
+    style P5 fill:#533483,stroke:#e94560,color:#fff
+    style P6 fill:#533483,stroke:#0f3460,color:#fff
 ```
 
 ---
