@@ -435,26 +435,38 @@ graph TD
 
 ---
 
-## Future Horizons (Beyond Phase 5)
+## Up Next (Post-Phase 4)
 
-These ideas are explicitly **out of scope** for the roadmap above but are worth documenting as north stars:
+With Phase 4 shipped, the near-term backlog is **Killer Sudoku** (a brand-new puzzle type) plus the three features deferred from Phase 4 — **multiplayer speed races**, **community puzzle sharing**, and a **mobile app**. Research is being gathered ahead of implementation:
 
-### Killer Sudoku & KenKen
+- **Killer Sudoku engine** → [killer-sudoku.md](research/killer-sudoku.md) (rules, cage generation, uniqueness checking, difficulty grading) — research complete.
+- **App design & game-feel ("juice")** → [web-design-and-game-juice.md](research/web-design-and-game-juice.md) (modern web-design craft + Flash-era feedback principles) — informs the UI polish of all upcoming work.
+
+The subsections below capture each item; they were previously framed as "beyond Phase 5" north stars and are now queued.
+
+### Killer Sudoku & KenKen 🔜 Up next
+
+> **Research:** [killer-sudoku.md](research/killer-sudoku.md) — the proven pipeline is
+> solved grid → randomized connected-cage partition (flood-fill under size/sum limits) →
+> **unique-solution check** (DLX or SAT/CP-SAT) → technique-based difficulty grading. KDE
+> KSudoku is a full open-source reference. Complexity is NP-complete in general but
+> millisecond-fast for 9×9 in practice; the hard parts are difficulty grading and cage
+> aesthetics, not solving.
 
 A **massive algorithmic leap** requiring an entirely new constraint system. Killer Sudoku introduces "cages" (irregularly shaped regions with sum constraints and no-repeat rules). KenKen adds mathematical operators (÷, ×, −, +) into constraint checks. This effectively requires writing a brand-new generation and solving engine — not an extension of the current one.
 
 > [!CAUTION]
 > This is not a refactor. Killer Sudoku and KenKen are fundamentally different puzzle types that share a visual resemblance to Sudoku but have distinct constraint satisfaction models. Plan for a new module (`lib/puzzle-engine/killer-sudoku.ts`) rather than trying to shoehorn it into the existing `sudoku.ts`.
 
-### Multiplayer Speed Races
+### Multiplayer Speed Races 🔜 Up next (deferred from Phase 4)
 
 Real-time WebSocket-based head-to-head solving. Two players get the same board and race to solve it first with a live progress indicator showing the opponent's completion percentage.
 
-### Mobile App (React Native)
+### Mobile App (React Native) 🔜 Up next (deferred from Phase 4)
 
 Port the interactive board and daily puzzles to a native mobile experience.
 
-### Community Puzzle Sharing
+### Community Puzzle Sharing 🔜 Up next (deferred from Phase 4)
 
 User-generated puzzles with a rating system — players can create, share, and rate puzzles.
 
@@ -468,5 +480,5 @@ User-generated puzzles with a rating system — players can create, share, and r
 > [!IMPORTANT]
 > **Phase 3 scope:** Should the Interactive Board support all grid sizes (4×4, 6×6, 9×9) from the start, or ship with 9×9 only and add mini-board support later?
 >
-> [!IMPORTANT]
-> **Killer Sudoku timing:** Should we begin research on the cage-constraint engine during Phase 1, or defer all Killer/KenKen work until after Phase 5?
+> [!NOTE]
+> **Killer Sudoku timing:** ✅ Decided — Killer Sudoku is now **up next** (post-Phase 4). Engine research is complete ([killer-sudoku.md](research/killer-sudoku.md)); it will be built as a new module (`killer-sudoku.ts`), not an extension of `sudoku.ts`.
