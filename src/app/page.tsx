@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import PuzzleForm from '@/features/puzzle-configuration/components/PuzzleForm';
+import { ThemeToggle } from '@/features/theme/ThemeToggle';
 
 /**
  * Home Page (/)
@@ -17,7 +18,12 @@ export default function Home() {
     // and centers all content both horizontally and vertically.
     // A subtle SVG background pattern is applied via Tailwind arbitrary values.
     <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-[url('/bg-pattern.svg')] bg-cover bg-center">
-      
+
+      {/* Theme toggle (5.2 will move this into shared header chrome). */}
+      <div className="w-full max-w-2xl flex justify-end mb-4">
+        <ThemeToggle />
+      </div>
+
       {/* Header Section */}
       <div className="text-center mb-12">
         {/* The main title uses a transparent background clip with a gradient to create a sleek metallic/glass look */}

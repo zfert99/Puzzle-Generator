@@ -1,23 +1,68 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-}
+/* ============================================================================
+   Biscuit Lab design tokens (Phase 5.1).
+   Runtime CSS variables live on :root and flip via [data-theme]; the @theme
+   block maps them into Tailwind utilities (bg-paper, text-ink, border-ink,
+   bg-butterscotch, shadow-chunky, rounded-md, font-display, …). `inline` makes
+   the utilities emit var() references so the theme can switch at runtime.
 
+   The legacy tokens (--background/--foreground/--accent/--border) are kept and
+   also flipped by [data-theme], so the current indigo/glass UI responds to the
+   theme toggle too — until each surface is migrated in 5.2.
+   ============================================================================ */
 :root {
+  /* Biscuit Lab — light */
+  --paper: #FBF3E3; --paper-2: #F5E7C8;
+  --ink: #2B1B12; --ink-soft: #6B5544;
+  --butterscotch: #E8A33D; --butterscotch-dark: #C97F1E;
+  --grape: #5A3E96; --grape-dark: #3E2A69;
+  --mint: #2FAE86; --cherry: #D8453F;
+  --r-sm: 8px; --r-md: 14px; --r-lg: 20px;
+
+  /* Legacy tokens (existing UI) — retired per-surface in 5.2 */
   --background: #ffffff;
   --foreground: #111111;
   --accent: #000000;
   --border: #eaeaea;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --accent: #ffffff;
-    --border: #333333;
-  }
+:root[data-theme="dark"] {
+  /* Biscuit Lab — "lab at night" */
+  --paper: #1B1224; --paper-2: #241833;
+  --ink: #F5E9CE; --ink-soft: #C9B8A0;
+  --butterscotch: #F2B65A; --butterscotch-dark: #D89A3E;
+  --grape: #9B7FD4; --grape-dark: #7A5FC0;
+  --mint: #4FCBA0; --cherry: #F06B65;
+
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --accent: #ffffff;
+  --border: #333333;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-butterscotch: var(--butterscotch);
+  --color-butterscotch-dark: var(--butterscotch-dark);
+  --color-grape: var(--grape);
+  --color-grape-dark: var(--grape-dark);
+  --color-mint: var(--mint);
+  --color-cherry: var(--cherry);
+
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+
+  /* The signature "pressable" offset shadow (no blur — GPU-cheap). */
+  --shadow-chunky: 4px 4px 0 0 var(--ink);
+
+  --font-display: var(--font-fredoka), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
@@ -28,6 +73,30 @@ body {
   min-height: 100vh;
 }
 
+/* Signature chunky "pressable" mechanic — opt-in utility restyled buttons use
+   in later slices: thick ink border + hard offset shadow that collapses on
+   :active (translate into the shadow). */
+.pressable {
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 0 var(--ink);
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+
+.pressable:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressable {
+    transition: none;
+  }
+}
+
+/* ============================================================================
+   Legacy utilities — used by not-yet-migrated surfaces. Removed in 5.2 once
+   nothing references them.
+   ============================================================================ */
 .glass-panel {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);

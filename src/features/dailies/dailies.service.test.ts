@@ -33,7 +33,8 @@ describe('generateDailyPuzzles', () => {
     expect(rows.map((r: { difficulty: string }) => r.difficulty)).toEqual([...DAILY_DIFFICULTIES]);
     expect(rows.every((r: { date: string }) => r.date === '2026-07-11')).toBe(true);
     expect(rows.every((r: { clueCount: number }) => r.clueCount > 16 && r.clueCount < 81)).toBe(true);
-  });
+    // Generates a real puzzle per difficulty, incl. the slow Extreme digger — allow headroom.
+  }, 30_000);
 
   it('reports 0 inserted when today already exists (conflict)', async () => {
     const returning = vi.fn(async () => []); // conflict: nothing inserted
@@ -44,7 +45,7 @@ describe('generateDailyPuzzles', () => {
     const result = await generateDailyPuzzles(db, '2026-07-11');
     expect(result.inserted).toBe(0);
     expect(result.requested).toBe(DAILY_DIFFICULTIES.length);
-  });
+  }, 30_000);
 });
 
 describe('getDailyPuzzle', () => {

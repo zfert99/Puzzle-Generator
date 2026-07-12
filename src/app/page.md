@@ -46,6 +46,7 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 **Steps:**
 
 1. Render the `<PuzzleForm />` component exactly where we want it on the page. All the complex logic for tracking inputs and downloading the PDF lives entirely inside that separate component.
+2. A `<ThemeToggle />` sits in a top row (Phase 5.1) — temporary placement until 5.2 moves it into shared header chrome.
 
 ---
 

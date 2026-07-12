@@ -1,35 +1,38 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fredoka, Manrope, Space_Mono } from "next/font/google";
+import { THEME_PRE_PAINT_SCRIPT } from "@/features/theme/theme";
 import "./globals.css";
 
 /**
  * Root Layout Component
- * 
- * This file wraps every single page in the application. It is responsible for:
- * 1. Injecting global fonts (Geist and Geist Mono)
- * 2. Setting up the base HTML document structure (<html> and <body> tags)
- * 3. Defining global metadata (like the site title for SEO/browser tabs)
- * 4. Applying global CSS styles that affect the entire app.
+ *
+ * Wraps every page. Responsibilities:
+ * 1. Self-host the Biscuit Lab type families via `next/font` (no layout shift, no
+ *    external request), exposed as CSS vars consumed by `@theme` in globals.css:
+ *    Fredoka (display), Manrope (body/UI), Space Mono (grid/stats).
+ * 2. Set the base HTML document structure.
+ * 3. Run the pre-paint theme script so `data-theme` is applied before first paint
+ *    (no theme flash, hydration-safe).
+ * 4. Global metadata.
  */
 
-// Configure the Geist Sans font
-// We use CSS variables to inject the font so it can be easily referenced in Tailwind (via font-sans)
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Display — chunky rounded arcade face (Flash-portal energy). Variable font.
+const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka" });
+
+// Body / UI — clean modern grotesk. Variable font.
+const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
+
+// Mono — puzzle-grid digits, timers, stats. Not variable; pin the weights we use.
+const spaceMono = Space_Mono({
   subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
 });
 
-// Configure the Geist Mono font for any code blocks or monospaced numbers
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// Global SEO Metadata
-// This defines what shows up in the browser tab and search engine results
 export const metadata: Metadata = {
-  title: "Premium PDF Puzzle Generator",
-  description: "Generate customized, print-ready Sudoku puzzle books instantly.",
+  title: "Puzzle Generator",
+  description:
+    "Daily sudoku, competitive leaderboards, and print-ready puzzle books.",
 };
 
 export default function RootLayout({
@@ -38,16 +41,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // The antialiased class makes the text rendering slightly smoother and thinner, enhancing the premium feel
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fredoka.variable} ${manrope.variable} ${spaceMono.variable} h-full antialiased`}
     >
-      {/* 
-        min-h-full and flex flex-col ensures that the body always spans the full height of the viewport.
-        This prevents awkward layout breaks on very short pages.
-      */}
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* Applies data-theme before paint — must be the first thing to run. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_PRE_PAINT_SCRIPT }} />
+        {children}
+      </body>
     </html>
   );
 }
