@@ -40,6 +40,39 @@ export async function getUserAttemptForPuzzle(
   return row ?? null;
 }
 
+export interface TodayCompletion {
+  difficulty: string;
+  puzzleId: string;
+  timeMs: number;
+}
+
+/**
+ * The daily difficulties the user has already completed *today* (UTC), with their time.
+ * Backs the "you already solved this — come back tomorrow" state so the UI can stop a
+ * one-attempt daily from being replayed. Scoped to `userId` (BOLA) and `completed`.
+ */
+export function getTodayCompletions(
+  db: Database,
+  userId: string,
+  isoDate: string,
+): Promise<TodayCompletion[]> {
+  return db
+    .select({
+      difficulty: dailyPuzzles.difficulty,
+      puzzleId: solveAttempts.puzzleId,
+      timeMs: solveAttempts.timeMs,
+    })
+    .from(solveAttempts)
+    .innerJoin(dailyPuzzles, eq(solveAttempts.puzzleId, dailyPuzzles.id))
+    .where(
+      and(
+        eq(solveAttempts.userId, userId),
+        eq(solveAttempts.completed, true),
+        eq(dailyPuzzles.date, isoDate),
+      ),
+    );
+}
+
 export interface PersonalBest {
   difficulty: string;
   bestMs: number;

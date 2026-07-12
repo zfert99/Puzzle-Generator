@@ -30,6 +30,18 @@ ranked attempt (one per user per puzzle). Compound filter on both ids.
 SELECT * FROM solve_attempts WHERE user_id = userId AND puzzle_id = puzzleId LIMIT 1  (or null)
 ```
 
+## `getTodayCompletions(db, userId, isoDate)`
+
+**Why:** A daily is one attempt per day, so the UI needs to know which of today's difficulties
+the user already finished (to show "solved — come back tomorrow" instead of a replay button).
+Scoped to `userId` + `completed` + today's date via a join to `daily_puzzles`.
+
+```text
+SELECT difficulty, puzzle_id, time_ms
+  FROM solve_attempts JOIN daily_puzzles
+  WHERE user_id = userId AND completed AND date = isoDate
+```
+
 ## `getPersonalBests(db, userId)`
 
 **Why:** Backs the "your personal bests" view — the user's fastest completed time per

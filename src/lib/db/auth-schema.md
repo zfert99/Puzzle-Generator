@@ -26,6 +26,13 @@ verification id(text PK), identifier, value, expiresAt, timestamps
 passkey      id(text PK), userId->user(cascade), publicKey, credentialID, counter, backedUp…
 ```
 
+## `user.username`
+
+**Why:** A public leaderboard handle so a full account name (e.g. a Google real name) isn't
+shown. Nullable until the user picks one; unique when set. It's a better-auth
+*additionalField* (see [auth.ts](../../features/auth/auth.md)), settable via `updateUser`;
+the leaderboard coalesces `username → name`.
+
 ## Note
 
 Do not query these tables directly from feature code — go through the better-auth API in

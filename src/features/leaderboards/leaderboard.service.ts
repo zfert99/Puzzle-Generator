@@ -29,7 +29,8 @@ export async function getLeaderboard(
   const rows = await db
     .select({
       userId: solveAttempts.userId,
-      name: user.name,
+      // Prefer the chosen public handle; fall back to the account name if unset.
+      name: sql<string>`coalesce(${user.username}, ${user.name})`,
       timeMs: solveAttempts.timeMs,
       mistakes: solveAttempts.mistakes,
     })

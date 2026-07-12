@@ -9,8 +9,11 @@ import { useBoardStore } from '../../store/useBoardStore';
  * `aria-pressed` Pencil toggle, Hint, and Undo/Redo. Undo/Redo call into zundo's
  * temporal store directly (its history lives beside the main store), and their
  * disabled state subscribes reactively to that store's past/future stacks.
+ *
+ * `showHint` defaults to true (free play). The daily passes `false` — a competitive,
+ * one-attempt ranked puzzle shouldn't hand out answers.
  */
-export function Numpad() {
+export function Numpad({ showHint = true }: { showHint?: boolean }) {
   const size = useBoardStore((s) => s.config.size);
   const pencilMode = useBoardStore((s) => s.pencilMode);
   // Which digits have all `size` instances placed (locked out).
@@ -50,7 +53,7 @@ export function Numpad() {
         ))}
       </div>
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className={`grid ${showHint ? 'grid-cols-5' : 'grid-cols-4'} gap-2`}>
         <button type="button" onClick={() => clearCell()} className={controlClass}>
           Erase
         </button>
@@ -64,9 +67,11 @@ export function Numpad() {
         >
           ✏️
         </button>
-        <button type="button" onClick={() => hint()} className={controlClass}>
-          Hint
-        </button>
+        {showHint && (
+          <button type="button" onClick={() => hint()} className={controlClass}>
+            Hint
+          </button>
+        )}
         <button type="button" onClick={undo} disabled={!canUndo} className={controlClass}>
           Undo
         </button>

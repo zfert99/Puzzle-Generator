@@ -12,7 +12,8 @@ rank is still derived from their session id by the route (never a client-supplie
 ## `getLeaderboard(db, puzzleId, limit=20)`
 
 **Why join `user`:** Entries need a display name, so it joins the better-auth `user` table.
-Ascending by time; rank is the row position.
+The name is `coalesce(username, name)` — the chosen public handle, falling back to the account
+name if none is set. Ascending by time; rank is the row position.
 
 ```text
 SELECT userId, user.name, time_ms, mistakes

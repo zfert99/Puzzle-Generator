@@ -48,4 +48,18 @@ endpoints around the reused board:
   (`react-hooks/set-state-in-effect`).
 
 The solved modal shows the rank (or a "sign in to be ranked" prompt when signed out) plus a
-link to the leaderboard. The header carries the `AccountBadge` and a leaderboard link.
+link to the leaderboard. The header carries the `AccountBadge`, a leaderboard link, and the
+first-time `UsernamePrompt`.
+
+## One attempt per day
+
+**Why:** A daily is ranked, so it's one attempt per difficulty per day. On load (signed in)
+the component fetches `/api/me/today` for the day's completed difficulties, and updates that
+set locally the moment a solve succeeds. In the picker, a completed difficulty shows a ✓ and,
+when selected, a "✓ Solved in m:ss · come back tomorrow" panel with a leaderboard link
+**instead of** the Play button — so the board can't be replayed for a second (rejected) rank.
+
+## Hints off
+
+**Why:** The game view renders `<Numpad showHint={false} />` — hints are disabled for the
+competitive daily (they'd hand out answers), while free play keeps them.

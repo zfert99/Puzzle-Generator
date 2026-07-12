@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts } from '@/lib/db/schema';
-import { getUserAttempts, getUserAttemptForPuzzle, getPersonalBests } from './attempts.service';
+import {
+  getUserAttempts,
+  getUserAttemptForPuzzle,
+  getPersonalBests,
+  getTodayCompletions,
+} from './attempts.service';
 
 /**
  * BOLA guarantee under test: every read is scoped by `userId` via a WHERE filter — never
@@ -58,6 +63,25 @@ describe('getUserAttemptForPuzzle', () => {
     // A WHERE was applied (the `and(userId, puzzleId)` compound) — not an unscoped lookup.
     expect(captured.calls).toBe(1);
     expect(captured.filter).toBeDefined();
+  });
+});
+
+describe('getTodayCompletions', () => {
+  it('scopes to the user + completed + today, returning difficulty/time', async () => {
+    let captured: unknown;
+    const where = (filter: unknown) => {
+      captured = filter;
+      return Promise.resolve([{ difficulty: 'easy', puzzleId: 'p1', timeMs: 90_000 }]);
+    };
+    const db = {
+      select: () => ({ from: () => ({ innerJoin: () => ({ where }) }) }),
+    } as unknown as Database;
+
+    const rows = await getTodayCompletions(db, 'user-A', '2026-07-12');
+
+    expect(rows).toEqual([{ difficulty: 'easy', puzzleId: 'p1', timeMs: 90_000 }]);
+    // A compound WHERE (user_id + completed + date) was applied.
+    expect(captured).toBeDefined();
   });
 });
 

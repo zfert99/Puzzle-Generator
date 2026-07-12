@@ -9,6 +9,7 @@ import { Numpad } from '@/features/interactive-board/components/Controls/Numpad'
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { AccountBadge } from '@/features/auth/components/AccountBadge';
+import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
 import { useSession } from '@/features/auth/auth-client';
 import { DAILY_DIFFICULTIES, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useDaily } from '../hooks/useDaily';
@@ -61,6 +62,9 @@ export default function DailyExperience() {
   const [difficulty, setDifficulty] = useState<DailyDifficulty>('easy');
   const [dailyDate, setDailyDate] = useState<string>('');
   const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
+  const [completedToday, setCompletedToday] = useState<
+    Record<string, { timeMs: number; rank: number | null }>
+  >({});
   const submittedRef = useRef(false);
 
   const { loading, error, fetchDaily } = useDaily();
@@ -74,6 +78,21 @@ export default function DailyExperience() {
     const id = setInterval(() => tick(), 1000);
     return () => clearInterval(id);
   }, [phase, status, tick]);
+
+  // Which of today's dailies this user has already completed (one attempt per day).
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    fetch('/api/me/today')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d?.completed) setCompletedToday(d.completed);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [session]);
 
   // Submit the solve exactly once, when the board reports 'solved' during a daily. All
   // setState happens inside async callbacks (never synchronously in the effect body); the
@@ -91,8 +110,16 @@ export default function DailyExperience() {
     })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
-        if (res.ok) setSubmit({ status: 'done', rank: data.rank ?? null });
-        else setSubmit({ status: 'error', message: data.error || 'Could not submit solve' });
+        if (res.ok) {
+          setSubmit({ status: 'done', rank: data.rank ?? null });
+          // Mark today's difficulty complete so the picker won't offer a replay.
+          setCompletedToday((prev) => ({
+            ...prev,
+            [difficulty]: { timeMs: data.timeMs, rank: data.rank ?? null },
+          }));
+        } else {
+          setSubmit({ status: 'error', message: data.error || 'Could not submit solve' });
+        }
       })
       .catch(() => setSubmit({ status: 'error', message: 'Network error submitting solve' }));
   }, [phase, status, session, difficulty]);
@@ -136,6 +163,7 @@ export default function DailyExperience() {
           </Link>
           <AccountBadge />
         </div>
+        <UsernamePrompt />
         <div className="glass-panel p-8">
           <h2 className="text-2xl font-semibold mb-1 text-center">Today&apos;s Daily</h2>
           <p className="text-xs text-gray-400 text-center mb-6">
@@ -158,6 +186,7 @@ export default function DailyExperience() {
                   }`}
                 >
                   {d}
+                  {completedToday[d] && <span className="ml-1 text-green-400">✓</span>}
                 </button>
               ))}
             </div>
@@ -165,14 +194,29 @@ export default function DailyExperience() {
 
           {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
 
-          <button
-            type="button"
-            onClick={handlePlay}
-            disabled={loading}
-            className="btn-primary w-full text-lg flex justify-center items-center"
-          >
-            {loading ? 'Loading…' : `Play ${difficulty}`}
-          </button>
+          {completedToday[difficulty] ? (
+            <div className="text-center">
+              <p className="text-green-500 font-semibold mb-1">
+                ✓ Solved in {formatTime(Math.round(completedToday[difficulty].timeMs / 1000))}
+                {completedToday[difficulty].rank ? ` · ranked #${completedToday[difficulty].rank}` : ''}
+              </p>
+              <p className="text-xs text-gray-400 mb-4">
+                One attempt per day — new puzzle at 00:00 UTC. Try another difficulty, or:
+              </p>
+              <Link href="/leaderboard" className="btn-primary w-full inline-flex justify-center">
+                View leaderboard
+              </Link>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePlay}
+              disabled={loading}
+              className="btn-primary w-full text-lg flex justify-center items-center"
+            >
+              {loading ? 'Loading…' : `Play ${difficulty}`}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -206,7 +250,7 @@ export default function DailyExperience() {
         <Board />
       )}
 
-      <Numpad />
+      <Numpad showHint={false} />
 
       <KeyboardHints />
 

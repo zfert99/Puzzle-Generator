@@ -1,4 +1,9 @@
-# Numpad Component: Plain English Pseudocode
+# Numpad
+
+**`showHint` prop (default `true`):** free play shows the Hint button; the daily passes
+`showHint={false}` — a competitive, one-attempt ranked puzzle shouldn't hand out answers.
+When hidden, the control row drops from a 5-column to a 4-column grid so it stays even.
+ Component: Plain English Pseudocode
 
 On-screen controls for mouse/touch users. Client component.
 

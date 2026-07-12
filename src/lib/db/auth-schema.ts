@@ -24,6 +24,9 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('emailVerified').notNull().default(false),
   image: text('image'),
+  // Public display handle for the leaderboard (so a full legal name isn't shown). Optional
+  // until the user sets one; unique when present. Managed as a better-auth additionalField.
+  username: text('username').unique(),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 });

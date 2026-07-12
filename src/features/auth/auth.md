@@ -30,6 +30,14 @@ betterAuth:
   plugins: [ passkey(rpID, rpName, origin=appUrl), nextCookies() ]   # nextCookies LAST
 ```
 
+## `username` additional field
+
+**Why:** A public leaderboard handle is declared as `user.additionalFields.username`
+(`required: false`, `input: true`) so better-auth returns it in the session user and lets
+`updateUser({ username })` set it. Uniqueness is enforced by the DB constraint (a taken
+handle surfaces as an error), not by better-auth. The client mirrors this via
+`inferAdditionalFields` (see [auth-client.md](./auth-client.md)).
+
 ## Gotchas encoded here
 
 - **Passkey is `@better-auth/passkey`** in 1.6.x (a separate package), not bundled in core.

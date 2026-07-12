@@ -10,5 +10,12 @@ the passkey plugin so `signIn.passkey()` / `passkey.addPasskey()` exist. It hold
 — those stay server-side; this only calls the endpoints. Import from Client Components only.
 
 ```text
-exports: authClient, and destructured signIn / signUp / signOut / useSession / passkey
+exports: authClient, and destructured signIn / signUp / signOut / useSession / passkey / updateUser
 ```
+
+## `inferAdditionalFields`
+
+**Why:** The server declares a `username` additional field, but the client type doesn't know
+about it by default — so `updateUser({ username })` and `session.user.username` would fail to
+type-check. `inferAdditionalFields({ user: { username: { type: 'string' } } })` teaches the
+client (using the **object form**, so we avoid importing the `server-only` `auth` instance).

@@ -34,6 +34,13 @@ const socialProviders =
 export const auth = betterAuth({
   baseURL: appUrl,
   database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
+  // Public leaderboard handle — settable via updateUser, returned in the session user.
+  // Uniqueness is enforced by the DB constraint (a taken handle surfaces as an error).
+  user: {
+    additionalFields: {
+      username: { type: 'string', required: false, input: true },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     // Override better-auth's default scrypt with Argon2id (AGENTS.md §6).

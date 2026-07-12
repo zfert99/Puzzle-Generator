@@ -13,5 +13,9 @@ registered against an existing account — passkeys-first means the passkey is t
 ```text
 isPending -> "…"
 no session -> "Sign in" link (/signin)
-session    -> name · Add passkey (passkey.addPasskey) · Sign out (signOut + refresh)
+session    -> username||name · Set/Change username · Add passkey · Sign out
+editing    -> inline input -> updateUser({ username }) (3–20 [a-zA-Z0-9_-]; "Taken" on conflict)
 ```
+
+Username editing is inline here so a handle can be changed any time; the first-time prompt
+lives in [UsernamePrompt](./UsernamePrompt.md).

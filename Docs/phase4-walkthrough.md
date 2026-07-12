@@ -275,6 +275,23 @@ UI deferred from 4.3.
 
 ---
 
+## Post-launch UX polish
+
+Small changes after the phase went live, from real use:
+
+- **One attempt per day (UI):** the picker now shows a ✓ and a "Solved in m:ss · come back
+  tomorrow" panel for a completed difficulty instead of a replay button (`/api/me/today`
+  drives it). The backend already rejected a re-rank (409); this surfaces it up front.
+- **Hints off for dailies:** `Numpad` gained a `showHint` prop; the competitive daily passes
+  `false` (free play keeps hints).
+- **Usernames:** added `user.username` (better-auth additionalField + migration
+  `0002`); a first-time `UsernamePrompt` after sign-in and inline editing in `AccountBadge`
+  (`updateUser`); the leaderboard shows `coalesce(username, name)` so a real name isn't
+  exposed. Verified end-to-end in a headless browser (prompt → set → leaderboard shows handle,
+  not name; hints absent; completed-state gating; back-link).
+- **Navigation:** home page + `/play` now link to Daily and Leaderboard; the leaderboard has a
+  "← Back to the daily" link.
+
 ## Cross-cutting notes
 
 - **Dev-only audit advisory:** `drizzle-kit` pulls a transitive esbuild dev-server advisory

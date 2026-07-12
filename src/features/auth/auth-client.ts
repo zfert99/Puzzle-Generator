@@ -1,4 +1,5 @@
 import { createAuthClient } from 'better-auth/react';
+import { inferAdditionalFields } from 'better-auth/client/plugins';
 import { passkeyClient } from '@better-auth/passkey/client';
 
 /**
@@ -10,7 +11,13 @@ import { passkeyClient } from '@better-auth/passkey/client';
  * OAuth/session secrets live server-side; this just calls the endpoints.
  */
 export const authClient = createAuthClient({
-  plugins: [passkeyClient()],
+  // inferAdditionalFields teaches the client about our server-side `username` field (object
+  // form so we don't import the server-only `auth` instance) — so updateUser({ username })
+  // and session.user.username are typed.
+  plugins: [passkeyClient(), inferAdditionalFields({ user: { username: { type: 'string', required: false } } })],
 });
 
-export const { signIn, signUp, signOut, useSession, passkey } = authClient;
+export const { signIn, signUp, signOut, useSession, passkey, updateUser } = authClient;
+
+/** The session user, augmented with our `username` additional field (not in the base type). */
+export type SessionUser = { id: string; name: string; email: string; username?: string | null };
