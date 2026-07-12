@@ -1,6 +1,4 @@
-import Link from 'next/link';
 import PuzzleForm from '@/features/puzzle-configuration/components/PuzzleForm';
-import { ThemeToggle } from '@/features/theme/ThemeToggle';
 
 /**
  * Home Page (/)
@@ -17,12 +15,7 @@ export default function Home() {
     // Main container forces the layout to take up at least the full screen height (min-h-screen)
     // and centers all content both horizontally and vertically.
     // A subtle SVG background pattern is applied via Tailwind arbitrary values.
-    <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-[url('/bg-pattern.svg')] bg-cover bg-center">
-
-      {/* Theme toggle (5.2 will move this into shared header chrome). */}
-      <div className="w-full max-w-2xl flex justify-end mb-4">
-        <ThemeToggle />
-      </div>
+    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[url('/bg-pattern.svg')] bg-cover bg-center">
 
       {/* Header Section */}
       <div className="text-center mb-12">
@@ -43,19 +36,6 @@ export default function Home() {
         as a fast, statically renderable server component.
       */}
       <PuzzleForm />
-
-      {/* Cross-links to the interactive modes (Phase 3 play, Phase 4 daily + leaderboard). */}
-      <nav className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
-        <Link href="/daily" className="font-semibold text-grape hover:underline">
-          🗓️ Daily puzzle
-        </Link>
-        <Link href="/leaderboard" className="font-semibold text-grape hover:underline">
-          🏆 Leaderboard
-        </Link>
-        <Link href="/play" className="font-semibold text-grape hover:underline">
-          Free play →
-        </Link>
-      </nav>
 
       {/* Simple, unobtrusive footer pushed to the bottom */}
       <footer className="mt-20 text-sm text-ink-soft">

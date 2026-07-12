@@ -15,3 +15,5 @@ Render the page shell:
   "Daily Sudoku" heading + links to Free play and the PDF generator.
   <DailyExperience /> — the client board orchestrator.
 ```
+
+> Nav, theme toggle, and account controls live in the global [AppHeader](../../features/chrome/AppHeader.md) (5.2); this shell just renders its title + content in a `flex-1` main.

@@ -29,7 +29,7 @@ export function AccountBadge() {
 
   if (!session) {
     return (
-      <Link href="/signin" className="text-sm text-grape hover:underline">
+      <Link href="/signin" className="text-sm text-paper font-semibold hover:underline">
         Sign in
       </Link>
     );
@@ -73,34 +73,34 @@ export function AccountBadge() {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="username"
-          className="px-2 py-1 rounded-md bg-paper border border-ink-soft text-sm w-32 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="px-2 py-1 rounded-md bg-paper text-ink border border-ink text-sm w-32 focus:outline-none focus:ring-2 focus:ring-butterscotch"
         />
-        <button type="submit" className="text-grape hover:underline">Save</button>
-        <button type="button" onClick={() => { setEditing(false); setError(''); }} className="text-ink-soft hover:underline">
+        <button type="submit" className="text-paper font-semibold hover:underline">Save</button>
+        <button type="button" onClick={() => { setEditing(false); setError(''); }} className="text-paper/70 hover:underline">
           Cancel
         </button>
-        {error && <span className="text-xs text-cherry">{error}</span>}
+        {error && <span className="text-xs text-paper font-semibold">{error}</span>}
       </form>
     );
   }
 
   return (
     <div className="flex items-center gap-3 text-sm">
-      <span className="text-ink-soft">{display}</span>
+      <span className="text-paper font-semibold">{display}</span>
       <button
         type="button"
         onClick={() => { setValue(user.username || ''); setEditing(true); }}
-        className="text-grape hover:underline"
+        className="text-paper/90 hover:underline hidden sm:inline"
       >
         {user.username ? 'Change username' : 'Set username'}
       </button>
-      <button type="button" onClick={addPasskey} className="text-grape hover:underline">
+      <button type="button" onClick={addPasskey} className="text-paper/90 hover:underline hidden sm:inline">
         Add passkey
       </button>
-      <button type="button" onClick={handleSignOut} className="text-ink-soft hover:underline">
+      <button type="button" onClick={handleSignOut} className="text-paper/70 hover:underline">
         Sign out
       </button>
-      {note && <span className="text-xs text-ink-soft">{note}</span>}
+      {note && <span className="text-xs text-paper/70">{note}</span>}
     </div>
   );
 }

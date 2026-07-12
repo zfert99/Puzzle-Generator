@@ -7,3 +7,5 @@ The authentication route.
 **Why:** Like the other routes, this is routing/layout only — the interactive form lives in
 the client `AuthPanel` leaf. No session logic here; the client handles sign-in and navigates
 on success. Keeps the page a static shell (AGENTS.md §1).
+
+> Nav, theme toggle, and account controls live in the global [AppHeader](../../features/chrome/AppHeader.md) (5.2); this shell just renders its title + content in a `flex-1` main.

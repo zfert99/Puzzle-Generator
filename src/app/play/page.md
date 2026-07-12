@@ -3,7 +3,7 @@
 The interactive board route. A **Server Component** — routing and layout only.
 
 ```text
-Render a page shell (title + cross-links to Daily, Leaderboard, and the PDF generator).
+Render a page shell (title only — nav lives in the global AppHeader).
 Render the client <PlayExperience>, which owns all interactivity.
 ```
 

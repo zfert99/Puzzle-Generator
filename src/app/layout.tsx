@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fredoka, Manrope, Space_Mono } from "next/font/google";
 import { THEME_PRE_PAINT_SCRIPT } from "@/features/theme/theme";
+import { AppHeader } from "@/features/chrome/AppHeader";
 import "./globals.css";
 
 /**
@@ -48,6 +49,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {/* Applies data-theme before paint — must be the first thing to run. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_PRE_PAINT_SCRIPT }} />
+        <AppHeader />
         {children}
       </body>
     </html>

@@ -28,5 +28,6 @@ string lives in `@/features/theme/theme` (`THEME_PRE_PAINT_SCRIPT`).
 <html class="{font vars} antialiased">
   <body>
     <script> apply data-theme before paint </script>
-    {children}
+    <AppHeader/>          # global grape nav bar (5.2) — nav, theme toggle, account
+    {children}            # each page renders a flex-1 main below the header
 ```

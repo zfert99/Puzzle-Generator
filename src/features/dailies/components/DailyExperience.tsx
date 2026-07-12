@@ -8,7 +8,6 @@ import { Board } from '@/features/interactive-board/components/Board/Board';
 import { Numpad } from '@/features/interactive-board/components/Controls/Numpad';
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
-import { AccountBadge } from '@/features/auth/components/AccountBadge';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
 import { useSession } from '@/features/auth/auth-client';
 import { DAILY_DIFFICULTIES, type DailyDifficulty } from '@/lib/db/daily-row';
@@ -157,12 +156,6 @@ export default function DailyExperience() {
   if (phase === 'select') {
     return (
       <div className="w-full max-w-md mx-auto">
-        <div className="flex justify-between items-center mb-4 px-1">
-          <Link href="/leaderboard" className="text-sm text-grape hover:underline">
-            🏆 Leaderboard
-          </Link>
-          <AccountBadge />
-        </div>
         <UsernamePrompt />
         <div className="glass-panel p-8">
           <h2 className="text-2xl font-semibold mb-1 text-center">Today&apos;s Daily</h2>

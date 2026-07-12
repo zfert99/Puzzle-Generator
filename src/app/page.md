@@ -46,17 +46,10 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 **Steps:**
 
 1. Render the `<PuzzleForm />` component exactly where we want it on the page. All the complex logic for tracking inputs and downloading the PDF lives entirely inside that separate component.
-2. A `<ThemeToggle />` sits in a top row (Phase 5.1) — temporary placement until 5.2 moves it into shared header chrome.
 
----
-
-## 4b. Cross-mode Navigation
-
-**Goal:** Make the interactive modes discoverable from the front door — the home page is the PDF generator, but the Daily puzzle, Leaderboard, and free Play modes should be reachable without typing a URL.
-
-**Steps:**
-
-1. Below the form, render a small `<nav>` with links to `/daily` ("🗓️ Daily puzzle"), `/leaderboard` ("🏆 Leaderboard"), and `/play` ("Free play"), styled to match (indigo, hover underline).
+> Cross-mode navigation (Daily / Leaderboard / Play) and the theme toggle now live in the
+> global [`AppHeader`](../../features/chrome/AppHeader.md) (5.2), not on this page. The `main`
+> is a `flex-1` region that fills the space below the header.
 
 ---
 
