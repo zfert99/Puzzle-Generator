@@ -346,15 +346,21 @@ Replace the current indigo/glassmorphism theme with the **[Biscuit Lab design sy
 
 - Restyle every shared surface to the new system: buttons, inputs, cards/panels, the puzzle board + numpad, headers/nav, and the daily / leaderboard / auth UIs. Retire the `glass-panel` + indigo utilities.
 
-#### 5.3 — The juice layer
+#### 5.3 — The juice layer (in two parts)
 
-- Implement the signature interaction language — chunky pressable buttons, squash-and-stretch, hit-pause, confetti/particles on solve, and sound — at **medium** intensity (the research's calibration sweet spot), respecting `prefers-reduced-motion`.
+- **5.3a** — core moments: pressable buttons + the solved stamp + confetti (the big payoff).
+- **5.3b** — fine moments: cell select/correct/wrong micro-interactions, streak roll, route transitions.
+- All at **medium** intensity (the research's calibration sweet spot), reduced-motion-safe.
 
-#### 5.4 — Polish & QA
+#### 5.4 — Puzzle hub (bento)
+
+- A landing "puzzle hub" of bento cards — Sudoku (Play / Daily / Leaderboard) now, built to accept Killer and future types — as the new front door; the PDF generator becomes one entry on it.
+
+#### 5.5 — Polish & QA
 
 - Accessibility pass (contrast, focus, motion), an INP budget for interactions, visual QA across all routes, and a Playwright smoke of the key flows under the new theme.
 
-Full plan: [phase5-implementation-plan.md](phase5-implementation-plan.md).
+Full plan (with resolved decisions): [phase5-implementation-plan.md](phase5-implementation-plan.md).
 
 ---
 

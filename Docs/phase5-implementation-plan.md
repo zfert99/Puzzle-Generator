@@ -25,10 +25,16 @@ Ship in independently-mergeable slices, each shippable on its own:
    yet, but the vocabulary exists.
 2. **5.2 Component restyle** — migrate the shared surfaces and every route to the new
    tokens/components; retire `glass-panel`/indigo. Route-by-route so each merge is reviewable.
-3. **5.3 The juice layer** — the signature interactions (pressable buttons, cell states,
-   correct/wrong feedback, solved stamp + confetti, streak, transitions) at **medium**
-   intensity, reduced-motion-safe.
-4. **5.4 Polish & QA** — accessibility pass, INP budget, cross-route visual QA, Playwright
+3. **5.3 The juice layer — in two parts** (decision: land it incrementally, not all at once):
+   - **5.3a Core moments**: pressable buttons + the solved stamp + confetti (the big,
+     meaningful payoff) — the highest-impact juice first.
+   - **5.3b Fine moments**: cell select/correct/wrong micro-interactions, streak roll,
+     route transitions — the finishing detail, fast-followed after 5.3a.
+   All at **medium** intensity, reduced-motion-safe.
+4. **5.4 Puzzle hub (bento)** — a landing "puzzle hub" of bento cards (Sudoku today, room
+   for Killer/other types next) per the design system, replacing/augmenting the current
+   home page as the front door.
+5. **5.5 Polish & QA** — accessibility pass, INP budget, cross-route visual QA, Playwright
    smoke under the new theme.
 
 ## Decisions to Confirm (recommendations, your call)
@@ -98,8 +104,17 @@ Retire `glass-panel`, the old `.btn-primary`, and indigo utilities once unrefere
 ### 5.3 — The juice layer
 
 Implement the [juice table](design/design-system.md) at **medium** intensity (Kao's
-research: medium beats none *and* extreme). All effects gate on `useReducedMotion`
-(instant/opacity-only fallback). Notable ones:
+research: medium beats none *and* extreme), **in two parts** — the big meaningful payoff
+first (5.3a), the finishing micro-interactions fast-followed (5.3b). All effects gate on
+`useReducedMotion` (instant/opacity-only fallback).
+
+- **5.3a — Core moments:** the pressable button + the **solved stamp + confetti**
+  (replaces today's `celebrate`/`rank-reveal` CSS). This is the emotional peak and the
+  clearest before/after, so it lands first.
+- **5.3b — Fine moments:** cell select/correct/wrong micro-interactions, the streak
+  count-up, and route transitions.
+
+Notable effects across both:
 
 - **Pressable button**: 90ms squash + offset-shadow collapse on `:active` (CSS only).
 - **Cell states**: selected (butterscotch fill + 1.03 pop), correct (mint flash + scale
@@ -110,7 +125,20 @@ research: medium beats none *and* extreme). All effects gate on `useReducedMotio
   `rank-reveal` CSS.
 - **Streak**: flame micro-bounce + count-up roll. **Route transition**: 150ms fade + 8px slide.
 
-### 5.4 — Polish & QA
+### 5.4 — Puzzle hub (bento)
+
+A landing **puzzle hub** — the new front door — using the design system's bento card grid
+(`repeat(auto-fit, minmax(220px, 1fr))`). Each card is a puzzle type: **Sudoku** (Play,
+Daily, Leaderboard entry points) now, with the layout built to accept **Killer Sudoku** and
+future types (Phase 6+) as they arrive. Cards use `--r-lg`, paper-2 background, chunky
+border+shadow, a Fredoka title, and a difficulty badge.
+
+- The current home page is the PDF generator; the hub becomes the primary landing, with the
+  PDF generator reachable as one entry (a "print packs" card/link) rather than the front page.
+- Wire the existing routes (`/play`, `/daily`, `/leaderboard`, PDF generator) into hub cards.
+- Server Component shell (static, fast); it's mostly links + presentational cards.
+
+### 5.5 — Polish & QA
 
 - **Accessibility**: verify every token pair ≥4.5:1 / ≥3:1; visible focus rings (2px,
   offset outside the chunky border); tap targets ≥24px (cells ≥40px on mobile); reduced-
@@ -148,20 +176,21 @@ research: medium beats none *and* extreme). All effects gate on `useReducedMotio
 - **Docs**: mirror any new component with its `.md` (AGENTS.md §2); update the design-system
   doc if a token/value changes during implementation.
 
-## Open Questions
+## Resolved Decisions
 
-- **Theme default**: follow system on first visit (recommended), or default light ("the
-  lab") with an opt-in dark?
-- **Motion dependency**: adopt `motion` for the stamp sequence (recommended), or keep it
-  100% CSS to avoid the dep (slightly less springy)?
-- **Scope of "juice" now**: ship the full table in 5.3, or land the stamp/confetti + button
-  press first and fast-follow the finer cell micro-interactions?
-- **Landing page**: restyle the existing PDF-generator home only, or also add the bento
-  "puzzle hub" the design system sketches (which anticipates Killer/other types)?
+- **Theme default:** ✅ follow the system preference on first visit, then persist the user's
+  explicit choice.
+- **Motion dependency:** ✅ adopt `motion` for the solved-stamp sequence; everything else
+  stays CSS-first.
+- **Juice delivery:** ✅ in two parts — core moments (pressable button + solved stamp/
+  confetti) first (**5.3a**), the finer cell/streak/transition micro-interactions fast-
+  followed (**5.3b**).
+- **Landing page:** ✅ add the bento **puzzle hub** as the new front door (**5.4**); the PDF
+  generator becomes one entry on it rather than the home page.
 
 ## Not in Scope (defer)
 
 - Re-skinning the **generated PDF** (`pdf.service.ts`) — separate optional work.
-- The **bento puzzle-hub** as a full new page (belongs with the Killer Sudoku phase, when
-  there's more than one puzzle type to hub).
 - Any **engine/API/DB** change — this phase is presentational only.
+- The puzzle hub ships the **Sudoku** card set now; **Killer/other-type cards** come with
+  those phases (the hub layout is built to accept them).
