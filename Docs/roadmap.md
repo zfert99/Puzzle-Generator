@@ -440,7 +440,7 @@ graph TD
 With Phase 4 shipped, the near-term backlog is **Killer Sudoku** (a brand-new puzzle type) plus the three features deferred from Phase 4 — **multiplayer speed races**, **community puzzle sharing**, and a **mobile app**. Research is being gathered ahead of implementation:
 
 - **Killer Sudoku engine** → [killer-sudoku.md](research/killer-sudoku.md) (rules, cage generation, uniqueness checking, difficulty grading) — research complete.
-- **App design & game-feel ("juice")** → [web-design-and-game-juice.md](research/web-design-and-game-juice.md) (modern web-design craft + Flash-era feedback principles) — informs the UI polish of all upcoming work.
+- **App design & game-feel ("juice")** → research: [web-design-and-game-juice.md](research/web-design-and-game-juice.md) (modern web-design craft + Flash-era feedback principles). Its concrete output is the **[design system](design/design-system.md)** ("Biscuit Lab" — biscuit/butterscotch/grape palette, chunky Flash-portal UI, a defined juice interaction language) with a [visual mockup](design/design-system-mockup.html). This is a **proposed** identity — not yet implemented (the live site is still the indigo/glass theme) — and guides the UI polish of upcoming work.
 
 The subsections below capture each item; they were previously framed as "beyond Phase 5" north stars and are now queued.
 

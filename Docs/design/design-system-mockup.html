@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<title>biscuit lab — design system mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FBF3E3; --paper-2: #F5E7C8;
+    --ink: #2B1B12; --ink-soft: #6B5544;
+    --butterscotch: #E8A33D; --butterscotch-dark: #C97F1E;
+    --grape: #5A3E96; --grape-dark: #3E2A69;
+    --mint: #2FAE86; --cherry: #D8453F;
+    --r-sm: 8px; --r-md: 14px; --r-lg: 20px;
+  }
+  [data-theme="dark"] {
+    --paper: #1B1224; --paper-2: #241833;
+    --ink: #F5E9CE; --ink-soft: #C9B8A0;
+    --butterscotch: #F2B65A; --butterscotch-dark: #D89A3E;
+    --grape: #9B7FD4; --grape-dark: #7A5FC0;
+    --mint: #4FCBA0; --cherry: #F06B65;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'Manrope', sans-serif; padding: 40px 24px 80px;
+    transition: background .25s ease, color .25s ease;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  h1.logo {
+    font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 2.4rem;
+    margin: 0; letter-spacing: -0.5px;
+  }
+  h1.logo span { color: var(--grape); }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .tagline { color: var(--ink-soft); font-size: 0.95rem; margin: 0 0 40px; font-weight: 500; }
+  .toggle {
+    font-family: 'Manrope'; font-weight: 600; font-size: 0.85rem;
+    background: var(--paper-2); color: var(--ink); border: 3px solid var(--ink);
+    border-radius: var(--r-sm); padding: 8px 14px; cursor: pointer;
+    box-shadow: 3px 3px 0 0 var(--ink); transition: transform .09s ease, box-shadow .09s ease;
+  }
+  .toggle:active { transform: translate(3px, 3px); box-shadow: 0 0 0 0 var(--ink); }
+
+  section { margin-bottom: 48px; }
+  h2.section-title {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 1.3rem;
+    margin: 0 0 16px; color: var(--ink);
+  }
+
+  /* palette */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+  .swatch { border-radius: var(--r-md); padding: 14px 12px; border: 3px solid var(--ink); }
+  .swatch .name { font-weight: 700; font-size: 0.8rem; display: block; }
+  .swatch .hex { font-family: 'Space Mono', monospace; font-size: 0.72rem; opacity: 0.85; }
+
+  /* type specimen */
+  .specimen { display: flex; flex-direction: column; gap: 10px; }
+  .display-xl { font-family: 'Fredoka'; font-weight: 600; font-size: 2.6rem; margin: 0; line-height: 1.05; }
+  .display-m { font-family: 'Fredoka'; font-weight: 600; font-size: 1.4rem; margin: 0; }
+  .body-copy { font-size: 1rem; line-height: 1.6; color: var(--ink-soft); max-width: 60ch; margin: 0; }
+  .mono-demo { font-family: 'Space Mono'; font-weight: 700; font-size: 1.5rem; margin: 0; }
+
+  /* bento puzzle picker */
+  .bento { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .puzzle-card {
+    background: var(--paper-2); border: 3px solid var(--ink); border-radius: var(--r-lg);
+    padding: 18px; cursor: pointer; box-shadow: 5px 5px 0 0 var(--ink);
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+  .puzzle-card:active { transform: translate(5px, 5px); box-shadow: 0 0 0 0 var(--ink); }
+  .puzzle-card .title { font-family: 'Fredoka'; font-weight: 600; font-size: 1.15rem; margin: 0 0 4px; }
+  .puzzle-card .desc { font-size: 0.82rem; color: var(--ink-soft); margin: 0 0 12px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 700;
+    background: var(--paper); border-radius: 999px; padding: 4px 10px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* buttons */
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    font-family: 'Manrope'; font-weight: 700; font-size: 0.92rem; border-radius: var(--r-md);
+    padding: 12px 22px; cursor: pointer; border: 3px solid var(--ink);
+    transition: transform .09s ease, box-shadow .09s ease;
+  }
+  .btn-primary { background: var(--butterscotch); color: var(--ink); box-shadow: 4px 4px 0 0 var(--ink); }
+  .btn-primary:active { transform: translate(4px, 4px); box-shadow: 0 0 0 0 var(--ink); }
+  .btn-secondary { background: var(--paper-2); color: var(--grape); border-color: var(--grape); box-shadow: 4px 4px 0 0 var(--grape); }
+  .btn-secondary:active { transform: translate(4px, 4px); box-shadow: 0 0 0 0 var(--grape); }
+  .btn-ghost { background: transparent; color: var(--ink-soft); border-color: transparent; box-shadow: none; text-decoration: underline; }
+
+  /* puzzle grid demo */
+  .grid-demo-row { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+  .cage-grid {
+    display: grid; grid-template-columns: repeat(4, 56px); grid-template-rows: repeat(4, 56px);
+    gap: 3px; background: var(--ink); padding: 3px; border-radius: var(--r-sm); border: 3px solid var(--ink);
+  }
+  .cell {
+    background: var(--paper); display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono'; font-weight: 700; font-size: 1.3rem; position: relative;
+    cursor: pointer; user-select: none; border-radius: 2px;
+  }
+  .cell .cage-label { position: absolute; top: 2px; left: 4px; font-size: 0.55rem; color: var(--ink-soft); font-weight: 400; }
+  .cell.cage-a { box-shadow: inset 0 0 0 1.5px var(--ink-soft); }
+  .cell.cage-b { box-shadow: inset 0 0 0 1.5px var(--grape); }
+  .cell.selected { background: var(--butterscotch); }
+  .cell.correct { animation: pop-correct 0.22s ease; }
+  .cell.wrong { animation: shake-wrong 0.18s ease-in-out 2; }
+  @keyframes pop-correct {
+    0% { transform: scale(1); background: var(--mint); }
+    50% { transform: scale(1.08); background: var(--mint); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shake-wrong {
+    0%, 100% { transform: translateX(0); background: var(--cherry); }
+    50% { transform: translateX(4px); background: var(--cherry); }
+  }
+  .demo-controls { display: flex; flex-direction: column; gap: 10px; }
+  .demo-controls .hint { font-size: 0.82rem; color: var(--ink-soft); max-width: 26ch; margin: 0; }
+
+  /* streak card */
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--paper-2); border-radius: var(--r-md); padding: 14px 20px; min-width: 120px;
+  }
+  .stat-card .label { font-size: 0.78rem; color: var(--ink-soft); font-weight: 600; display: block; margin-bottom: 4px; }
+  .stat-card .value { font-family: 'Space Mono'; font-weight: 700; font-size: 1.6rem; }
+
+  /* solved stamp */
+  .stamp-zone { position: relative; height: 140px; display: flex; align-items: center; justify-content: center; }
+  .stamp {
+    font-family: 'Fredoka'; font-weight: 700; font-size: 1.4rem; color: var(--ink);
+    background: var(--mint); border: 3px solid var(--ink); border-radius: var(--r-lg);
+    padding: 14px 28px; box-shadow: 5px 5px 0 0 var(--ink);
+    opacity: 0; transform: scale(0.4) rotate(-8deg);
+  }
+  .stamp.show { animation: stamp-in 0.6s cubic-bezier(.34,1.56,.64,1) forwards; }
+  @keyframes stamp-in {
+    0% { opacity: 0; transform: scale(0.4) rotate(-8deg); }
+    60% { opacity: 1; transform: scale(1.12) rotate(2deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+  .crumb { position: absolute; border-radius: 2px; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1 class="logo">biscuit<span>lab</span></h1>
+    <button class="toggle" id="themeToggle">dark mode</button>
+  </div>
+  <p class="tagline">Modern puzzle app, flash-portal juice.</p>
+
+  <section>
+    <h2 class="section-title">Palette</h2>
+    <div class="swatches">
+      <div class="swatch" style="background:var(--paper); color:var(--ink);"><span class="name">paper</span><span class="hex">#FBF3E3</span></div>
+      <div class="swatch" style="background:var(--paper-2); color:var(--ink);"><span class="name">paper-2</span><span class="hex">#F5E7C8</span></div>
+      <div class="swatch" style="background:var(--ink); color:var(--paper);"><span class="name">ink</span><span class="hex">#2B1B12</span></div>
+      <div class="swatch" style="background:var(--butterscotch); color:var(--ink);"><span class="name">butterscotch</span><span class="hex">#E8A33D</span></div>
+      <div class="swatch" style="background:var(--grape); color:var(--paper);"><span class="name">grape</span><span class="hex">#5A3E96</span></div>
+      <div class="swatch" style="background:var(--mint); color:var(--ink);"><span class="name">mint</span><span class="hex">#2FAE86</span></div>
+      <div class="swatch" style="background:var(--cherry); color:var(--paper);"><span class="name">cherry</span><span class="hex">#D8453F</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Type specimen</h2>
+    <div class="specimen">
+      <p class="display-xl">Today's Killer Sudoku</p>
+      <p class="display-m">3-day streak — nice work</p>
+      <p class="body-copy">Manrope carries every functional word in the app: navigation, buttons, settings, and body copy. It stays out of the way so Fredoka can do the shouting.</p>
+      <p class="mono-demo">07:42&nbsp;&nbsp;&nbsp;cage sum 17</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Puzzle hub — bento picker</h2>
+    <div class="bento">
+      <div class="puzzle-card">
+        <p class="title">Killer Sudoku</p>
+        <p class="desc">Cage sums, no repeats, daily grid.</p>
+        <span class="badge"><span class="dot" style="background:var(--butterscotch)"></span>Medium</span>
+      </div>
+      <div class="puzzle-card">
+        <p class="title">Classic Sudoku</p>
+        <p class="desc">Rows, columns, boxes. The original.</p>
+        <span class="badge"><span class="dot" style="background:var(--mint)"></span>Easy</span>
+      </div>
+      <div class="puzzle-card">
+        <p class="title">Kakuro</p>
+        <p class="desc">Cross-sum grid, no digit repeats.</p>
+        <span class="badge"><span class="dot" style="background:var(--cherry)"></span>Hard</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Buttons</h2>
+    <div class="btn-row">
+      <button class="btn btn-primary">Start puzzle</button>
+      <button class="btn btn-secondary">View archive</button>
+      <button class="btn btn-ghost">Skip today</button>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Cage grid + juice (click cells, try the buttons)</h2>
+    <div class="grid-demo-row">
+      <div class="cage-grid" id="cageGrid"></div>
+      <div class="demo-controls">
+        <p class="hint">Click a cell to select it. Then try "mark correct" or "mark wrong" to see the calibrated feedback — no screen shake, just local, medium-intensity juice.</p>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="markCorrect">mark correct</button>
+          <button class="btn btn-secondary" id="markWrong" style="border-color:var(--cherry); color:var(--cherry); box-shadow:4px 4px 0 0 var(--cherry);">mark wrong</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Stats</h2>
+    <div class="stats-row">
+      <div class="stat-card"><span class="label">streak</span><span class="value">3</span></div>
+      <div class="stat-card"><span class="label">solved</span><span class="value">128</span></div>
+      <div class="stat-card"><span class="label">best time</span><span class="value">4:12</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Solved moment</h2>
+    <div class="btn-row" style="margin-bottom:16px;">
+      <button class="btn btn-primary" id="triggerSolve">trigger solved stamp</button>
+    </div>
+    <div class="stamp-zone" id="stampZone">
+      <div class="stamp" id="stamp">solved! 🍪</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // theme toggle
+  const root = document.documentElement;
+  const toggle = document.getElementById('themeToggle');
+  toggle.addEventListener('click', () => {
+    const isDark = root.getAttribute('data-theme') === 'dark';
+    root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    toggle.textContent = isDark ? 'dark mode' : 'light mode';
+  });
+
+  // build mini cage grid: two cages (A = top-left 2x2-ish, B = rest) just for visual demo
+  const cageGrid = document.getElementById('cageGrid');
+  const cageMap = ['a','a','b','b', 'a','a','b','b', 'a','b','b','b', 'a','b','b','b'];
+  const labels = {0:'11', 2:'7', 8:'14'};
+  let selectedCell = null;
+  for (let i = 0; i < 16; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell cage-' + cageMap[i];
+    cell.dataset.index = i;
+    if (labels[i]) {
+      const lab = document.createElement('span');
+      lab.className = 'cage-label';
+      lab.textContent = labels[i];
+      cell.appendChild(lab);
+    }
+    cell.addEventListener('click', () => {
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+      cell.classList.add('selected');
+      selectedCell = cell;
+    });
+    cageGrid.appendChild(cell);
+  }
+
+  document.getElementById('markCorrect').addEventListener('click', () => {
+    if (!selectedCell) return;
+    if (!selectedCell.textContent.trim()) selectedCell.textContent = '4';
+    selectedCell.classList.remove('wrong');
+    void selectedCell.offsetWidth;
+    selectedCell.classList.add('correct');
+  });
+  document.getElementById('markWrong').addEventListener('click', () => {
+    if (!selectedCell) return;
+    if (!selectedCell.textContent.trim()) selectedCell.textContent = '9';
+    selectedCell.classList.remove('correct');
+    void selectedCell.offsetWidth;
+    selectedCell.classList.add('wrong');
+  });
+
+  // solved stamp + crumb confetti
+  document.getElementById('triggerSolve').addEventListener('click', () => {
+    const stamp = document.getElementById('stamp');
+    const zone = document.getElementById('stampZone');
+    stamp.classList.remove('show');
+    void stamp.offsetWidth;
+    stamp.classList.add('show');
+
+    const colors = ['#E8A33D', '#5A3E96', '#2FAE86'];
+    for (let i = 0; i < 24; i++) {
+      const crumb = document.createElement('div');
+      crumb.className = 'crumb';
+      const size = 5 + Math.random() * 5;
+      crumb.style.width = size + 'px';
+      crumb.style.height = size + 'px';
+      crumb.style.background = colors[i % colors.length];
+      crumb.style.left = '50%';
+      crumb.style.top = '50%';
+      zone.appendChild(crumb);
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 60 + Math.random() * 70;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist - 20;
+      crumb.animate([
+        { transform: 'translate(-50%,-50%) translate(0,0) rotate(0deg)', opacity: 1 },
+        { transform: `translate(-50%,-50%) translate(${dx}px, ${dy}px) rotate(${Math.random()*360}deg)`, opacity: 0 }
+      ], { duration: 700 + Math.random() * 300, easing: 'cubic-bezier(.2,.8,.4,1)' });
+      setTimeout(() => crumb.remove(), 1100);
+    }
+  });
+</script>
+</body>
+</html>
