@@ -326,11 +326,11 @@ CREATE TABLE solve_attempts (
 
 ---
 
-## Phase 5 — Visual Redesign (Biscuit Lab) 📋 Next
+## Phase 5 — Visual Redesign (Biscuit Lab) ✅ Done
 
 > **Tracks:** 🎨 Frontend
 > **Branch:** `feature/biscuit-lab-redesign`
-> **Status:** 📋 Next — this is the next phase.
+> **Status:** ✅ Done — Biscuit Lab shipped: tokens+theme, full restyle, grape header, juice (solved stamp+confetti, cell micro-interactions), chaos layer (corkboard chrome), the puzzle hub, and a clean a11y/QA pass (0 axe violations). Next up: Phase 6 (Strategy Courses).
 > **Estimated effort:** Medium–Large (1.5–2 weeks)
 > **Prerequisite:** Phase 4 (all app surfaces exist to restyle)
 

@@ -73,10 +73,10 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 | **2** | **Mini Puzzles** — 4×4 & 6×6 grids | 🧮 Engine + 🎨 UI | ✅ Done |
 | **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | ✅ Done\* |
 | **4** | **Dailies & Leaderboards** — DB, Auth, Speed Runs | 🗄️ Infrastructure | ✅ Done |
-| **5** | **Visual Redesign** 🎨 — "Biscuit Lab" design system | 🎨 Frontend | 📋 Next |
+| **5** | **Visual Redesign** 🎨 — "Biscuit Lab" design system | 🎨 Frontend | ✅ Done |
 | **6** | **Strategy Courses** — Visual solver teaching | 🎨 UI + 🧮 Engine | 📋 Planned |
 
-> Phases 1 & 2 ran in parallel. Phase 5 (redesign) is next; Phase 6 builds on it.
+> Phases 1 & 2 ran in parallel. Phase 6 (strategy courses) is next; it builds on the Phase 5 design system.
 >
 > \* Phase 3 core is shipped at `/play`; optional polish may still be applied.
 
