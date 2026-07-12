@@ -40,7 +40,7 @@ export default function PuzzleForm() {
         onChange={handleDifficultyChange} 
       />
 
-      {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+      {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
       <button
         onClick={handleGenerate}

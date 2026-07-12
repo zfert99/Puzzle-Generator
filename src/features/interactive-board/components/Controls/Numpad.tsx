@@ -35,7 +35,7 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
   const undo = () => useBoardStore.temporal.getState().undo();
   const redo = () => useBoardStore.temporal.getState().redo();
 
-  const controlClass = 'py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm transition-colors disabled:opacity-40 disabled:hover:bg-white/10';
+  const controlClass = 'py-2 rounded-lg bg-paper border-2 border-ink hover:bg-paper-2 text-sm transition-colors disabled:opacity-40 disabled:hover:bg-paper';
 
   return (
     <div className="mt-6 w-full max-w-[520px] mx-auto flex flex-col gap-3">
@@ -46,7 +46,7 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
             type="button"
             disabled={completed[digit - 1]}
             onClick={() => inputDigit(digit)}
-            className="py-3 rounded-lg bg-white/10 hover:bg-white/20 text-lg font-semibold transition-colors disabled:opacity-30 disabled:hover:bg-white/10 disabled:cursor-not-allowed"
+            className="py-3 rounded-lg bg-paper border-2 border-ink hover:bg-paper-2 text-lg font-semibold transition-colors disabled:opacity-30 disabled:hover:bg-paper disabled:cursor-not-allowed"
           >
             {digit}
           </button>
@@ -62,7 +62,7 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
           aria-pressed={pencilMode}
           onClick={() => togglePencilMode()}
           className={`py-2 rounded-lg text-sm transition-colors ${
-            pencilMode ? 'bg-indigo-600 text-white' : 'bg-white/10 hover:bg-white/20'
+            pencilMode ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
           }`}
         >
           ✏️

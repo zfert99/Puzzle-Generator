@@ -27,11 +27,11 @@ export default function Home() {
       {/* Header Section */}
       <div className="text-center mb-12">
         {/* The main title uses a transparent background clip with a gradient to create a sleek metallic/glass look */}
-        <h1 className="text-5xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
+        <h1 className="text-5xl font-extrabold tracking-tight mb-4 text-ink">
           PDF Puzzle Generator
         </h1>
         {/* A simple, descriptive subtitle explaining the app's core value proposition */}
-        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
+        <p className="text-lg text-ink-soft max-w-xl mx-auto">
           Create customized, print-ready Sudoku puzzle books with interactive answer keys in seconds.
         </p>
       </div>
@@ -46,19 +46,19 @@ export default function Home() {
 
       {/* Cross-links to the interactive modes (Phase 3 play, Phase 4 daily + leaderboard). */}
       <nav className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
-        <Link href="/daily" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/daily" className="font-semibold text-grape hover:underline">
           🗓️ Daily puzzle
         </Link>
-        <Link href="/leaderboard" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/leaderboard" className="font-semibold text-grape hover:underline">
           🏆 Leaderboard
         </Link>
-        <Link href="/play" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+        <Link href="/play" className="font-semibold text-grape hover:underline">
           Free play →
         </Link>
       </nav>
 
       {/* Simple, unobtrusive footer pushed to the bottom */}
-      <footer className="mt-20 text-sm text-gray-500">
+      <footer className="mt-20 text-sm text-ink-soft">
         Minimalist Premium Design &copy; 2026
       </footer>
     </main>

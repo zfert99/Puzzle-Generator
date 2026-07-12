@@ -37,14 +37,14 @@ export function DifficultyConfigurator({ gridSize, counts, onChange }: Props) {
           </div>
         );
       })}
-      <p className="text-sm text-gray-400 text-center mt-2">You can generate 1–50 puzzles total per request.</p>
+      <p className="text-sm text-ink-soft text-center mt-2">You can generate 1–50 puzzles total per request.</p>
       {gridSize !== 9 && (
-        <p className="text-sm text-gray-400 text-center">
+        <p className="text-sm text-ink-soft text-center">
           Expert and Extreme are only available for 9×9 grids.
         </p>
       )}
       {counts.extreme > 0 && (
-        <p className="text-red-500 text-sm font-medium mt-2 text-center px-4">
+        <p className="text-cherry text-sm font-medium mt-2 text-center px-4">
           Warning: Extreme puzzles require elite-tier strategies (W-Wing, ALS, AICs) and may take up to 5 seconds per puzzle to generate.
         </p>
       )}

@@ -14,12 +14,12 @@ const HINTS: ReadonlyArray<readonly [string, string]> = [
  */
 export function KeyboardHints() {
   return (
-    <div className="mt-6 w-full max-w-[520px] mx-auto text-xs text-gray-500 dark:text-gray-400">
+    <div className="mt-6 w-full max-w-[520px] mx-auto text-xs text-ink-soft">
       <p className="mb-2 font-medium uppercase tracking-wide">Keyboard</p>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
         {HINTS.map(([keys, description]) => (
           <li key={description} className="flex items-center justify-between gap-3">
-            <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/10 font-mono text-[11px] whitespace-nowrap">
+            <kbd className="px-1.5 py-0.5 rounded bg-paper border border-ink-soft font-mono text-[11px] whitespace-nowrap">
               {keys}
             </kbd>
             <span className="text-right">{description}</span>

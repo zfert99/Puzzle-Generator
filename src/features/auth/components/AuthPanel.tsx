@@ -75,14 +75,14 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
         type="button"
         onClick={handleGoogle}
         disabled={busy}
-        className="w-full mb-5 px-4 py-3 rounded-lg border border-gray-300 dark:border-white/20 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+        className="w-full mb-5 px-4 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
       >
         Continue with Google
       </button>
 
-      <div className="flex items-center gap-3 mb-5 text-xs text-gray-400">
-        <span className="h-px flex-1 bg-gray-300 dark:bg-white/10" /> or email{' '}
-        <span className="h-px flex-1 bg-gray-300 dark:bg-white/10" />
+      <div className="flex items-center gap-3 mb-5 text-xs text-ink-soft">
+        <span className="h-px flex-1 bg-gray-300 dark:bg-paper" /> or email{' '}
+        <span className="h-px flex-1 bg-gray-300 dark:bg-paper" />
       </div>
 
       <form onSubmit={handleEmail} className="space-y-3">
@@ -92,7 +92,7 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
             placeholder="Display name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         )}
         <input
@@ -101,7 +101,7 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <input
           type="password"
@@ -110,15 +110,15 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
           placeholder="Password (8+ characters)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        {error && <p className="text-cherry text-sm text-center">{error}</p>}
         <button type="submit" disabled={busy} className="btn-primary w-full">
           {busy ? '…' : mode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
       </form>
 
-      <p className="text-sm text-gray-400 text-center mt-5">
+      <p className="text-sm text-ink-soft text-center mt-5">
         {mode === 'signin' ? "No account? " : 'Have an account? '}
         <button
           type="button"
@@ -126,7 +126,7 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
             setMode(mode === 'signin' ? 'signup' : 'signin');
             setError('');
           }}
-          className="text-indigo-400 hover:underline"
+          className="text-grape hover:underline"
         >
           {mode === 'signin' ? 'Create one' : 'Sign in'}
         </button>

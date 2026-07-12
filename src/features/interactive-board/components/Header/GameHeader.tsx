@@ -41,7 +41,7 @@ export function GameHeader() {
           {formatTime(elapsedTime)}
         </span>
         <span
-          className="text-gray-500 dark:text-gray-400 tabular-nums"
+          className="text-ink-soft tabular-nums"
           aria-label={`${mistakes} mistake${mistakes === 1 ? '' : 's'}`}
           title="Mistakes"
         >
@@ -55,14 +55,14 @@ export function GameHeader() {
           aria-pressed={realTimeErrors}
           onClick={() => toggleRealTimeErrors()}
           className={`px-2 py-1 rounded transition-colors ${
-            realTimeErrors ? 'bg-indigo-600 text-white' : 'bg-white/10 hover:bg-white/20'
+            realTimeErrors ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
           }`}
           title="Highlight incorrect entries"
         >
           Errors
         </button>
         {status === 'paused' ? (
-          <button type="button" onClick={() => resume()} className="px-2 py-1 rounded bg-white/10 hover:bg-white/20">
+          <button type="button" onClick={() => resume()} className="px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2">
             Resume
           </button>
         ) : (
@@ -70,7 +70,7 @@ export function GameHeader() {
             type="button"
             onClick={() => pause()}
             disabled={status !== 'playing'}
-            className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 disabled:opacity-40"
+            className="px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2 disabled:opacity-40"
           >
             Pause
           </button>

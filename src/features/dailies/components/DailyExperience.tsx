@@ -158,7 +158,7 @@ export default function DailyExperience() {
     return (
       <div className="w-full max-w-md mx-auto">
         <div className="flex justify-between items-center mb-4 px-1">
-          <Link href="/leaderboard" className="text-sm text-indigo-400 hover:underline">
+          <Link href="/leaderboard" className="text-sm text-grape hover:underline">
             🏆 Leaderboard
           </Link>
           <AccountBadge />
@@ -166,13 +166,13 @@ export default function DailyExperience() {
         <UsernamePrompt />
         <div className="glass-panel p-8">
           <h2 className="text-2xl font-semibold mb-1 text-center">Today&apos;s Daily</h2>
-          <p className="text-xs text-gray-400 text-center mb-6">
+          <p className="text-xs text-ink-soft text-center mb-6">
             One shared puzzle per difficulty · resets at 00:00 UTC
             {!session && ' · sign in to be ranked'}
           </p>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-300 mb-2 text-center">Difficulty</label>
+            <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Difficulty</label>
             <div className="flex flex-wrap justify-center gap-2">
               {DAILY_DIFFICULTIES.map((d) => (
                 <button
@@ -181,8 +181,8 @@ export default function DailyExperience() {
                   onClick={() => setDifficulty(d)}
                   className={`px-3 py-2 rounded-lg text-sm capitalize transition-all ${
                     difficulty === d
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
-                      : 'bg-white/10 hover:bg-white/20'
+                      ? 'bg-butterscotch text-ink border-2 border-ink'
+                      : 'bg-paper border-2 border-ink hover:bg-paper-2'
                   }`}
                 >
                   {d}
@@ -192,15 +192,15 @@ export default function DailyExperience() {
             </div>
           </div>
 
-          {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+          {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
           {completedToday[difficulty] ? (
             <div className="text-center">
-              <p className="text-green-500 font-semibold mb-1">
+              <p className="text-mint font-semibold mb-1">
                 ✓ Solved in {formatTime(Math.round(completedToday[difficulty].timeMs / 1000))}
                 {completedToday[difficulty].rank ? ` · ranked #${completedToday[difficulty].rank}` : ''}
               </p>
-              <p className="text-xs text-gray-400 mb-4">
+              <p className="text-xs text-ink-soft mb-4">
                 One attempt per day — new puzzle at 00:00 UTC. Try another difficulty, or:
               </p>
               <Link href="/leaderboard" className="btn-primary w-full inline-flex justify-center">
@@ -229,12 +229,12 @@ export default function DailyExperience() {
         <button
           type="button"
           onClick={backToSelect}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:underline"
+          className="text-sm text-ink-soft hover:text-ink hover:underline"
         >
           ← Difficulties
         </button>
         {dailyDate && (
-          <span className="text-xs text-gray-400 capitalize">
+          <span className="text-xs text-ink-soft capitalize">
             {difficulty} · {formatUtcDate(dailyDate)}
           </span>
         )}
@@ -243,7 +243,7 @@ export default function DailyExperience() {
       <GameHeader />
 
       {status === 'paused' ? (
-        <div className="w-[min(92vw,520px)] aspect-square flex items-center justify-center rounded-lg bg-white/5 text-gray-400">
+        <div className="w-[min(92vw,520px)] aspect-square flex items-center justify-center rounded-lg bg-paper text-ink-soft">
           Paused
         </div>
       ) : (
@@ -261,14 +261,14 @@ export default function DailyExperience() {
           aria-modal="true"
           aria-labelledby="daily-solved-title"
         >
-          <div className="celebrate rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-gray-900 p-8 max-w-sm w-full text-center shadow-2xl">
+          <div className="celebrate rounded-2xl border border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-2xl">
             <p className="text-5xl mb-2" aria-hidden="true">
               <span className="celebrate-emoji">🎉</span>
             </p>
-            <h2 id="daily-solved-title" className="text-2xl font-bold text-green-500 mb-2">
+            <h2 id="daily-solved-title" className="text-2xl font-bold text-mint mb-2">
               Daily solved!
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+            <p className="text-sm text-ink-soft mb-3">
               {formatTime(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
               mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}
             </p>
@@ -276,20 +276,20 @@ export default function DailyExperience() {
             {/* Ranked-flow result — derived from session + submit (no synchronous setState). */}
             <div className="mb-6 min-h-[1.5rem] text-sm">
               {!session ? (
-                <span className="text-gray-400">
-                  <Link href="/signin" className="text-indigo-400 hover:underline">
+                <span className="text-ink-soft">
+                  <Link href="/signin" className="text-grape hover:underline">
                     Sign in
                   </Link>{' '}
                   to be ranked on the leaderboard.
                 </span>
               ) : submit.status === 'done' ? (
-                <span className="rank-reveal text-indigo-400 font-semibold">
+                <span className="rank-reveal text-grape font-semibold">
                   {submit.rank ? `🏆 Ranked #${submit.rank} today` : 'Time recorded!'}
                 </span>
               ) : submit.status === 'error' ? (
-                <span className="text-amber-500">{submit.message}</span>
+                <span className="text-butterscotch-dark">{submit.message}</span>
               ) : (
-                <span className="text-gray-400">Submitting your time…</span>
+                <span className="text-ink-soft">Submitting your time…</span>
               )}
             </div>
 
@@ -299,7 +299,7 @@ export default function DailyExperience() {
               </button>
               <Link
                 href="/leaderboard"
-                className="px-5 py-3 rounded-lg border border-gray-300 dark:border-white/20 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
               >
                 Leaderboard
               </Link>

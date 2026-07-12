@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Make Tailwind's `dark:` variant follow our [data-theme] toggle instead of the OS
+   media query, so any remaining dark: utilities respond to the in-app switch. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* ============================================================================
    Biscuit Lab design tokens (Phase 5.1).
    Runtime CSS variables live on :root and flip via [data-theme]; the @theme
@@ -66,11 +70,16 @@
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--ink);
+  background: var(--paper);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+}
+
+/* Display headings default to the chunky face. */
+h1, h2, .font-display {
+  font-family: var(--font-display);
 }
 
 /* Signature chunky "pressable" mechanic — opt-in utility restyled buttons use
@@ -94,53 +103,94 @@ body {
 }
 
 /* ============================================================================
-   Legacy utilities — used by not-yet-migrated surfaces. Removed in 5.2 once
-   nothing references them.
+   Shared component classes — Biscuit Lab. These were the legacy indigo/glass
+   utilities; redefining them here restyles every panel/button/input at once. The
+   class names are kept so existing markup cascades without per-file edits.
    ============================================================================ */
+
+/* A chunky card / panel — the workhorse container. */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
+  background: var(--paper-2);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: 4px 4px 0 0 var(--ink);
+}
+
+/* Buttons share the pressable mechanic; variants differ only in fill/text/border. */
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  padding: 0.7rem 1.4rem;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+
+.btn-primary,
+.btn-secondary {
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 0 var(--ink);
+}
+
+.btn-primary:active:not(:disabled),
+.btn-secondary:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--ink);
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: var(--background);
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 500;
-  transition: opacity 0.2s ease, transform 0.1s ease;
+  background: var(--butterscotch);
+  color: var(--ink);
+}
+
+.btn-secondary {
+  background: var(--paper-2);
+  color: var(--grape);
+}
+
+.btn-ghost {
+  background: transparent;
   border: none;
-  cursor: pointer;
+  color: var(--ink-soft);
 }
 
-.btn-primary:hover {
-  opacity: 0.9;
+.btn-ghost:hover {
+  text-decoration: underline;
 }
 
-.btn-primary:active {
-  transform: scale(0.98);
-}
-
-.btn-primary:disabled {
+.btn-primary:disabled,
+.btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 .input-field {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--r-sm);
   width: 100%;
-  transition: border-color 0.2s ease;
+  font-family: var(--font-sans);
+  transition: box-shadow 0.15s ease;
+}
+
+.input-field::placeholder {
+  color: var(--ink-soft);
 }
 
 .input-field:focus {
   outline: none;
-  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--butterscotch);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary,
+  .btn-secondary {
+    transition: none;
+  }
 }
 
 /* Completion celebration for the interactive board. */

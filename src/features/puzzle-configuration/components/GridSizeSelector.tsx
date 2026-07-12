@@ -14,7 +14,7 @@ interface Props {
 export function GridSizeSelector({ value, onChange }: Props) {
   return (
     <div className="mb-6">
-      <label className="block text-sm font-medium text-gray-300 mb-2 text-center">Grid Size</label>
+      <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Grid Size</label>
       <div className="flex justify-center gap-2">
         {GRID_SIZE_OPTIONS.map(({ value: optionValue, label }) => (
           <button
@@ -23,8 +23,8 @@ export function GridSizeSelector({ value, onChange }: Props) {
             onClick={() => onChange(optionValue)}
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
               value === optionValue
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30'
-                : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                ? 'bg-butterscotch text-ink border-2 border-ink'
+                : 'bg-paper text-ink-soft hover:bg-paper'
             }`}
           >
             {label}

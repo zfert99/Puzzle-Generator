@@ -45,13 +45,13 @@ export function UsernamePrompt() {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="e.g. sudoku_ace"
-          className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 px-3 py-2 rounded-lg bg-paper border border-ink-soft text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button type="submit" disabled={busy} className="btn-primary px-4">
           {busy ? '…' : 'Save'}
         </button>
       </form>
-      {error && <p className="text-red-500 text-xs mt-2 text-center">{error}</p>}
+      {error && <p className="text-cherry text-xs mt-2 text-center">{error}</p>}
     </div>
   );
 }

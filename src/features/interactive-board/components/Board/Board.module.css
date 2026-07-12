@@ -6,33 +6,19 @@
   border-top: 3px solid var(--grid-line-strong);
   border-left: 3px solid var(--grid-line-strong);
   touch-action: manipulation;
-  --grid-line: #cbd5e1;
-  --grid-line-strong: #0f172a;
-  --cell-bg: #ffffff;
-  --cell-given: #0f172a;
-  --cell-user: #4f46e5;
-  --cell-selected: #c7d2fe;
-  --cell-peer: #eef2ff;
-  --cell-same: #fde68a;
-  --cell-error-bg: #fee2e2;
-  --cell-error-fg: #dc2626;
-  --cell-candidate: #64748b;
-}
-
-@media (prefers-color-scheme: dark) {
-  .board {
-    --grid-line: #334155;
-    --grid-line-strong: #e2e8f0;
-    --cell-bg: #0b1220;
-    --cell-given: #f8fafc;
-    --cell-user: #a5b4fc;
-    --cell-selected: #3730a3;
-    --cell-peer: #1e1b4b;
-    --cell-same: #78350f;
-    --cell-error-bg: #7f1d1d;
-    --cell-error-fg: #fecaca;
-    --cell-candidate: #94a3b8;
-  }
+  /* Biscuit Lab — derived from the global theme tokens, so cells flip with
+     [data-theme] automatically (no separate dark block needed). */
+  --grid-line: color-mix(in srgb, var(--ink) 22%, transparent);
+  --grid-line-strong: var(--ink);
+  --cell-bg: var(--paper);
+  --cell-given: var(--ink);
+  --cell-user: var(--grape);
+  --cell-selected: color-mix(in srgb, var(--butterscotch) 50%, var(--paper));
+  --cell-peer: color-mix(in srgb, var(--butterscotch) 14%, var(--paper));
+  --cell-same: color-mix(in srgb, var(--grape) 18%, var(--paper));
+  --cell-error-bg: color-mix(in srgb, var(--cherry) 24%, var(--paper));
+  --cell-error-fg: var(--cherry);
+  --cell-candidate: var(--ink-soft);
 }
 
 .cell {
@@ -44,6 +30,7 @@
   border-bottom: 1px solid var(--grid-line);
   background: var(--cell-bg);
   color: var(--cell-user);
+  font-family: var(--font-mono);
   font-size: clamp(1rem, 6vw, 1.9rem);
   line-height: 1;
   cursor: pointer;
@@ -52,7 +39,7 @@
 }
 
 .cell:focus-visible {
-  box-shadow: inset 0 0 0 3px #6366f1;
+  box-shadow: inset 0 0 0 3px var(--grape);
 }
 
 /* Thick borders on box edges — driven by JS flags so they adapt to 4/6/9 grids. */
@@ -64,7 +51,7 @@
 .peer { background: var(--cell-peer); }
 .sameNumber { background: var(--cell-same); }
 .error { background: var(--cell-error-bg); color: var(--cell-error-fg); }
-.selectedRing { box-shadow: inset 0 0 0 3px #6366f1; }
+.selectedRing { box-shadow: inset 0 0 0 3px var(--grape); }
 
 .candidates {
   position: absolute;

@@ -21,20 +21,37 @@ bakes values at build time. The solution:
 @theme inline            -> --color-*/--radius-*/--shadow-chunky/--font-* = var(--token)
 ```
 
-## 2. Why the legacy tokens are still here
+## 2. `dark:` follows the toggle
 
-**Why:** `--background/--foreground/--accent/--border` (and `.glass-panel`, `.btn-primary`,
-`.input-field`) back the not-yet-restyled indigo/glass UI. They're kept — and now *also*
-flipped by `[data-theme]` (the old `prefers-color-scheme` block was folded in) — so the
-theme toggle works across the whole app *during* the migration. Each is removed in 5.2 once
-its surface is restyled.
+**Why:** `@custom-variant dark (&:where([data-theme="dark"], …))` overrides Tailwind's default
+`dark:` (which keys off the OS media query) to key off our `[data-theme]` attribute instead,
+so any remaining `dark:` utilities respond to the in-app switch. (New markup prefers semantic
+tokens like `bg-paper`/`text-ink` that flip on their own and need no `dark:` at all.)
 
-## 3. Signature utilities
+## 3. Shared component classes (5.2)
 
-**Why:** The **`.pressable`** class encodes the design system's core mechanic — a 3px ink
-border + a hard `4px 4px 0 0` offset shadow (no blur, GPU-cheap) that **collapses on
-`:active`** (the element translates into its own shadow). `shadow-chunky` is the same shadow
-as a token. Both respect `prefers-reduced-motion`.
+**Why:** Redefining the shared classes here restyles every panel/button/input **at once** —
+the class names are kept so existing markup cascades without per-file edits:
+
+- `.glass-panel` → a chunky card: `--paper-2` fill, 3px ink border, `--r-lg`, offset shadow.
+- `.btn-primary` (butterscotch) / `.btn-secondary` (grape) / `.btn-ghost` — all share the
+  **pressable** mechanic (border + offset shadow that collapses on `:active`); ghost is
+  fill-less.
+- `.input-field` → paper fill, 2px ink border, butterscotch focus ring.
+
+`body` is now paper/ink with the Manrope sans; `h1`/`h2` default to the Fredoka display face.
+
+## 4. Signature utility
+
+**Why:** `.pressable` / `shadow-chunky` encode the core mechanic — a 3px ink border + a hard
+`4px 4px 0 0` offset shadow (no blur, GPU-cheap) that **collapses on `:active`** (the element
+translates into its own shadow). Both respect `prefers-reduced-motion`.
+
+## 5. Board cells
+
+The board (`Board.module.css`) derives its cell colors from the same global tokens
+(`color-mix` with `--paper` for tints), so cells flip with `[data-theme]` — mono digits,
+ink givens, grape user entries, butterscotch selection, grape same-number, cherry errors.
 
 ## 4. Keyframes
 

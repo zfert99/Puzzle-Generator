@@ -109,7 +109,7 @@ export function LeaderboardView() {
             type="button"
             onClick={() => selectDifficulty(d)}
             className={`px-3 py-1.5 rounded-lg text-sm capitalize transition-all ${
-              difficulty === d ? 'bg-indigo-600 text-white' : 'bg-white/10 hover:bg-white/20'
+              difficulty === d ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
             }`}
           >
             {d}
@@ -118,7 +118,7 @@ export function LeaderboardView() {
       </div>
 
       {session && (streak !== null || me) && (
-        <p className="text-center text-sm text-gray-400 mb-3">
+        <p className="text-center text-sm text-ink-soft mb-3">
           {streak !== null ? `🔥 ${streak}-day streak` : ''}
           {me ? `${streak !== null ? ' · ' : ''}Your rank: #${me.rank} (${formatMs(me.timeMs)})` : ''}
         </p>
@@ -126,13 +126,13 @@ export function LeaderboardView() {
 
       {session && bests.length > 0 && (
         <div className="mb-4 text-center">
-          <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Your personal bests</p>
+          <p className="text-xs uppercase tracking-wide text-ink-soft mb-1">Your personal bests</p>
           <div className="flex flex-wrap justify-center gap-2">
             {DAILY_DIFFICULTIES.filter((d) => bests.some((b) => b.difficulty === d)).map((d) => {
               const best = bests.find((b) => b.difficulty === d)!;
               return (
-                <span key={d} className="px-2 py-1 rounded-md bg-white/5 text-xs">
-                  <span className="capitalize text-gray-400">{d}</span>{' '}
+                <span key={d} className="px-2 py-1 rounded-md bg-paper text-xs">
+                  <span className="capitalize text-ink-soft">{d}</span>{' '}
                   <span className="tabular-nums font-medium">{formatMs(best.bestMs)}</span>
                 </span>
               );
@@ -142,15 +142,15 @@ export function LeaderboardView() {
       )}
 
       {loading ? (
-        <p className="text-center text-gray-400 py-8">Loading…</p>
+        <p className="text-center text-ink-soft py-8">Loading…</p>
       ) : error ? (
-        <p className="text-center text-red-500 py-8">{error}</p>
+        <p className="text-center text-cherry py-8">{error}</p>
       ) : entries.length === 0 ? (
-        <p className="text-center text-gray-400 py-8">No solves yet today — be the first!</p>
+        <p className="text-center text-ink-soft py-8">No solves yet today — be the first!</p>
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-400 text-left">
+            <tr className="text-ink-soft text-left">
               <th className="py-2 w-10">#</th>
               <th className="py-2">Player</th>
               <th className="py-2 text-right">Time</th>
@@ -162,12 +162,12 @@ export function LeaderboardView() {
               return (
                 <tr
                   key={e.userId}
-                  className={`border-t border-white/5 ${isMe ? 'bg-indigo-500/10 font-semibold' : ''}`}
+                  className={`border-t border-white/5 ${isMe ? 'bg-butterscotch/25 font-semibold' : ''}`}
                 >
                   <td className="py-2">{e.rank}</td>
                   <td className="py-2">
                     {e.name}
-                    {isMe && <span className="text-indigo-400"> (you)</span>}
+                    {isMe && <span className="text-grape"> (you)</span>}
                   </td>
                   <td className="py-2 text-right tabular-nums">{formatMs(e.timeMs)}</td>
                 </tr>

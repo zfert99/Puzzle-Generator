@@ -14,14 +14,14 @@ export default function LeaderboardPage() {
       <div className="w-full max-w-lg flex justify-between items-center mb-4">
         <Link
           href="/daily"
-          className="text-sm text-indigo-400 hover:underline inline-flex items-center gap-1"
+          className="text-sm text-grape hover:underline inline-flex items-center gap-1"
         >
           ← Back to the daily
         </Link>
         <AccountBadge />
       </div>
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
+        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">
           Daily Leaderboard
         </h1>
       </div>
