@@ -38,13 +38,18 @@ export default function Home() {
       */}
       <PuzzleForm />
 
-      {/* Cross-link to the interactive play mode (Phase 3). */}
-      <p className="mt-8 text-sm text-gray-600 dark:text-gray-400">
-        Prefer to solve in your browser?{' '}
-        <Link href="/play" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-          Play online →
+      {/* Cross-links to the interactive modes (Phase 3 play, Phase 4 daily + leaderboard). */}
+      <nav className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
+        <Link href="/daily" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          🗓️ Daily puzzle
         </Link>
-      </p>
+        <Link href="/leaderboard" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          🏆 Leaderboard
+        </Link>
+        <Link href="/play" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          Free play →
+        </Link>
+      </nav>
 
       {/* Simple, unobtrusive footer pushed to the bottom */}
       <footer className="mt-20 text-sm text-gray-500">

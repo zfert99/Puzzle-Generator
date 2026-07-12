@@ -17,8 +17,16 @@ export default function PlayPage() {
           Play Sudoku
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
+          <Link href="/daily" className="hover:underline">
+            🗓️ Daily
+          </Link>
+          {' · '}
+          <Link href="/leaderboard" className="hover:underline">
+            🏆 Leaderboard
+          </Link>
+          {' · '}
           <Link href="/" className="hover:underline">
-            ← Back to PDF generator
+            PDF generator
           </Link>
         </p>
       </div>

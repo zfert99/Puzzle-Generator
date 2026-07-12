@@ -49,6 +49,16 @@ This document explains the core logic behind our `page.tsx` file, which serves a
 
 ---
 
+## 4b. Cross-mode Navigation
+
+**Goal:** Make the interactive modes discoverable from the front door — the home page is the PDF generator, but the Daily puzzle, Leaderboard, and free Play modes should be reachable without typing a URL.
+
+**Steps:**
+
+1. Below the form, render a small `<nav>` with links to `/daily` ("🗓️ Daily puzzle"), `/leaderboard` ("🏆 Leaderboard"), and `/play` ("Free play"), styled to match (indigo, hover underline).
+
+---
+
 ## 5. The Footer
 
 **Goal:** Add a simple copyright footer at the bottom of the page.
