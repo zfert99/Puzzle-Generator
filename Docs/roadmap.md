@@ -474,7 +474,7 @@ User-generated puzzles with a rating system — players can create, share, and r
 
 ## Key Decisions
 
-> These were open questions earlier in the roadmap; all are now resolved.
+These were open questions earlier in the roadmap; all are now resolved.
 
 > [!NOTE]
 > **Database provider:** ✅ Decided — **Neon Postgres**, added via the Vercel Marketplace integration, with **Drizzle** as the ORM and **better-auth** for auth (Phase 4). (Vercel's first-party "Vercel Postgres" was retired and migrated to Neon in Dec 2024.)
