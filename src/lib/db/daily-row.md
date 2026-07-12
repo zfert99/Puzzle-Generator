@@ -7,8 +7,8 @@ reuse them and so they are trivially unit-testable at the boundary.
 ## `DAILY_DIFFICULTIES`
 
 **Why:** The canonical list of difficulties a daily is generated for — `easy`, `medium`,
-`hard`, `expert`. `extreme` is excluded: a daily should be beatable by a broad audience in
-one sitting (Phase 4 decision). Exported so the seed, cron, and UI all agree on the set.
+`hard`, `expert`, `extreme` (the full range). Exported so the seed, cron, and UI all agree on
+the set, and the array order is the order shown in the UI.
 
 `isDailyDifficulty(value)` is the narrowing guard routes use to validate the `difficulty`
 input (query or body) against this set — shared so every daily/solve/leaderboard route

@@ -36,6 +36,7 @@ export const MIN_SOLVE_MS: Record<DailyDifficulty, number> = {
   medium: 20_000,
   hard: 25_000,
   expert: 30_000,
+  extreme: 45_000,
 };
 
 /** True if a solve time is implausibly fast for the difficulty (i.e. below the floor). */

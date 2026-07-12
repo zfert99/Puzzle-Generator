@@ -22,7 +22,7 @@
 
 **Confirmed stack:** Neon Postgres · Drizzle ORM · better-auth (passkeys-first) · Vercel
 Cron · Upstash (4.4). **Daily rules:** anonymous play, 00:00 UTC rollover, difficulties
-easy/medium/hard/expert (extreme excluded).
+easy/medium/hard/expert/extreme.
 
 ---
 

@@ -23,6 +23,6 @@ The floor only needs to exclude the impossible, not police fast solvers, so it i
 conservatively below real human records and rises with difficulty.
 
 ```text
-MIN_SOLVE_MS: easy 15s · medium 20s · hard 25s · expert 30s
+MIN_SOLVE_MS: easy 15s · medium 20s · hard 25s · expert 30s · extreme 45s
 isImplausiblyFast(d, t) -> t < MIN_SOLVE_MS[d]
 ```

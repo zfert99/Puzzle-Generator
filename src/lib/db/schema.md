@@ -24,7 +24,7 @@ duplicating.
 ```text
 id          uuid, generated
 date        the UTC calendar day this puzzle belongs to
-difficulty  easy | medium | hard | expert   (extreme is excluded from dailies)
+difficulty  easy | medium | hard | expert | extreme
 grid        the unsolved puzzle (JSON) sent to clients
 solution    the solved grid (JSON) — SERVER-ONLY, never sent for an unsolved daily
 clue_count  denormalized count of givens, for cheap display/sorting

@@ -288,7 +288,7 @@ CREATE TABLE solve_attempts (
 #### 4.2 — Daily Puzzle Cron ✅ Done
 
 - **Vercel Cron** ([vercel.json](../vercel.json)) hits [`/api/cron/daily`](../src/app/api/cron/daily/route.ts) at 00:00 UTC, guarded by a constant-time `CRON_SECRET` check (fails closed if unset).
-- Idempotent generation service ([dailies.service.ts](../src/features/dailies/dailies.service.ts)) — one puzzle per daily difficulty (Easy/Medium/Hard/Expert; Extreme excluded), upserted on `UNIQUE(date, difficulty)`. The seed script now shares this service so it can't drift.
+- Idempotent generation service ([dailies.service.ts](../src/features/dailies/dailies.service.ts)) — one puzzle per daily difficulty (Easy/Medium/Hard/Expert/Extreme), upserted on `UNIQUE(date, difficulty)`. The seed script now shares this service so it can't drift.
 - [`GET /api/daily`](../src/app/api/daily/route.ts) serves today's shared board; [`/daily`](../src/app/daily/page.tsx) plays it on the reused Phase 3 board ([DailyExperience](../src/features/dailies/components/DailyExperience.tsx)). Anonymous & unranked for now.
 - All users worldwide get the exact same boards.
 

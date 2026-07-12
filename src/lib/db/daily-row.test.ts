@@ -53,8 +53,7 @@ describe('toDailyPuzzleRow', () => {
     expect(row.clueCount).toBeLessThan(countClues(puzzle.solution));
   });
 
-  it('excludes extreme from the daily difficulty set', () => {
-    expect(DAILY_DIFFICULTIES).not.toContain('extreme');
-    expect([...DAILY_DIFFICULTIES]).toEqual(['easy', 'medium', 'hard', 'expert']);
+  it('includes the full difficulty range for dailies', () => {
+    expect([...DAILY_DIFFICULTIES]).toEqual(['easy', 'medium', 'hard', 'expert', 'extreme']);
   });
 });

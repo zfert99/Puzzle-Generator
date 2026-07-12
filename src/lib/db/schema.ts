@@ -42,7 +42,7 @@ export const dailyPuzzles = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     /** Calendar day this puzzle belongs to, at 00:00 UTC rollover. */
     date: date('date').notNull(),
-    /** easy | medium | hard | expert — 'extreme' is excluded from dailies for now. */
+    /** easy | medium | hard | expert | extreme. */
     difficulty: text('difficulty').notNull(),
     /** Unsolved puzzle sent to the client. */
     grid: jsonb('grid').$type<Grid>().notNull(),

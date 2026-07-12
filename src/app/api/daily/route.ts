@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/daily?difficulty=easy|medium|hard|expert
+ * GET /api/daily?difficulty=easy|medium|hard|expert|extreme
  *
  * Returns today's (00:00-UTC) shared daily puzzle for the requested difficulty, shaped
  * so the Phase 3 board can consume it directly via `startNewGame`.
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     if (!isDailyDifficulty(difficulty)) {
       return NextResponse.json(
-        { error: 'Invalid or missing difficulty: must be easy, medium, hard, or expert' },
+        { error: 'Invalid or missing difficulty: must be easy, medium, hard, expert, or extreme' },
         { status: 400 },
       );
     }

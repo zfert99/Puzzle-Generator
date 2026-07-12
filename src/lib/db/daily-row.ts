@@ -2,10 +2,10 @@ import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { Grid, NewDailyPuzzle } from './schema';
 
 /**
- * Difficulties eligible for a daily puzzle. 'extreme' is deliberately excluded — a
- * daily should be beatable by a broad audience in one sitting (Phase 4 decision).
+ * Difficulties eligible for a daily puzzle — the full range including 'extreme'. The cron
+ * generates one puzzle per entry each day; the order here is the order shown in the UI.
  */
-export const DAILY_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert'] as const;
+export const DAILY_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'] as const;
 export type DailyDifficulty = (typeof DAILY_DIFFICULTIES)[number];
 
 /** Narrowing guard for route input — is this string one of the daily difficulties? */
