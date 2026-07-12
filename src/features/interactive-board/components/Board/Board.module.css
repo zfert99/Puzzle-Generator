@@ -47,11 +47,31 @@
 .thickBottom { border-bottom: 3px solid var(--grid-line-strong); }
 
 .given { font-weight: 700; color: var(--cell-given); }
-.selected { background: var(--cell-selected); }
+/* Selected cell pops on selection (React adds .selected → the animation plays once). */
+.selected { background: var(--cell-selected); animation: cell-pop 140ms ease-out; position: relative; z-index: 1; }
 .peer { background: var(--cell-peer); }
 .sameNumber { background: var(--cell-same); }
-.error { background: var(--cell-error-bg); color: var(--cell-error-fg); }
+/* A wrong entry shakes once (cell-local — never a viewport shake) atop the persistent tint. */
+.error { background: var(--cell-error-bg); color: var(--cell-error-fg); animation: cell-shake 200ms ease-in-out; }
 .selectedRing { box-shadow: inset 0 0 0 3px var(--grape); }
+
+@keyframes cell-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cell-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selected, .error { animation: none; }
+}
 
 .candidates {
   position: absolute;

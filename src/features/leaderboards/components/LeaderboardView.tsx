@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { DAILY_DIFFICULTIES, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useSession } from '@/features/auth/auth-client';
+import { useCountUp } from '@/features/juice/useCountUp';
 
 interface Entry {
   rank: number;
@@ -37,6 +38,7 @@ export function LeaderboardView() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
+  const shownStreak = useCountUp(streak); // rolls up from 0 when the streak loads
   const [bests, setBests] = useState<{ difficulty: string; bestMs: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -119,7 +121,7 @@ export function LeaderboardView() {
 
       {session && (streak !== null || me) && (
         <p className="text-center text-sm text-ink-soft mb-3">
-          {streak !== null ? `🔥 ${streak}-day streak` : ''}
+          {streak !== null ? `🔥 ${shownStreak ?? streak}-day streak` : ''}
           {me ? `${streak !== null ? ' · ' : ''}Your rank: #${me.rank} (${formatMs(me.timeMs)})` : ''}
         </p>
       )}

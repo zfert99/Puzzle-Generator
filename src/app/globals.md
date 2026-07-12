@@ -56,6 +56,9 @@ translates into its own shadow). Both respect `prefers-reduced-motion`.
 The board (`Board.module.css`) derives its cell colors from the same global tokens
 (`color-mix` with `--paper` for tints), so cells flip with `[data-theme]` — mono digits,
 ink givens, grape user entries, butterscotch selection, grape same-number, cherry errors.
+It also carries the 5.3b cell micro-interactions: `.selected` pops (`cell-pop`) when the
+selection lands, and `.error` shakes once (`cell-shake`, cell-local — never a viewport
+shake) atop its persistent tint. Both are disabled under `prefers-reduced-motion`.
 
 ## 4. Keyframes
 
