@@ -10,8 +10,11 @@ timer, mistakes) is reused rather than reimplemented.
 `/play`. If `/daily` gated its screens on `store.status`, a game left in progress on
 `/play` would flash straight onto the daily board on load. Keeping a local
 `'select' | 'playing'` phase means the player always explicitly picks a difficulty first;
-only after a successful fetch does `startNewGame` overwrite the board and switch to
-`'playing'`. The persisted store still powers the actual gameplay once started.
+only after a successful fetch does `startNewGame(puzzle, 'daily')` overwrite the board and
+switch to `'playing'`. The persisted store still powers the actual gameplay once started.
+Passing the `'daily'` mode tags the game as owned by this surface — the mirror of the local
+phase gate — so the completed daily can't leak the *other* way onto `/play` (see
+`useBoardStore.md`).
 
 ## Why fetch, not generate
 

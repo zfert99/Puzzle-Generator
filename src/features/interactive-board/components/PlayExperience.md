@@ -15,11 +15,17 @@ Local state: selected gridSize + difficulty for the config screen.
 
 Timer effect: while status === 'playing', run one interval that calls tick() each second.
 
-IF store status === 'configuring':
+IF store status === 'configuring' OR mode !== 'play':
   Render the config screen — reuse <GridSizeSelector>, plus difficulty buttons
   (Expert/Extreme disabled for mini grids), and a Play button.
-  On Play: fetchPuzzle({ difficulty, gridSize }); if it succeeds, startNewGame(puzzle).
+  On Play: fetchPuzzle({ difficulty, gridSize }); if it succeeds, startNewGame(puzzle)
+  (default mode 'play', so free play owns the new game).
   Show a loading label while generating and any error message.
+
+  The `mode !== 'play'` half is why a completed daily never leaks here: the store is
+  shared with /daily, so a persisted daily (mode === 'daily', status === 'playing')
+  would otherwise render on /play. Gating on mode keeps "new game" in context — you
+  land on the free-play config, and the daily stays on /daily.
 
 ELSE (playing / paused / solved):
   Render a "← New game" button (always available) -> configure(), so the player can
