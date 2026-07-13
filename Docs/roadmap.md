@@ -6,19 +6,30 @@
 
 ---
 
-## Where We Are Today (v1.0.0)
+## Where We Are Today (v3.0.0)
 
 ```mermaid
 graph LR
-    A["User (Browser)"] -->|"Select difficulties & counts"| B["Next.js Frontend"]
-    B -->|"POST /api/generate"| C["API Route"]
-    C -->|"Generate grids"| D["Sudoku Engine"]
+    A["User (Browser)"] -->|"Play / Daily / Generate"| B["Next.js Frontend<br/>(Biscuit Lab UI)"]
+    B -->|"POST /api/generate"| C["PDF Pipeline"]
     C -->|"Render PDF"| E["PDFKit"]
-    D -->|"Validate logic"| F["HumanSolver"]
-    E -->|"Stream .pdf"| A
+    B -->|"Play grid"| G["Interactive Board<br/>(Zustand + zundo)"]
+    B -->|"GET /api/daily"| H["Daily Puzzles"]
+    H --> DB[("Neon Postgres<br/>Drizzle ORM")]
+    B -->|"Sign in · solve · rank"| I["Auth + Leaderboards<br/>(better-auth)"]
+    I --> DB
+    K["Vercel Cron 00:00 UTC"] -->|"Generate dailies"| DB
+    D["Sudoku Engine + HumanSolver"] --> C
+    D --> G
+    D --> H
 ```
 
-The app is a **stateless PDF pipeline**. The user picks puzzle counts, the server generates grids, validates them with the `HumanSolver`, renders a PDF, and immediately forgets the interaction. There is no database, no user accounts, and no interactive play.
+The app is now a **stateful, interactive puzzle platform** deployed at
+[puzzles.biscuitlab.net](https://puzzles.biscuitlab.net). It still generates PDF puzzle
+books, but it also offers an in-browser board (`/play`), a shared daily puzzle per
+difficulty (`/daily`), user accounts (passkeys-first), anti-cheat leaderboards, and
+streaks — all backed by Neon Postgres and dressed in the **Biscuit Lab** design system.
+The stateless PDF generator is now one entry on the puzzle hub rather than the whole app.
 
 ### What's Built
 
@@ -27,11 +38,15 @@ The app is a **stateless PDF pipeline**. The user picks puzzle counts, the serve
 | **Engine** | Bitmask + MRV backtracking generator + unique-solution validator | ✅ Shipped |
 | **Engine** | `HumanSolver` — Naked/Hidden Singles & Pairs, Pointing Pairs, X-Wing, Swordfish, Y-Wing, XYZ-Wing, W-Wing, ALS-XZ, AICs (bitmask candidates; Basic ~0.11ms / Extreme ~10ms) | ✅ Shipped |
 | **API** | `/api/generate` — accepts difficulty counts (including extreme), returns PDF stream | ✅ Shipped |
-| **Frontend** | `PuzzleForm` — glassmorphism UI with difficulty selectors | ✅ Shipped |
+| **Frontend** | `PuzzleForm` (at `/generate`) — difficulty selectors, Biscuit Lab styling | ✅ Shipped |
 | **Frontend** | Interactive board at `/play` — Zustand+zundo store, playable grid, pencil marks, undo/redo, hints, timer, mistakes, persistence | ✅ Shipped |
 | **API** | `/api/puzzle` — on-demand single-puzzle JSON for the interactive board | ✅ Shipped |
 | **PDF** | `pdf.service.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
-| **Testing** | Vitest unit suite (58 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
+| **Backend** | Neon Postgres + Drizzle ORM, Vercel Cron daily generation, one shared puzzle/difficulty/day | ✅ Shipped |
+| **Auth** | better-auth — passkeys-first, email/password (Argon2id), Google OAuth, DB sessions, BOLA-scoped access | ✅ Shipped |
+| **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (server-timed) | ✅ Shipped |
+| **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
+| **Testing** | Vitest unit suite (124 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
 | **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) | ✅ Shipped |
 
 > **Hardening pass (landed):** a full audit against `AGENTS.md` plus remediation —
@@ -298,13 +313,13 @@ CREATE TABLE solve_attempts (
 > adds ranked solves, the solution stops being served and completion is validated
 > server-side against the stored solution.
 
-#### 4.3 — User Authentication & Session Security 🚧 Code-complete
+#### 4.3 — User Authentication & Session Security ✅ Done
 
 - **better-auth** (not Auth.js — its passkey provider is production-ready; Auth.js's is experimental) with the **Drizzle adapter** and **database sessions**. Config in [auth.ts](../src/features/auth/auth.ts); catch-all handler at [`/api/auth/[...all]`](../src/app/api/auth/[...all]/route.ts).
 - **Passkeys-first** ([@better-auth/passkey](../src/features/auth/auth.ts)); **email/password** bootstrap hashed with **Argon2id** ([password.ts](../src/features/auth/password.ts), OWASP m=19456/t=2/p=1); **Google OAuth** registered conditionally on env creds.
 - better-auth's identity tables ([auth-schema.ts](../src/lib/db/auth-schema.ts)) replace the 4.1 `users` table; `solve_attempts.user_id` repointed uuid→text (migration `0001_auth_tables`). Session accessor: [session.ts](../src/features/auth/session.ts).
 - **Cookies:** `HttpOnly`/`Secure`/`SameSite=Lax` (better-auth defaults); no tokens in web storage.
-- **Pending:** apply `0001` to Neon (destructive: drops the empty `users`/`solve_attempts`), then live endpoint checks; `GOOGLE_CLIENT_ID`/`SECRET` for OAuth.
+- **Deployed:** `0001` applied to Neon, `GOOGLE_CLIENT_ID`/`SECRET` set in production, and sign-in / passkey / OAuth flows verified live on `puzzles.biscuitlab.net`.
 
 > [!IMPORTANT]
 > Leaderboard integrity requires server-side time validation. The client sends a start timestamp and the server records completion — never trust a client-reported solve time.
@@ -334,7 +349,7 @@ CREATE TABLE solve_attempts (
 > **Estimated effort:** Medium–Large (1.5–2 weeks)
 > **Prerequisite:** Phase 4 (all app surfaces exist to restyle)
 
-Replace the current indigo/glassmorphism theme with the **[Biscuit Lab design system](design/design-system.md)** — a warm biscuit/butterscotch palette with a bold grape "lab" accent, chunky Flash-portal-era UI (thick outlines, hard offset shadows, squash-and-stretch), and a defined "juice" interaction language, all on an accessible (WCAG 2.2 AA) Next.js + Tailwind foundation. Grounded in [web-design-and-game-juice.md](research/web-design-and-game-juice.md); see the [visual mockup](design/design-system-mockup.html).
+Replaced the original indigo/glassmorphism theme with the **[Biscuit Lab design system](design/design-system.md)** — a warm biscuit/butterscotch palette with a bold grape "lab" accent, chunky Flash-portal-era UI (thick outlines, hard offset shadows, squash-and-stretch), and a defined "juice" interaction language, all on an accessible (WCAG 2.2 AA) Next.js + Tailwind foundation. Grounded in [web-design-and-game-juice.md](research/web-design-and-game-juice.md); see the [visual mockup](design/design-system-mockup.html).
 
 ### Phase 5 Deliverables
 
@@ -453,7 +468,7 @@ gantt
 
 ```mermaid
 graph TD
-    V1["v1.0.0 — Current State<br/>(PDF Generator + HumanSolver)"]
+    V1["v1.0.0 — Starting Point<br/>(PDF Generator + HumanSolver)"]
 
     P1["Phase 1<br/>Extreme Difficulty 💀🔥<br/><i>W-Wing, ALS, AICs</i>"]
     P2["Phase 2<br/>Mini Puzzles<br/><i>4×4, 6×6 grids</i>"]
@@ -481,12 +496,15 @@ graph TD
 
 ---
 
-## Up Next (Post-Phase 4)
+## Up Next (Post-Phase 5)
 
-With Phase 4 shipped, the near-term backlog is **Killer Sudoku** (a brand-new puzzle type) plus the three features deferred from Phase 4 — **multiplayer speed races**, **community puzzle sharing**, and a **mobile app**. Research is being gathered ahead of implementation:
+With Phases 4 and 5 shipped, the next defined phase is **Phase 6 — Strategy Courses** (see
+above). Beyond it, the backlog is **Killer Sudoku** (a brand-new puzzle type) plus the three
+features deferred from Phase 4 — **multiplayer speed races**, **community puzzle sharing**, and
+a **mobile app**. Research is being gathered ahead of implementation:
 
 - **Killer Sudoku engine** → [killer-sudoku.md](research/killer-sudoku.md) (rules, cage generation, uniqueness checking, difficulty grading) — research complete.
-- **App design & game-feel ("juice")** → research: [web-design-and-game-juice.md](research/web-design-and-game-juice.md) (modern web-design craft + Flash-era feedback principles). Its concrete output is the **[design system](design/design-system.md)** ("Biscuit Lab" — biscuit/butterscotch/grape palette, chunky Flash-portal UI, a defined juice interaction language) with a [visual mockup](design/design-system-mockup.html). This is a **proposed** identity — not yet implemented (the live site is still the indigo/glass theme) — and guides the UI polish of upcoming work.
+- **App design & game-feel ("juice")** → research: [web-design-and-game-juice.md](research/web-design-and-game-juice.md) (modern web-design craft + Flash-era feedback principles). Its concrete output is the **[design system](design/design-system.md)** ("Biscuit Lab" — biscuit/butterscotch/grape palette, chunky Flash-portal UI, a defined juice interaction language) with a [visual mockup](design/design-system-mockup.html). This identity **shipped in Phase 5** — it is the live theme at `puzzles.biscuitlab.net` and now guides the UI of all upcoming work.
 
 The subsections below capture each item; they were previously framed as "beyond Phase 5" north stars and are now queued.
 
