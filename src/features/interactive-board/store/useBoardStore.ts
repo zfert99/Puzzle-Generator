@@ -7,6 +7,13 @@ import { computePeers, toggleBit } from '../board-utils';
 
 export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
 
+/**
+ * Which surface started the current game. The board store is shared between `/play` and
+ * `/daily`, so each surface renders a game only when it owns it — otherwise a persisted
+ * daily would leak onto `/play` (and vice versa). "New game" then always stays in context.
+ */
+export type BoardMode = 'play' | 'daily';
+
 export interface BoardState {
   // Puzzle data
   gridSize: GridSize;
@@ -23,11 +30,12 @@ export interface BoardState {
   pencilMode: boolean;
   realTimeErrors: boolean;
   status: GameStatus;
+  mode: BoardMode;
   elapsedTime: number;
   mistakes: number;
 
   // Actions
-  startNewGame: (puzzle: SudokuPuzzle) => void;
+  startNewGame: (puzzle: SudokuPuzzle, mode?: BoardMode) => void;
   configure: () => void;
   selectCell: (r: number, c: number) => void;
   inputDigit: (digit: number) => void;
@@ -73,10 +81,11 @@ export const useBoardStore = create<BoardState>()(
       pencilMode: false,
       realTimeErrors: false,
       status: 'configuring',
+      mode: 'play',
       elapsedTime: 0,
       mistakes: 0,
 
-      startNewGame: (puzzle: SudokuPuzzle) => {
+      startNewGame: (puzzle: SudokuPuzzle, mode: BoardMode = 'play') => {
         const size = puzzle.gridSize as GridSize;
         const config = getGridConfig(size);
         set({
@@ -91,6 +100,7 @@ export const useBoardStore = create<BoardState>()(
           selectedCell: null,
           pencilMode: false,
           status: 'playing',
+          mode,
           elapsedTime: 0,
           mistakes: 0,
         });
@@ -209,7 +219,7 @@ export const useBoardStore = create<BoardState>()(
         // Actions are dropped by JSON serialization and re-supplied by the creator;
         // peers are recomputed on rehydration rather than stored.
         name: 'sudoku-board',
-        version: 1,
+        version: 2, // bumped: added `mode`; discards pre-mode persisted games on update
         partialize: (state) => ({
           gridSize: state.gridSize,
           config: state.config,
@@ -222,6 +232,7 @@ export const useBoardStore = create<BoardState>()(
           pencilMode: state.pencilMode,
           realTimeErrors: state.realTimeErrors,
           status: state.status,
+          mode: state.mode,
           elapsedTime: state.elapsedTime,
           mistakes: state.mistakes,
         }),

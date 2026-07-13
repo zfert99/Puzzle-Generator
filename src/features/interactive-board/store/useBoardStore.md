@@ -17,16 +17,30 @@ The interactive board's single source of truth — a Zustand store wrapped in th
 
 `grid`, `candidates` (bitmask/cell), `givens` (immutable clues), `solution`, `peers`
 (precomputed), plus session state `difficulty`, `selectedCell`, `pencilMode`,
-`realTimeErrors`, `status` (`configuring | playing | paused | solved`), `elapsedTime`,
-and `mistakes` (count of wrong placements).
+`realTimeErrors`, `status` (`configuring | playing | paused | solved`), `mode`
+(`play | daily`), `elapsedTime`, and `mistakes` (count of wrong placements).
+
+### Why `mode`
+
+The store is shared between `/play` and `/daily`. Persisting only `status` isn't enough
+to keep the two surfaces separate: a persisted `status === 'playing'` daily would render
+on `/play` (whose config gate keyed on `status` alone). `mode` records **which surface
+owns the current game**, set by `startNewGame(puzzle, mode)` (defaults to `'play'`).
+`PlayExperience` shows its config screen unless `status !== 'configuring' && mode === 'play'`,
+so a daily never leaks onto free play — and "new game" always stays in the context you
+came from. `DailyExperience` already gates on a local `phase`, so a `/play` game can't
+leak the other way.
 
 ## Persistence
 
 The store is wrapped in Zustand's `persist` middleware (key `sudoku-board`,
 localStorage) so a refresh resumes the in-progress game. `partialize` saves the game
 data (grid, candidates, givens, solution, difficulty, status, timer, mistakes, …) but
-not `peers`, which are recomputed from `config` in `onRehydrateStorage`. Actions are
-dropped by JSON serialization and re-supplied by the store creator. `persist` sits
+not `peers`, which are recomputed from `config` in `onRehydrateStorage`. `mode` is
+persisted too, so a refresh keeps a daily contained to `/daily`. The store `version` is
+`2` — bumped when `mode` was added, which discards any pre-`mode` persisted game on
+update (a clean reset rather than a half-migrated board). Actions are dropped by JSON
+serialization and re-supplied by the store creator. `persist` sits
 *inside* `temporal`, so undo/redo still works and `useBoardStore.temporal` is intact.
 Because the persisted state only exists on the client, `PlayExperience` gates its
 first render on a mounted check to avoid an SSR/hydration mismatch.
@@ -34,9 +48,10 @@ first render on a mounted check to avoid an SSR/hydration mismatch.
 ## Key actions
 
 ```text
-startNewGame(puzzle):
+startNewGame(puzzle, mode='play'):
   load grid/solution; mark givens (cells that start non-zero); compute peers;
-  status = playing; reset timer/selection; CLEAR undo history.
+  status = playing; set mode (which surface owns this game); reset timer/selection;
+  CLEAR undo history.
 
 configure(): status = configuring (return to the new-game screen).
 

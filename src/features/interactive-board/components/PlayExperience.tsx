@@ -43,7 +43,7 @@ export default function PlayExperience() {
   const [viewingSolved, setViewingSolved] = useState(false);
 
   const { loading, error, fetchPuzzle } = usePuzzle();
-  const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
+  const { status, mode } = useBoardStore(useShallow((s) => ({ status: s.status, mode: s.mode })));
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const configure = useBoardStore((s) => s.configure);
   const tick = useBoardStore((s) => s.tick);
@@ -81,7 +81,9 @@ export default function PlayExperience() {
   }
 
   // ---- Config screen ----
-  if (status === 'configuring') {
+  // Show it when configuring OR when the persisted game belongs to the daily (mode !== 'play')
+  // — a daily must never leak onto /play; free play always starts fresh here.
+  if (status === 'configuring' || mode !== 'play') {
     return (
       <div className="glass-panel p-8 max-w-md w-full mx-auto">
         <h2 className="text-2xl font-semibold mb-6 text-center">New Game</h2>

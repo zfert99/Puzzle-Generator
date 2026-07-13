@@ -133,7 +133,7 @@ export default function DailyExperience() {
     setDailyDate(puzzle.date);
     submittedRef.current = false;
     setSubmit({ status: 'idle' });
-    startNewGame(puzzle);
+    startNewGame(puzzle, 'daily');
     setPhase('playing');
 
     // Record the server-side start time so the solve can be timed by the server. Called
