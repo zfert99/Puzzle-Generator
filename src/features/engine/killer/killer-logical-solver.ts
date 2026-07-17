@@ -21,6 +21,8 @@ import {
   applyHiddenPair,
   applyPointingPairs,
 } from '../strategies/basic';
+import { applyXWing, applyYWing, applySwordfish, applyXYZWing } from '../strategies/advanced';
+import { applyWWing, applyALSXZ, applyAIC } from '../strategies/extreme';
 import { candidateMaskFor, guaranteedMaskFor } from './cage-combinations';
 import type { Cage } from './killer-types';
 
@@ -324,7 +326,16 @@ export class KillerLogicalSolver {
       if (this.applyRuleOf45Regions()) { this.note(3); changed = true; continue; }
       if (applyPointingPairs(this.hs)) { this.note(3); changed = true; continue; }
 
-      // Higher tiers land here as they're built.
+      // ---- Tier 4 (classic advanced + extreme, 9×9 only) ----
+      if (this.size === 9) {
+        if (applyXWing(this.hs)) { this.note(4); changed = true; continue; }
+        if (applySwordfish(this.hs)) { this.note(4); changed = true; continue; }
+        if (applyYWing(this.hs)) { this.note(4); changed = true; continue; }
+        if (applyXYZWing(this.hs)) { this.note(4); changed = true; continue; }
+        if (applyWWing(this.hs)) { this.note(4); changed = true; continue; }
+        if (applyALSXZ(this.hs)) { this.note(4); changed = true; continue; }
+        if (applyAIC(this.hs)) { this.note(4); changed = true; continue; }
+      }
     }
     return { solved: this.hs.isSolved(), hardestTier: this.hardestTier };
   }

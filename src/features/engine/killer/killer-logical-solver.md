@@ -18,7 +18,7 @@ gymnastics, no `extends`.
 
 Techniques are added tier by tier so each can be **verified sound before the next is layered
 on** — an unsound step is worse than a missing one (it corrupts the grid and mis-grades). This
-file currently implements **Tiers 1–3**.
+file implements the full ladder, **Tiers 1–4**.
 
 ### Tier 1
 
@@ -50,6 +50,13 @@ file currently implements **Tiers 1–3**.
   multi-house innies and all outies are Tier 3. Sound — pure arithmetic over known house totals.
 - **Classic pointing pairs** (box-line reduction), via `HumanSolver`.
 
+### Tier 4
+
+- **Classic advanced + extreme strategies** — X-Wing, Swordfish, Y-Wing, XYZ-Wing, then W-Wing,
+  ALS-XZ, AIC, via `HumanSolver` (9×9 only, mirroring its own gating). Once cage arithmetic has
+  seeded the candidate grid, these operate over it unchanged — the Phase 1 engine reused wholesale.
+  Sound: they only ever eliminate candidates / place forced digits on a valid candidate grid.
+
 ## Soundness, and a bug it caught
 
 The non-negotiable property: on a *unique* puzzle, every forced digit IS the solution's digit,
@@ -67,19 +74,18 @@ Rule of 45 is only sound on genuine `size`-cell houses.
 
 Cumulative reach, measured over generated puzzles by cage size:
 
-| maxSize | Tier 1 | + Tier 2 | + Tier 3 |
-|---|---|---|---|
-| 2 | ~100% | ~100% | ~100% |
-| 3 | ~72% | ~78% | ~86% |
-| 4 | ~8% | ~15% | ~18% |
+| maxSize | Tier 1 | + Tier 2 | + Tier 3 | + Tier 4 |
+|---|---|---|---|---|
+| 2 | ~100% | ~100% | ~100% | ~100% |
+| 3 | ~72% | ~78% | ~86% | ~88% |
+| 4 | ~8% | ~15% | ~18% | ~21% |
 
 This is exactly the difficulty gradient we grade by: small-cage puzzles are Tier-1 "easy"; each
-added tier reaches a few more of the larger, looser puzzles. The remainder awaits Tier 4.
+tier reaches a few more of the larger, looser puzzles. The ~12% / ~79% of maxSize-3/4 layouts the
+full ladder still can't crack are simply **beyond the implemented techniques** — for grading that
+just means they're ungradeable and K5 discards them (it only ships puzzles it can grade).
 
 ## Not yet here
 
-- **Tier 4** — fish/wings/chains: wire in `HumanSolver`'s advanced (X-Wing, Swordfish, Y-Wing,
-  XYZ-Wing) and extreme (W-Wing, ALS-XZ, AIC) strategies at the top tier. Added one verified tier
-  at a time.
 - **Grading integration** — K5 will loop generation until the graded tier matches the requested
-  band; right now the solver just reports the tier.
+  band; right now the solver just reports the tier. (The technique ladder itself is complete.)
