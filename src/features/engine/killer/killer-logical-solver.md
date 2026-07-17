@@ -18,7 +18,7 @@ gymnastics, no `extends`.
 
 Techniques are added tier by tier so each can be **verified sound before the next is layered
 on** — an unsound step is worse than a missing one (it corrupts the grid and mis-grades). This
-file currently implements **Tier 1 + Tier 2**.
+file currently implements **Tiers 1–3**.
 
 ### Tier 1
 
@@ -42,6 +42,14 @@ file currently implements **Tier 1 + Tier 2**.
 - **Classic pairs** — naked and hidden pairs, via `HumanSolver`. Once cage arithmetic has seeded
   candidates, these capture the cross-cage-boundary naked-subset eliminations for free.
 
+### Tier 3
+
+- **Multi-unit Rule of 45.** Extends the innie idea to regions that are unions of 1–3 whole rows
+  or columns (total = 45 × houseCount), and adds **outies**: a single cell of a cage reaching out
+  of the region = (sum of all cages touching the region) − total. Single-house innies stay Tier 1;
+  multi-house innies and all outies are Tier 3. Sound — pure arithmetic over known house totals.
+- **Classic pointing pairs** (box-line reduction), via `HumanSolver`.
+
 ## Soundness, and a bug it caught
 
 The non-negotiable property: on a *unique* puzzle, every forced digit IS the solution's digit,
@@ -59,19 +67,19 @@ Rule of 45 is only sound on genuine `size`-cell houses.
 
 Cumulative reach, measured over generated puzzles by cage size:
 
-| maxSize | Tier 1 | Tier 1 + 2 |
-|---|---|---|
-| 2 | ~100% | ~100% |
-| 3 | ~72% | ~78% |
-| 4 | ~8% | ~15% |
+| maxSize | Tier 1 | + Tier 2 | + Tier 3 |
+|---|---|---|---|
+| 2 | ~100% | ~100% | ~100% |
+| 3 | ~72% | ~78% | ~86% |
+| 4 | ~8% | ~15% | ~18% |
 
 This is exactly the difficulty gradient we grade by: small-cage puzzles are Tier-1 "easy"; each
-added tier reaches a few more of the larger, looser puzzles. The remainder awaits Tier 3+.
+added tier reaches a few more of the larger, looser puzzles. The remainder awaits Tier 4.
 
 ## Not yet here
 
-- **Tier 3+** — multi-unit Rule of 45 / cage splitting / pseudo-cages, classic triples/hidden
-  subsets; then Tier 4 fish/wings/chains (`HumanSolver`'s advanced/extreme strategies). Added one
-  verified tier at a time.
+- **Tier 4** — fish/wings/chains: wire in `HumanSolver`'s advanced (X-Wing, Swordfish, Y-Wing,
+  XYZ-Wing) and extreme (W-Wing, ALS-XZ, AIC) strategies at the top tier. Added one verified tier
+  at a time.
 - **Grading integration** — K5 will loop generation until the graded tier matches the requested
   band; right now the solver just reports the tier.

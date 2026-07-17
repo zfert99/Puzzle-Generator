@@ -14,7 +14,13 @@
 import { getGridConfig, type GridSize } from '../sudoku';
 import { createEmptyGrid } from '../grid-utils';
 import { HumanSolver } from '../human-solver';
-import { applyNakedSingle, applyHiddenSingle, applyNakedPair, applyHiddenPair } from '../strategies/basic';
+import {
+  applyNakedSingle,
+  applyHiddenSingle,
+  applyNakedPair,
+  applyHiddenPair,
+  applyPointingPairs,
+} from '../strategies/basic';
 import { candidateMaskFor, guaranteedMaskFor } from './cage-combinations';
 import type { Cage } from './killer-types';
 
@@ -35,8 +41,12 @@ export class KillerLogicalSolver {
   private readonly boxesPerRow: number;
   private readonly houseSum: number; // 45 for 9×9 (1+…+9)
   private readonly cages: Cage[];
+  /** Flat cell index → its cage's index. */
+  private readonly cellToCage: Int32Array;
   /** Every house (row, column, box) as a list of flat cell indices — each sums to houseSum. */
   private readonly houses: number[][];
+  /** Regions for the multi-unit Rule of 45: unions of 1–3 contiguous rows / columns. */
+  private readonly regions: { cells: Set<number>; houseCount: number }[];
   private hardestTier: KillerTier = 0;
 
   constructor(cages: Cage[], gridSize: GridSize, givens?: number[][]) {
@@ -47,8 +57,13 @@ export class KillerLogicalSolver {
     this.boxesPerRow = this.size / this.boxWidth;
     this.houseSum = (this.size * (this.size + 1)) / 2;
     this.cages = cages;
+    this.cellToCage = new Int32Array(this.size * this.size).fill(-1);
+    cages.forEach((cage, index) => {
+      for (const cell of cage.cells) this.cellToCage[cell] = index;
+    });
     this.hs = new HumanSolver(givens ?? createEmptyGrid(config.size));
     this.houses = this.buildHouses();
+    this.regions = this.buildRegions();
   }
 
   /** The working grid (0 = still empty). Read after `solve`. */
@@ -74,6 +89,38 @@ export class KillerLogicalSolver {
       houses.push(cells);
     }
     return houses;
+  }
+
+  /** Unions of 1–3 contiguous rows and 1–3 contiguous columns — each a whole-house region. */
+  private buildRegions(): { cells: Set<number>; houseCount: number }[] {
+    const size = this.size;
+    const regions: { cells: Set<number>; houseCount: number }[] = [];
+    for (let start = 0; start < size; start++) {
+      for (let len = 1; len <= 3 && start + len <= size; len++) {
+        const rowCells = new Set<number>();
+        const colCells = new Set<number>();
+        for (let i = start; i < start + len; i++) {
+          for (let j = 0; j < size; j++) {
+            rowCells.add(i * size + j); // rows `start..start+len`
+            colCells.add(j * size + i); // columns `start..start+len`
+          }
+        }
+        regions.push({ cells: rowCells, houseCount: len });
+        regions.push({ cells: colCells, houseCount: len });
+      }
+    }
+    return regions;
+  }
+
+  /** Place `value` at `cell` if it is a legal, currently-open candidate. Returns whether it did. */
+  private tryPlace(cell: number, value: number): boolean {
+    const r = Math.floor(cell / this.size);
+    const c = cell % this.size;
+    if (value >= 1 && value <= this.size && this.hs.grid[r][c] === 0 && this.hs.hasCandidate(r, c, value)) {
+      this.hs.placeNumber(r, c, value);
+      return true;
+    }
+    return false;
   }
 
   private boxIndex(cell: number): number {
@@ -211,6 +258,49 @@ export class KillerLogicalSolver {
   }
 
   /**
+   * Multi-unit Rule of 45 (Tier 3) — innies and outies over regions that are unions of complete
+   * houses (so their total is `houseSum × houseCount`). For a region R:
+   *   sum(R) = total  ⇒  a single "innie" cell (in R, part of a cage straddling out) = total −
+   *   (sum of cages fully inside R); and a single "outie" cell (outside R, part of a cage
+   *   reaching in) = (sum of all cages touching R) − total.
+   * Places whichever leftover is a single cell. Single-house innies are left to Tier 1, so only
+   * multi-house innies count here; outies (which Tier 1 doesn't do) fire on any region.
+   */
+  private applyRuleOf45Regions(): boolean {
+    for (const region of this.regions) {
+      const total = this.houseSum * region.houseCount;
+      const touching = new Set<number>();
+      for (const cell of region.cells) touching.add(this.cellToCage[cell]);
+
+      let touchingSum = 0;
+      let containedSum = 0;
+      const containedCells = new Set<number>();
+      const outieCells: number[] = [];
+      for (const cageIndex of touching) {
+        const cage = this.cages[cageIndex];
+        touchingSum += cage.sum;
+        if (cage.cells.every((cell) => region.cells.has(cell))) {
+          containedSum += cage.sum;
+          for (const cell of cage.cells) containedCells.add(cell);
+        } else {
+          for (const cell of cage.cells) if (!region.cells.has(cell)) outieCells.push(cell);
+        }
+      }
+
+      const innieCells: number[] = [];
+      for (const cell of region.cells) if (!containedCells.has(cell)) innieCells.push(cell);
+
+      if (region.houseCount >= 2 && innieCells.length === 1) {
+        if (this.tryPlace(innieCells[0], total - containedSum)) return true;
+      }
+      if (outieCells.length === 1) {
+        if (this.tryPlace(outieCells[0], touchingSum - total)) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Run the deduction loop until solved or stuck, cheapest technique first (so ripple effects are
    * exhausted before anything harder), recording the hardest tier that unsticks it — the grade.
    */
@@ -229,6 +319,10 @@ export class KillerLogicalSolver {
       if (this.applyCageConsistentDigits()) { this.note(2); changed = true; continue; }
       if (applyNakedPair(this.hs)) { this.note(2); changed = true; continue; }
       if (applyHiddenPair(this.hs)) { this.note(2); changed = true; continue; }
+
+      // ---- Tier 3 ----
+      if (this.applyRuleOf45Regions()) { this.note(3); changed = true; continue; }
+      if (applyPointingPairs(this.hs)) { this.note(3); changed = true; continue; }
 
       // Higher tiers land here as they're built.
     }
