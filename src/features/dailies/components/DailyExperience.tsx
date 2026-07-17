@@ -1,20 +1,23 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
+import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
 import { Board } from '@/features/interactive-board/components/Board/Board';
 import { Numpad } from '@/features/interactive-board/components/Controls/Numpad';
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
+import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { Sticker } from '@/features/chaos/Sticker';
 import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
-import { DAILY_DIFFICULTIES, type DailyDifficulty } from '@/lib/db/daily-row';
+import { DAILY_DIFFICULTIES, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useDaily } from '../hooks/useDaily';
 
 const noopSubscribe = () => () => {};
@@ -50,21 +53,25 @@ type SubmitState =
 
 /**
  * Client orchestrator for `/daily`. Fetches today's shared puzzle, plays it on the reused
- * Phase 3 board, and — when signed in — drives the ranked flow: it records a server-side
- * start (`/api/daily/start`) when play begins and submits the completed grid
- * (`/api/solve`) once solved, showing the returned rank. Signed-out players can still play;
- * they're just prompted to sign in to compete.
+ * board, and — when signed in — drives the ranked flow. Ranking is timed by the CLIENT
+ * (`elapsedTime`, which only advances while actively playing), so a player can pause by
+ * leaving and resume later without inflating their time; the server keeps a plausibility
+ * floor as the anti-cheat guard.
  *
- * Keeps a local `phase` ('select' | 'playing') so a persisted `/play` game never leaks onto
- * the daily board. A submit guard ref ensures the solve is posted exactly once per game.
+ * Keeps a local `phase` ('select' | 'playing') so the picker always shows first, offering a
+ * **Continue** button when a daily is parked in the store and a warning before a new game
+ * erases it. A submit guard ref ensures the solve is posted exactly once per game.
  */
 export default function DailyExperience() {
+  const router = useRouter();
   const mounted = useHasMounted();
   const { data: session } = useSession();
   const [phase, setPhase] = useState<'select' | 'playing'>('select');
   const [difficulty, setDifficulty] = useState<DailyDifficulty>('easy');
   const [dailyDate, setDailyDate] = useState<string>('');
   const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
+  const [warnOpen, setWarnOpen] = useState(false);
+  const [pendingDifficulty, setPendingDifficulty] = useState<DailyDifficulty | null>(null);
   const [completedToday, setCompletedToday] = useState<
     Record<string, { timeMs: number; rank: number | null }>
   >({});
@@ -73,9 +80,17 @@ export default function DailyExperience() {
   const { loading, error, fetchDaily } = useDaily();
   const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
   const startNewGame = useBoardStore((s) => s.startNewGame);
+  const resume = useBoardStore((s) => s.resume);
   const tick = useBoardStore((s) => s.tick);
 
-  // Timer: one interval, active only while the daily is being played.
+  const saved = useSavedGame();
+  const savedIsDaily = saved?.mode === 'daily';
+  const todayIso = toUtcDateString(new Date());
+  // A daily left running across the UTC rollover is no longer today's — finishable for fun,
+  // but not rankable. Derived here so the solved modal can say so without a setState-in-effect.
+  const isExpiredDaily = dailyDate !== '' && dailyDate !== todayIso;
+
+  // Timer: one interval, active only while actively playing the daily (not on the picker).
   useEffect(() => {
     if (phase !== 'playing' || status !== 'playing') return;
     const id = setInterval(() => tick(), 1000);
@@ -97,25 +112,26 @@ export default function DailyExperience() {
     };
   }, [session]);
 
-  // Submit the solve exactly once, when the board reports 'solved' during a daily. All
-  // setState happens inside async callbacks (never synchronously in the effect body); the
-  // signed-out and in-flight cases are derived in render from `session` + the 'idle' state.
+  // Submit the solve exactly once, when the board reports 'solved' during a daily. Ranking
+  // uses the CLIENT timer (`elapsedTime`), and only today's daily is rankable — a daily left
+  // over the UTC rollover (dailyDate ≠ today) is finished for fun but not submitted.
   useEffect(() => {
     if (phase !== 'playing' || status !== 'solved' || submittedRef.current) return;
     submittedRef.current = true;
-    if (!session) return;
+    // Only today's daily is rankable; an expired (rollover) daily is derived in render, not
+    // submitted — no synchronous setState here (react-hooks/set-state-in-effect).
+    if (!session || dailyDate !== todayIso) return;
 
-    const { grid, mistakes } = useBoardStore.getState();
+    const { grid, mistakes, elapsedTime } = useBoardStore.getState();
     fetch('/api/solve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ difficulty, grid, mistakes }),
+      body: JSON.stringify({ difficulty, grid, mistakes, timeMs: elapsedTime * 1000 }),
     })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
           setSubmit({ status: 'done', rank: data.rank ?? null });
-          // Mark today's difficulty complete so the picker won't offer a replay.
           setCompletedToday((prev) => ({
             ...prev,
             [difficulty]: { timeMs: data.timeMs, rank: data.rank ?? null },
@@ -125,25 +141,65 @@ export default function DailyExperience() {
         }
       })
       .catch(() => setSubmit({ status: 'error', message: 'Network error submitting solve' }));
-  }, [phase, status, session, difficulty]);
+  }, [phase, status, session, difficulty, dailyDate, todayIso]);
 
-  const handlePlay = async () => {
-    const puzzle = await fetchDaily(difficulty);
+  const beginDaily = async (chosen: DailyDifficulty) => {
+    const puzzle = await fetchDaily(chosen);
     if (!puzzle) return;
+    setDifficulty(chosen);
     setDailyDate(puzzle.date);
     submittedRef.current = false;
     setSubmit({ status: 'idle' });
-    startNewGame(puzzle, 'daily');
+    startNewGame(puzzle, 'daily', puzzle.date);
     setPhase('playing');
 
-    // Record the server-side start time so the solve can be timed by the server. Called
-    // unconditionally, not gated on the client `session` (which may still be loading) — the
-    // auth cookie is what matters; a signed-out caller just gets a harmless 401.
+    // Record the server-side start (marks the attempt + one-per-day lock). Called
+    // unconditionally; a signed-out caller just gets a harmless 401.
     fetch('/api/daily/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ difficulty }),
+      body: JSON.stringify({ difficulty: chosen }),
     }).catch(() => {});
+  };
+
+  // Start a new daily; warn first if it would erase a parked game (any surface — one slot).
+  const handlePlay = (chosen: DailyDifficulty) => {
+    if (saved) {
+      setPendingDifficulty(chosen);
+      setWarnOpen(true);
+    } else {
+      void beginDaily(chosen);
+    }
+  };
+
+  const confirmNew = () => {
+    setWarnOpen(false);
+    if (pendingDifficulty) void beginDaily(pendingDifficulty);
+    setPendingDifficulty(null);
+  };
+
+  const dismissWarn = () => {
+    setWarnOpen(false);
+    setPendingDifficulty(null);
+  };
+
+  // "Keep playing" — take the player to their saved game: resume it here if it's a daily,
+  // otherwise go to the surface that owns it (a saved free-play game lives on /play).
+  const keepPlaying = () => {
+    dismissWarn();
+    if (saved?.mode === 'daily') handleContinue();
+    else if (saved) router.push('/play');
+  };
+
+  // Resume the parked daily — restore its difficulty/date from the store, no re-fetch.
+  const handleContinue = () => {
+    if (!saved) return;
+    if (status === 'paused') resume();
+    setDifficulty(saved.difficulty as DailyDifficulty);
+    setDailyDate(saved.dailyDate ?? '');
+    submittedRef.current = false;
+    setSubmit({ status: 'idle' });
+    setPhase('playing');
   };
 
   const backToSelect = () => {
@@ -177,6 +233,19 @@ export default function DailyExperience() {
             One shared puzzle per difficulty · resets at 00:00 UTC
             {!session && ' · sign in to be ranked'}
           </p>
+
+          {savedIsDaily && saved && (
+            <div className="mb-6">
+              <button
+                type="button"
+                onClick={handleContinue}
+                className="btn-primary w-full text-lg flex justify-center items-center"
+              >
+                Continue {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
+              </button>
+              <p className="text-xs text-ink-soft text-center mt-3">— or start a new one —</p>
+            </div>
+          )}
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Difficulty</label>
@@ -217,7 +286,7 @@ export default function DailyExperience() {
           ) : (
             <button
               type="button"
-              onClick={handlePlay}
+              onClick={() => handlePlay(difficulty)}
               disabled={loading}
               className="btn-primary w-full text-lg flex justify-center items-center"
             >
@@ -225,6 +294,17 @@ export default function DailyExperience() {
             </button>
           )}
         </div>
+
+        <ConfirmModal
+          open={warnOpen}
+          title="Start a new puzzle?"
+          message="You have a saved puzzle in progress. Starting a new one will erase it — you can only save one puzzle at a time."
+          confirmLabel="Start new"
+          cancelLabel="Keep playing"
+          onConfirm={confirmNew}
+          onCancel={keepPlaying}
+          onDismiss={dismissWarn}
+        />
       </div>
     );
   }
@@ -277,7 +357,9 @@ export default function DailyExperience() {
 
             {/* Ranked-flow result — derived from session + submit (no synchronous setState). */}
             <div className="mb-6 min-h-[1.5rem] text-sm">
-              {!session ? (
+              {isExpiredDaily ? (
+                <span className="text-butterscotch-dark">This daily has expired — play today’s for a rank.</span>
+              ) : !session ? (
                 <span className="text-ink-soft">
                   <Link href="/signin" className="text-grape hover:underline">
                     Sign in

@@ -20,11 +20,14 @@ export function useDaily() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchDaily = useCallback(async (difficulty: DailyDifficulty) => {
+  const fetchDaily = useCallback(async (difficulty: DailyDifficulty, date?: string) => {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`/api/daily?difficulty=${difficulty}`, { method: 'GET' });
+      const res = await fetch(
+        `/api/daily?difficulty=${difficulty}${date ? `&date=${date}` : ''}`,
+        { method: 'GET' },
+      );
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

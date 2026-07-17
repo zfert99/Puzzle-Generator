@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { useShallow } from 'zustand/react/shallow';
+import { useRouter } from 'next/navigation';
 import { GridSizeSelector } from '@/features/puzzle-configuration/components/GridSizeSelector';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
+import { useSavedGame, formatElapsed } from '../store/useSavedGame';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { Board } from './Board/Board';
 import { Numpad } from './Controls/Numpad';
 import { GameHeader } from './Header/GameHeader';
 import { KeyboardHints } from './KeyboardHints';
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
+import { ConfirmModal } from './ConfirmModal';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
@@ -21,39 +23,40 @@ function useHasMounted(): boolean {
   return useSyncExternalStore(noopSubscribe, () => true, () => false);
 }
 
-function formatTime(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
 /**
- * Client-side orchestrator for `/play`. It owns the config screen, fetches a puzzle
- * via `usePuzzle` (server-side generation — no puzzle computed during SSR), hands it
- * to the store, drives the per-second timer, and shows the solved modal. The `/play`
- * route itself stays a Server Component.
+ * Client-side orchestrator for `/play`. Menu-first: it always opens on the config screen,
+ * which offers a **Continue** button when a saved free-play game exists (the board store
+ * persists one game to localStorage) and warns before a new game erases it. A local `view`
+ * ('config' | 'playing') drives which screen shows — decoupled from store `status`, so the
+ * menu can display while an unsolved game is still parked in the store.
  *
- * A `mounted` guard defers rendering until the client has hydrated the persisted
- * store, so a resumed (localStorage-backed) game never causes an SSR/client mismatch.
+ * The timer ticks only while actively on the board (`view === 'playing'`), so stepping back
+ * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
 export default function PlayExperience() {
+  const router = useRouter();
   const mounted = useHasMounted();
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [view, setView] = useState<'config' | 'playing'>('config');
   const [viewingSolved, setViewingSolved] = useState(false);
+  const [warnOpen, setWarnOpen] = useState(false);
 
   const { loading, error, fetchPuzzle } = usePuzzle();
-  const { status, mode } = useBoardStore(useShallow((s) => ({ status: s.status, mode: s.mode })));
+  const status = useBoardStore((s) => s.status);
   const startNewGame = useBoardStore((s) => s.startNewGame);
-  const configure = useBoardStore((s) => s.configure);
+  const resume = useBoardStore((s) => s.resume);
   const tick = useBoardStore((s) => s.tick);
 
-  // Timer: one interval, active only while playing.
+  const saved = useSavedGame();
+  const savedIsPlay = saved?.mode === 'play';
+
+  // Timer: active only while actively playing on the board — never on the menu or when paused.
   useEffect(() => {
-    if (status !== 'playing') return;
+    if (view !== 'playing' || status !== 'playing') return;
     const id = setInterval(() => tick(), 1000);
     return () => clearInterval(id);
-  }, [status, tick]);
+  }, [view, status, tick]);
 
   const miniGrid = gridSize !== 9;
 
@@ -62,17 +65,38 @@ export default function PlayExperience() {
     if (size !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
-  const handlePlay = async () => {
+  const startFresh = async () => {
     const puzzle = await fetchPuzzle({ difficulty, gridSize });
     if (puzzle) {
       setViewingSolved(false);
-      startNewGame(puzzle);
+      startNewGame(puzzle); // mode defaults to 'play'
+      setView('playing');
     }
   };
 
-  const newPuzzle = () => {
+  // New game erases the single saved slot (play OR daily) — warn first if one exists.
+  const handlePlay = () => {
+    if (saved) setWarnOpen(true);
+    else void startFresh();
+  };
+
+  const confirmNew = () => {
+    setWarnOpen(false);
+    void startFresh();
+  };
+
+  const handleContinue = () => {
+    if (status === 'paused') resume();
     setViewingSolved(false);
-    configure();
+    setView('playing');
+  };
+
+  // "Keep playing" — take the player to their saved game: resume it here if it's a free-play
+  // game, otherwise go to the surface that owns it (a saved daily lives on /daily).
+  const keepPlaying = () => {
+    setWarnOpen(false);
+    if (saved?.mode === 'play') handleContinue();
+    else if (saved) router.push('/daily');
   };
 
   // Avoid a hydration mismatch: render a neutral placeholder until mounted.
@@ -80,13 +104,24 @@ export default function PlayExperience() {
     return <div className="glass-panel p-8 max-w-md w-full mx-auto h-48" aria-hidden="true" />;
   }
 
-  // ---- Config screen ----
-  // Show it when configuring OR when the persisted game belongs to the daily (mode !== 'play')
-  // — a daily must never leak onto /play; free play always starts fresh here.
-  if (status === 'configuring' || mode !== 'play') {
+  // ---- Config / menu screen ----
+  if (view !== 'playing') {
     return (
       <div className="glass-panel p-8 max-w-md w-full mx-auto">
         <h2 className="text-2xl font-semibold mb-6 text-center">New Game</h2>
+
+        {savedIsPlay && saved && (
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="btn-primary w-full text-lg flex justify-center items-center"
+            >
+              Continue {saved.gridSize}×{saved.gridSize} {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
+            </button>
+            <p className="text-xs text-ink-soft text-center mt-3">— or start a new game —</p>
+          </div>
+        )}
 
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
 
@@ -125,6 +160,17 @@ export default function PlayExperience() {
         >
           {loading ? 'Generating…' : 'Play'}
         </button>
+
+        <ConfirmModal
+          open={warnOpen}
+          title="Start a new puzzle?"
+          message="You have a saved puzzle in progress. Starting a new one will erase it — you can only save one puzzle at a time."
+          confirmLabel="Start new"
+          cancelLabel="Keep playing"
+          onConfirm={confirmNew}
+          onCancel={keepPlaying}
+          onDismiss={() => setWarnOpen(false)}
+        />
       </div>
     );
   }
@@ -135,10 +181,10 @@ export default function PlayExperience() {
       <div className="w-full max-w-[520px] mx-auto mb-2">
         <button
           type="button"
-          onClick={newPuzzle}
+          onClick={() => setView('config')}
           className="text-sm text-ink-soft hover:text-ink hover:underline"
         >
-          ← New game
+          ← Menu
         </button>
       </div>
 
@@ -166,11 +212,11 @@ export default function PlayExperience() {
           <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
             <SolvedStamp label="Solved!" />
             <p className="text-sm text-ink-soft mb-6">
-              {formatTime(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
+              {formatElapsed(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
               mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}
             </p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={newPuzzle} className="btn-primary">
+              <button type="button" onClick={() => setView('config')} className="btn-primary">
                 New puzzle
               </button>
               <button

@@ -9,22 +9,25 @@ export const runtime = 'nodejs';
 // Always compute "today" fresh; never let the platform cache a day-stale response.
 export const dynamic = 'force-dynamic';
 
+// ISO YYYY-MM-DD, loosely validated to keep obviously-bad input out of the query.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
- * GET /api/daily?difficulty=easy|medium|hard|expert|extreme
+ * GET /api/daily?difficulty=…&date=YYYY-MM-DD
  *
- * Returns today's (00:00-UTC) shared daily puzzle for the requested difficulty, shaped
- * so the Phase 3 board can consume it directly via `startNewGame`.
+ * Returns a shared daily puzzle for the requested difficulty, shaped so the board can consume
+ * it via `startNewGame`. `date` defaults to today (UTC); a past date serves that day's puzzle
+ * for the archive (unranked replay). Future dates are rejected.
  *
- * Anti-cheat note (4.2 scope): play is anonymous and UNRANKED here, so the response
- * includes `solution` — the interactive board needs it locally for mistake highlighting
- * and hints, and there is no leaderboard to protect yet. When ranked solves land in 4.4,
- * the solution must stop being served for an unranked/unsolved daily and the solve is
- * validated server-side instead (see phase4-implementation-plan.md, anti-cheat).
+ * Anti-cheat note: the response includes `solution` (the board needs it locally for mistake
+ * highlighting and hints). Ranked solves are validated server-side against the stored solution
+ * in `/api/solve`, so serving it here is safe; archive replays are unranked anyway.
  */
 export async function GET(req: NextRequest) {
   const startTime = performance.now();
   try {
     const difficulty = req.nextUrl.searchParams.get('difficulty');
+    const dateParam = req.nextUrl.searchParams.get('date');
 
     if (!isDailyDifficulty(difficulty)) {
       return NextResponse.json(
@@ -33,7 +36,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const isoDate = toUtcDateString(new Date());
+    const todayIso = toUtcDateString(new Date());
+    const isoDate = dateParam ?? todayIso;
+    if (!ISO_DATE.test(isoDate)) {
+      return NextResponse.json({ error: 'Invalid date: expected YYYY-MM-DD' }, { status: 400 });
+    }
+    if (isoDate > todayIso) {
+      return NextResponse.json({ error: 'Cannot fetch a future daily' }, { status: 400 });
+    }
+
     const puzzle = await getDailyPuzzle(db, isoDate, difficulty);
 
     if (!puzzle) {
