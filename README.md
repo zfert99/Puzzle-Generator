@@ -74,7 +74,7 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 | **3** | **Interactive Board** — Play in the browser | 🎨 Frontend | ✅ Done\* |
 | **4** | **Dailies & Leaderboards** — DB, Auth, Speed Runs | 🗄️ Infrastructure | ✅ Done |
 | **5** | **Visual Redesign** 🎨 — "Biscuit Lab" design system | 🎨 Frontend | ✅ Done |
-| **6** | **Killer Sudoku** 🧮 — Cages + sum constraints (engine first) | 🧮 Engine → 🎨 UI | 📋 Planned |
+| **6** | **Killer Sudoku** 🧮 — Cages + sum constraints (engine first) | 🧮 Engine → 🎨 UI | 🚧 In Progress |
 | **7** | **Strategy Courses** — Visual solver teaching | 🎨 UI + 🧮 Engine | 📋 Planned |
 
 > Phases 1 & 2 ran in parallel. Phase 6 (Killer Sudoku) is next — engine first ([plan](Docs/killer-sudoku-implementation-plan.md)); Phase 7 (strategy courses) follows and builds on the Phase 5 design system.
