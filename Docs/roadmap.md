@@ -387,7 +387,7 @@ Full plan (with resolved decisions): [phase5-implementation-plan.md](phase5-impl
 
 > **Tracks:** 🧮 Engine (v1), then 🎨 Frontend + 🗄️ Infrastructure (Phase 6b)
 > **Branch:** `feature/killer-sudoku`
-> **Status:** 🚧 In Progress — K1 done (cage-combination tables + `guaranteedMaskFor`, `Cage`/`KillerPuzzle` types + validators; 28 tests)
+> **Status:** 🚧 In Progress — K1 (combination oracle + types), K2 (exact solver + uniqueness), K3 (cage generator), and K5 (generate-unique pipeline, ungraded) done; **K4 difficulty grading** is the remaining engine piece. 47 killer tests; a random Killer generates in ~5 ms median.
 > **Estimated effort:** Large (2–3 weeks for the engine)
 > **Prerequisite:** Phase 3 (Interactive Board), Phase 5 (design system, for 6b)
 > **Full plan:** [killer-sudoku-implementation-plan.md](killer-sudoku-implementation-plan.md) · **Research:** [killer-sudoku.md](research/killer-sudoku.md)
