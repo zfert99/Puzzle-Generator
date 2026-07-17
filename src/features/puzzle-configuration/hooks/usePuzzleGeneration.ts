@@ -1,12 +1,13 @@
 import { useState } from 'react';
 
 interface GenerationConfig {
-  gridSize: number;
+  variant?: 'classic' | 'killer';
+  gridSize?: number;
   easy: number;
   medium: number;
   hard: number;
-  expert: number;
-  extreme: number;
+  expert?: number;
+  extreme?: number;
 }
 
 export function usePuzzleGeneration() {
@@ -15,7 +16,8 @@ export function usePuzzleGeneration() {
 
   const generate = async (config: GenerationConfig) => {
     setError('');
-    const total = config.easy + config.medium + config.hard + config.expert + config.extreme;
+    const total =
+      config.easy + config.medium + config.hard + (config.expert ?? 0) + (config.extreme ?? 0);
     if (total === 0) {
       setError('Please select at least one puzzle to generate.');
       return false;
@@ -42,7 +44,7 @@ export function usePuzzleGeneration() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'Sudoku_Puzzles.pdf';
+      a.download = config.variant === 'killer' ? 'Killer_Sudoku.pdf' : 'Sudoku_Puzzles.pdf';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

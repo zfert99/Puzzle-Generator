@@ -25,10 +25,19 @@ A lookup table defining which difficulties are available for each grid size:
 
 1. Declare the component as a Client Component (`'use client'`).
 2. Set up state variables:
+   - `variant`: `'classic'` or `'killer'` (defaults to classic) — a toggle at the top of the form.
    - `loading`: A boolean flag to track if the PDF is currently being generated.
    - `gridSize`: The selected grid size (4, 6, or 9). Defaults to 9.
    - `counts`: An object storing the desired quantity for each difficulty level. Easy, Medium, and Hard default to 2. Expert and Extreme default to 0.
    - `error`: A text string to hold any error messages.
+
+### The Sudoku / Killer toggle
+
+Two segmented buttons switch `variant`. In **Killer** mode the form hides the grid-size selector
+(Killer is 9×9), shows a "no givens — the cage sums are the only clue" note, and passes
+`difficulties={['easy','medium','hard']}` to the configurator (Killer v1 grades only those three).
+`handleGenerate` then sends `{ variant: 'killer', easy, medium, hard }`; classic mode sends
+`{ ...counts, gridSize }` as before.
 
 ---
 

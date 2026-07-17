@@ -88,12 +88,15 @@ cage outlines and the cage sums.
 2. **Digits:** draw the solution on an answer page; draw nothing on the puzzle page (Killer has
    no givens — the cages are the only clue).
 3. **Base grid:** thin cell lines, thick box lines (same as `drawGrid`).
-4. **Cage outlines:** for every cell edge whose neighbour belongs to a *different* cage (or is
-   off-grid), draw a short **dashed** segment inset slightly into the cell. Inset segments from
-   adjacent boundary edges meet at corners, tracing each cage's outline. `dash`/`undash` wrap
-   this so only the cage lines are dashed.
+4. **Cage outlines:** dashed lines inset into each cage. For every cell edge whose neighbour is a
+   *different* cage (or off-grid), draw a segment that spans the **full cell** in its direction of
+   travel, trimmed only at true cage *corners* (where the perpendicular edge is also a boundary).
+   That makes segments in the same cage **connect across cells into one continuous outline**
+   instead of stopping and restarting at each cell. `dash`/`undash` wrap it; the line is a touch
+   thick (1.3) for legibility.
 5. **Cage sums:** in each cage's *anchor* cell (its lowest flat index — the top-left-most cell),
-   draw the sum in the corner, on a tiny white pad so it stays legible over the dashed border.
+   draw the sum small and slightly dimmed (`fillOpacity` ~0.55), tucked into the corner on a tiny
+   white pad so it reads as an annotation, not the answer, and stays legible over the cage line.
 
 ### `generateKillerPDF(puzzles)`
 

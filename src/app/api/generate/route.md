@@ -12,8 +12,25 @@ This document explains the core logic behind our `route.ts` API endpoint for the
 1. Wait for an incoming network request.
 2. Open up the hidden "body" of the request (the data payload sent by the user) and read it as JSON.
 3. Extract the following from the JSON payload:
+   - `variant`: `'classic'` (default) or `'killer'`.
    - `easy`, `medium`, `hard`, `expert`, `extreme`: How many puzzles of each difficulty. Default to `0`.
    - `gridSize`: The grid size (4, 6, or 9). Defaults to `9`.
+
+---
+
+## 1b. Killer branch
+
+**Goal:** When `variant === 'killer'`, generate a Killer Sudoku booklet instead of classic.
+**Steps:**
+
+1. Read `easy`, `medium`, `hard` (Killer v1 is 9×9 and offers only these three graded tiers —
+   `gridSize`, `expert`, `extreme` don't apply).
+2. Validate they're non-negative integers, the total is ≥ 1, and ≤ the 50 cap (same guards as
+   classic; the server is the authoritative boundary).
+3. `generateKillerBatch({ easy, medium, hard })` → graded Killer puzzles; `generateKillerPDF` →
+   the booklet; return it as a download named `Killer_Sudoku.pdf`.
+
+The classic path (sections 2–5) is unchanged and runs when `variant` is absent/`'classic'`.
 
 ---
 

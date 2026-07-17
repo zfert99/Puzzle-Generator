@@ -106,3 +106,13 @@ export function generateKillerSudoku(
 
   throw new Error(`Could not generate a ${difficulty} Killer in ${maxAttempts} attempts`);
 }
+
+/** Generate a batch of graded Killers — `counts[difficulty]` puzzles of each, easy→hard order. */
+export function generateKillerBatch(counts: Partial<Record<KillerDifficulty, number>>): KillerPuzzle[] {
+  const puzzles: KillerPuzzle[] = [];
+  for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+    const n = counts[difficulty] ?? 0;
+    for (let i = 0; i < n; i++) puzzles.push(generateKillerSudoku(difficulty));
+  }
+  return puzzles;
+}

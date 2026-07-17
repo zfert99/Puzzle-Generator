@@ -10,10 +10,12 @@ interface Props {
   gridSize: 4 | 6 | 9;
   counts: Record<string, number>;
   onChange: (difficulty: string, value: number) => void;
+  /** Override the available difficulties (e.g. Killer offers only easy/medium/hard). */
+  difficulties?: string[];
 }
 
-export function DifficultyConfigurator({ gridSize, counts, onChange }: Props) {
-  const availableDifficulties = DIFFICULTIES_BY_SIZE[gridSize];
+export function DifficultyConfigurator({ gridSize, counts, onChange, difficulties }: Props) {
+  const availableDifficulties = difficulties ?? DIFFICULTIES_BY_SIZE[gridSize];
 
   return (
     <div className="space-y-4 mb-8">

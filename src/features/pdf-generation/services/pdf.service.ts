@@ -101,32 +101,52 @@ export function drawKillerGrid(
     doc.moveTo(startX + i * cell, startY).lineTo(startX + i * cell, startY + gridDrawSize).stroke();
   }
 
-  // Cage outlines: a dashed segment inset from every cage-boundary edge.
-  doc.lineWidth(0.8).dash(2, { space: 2 }).strokeColor('black');
+  // Cage outlines: dashed lines inset into each cage. Each boundary segment spans the FULL cell
+  // in its direction of travel and is trimmed only at true cage corners (where the perpendicular
+  // edge is also a boundary) — so segments in the same cage connect across cells into a
+  // continuous outline instead of stopping and restarting at every cell.
+  doc.lineWidth(1.3).dash(2.4, { space: 1.6 }).strokeColor('black');
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       const cg = cellCage[r * size + c];
       const x = startX + c * cell;
       const y = startY + r * cell;
-      if (cageAt(r - 1, c) !== cg) doc.moveTo(x + inset, y + inset).lineTo(x + cell - inset, y + inset).stroke();
-      if (cageAt(r + 1, c) !== cg) doc.moveTo(x + inset, y + cell - inset).lineTo(x + cell - inset, y + cell - inset).stroke();
-      if (cageAt(r, c - 1) !== cg) doc.moveTo(x + inset, y + inset).lineTo(x + inset, y + cell - inset).stroke();
-      if (cageAt(r, c + 1) !== cg) doc.moveTo(x + cell - inset, y + inset).lineTo(x + cell - inset, y + cell - inset).stroke();
+      const top = cageAt(r - 1, c) !== cg;
+      const bottom = cageAt(r + 1, c) !== cg;
+      const left = cageAt(r, c - 1) !== cg;
+      const right = cageAt(r, c + 1) !== cg;
+
+      if (top) {
+        doc.moveTo(left ? x + inset : x, y + inset).lineTo(right ? x + cell - inset : x + cell, y + inset).stroke();
+      }
+      if (bottom) {
+        doc.moveTo(left ? x + inset : x, y + cell - inset).lineTo(right ? x + cell - inset : x + cell, y + cell - inset).stroke();
+      }
+      if (left) {
+        doc.moveTo(x + inset, top ? y + inset : y).lineTo(x + inset, bottom ? y + cell - inset : y + cell).stroke();
+      }
+      if (right) {
+        doc.moveTo(x + cell - inset, top ? y + inset : y).lineTo(x + cell - inset, bottom ? y + cell - inset : y + cell).stroke();
+      }
     }
   }
   doc.undash();
 
-  // Cage sums in the anchor (lowest-indexed) cell's corner, on a small white pad.
-  doc.fontSize(cell * 0.24);
+  // Cage sums, tucked into the anchor (lowest-indexed) cell's top-left corner — small and
+  // slightly dimmed so they read as annotations, not as the answer. A tiny white pad keeps them
+  // legible over the dashed cage line.
+  const sumFont = cell * 0.2;
+  doc.fontSize(sumFont);
   for (const cage of puzzle.cages) {
     const anchor = Math.min(...cage.cells);
     const ar = Math.floor(anchor / size);
     const ac = anchor % size;
     const s = String(cage.sum);
-    const x = startX + ac * cell + inset + 1;
-    const y = startY + ar * cell + inset + 0.5;
-    doc.rect(x - 0.5, y, doc.widthOfString(s) + 1.5, cell * 0.24).fill('white');
-    doc.fillColor('black').text(s, x, y, { lineBreak: false });
+    const x = startX + ac * cell + 2.2;
+    const y = startY + ar * cell + 1.8;
+    doc.rect(x - 0.6, y, doc.widthOfString(s) + 1.2, sumFont).fill('white');
+    doc.fillColor('black').fillOpacity(0.55).text(s, x, y, { lineBreak: false });
+    doc.fillOpacity(1);
   }
 }
 

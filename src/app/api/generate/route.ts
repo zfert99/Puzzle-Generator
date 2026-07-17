@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
-import { generatePuzzlePDF } from '@/features/pdf-generation/services/pdf.service';
+import { generatePuzzlePDF, generateKillerPDF } from '@/features/pdf-generation/services/pdf.service';
+import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { logger } from '@/lib/logger';
+
+const MAX_PUZZLES = 50;
+
+/** A downloadable-PDF response with the given filename. */
+function pdfResponse(pdf: Buffer, filename: string): NextResponse {
+  return new NextResponse(pdf as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  });
+}
 
 // Explicitly require Node.js runtime because pdfkit uses native Node APIs (fs, stream)
 export const runtime = 'nodejs';
@@ -31,6 +45,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or missing JSON body' }, { status: 400 });
     }
     
+    // ---- Killer Sudoku branch (9×9, easy/medium/hard only) ----
+    if (body?.variant === 'killer') {
+      const { easy = 0, medium = 0, hard = 0 } = body || {};
+      if (![easy, medium, hard].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
+        return NextResponse.json({ error: 'Killer counts (easy, medium, hard) must be non-negative integers' }, { status: 400 });
+      }
+      const total = easy + medium + hard;
+      if (total === 0) {
+        return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
+      }
+      if (total > MAX_PUZZLES) {
+        return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
+      }
+
+      const puzzles = generateKillerBatch({ easy, medium, hard });
+      const pdfBuffer = await generateKillerPDF(puzzles);
+      logger.info(
+        { event: 'generation_success', variant: 'killer', counts: { easy, medium, hard }, durationMs: Math.round(performance.now() - startTime) },
+        'Successfully generated Killer puzzles and PDF',
+      );
+      return pdfResponse(pdfBuffer, 'Killer_Sudoku.pdf');
+    }
+
     // Extract puzzle counts, defaulting to 0 if not provided
     const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0, gridSize = 9 } = body || {};
 
@@ -64,7 +101,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Security/Performance measure: Enforce a maximum total puzzle limit to prevent server timeouts or DoS attacks
-    const MAX_PUZZLES = 50;
     if (easy + medium + hard + expert + extreme > MAX_PUZZLES) {
       return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
     }
@@ -95,15 +131,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Return the generated PDF buffer directly as the HTTP response body
-    return new NextResponse(pdfBuffer as unknown as BodyInit, {
-      status: 200,
-      headers: {
-        // Content-Type tells the browser this is a binary PDF file
-        'Content-Type': 'application/pdf',
-        // Content-Disposition 'attachment' forces the browser to download the file rather than trying to display it inline
-        'Content-Disposition': 'attachment; filename="Sudoku_Puzzles.pdf"',
-      },
-    });
+    return pdfResponse(pdfBuffer, 'Sudoku_Puzzles.pdf');
   } catch (error: unknown) {
     // If anything fails during puzzle generation or PDF rendering, catch it here
     const err = error as Error;

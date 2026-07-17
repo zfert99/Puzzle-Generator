@@ -5,13 +5,17 @@ import { usePuzzleGeneration } from '../hooks/usePuzzleGeneration';
 import { GridSizeSelector } from './GridSizeSelector';
 import { DifficultyConfigurator } from './DifficultyConfigurator';
 
+const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard'];
+
 export default function PuzzleForm() {
+  const [variant, setVariant] = useState<'classic' | 'killer'>('classic');
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
     easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0
   });
 
   const { loading, error, generate } = usePuzzleGeneration();
+  const isKiller = variant === 'killer';
 
   const handleGridSizeChange = (size: 4 | 6 | 9) => {
     setGridSize(size);
@@ -25,19 +29,48 @@ export default function PuzzleForm() {
   };
 
   const handleGenerate = async () => {
-    await generate({ ...counts, gridSize });
+    if (isKiller) {
+      await generate({ variant: 'killer', easy: counts.easy, medium: counts.medium, hard: counts.hard });
+    } else {
+      await generate({ ...counts, gridSize });
+    }
   };
 
   return (
     <div className="glass-panel p-8 max-w-md w-full mx-auto">
-      <h2 className="text-2xl font-semibold mb-6 text-center">Sudoku Configuration</h2>
+      <h2 className="text-2xl font-semibold mb-6 text-center">
+        {isKiller ? 'Killer Sudoku' : 'Sudoku'} Configuration
+      </h2>
 
-      <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
-      
-      <DifficultyConfigurator 
-        gridSize={gridSize} 
-        counts={counts} 
-        onChange={handleDifficultyChange} 
+      {/* Puzzle type toggle */}
+      <div className="flex gap-2 mb-6">
+        {(['classic', 'killer'] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setVariant(v)}
+            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
+              variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+            }`}
+          >
+            {v === 'classic' ? 'Sudoku' : 'Killer'}
+          </button>
+        ))}
+      </div>
+
+      {isKiller ? (
+        <p className="text-xs text-ink-soft text-center mb-6">
+          9×9 · no givens — the cage sums are the only clue.
+        </p>
+      ) : (
+        <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
+      )}
+
+      <DifficultyConfigurator
+        gridSize={gridSize}
+        counts={counts}
+        onChange={handleDifficultyChange}
+        difficulties={isKiller ? KILLER_DIFFICULTIES : undefined}
       />
 
       {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
