@@ -48,7 +48,7 @@ export interface ClassicPuzzle extends SudokuPuzzle {
 export type Puzzle = ClassicPuzzle | KillerPuzzle;
 
 /** The four orthogonal neighbors of a flat cell index, respecting grid edges (no wraparound). */
-function orthogonalNeighbors(index: number, size: number): number[] {
+export function orthogonalNeighbors(index: number, size: number): number[] {
   const row = Math.floor(index / size);
   const col = index % size;
   const result: number[] = [];

@@ -52,13 +52,26 @@ search and backtracks. The result is always correct (the two-box-cage test pins 
 the only cost of under-pruning is a bit more search.
 
 Tighter pruning (intersecting each combination against the remaining cells' candidate masks —
-a small bipartite feasibility check) is therefore a **measured optimization**, deferred until
-the K5 generator benchmarks show a real uniqueness check exceeding the < 50 ms budget. Adding it
-speculatively would complicate the hot loop for a payoff we haven't measured (AGENTS.md §3).
+a small bipartite feasibility check) is therefore a **measured optimization**. Adding it
+speculatively would complicate the hot loop for an unmeasured payoff (AGENTS.md §3).
+
+## What the K3 measurement showed
+
+Profiling the solver over real cage layouts (K3's generator) gave a clear cliff:
+
+| Max cage size | Verify time (countSolutions, 9×9) |
+|---|---|
+| ≤ 4 | < 10 ms worst case (avg well under 1 ms) |
+| 5 | usually fast, but **occasionally seconds** |
+
+So the under-pruning has a real cost, but only for large *loose* cages. The generator's default
+`maxSize` is therefore **4**, which keeps every verification comfortably under the 50 ms budget.
+Reaching for maxSize 5 (or hardest-possible puzzles) is what would justify implementing the
+tighter cage pruning, or giving the K5 pipeline a per-verify time/node budget that rejects a
+layout the solver can't dispatch quickly. Both are deferred until a feature actually needs
+size-5 cages.
 
 ## Not yet here
 
-- **Performance validation** against real (K3-generated) cage layouts — the < 50 ms target is
-  meaningful only once we have genuine unique Killers to verify, which arrive with the cage
-  generator.
+- **Tighter cage pruning / a verify budget** — only if size-5 (or extreme) puzzles are wanted.
 - **Logical (grading) mode** — a separate concern (K4); this file is exact-search only.
