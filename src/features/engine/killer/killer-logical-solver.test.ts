@@ -73,6 +73,27 @@ describe('KillerLogicalSolver — Tier 1', () => {
     expect(ls.grid).toEqual(SOL9);
   });
 
+  it('grades and soundly solves a puzzle that genuinely requires Tier 2', () => {
+    // Search for a puzzle Tier 1 can't finish but Tier 2 can — proving the Tier 2 techniques
+    // (cage consistent-digit + classic pairs) are exercised, necessary, and correct.
+    let found = false;
+    for (let seed = 1; seed <= 80 && !found; seed++) {
+      const puzzle = generateKillerSudoku('medium', {
+        solution: SOL9,
+        rng: mulberry32(seed * 100 + 3),
+        maxSize: 3,
+      });
+      const ls = new KillerLogicalSolver(puzzle.cages, 9);
+      const result = ls.solve();
+      if (result.solved && result.hardestTier === 2) {
+        found = true;
+        expect(unsoundPlacements(ls.grid, SOL9)).toBe(0);
+        expect(ls.grid).toEqual(SOL9);
+      }
+    }
+    expect(found).toBe(true);
+  });
+
   it('gets stuck (does not solve) on looser puzzles — without corrupting them', () => {
     // Larger cages generally need Tier 2+; Tier 1 should stop cleanly, never place a wrong digit.
     let anyUnsolved = false;

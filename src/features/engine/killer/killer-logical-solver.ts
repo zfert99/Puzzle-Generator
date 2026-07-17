@@ -2,11 +2,11 @@
  * The Killer LOGICAL solver — solves the way a human does, applying techniques in tiers and
  * recording the hardest one required. That "hardest tier" is how the generator (K5) grades a
  * puzzle's difficulty. Distinct from the exact solver (`killer-solver.ts`), which brute-force
- * counts solutions for the uniqueness gate.
+ * counts solutions for the uniqueness gate; this one never guesses.
  *
  * COMPOSES `HumanSolver` (never inherits — AGENTS.md §1): it uses HumanSolver as the candidate
  * grid and drives the standalone classic-technique functions on it, interleaving Killer-specific
- * cage deductions. Being built one tier at a time — this file currently implements TIER 1.
+ * cage deductions. Built one tier at a time — currently TIER 1 + TIER 2.
  *
  * See `killer-logical-solver.md`.
  */
@@ -14,16 +14,25 @@
 import { getGridConfig, type GridSize } from '../sudoku';
 import { createEmptyGrid } from '../grid-utils';
 import { HumanSolver } from '../human-solver';
-import { applyNakedSingle, applyHiddenSingle } from '../strategies/basic';
-import { candidateMaskFor } from './cage-combinations';
+import { applyNakedSingle, applyHiddenSingle, applyNakedPair, applyHiddenPair } from '../strategies/basic';
+import { candidateMaskFor, guaranteedMaskFor } from './cage-combinations';
 import type { Cage } from './killer-types';
 
-/** 0 = nothing needed (already solved); 1 = Tier 1; higher tiers added later. */
+/** 0 = nothing needed (already solved); 1 = Tier 1; 2 = Tier 2; higher tiers added later. */
 export type KillerTier = 0 | 1 | 2 | 3 | 4;
+
+interface CageState {
+  used: number; // bitmask of digits already placed in the cage
+  sumLeft: number; // target minus placed digits
+  remaining: number[]; // flat indices of the cage's still-empty cells
+}
 
 export class KillerLogicalSolver {
   private readonly hs: HumanSolver;
   private readonly size: number;
+  private readonly boxWidth: number;
+  private readonly boxHeight: number;
+  private readonly boxesPerRow: number;
   private readonly houseSum: number; // 45 for 9×9 (1+…+9)
   private readonly cages: Cage[];
   /** Every house (row, column, box) as a list of flat cell indices — each sums to houseSum. */
@@ -33,10 +42,13 @@ export class KillerLogicalSolver {
   constructor(cages: Cage[], gridSize: GridSize, givens?: number[][]) {
     const config = getGridConfig(gridSize);
     this.size = config.size;
+    this.boxWidth = config.boxWidth;
+    this.boxHeight = config.boxHeight;
+    this.boxesPerRow = this.size / this.boxWidth;
     this.houseSum = (this.size * (this.size + 1)) / 2;
     this.cages = cages;
     this.hs = new HumanSolver(givens ?? createEmptyGrid(config.size));
-    this.houses = this.buildHouses(config.boxWidth, config.boxHeight);
+    this.houses = this.buildHouses();
   }
 
   /** The working grid (0 = still empty). Read after `solve`. */
@@ -44,25 +56,19 @@ export class KillerLogicalSolver {
     return this.hs.grid;
   }
 
-  /** All rows, columns, and boxes as flat-index cell lists (each a full `size`-cell house). */
-  private buildHouses(boxWidth: number, boxHeight: number): number[][] {
+  /** All rows, columns, and boxes as flat-index cell lists — index 0..s-1 rows, s..2s-1 cols, 2s..3s-1 boxes. */
+  private buildHouses(): number[][] {
     const size = this.size;
     const houses: number[][] = [];
-
-    for (let r = 0; r < size; r++) {
-      houses.push(Array.from({ length: size }, (_, c) => r * size + c));
-    }
-    for (let c = 0; c < size; c++) {
-      houses.push(Array.from({ length: size }, (_, r) => r * size + c));
-    }
-    const boxesPerRow = size / boxWidth;
+    for (let r = 0; r < size; r++) houses.push(Array.from({ length: size }, (_, c) => r * size + c));
+    for (let c = 0; c < size; c++) houses.push(Array.from({ length: size }, (_, r) => r * size + c));
     for (let b = 0; b < size; b++) {
-      const boxRow = Math.floor(b / boxesPerRow);
-      const boxCol = b % boxesPerRow;
+      const boxRow = Math.floor(b / this.boxesPerRow);
+      const boxCol = b % this.boxesPerRow;
       const cells: number[] = [];
-      for (let dr = 0; dr < boxHeight; dr++) {
-        for (let dc = 0; dc < boxWidth; dc++) {
-          cells.push((boxRow * boxHeight + dr) * size + (boxCol * boxWidth + dc));
+      for (let dr = 0; dr < this.boxHeight; dr++) {
+        for (let dc = 0; dc < this.boxWidth; dc++) {
+          cells.push((boxRow * this.boxHeight + dr) * size + (boxCol * this.boxWidth + dc));
         }
       }
       houses.push(cells);
@@ -70,34 +76,43 @@ export class KillerLogicalSolver {
     return houses;
   }
 
+  private boxIndex(cell: number): number {
+    const r = Math.floor(cell / this.size);
+    const c = cell % this.size;
+    return Math.floor(r / this.boxHeight) * this.boxesPerRow + Math.floor(c / this.boxWidth);
+  }
+
+  /** Placed digits, remaining sum, and remaining empty cells of a cage in the current grid. */
+  private cageState(cage: Cage): CageState {
+    let used = 0;
+    let sumLeft = cage.sum;
+    const remaining: number[] = [];
+    for (const cell of cage.cells) {
+      const digit = this.hs.grid[Math.floor(cell / this.size)][cell % this.size];
+      if (digit !== 0) {
+        used |= 1 << (digit - 1);
+        sumLeft -= digit;
+      } else {
+        remaining.push(cell);
+      }
+    }
+    return { used, sumLeft, remaining };
+  }
+
   private note(tier: KillerTier): void {
     if (tier > this.hardestTier) this.hardestTier = tier;
   }
 
   /**
-   * Cage-combination elimination (Tier 1, foundational). For each cage, from the digits already
-   * placed in it, restrict every remaining cell to the digits that can still appear —
-   * `candidateMaskFor(cellsLeft, sumLeft)` minus digits already used in the cage. For a
-   * single-combination ("magic") cage this fixes the cell to the combo's digits. Sound: it only
-   * removes digits that cannot possibly appear (K1 arithmetic + no-repeat).
+   * Cage-combination elimination (Tier 1, foundational). Restrict each cage's remaining cells to
+   * `candidateMaskFor(cellsLeft, sumLeft)` minus digits already used — a magic cage fixes its
+   * cells to the combo's digits. Sound: only removes arithmetically-impossible / repeated digits.
    */
   private applyCageArithmetic(): boolean {
     let changed = false;
     for (const cage of this.cages) {
-      let used = 0;
-      let sumLeft = cage.sum;
-      const remaining: number[] = [];
-      for (const cell of cage.cells) {
-        const digit = this.hs.grid[Math.floor(cell / this.size)][cell % this.size];
-        if (digit !== 0) {
-          used |= 1 << (digit - 1);
-          sumLeft -= digit;
-        } else {
-          remaining.push(cell);
-        }
-      }
+      const { used, sumLeft, remaining } = this.cageState(cage);
       if (remaining.length === 0) continue;
-
       const allowed = candidateMaskFor(remaining.length, sumLeft) & ~used;
       for (const cell of remaining) {
         const r = Math.floor(cell / this.size);
@@ -112,12 +127,8 @@ export class KillerLogicalSolver {
   }
 
   /**
-   * Single-house Rule of 45 (Tier 1). Every house sums to `houseSum`. If a house is tiled by
-   * cages lying ENTIRELY within it plus exactly one leftover cell (an "innie"), that cell =
-   * houseSum − (sum of the contained cages). Places it when the value is a legal candidate.
-   *
-   * Correctness hinges on using REAL houses (full `size`-cell rows/cols/boxes) — a partial cell
-   * set would not sum to houseSum and the deduction would be unsound.
+   * Single-house Rule of 45 (Tier 1). If cages lying ENTIRELY within a house cover all but one
+   * cell (an "innie"), that cell = houseSum − (sum of those cages). Sound only on real houses.
    */
   private applyRuleOf45(): boolean {
     for (const houseCellList of this.houses) {
@@ -151,9 +162,57 @@ export class KillerLogicalSolver {
   }
 
   /**
-   * Run the deduction loop until solved or stuck, cheapest technique first (so ripple effects
-   * are exhausted before anything harder). Returns whether it fully solved and the hardest tier
-   * it needed — the difficulty signal.
+   * Consistent-digit / cage-locked-candidate (Tier 2). A digit `guaranteedMaskFor` says appears
+   * in EVERY completion of a cage must sit somewhere in that cage. If all the cage cells that can
+   * still hold it share a house, it can be eliminated from the rest of that house.
+   *
+   * Sound: `guaranteedMaskFor(cellsLeft, sumLeft)` is a subset of the true guaranteed set (it
+   * ignores no-repeat, only shrinking the claim), so every digit treated as guaranteed really is.
+   */
+  private applyCageConsistentDigits(): boolean {
+    let changed = false;
+    for (const cage of this.cages) {
+      const { used, sumLeft, remaining } = this.cageState(cage);
+      if (remaining.length === 0) continue;
+
+      let guaranteed = guaranteedMaskFor(remaining.length, sumLeft) & ~used;
+      while (guaranteed) {
+        const bit = guaranteed & -guaranteed;
+        const digit = 32 - Math.clz32(bit);
+        guaranteed &= guaranteed - 1;
+
+        const cellsWithDigit = remaining.filter((cell) =>
+          this.hs.hasCandidate(Math.floor(cell / this.size), cell % this.size, digit),
+        );
+        if (cellsWithDigit.length === 0) continue;
+
+        // If those cells all share a house, the digit is locked into the cage there.
+        const sameRow = cellsWithDigit.every((cell) => Math.floor(cell / this.size) === Math.floor(cellsWithDigit[0] / this.size));
+        const sameCol = cellsWithDigit.every((cell) => cell % this.size === cellsWithDigit[0] % this.size);
+        const sameBox = cellsWithDigit.every((cell) => this.boxIndex(cell) === this.boxIndex(cellsWithDigit[0]));
+
+        const except = new Set(cellsWithDigit);
+        if (sameRow) changed = this.eliminateFromHouse(this.houses[Math.floor(cellsWithDigit[0] / this.size)], digit, except) || changed;
+        if (sameCol) changed = this.eliminateFromHouse(this.houses[this.size + (cellsWithDigit[0] % this.size)], digit, except) || changed;
+        if (sameBox) changed = this.eliminateFromHouse(this.houses[2 * this.size + this.boxIndex(cellsWithDigit[0])], digit, except) || changed;
+      }
+    }
+    return changed;
+  }
+
+  /** Remove `digit` from every cell of a house except those in `except`. */
+  private eliminateFromHouse(houseCells: number[], digit: number, except: Set<number>): boolean {
+    let changed = false;
+    for (const cell of houseCells) {
+      if (except.has(cell)) continue;
+      if (this.hs.removeCandidate(Math.floor(cell / this.size), cell % this.size, digit)) changed = true;
+    }
+    return changed;
+  }
+
+  /**
+   * Run the deduction loop until solved or stuck, cheapest technique first (so ripple effects are
+   * exhausted before anything harder), recording the hardest tier that unsticks it — the grade.
    */
   solve(): { solved: boolean; hardestTier: KillerTier } {
     let changed = true;
@@ -165,6 +224,11 @@ export class KillerLogicalSolver {
       if (applyNakedSingle(this.hs)) { this.note(1); changed = true; continue; }
       if (applyHiddenSingle(this.hs)) { this.note(1); changed = true; continue; }
       if (this.applyRuleOf45()) { this.note(1); changed = true; continue; }
+
+      // ---- Tier 2 ----
+      if (this.applyCageConsistentDigits()) { this.note(2); changed = true; continue; }
+      if (applyNakedPair(this.hs)) { this.note(2); changed = true; continue; }
+      if (applyHiddenPair(this.hs)) { this.note(2); changed = true; continue; }
 
       // Higher tiers land here as they're built.
     }

@@ -18,7 +18,7 @@ gymnastics, no `extends`.
 
 Techniques are added tier by tier so each can be **verified sound before the next is layered
 on** — an unsound step is worse than a missing one (it corrupts the grid and mis-grades). This
-file currently implements **Tier 1**.
+file currently implements **Tier 1 + Tier 2**.
 
 ### Tier 1
 
@@ -30,6 +30,17 @@ file currently implements **Tier 1**.
 - **Single-house Rule of 45.** Every house sums to 45. If cages lying entirely within a house
   cover all but one cell (an "innie"), that cell = 45 − (sum of those cages).
 - **Classic singles** — naked and hidden singles, via `HumanSolver`.
+
+### Tier 2
+
+- **Consistent-digit / cage-locked-candidate.** A digit `guaranteedMaskFor` says appears in
+  *every* completion of a cage must sit somewhere in that cage. If all the cage cells that can
+  still hold it share a house (row/col/box), it's eliminated from the rest of that house — the
+  cage acts like a pointing set. Sound because `guaranteedMaskFor` is a *subset* of the true
+  guaranteed set (it ignores no-repeat, only shrinking the claim), so every "guaranteed" digit
+  really is.
+- **Classic pairs** — naked and hidden pairs, via `HumanSolver`. Once cage arithmetic has seeded
+  candidates, these capture the cross-cage-boundary naked-subset eliminations for free.
 
 ## Soundness, and a bug it caught
 
@@ -46,21 +57,21 @@ Rule of 45 is only sound on genuine `size`-cell houses.
 
 ## The solve-rate gradient = the difficulty signal
 
-Tier 1's reach, measured over generated puzzles by cage size:
+Cumulative reach, measured over generated puzzles by cage size:
 
-| maxSize | solved by Tier 1 alone |
-|---|---|
-| 2 | ~100% |
-| 3 | ~72% |
-| 4 | ~8% |
+| maxSize | Tier 1 | Tier 1 + 2 |
+|---|---|---|
+| 2 | ~100% | ~100% |
+| 3 | ~72% | ~78% |
+| 4 | ~8% | ~15% |
 
-This is exactly the difficulty gradient we want to grade by: small-cage puzzles are Tier-1
-"easy"; larger, looser cages need the harder techniques added in later tiers.
+This is exactly the difficulty gradient we grade by: small-cage puzzles are Tier-1 "easy"; each
+added tier reaches a few more of the larger, looser puzzles. The remainder awaits Tier 3+.
 
 ## Not yet here
 
-- **Tier 2+** — cross-boundary cage-combination eliminations, consistent-digit deduction
-  (`guaranteedMaskFor`), classic pairs; then multi-unit Rule of 45 / cage splitting; then
-  fish/wings/chains. Added one verified tier at a time.
+- **Tier 3+** — multi-unit Rule of 45 / cage splitting / pseudo-cages, classic triples/hidden
+  subsets; then Tier 4 fish/wings/chains (`HumanSolver`'s advanced/extreme strategies). Added one
+  verified tier at a time.
 - **Grading integration** — K5 will loop generation until the graded tier matches the requested
   band; right now the solver just reports the tier.
