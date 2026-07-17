@@ -26,14 +26,18 @@ also keeps generation off the main thread and out of SSR (AGENTS.md §1).
 Until hydrated: render a neutral placeholder (avoids reading persisted state during SSR).
 
 Phase 'select':
-  Show the four daily difficulties and a Play button.
-  On Play: fetch the daily; on success start the board game and go to phase 'playing'.
+  Show the daily difficulties and a Play button.
+  If a daily is parked in the store (saved.mode === 'daily'): a "Continue {difficulty} · M:SS"
+    button → handleContinue (restore difficulty/date from the store, resume() if paused,
+    phase 'playing'; no re-fetch).
+  On Play: if any game is parked (one slot), open the <ConfirmModal> warning first; on
+    confirm — or when nothing is parked — fetch the daily, startNewGame(puzzle, 'daily', date),
+    phase 'playing'.
 
 Phase 'playing':
   Render the shared board surface (header, board/paused, numpad, keyboard hints).
-  Run a 1s timer only while actively playing.
-  On solved: show a celebratory modal with time + mistakes and a note that leaderboards
-    arrive later; offer a return to the difficulty picker.
+  Run a 1s timer only while actively playing (frozen on the picker / when away).
+  On solved: show a modal with time + mistakes and the ranked result; return to the picker.
 ```
 
 ## Ranked flow (4.4 UI)
@@ -43,9 +47,12 @@ endpoints around the reused board:
 
 - On **Play**, it POSTs `/api/daily/start` **unconditionally** (not gated on the client
   `session`, which may still be loading — the auth cookie is what matters; a signed-out
-  caller just gets a harmless 401). This stamps the server-side start time.
+  caller just gets a harmless 401). This records the attempt (the one-per-day lock).
 - On **solved**, a one-shot guard (`submittedRef`) POSTs `/api/solve` once with the completed
-  grid + mistakes, and the returned rank is shown in the modal.
+  grid + mistakes + the **client timer** (`timeMs = elapsedTime * 1000`), and the returned
+  rank is shown. Ranking by the client timer is what makes leaving/continuing a daily fair
+  (see `solve.service.md`); only **today's** daily is submitted — a daily left over the UTC
+  rollover (`dailyDate ≠ today`) is finished for fun but shown as expired, not ranked.
 - The "submitting…" and signed-out states are **derived in render** from `session` + the
   submit result, so the effect never calls setState synchronously
   (`react-hooks/set-state-in-effect`).

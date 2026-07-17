@@ -25,16 +25,30 @@ function formatMs(ms: number): string {
 }
 
 /**
- * Client view for `/leaderboard`: difficulty tabs, today's board, and — when signed in —
+ * Client view for the leaderboard: difficulty tabs, a day's board, and — when signed in —
  * the caller's own rank (highlighted) and current streak. Reads from the public
  * `/api/leaderboard` and `/api/me/streak`; all ranking/ownership is decided server-side.
+ *
+ * Pass `date` (YYYY-MM-DD) to show a PAST day's board (the archive); omit it for today. For a
+ * past board the "current" panels (streak + personal bests) are hidden, since they're
+ * today-relative concepts, while the caller's own historical rank still shows.
  *
  * Fetch effects set state only inside async callbacks (never synchronously in the effect
  * body); the loading flash on tab-switch is driven from the click handler instead.
  */
-export function LeaderboardView() {
+export function LeaderboardView({
+  date,
+  difficulty: controlledDifficulty,
+  onDifficultyChange,
+}: {
+  date?: string;
+  /** Control the difficulty externally (the archive drives one selector for board + play). */
+  difficulty?: DailyDifficulty;
+  onDifficultyChange?: (d: DailyDifficulty) => void;
+} = {}) {
   const { data: session } = useSession();
-  const [difficulty, setDifficulty] = useState<DailyDifficulty>('easy');
+  const [internalDifficulty, setInternalDifficulty] = useState<DailyDifficulty>('easy');
+  const difficulty = controlledDifficulty ?? internalDifficulty;
   const [entries, setEntries] = useState<Entry[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
@@ -45,7 +59,7 @@ export function LeaderboardView() {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/leaderboard?difficulty=${difficulty}`)
+    fetch(`/api/leaderboard?difficulty=${difficulty}${date ? `&date=${date}` : ''}`)
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!active) return;
@@ -72,12 +86,12 @@ export function LeaderboardView() {
     return () => {
       active = false;
     };
-  }, [difficulty]);
+  }, [difficulty, date]);
 
-  // Streak + personal bests, only when signed in; render gates on `session`, so no
-  // synchronous reset is needed. setState happens only in async callbacks.
+  // Streak + personal bests, only when signed in and viewing TODAY (they're today-relative,
+  // meaningless for an archived board). Render gates on `session`, so no synchronous reset.
   useEffect(() => {
-    if (!session) return;
+    if (!session || date) return;
     let active = true;
     fetch('/api/me/streak')
       .then((r) => (r.ok ? r.json() : null))
@@ -94,12 +108,13 @@ export function LeaderboardView() {
     return () => {
       active = false;
     };
-  }, [session]);
+  }, [session, date]);
 
   const selectDifficulty = (d: DailyDifficulty) => {
     if (d === difficulty) return;
     setLoading(true);
-    setDifficulty(d);
+    if (onDifficultyChange) onDifficultyChange(d);
+    else setInternalDifficulty(d);
   };
 
   return (
@@ -148,7 +163,9 @@ export function LeaderboardView() {
       ) : error ? (
         <p className="text-center text-cherry py-8">{error}</p>
       ) : entries.length === 0 ? (
-        <p className="text-center text-ink-soft py-8">No solves yet today — be the first!</p>
+        <p className="text-center text-ink-soft py-8">
+          {date ? 'No solves were recorded for this day.' : 'No solves yet today — be the first!'}
+        </p>
       ) : (
         <table className="w-full text-sm">
           <thead>
