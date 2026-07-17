@@ -76,6 +76,33 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 ---
 
+## 4b. Killer Sudoku Drawing
+
+### `drawKillerGrid(puzzle, startX, startY, gridDrawSize, showSolution)`
+
+**Goal:** Draw a Killer board — the same base grid, plus the two Killer-specific marks: dashed
+cage outlines and the cage sums.
+**Steps:**
+
+1. Build a `cell → cage index` lookup from the puzzle's cages.
+2. **Digits:** draw the solution on an answer page; draw nothing on the puzzle page (Killer has
+   no givens — the cages are the only clue).
+3. **Base grid:** thin cell lines, thick box lines (same as `drawGrid`).
+4. **Cage outlines:** for every cell edge whose neighbour belongs to a *different* cage (or is
+   off-grid), draw a short **dashed** segment inset slightly into the cell. Inset segments from
+   adjacent boundary edges meet at corners, tracing each cage's outline. `dash`/`undash` wrap
+   this so only the cage lines are dashed.
+5. **Cage sums:** in each cage's *anchor* cell (its lowest flat index — the top-left-most cell),
+   draw the sum in the corner, on a tiny white pad so it stays legible over the dashed border.
+
+### `generateKillerPDF(puzzles)`
+
+**Goal:** Render a Killer booklet — a title page, one page per puzzle (empty grid + cages), then
+one answer page each (filled solution + cages). Node runtime only (pdfkit). A dev preview script,
+`preview-killer.ts`, generates one puzzle per difficulty and writes a PDF for eyeballing.
+
+---
+
 ## 5. The Master Flow
 
 **Goal:** Execute all the steps in the right order to build the final book.

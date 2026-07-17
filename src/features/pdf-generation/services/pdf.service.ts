@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import PDFDocument from 'pdfkit';
 import { SudokuPuzzle, getGridConfig } from '@/features/engine/sudoku';
+import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 
 export function drawTitlePage(doc: any): void {
   doc.addPage();
@@ -46,6 +47,121 @@ export function drawGrid(doc: any, grid: number[][], startX: number, startY: num
       .lineTo(startX + i * cellSize, startY + gridDrawSize)
       .stroke();
   }
+}
+
+/**
+ * Draw a Killer Sudoku grid: the base grid + digits (empty for a puzzle, the solution for an
+ * answer), plus the two Killer-specific marks — dashed cage outlines (drawn inset on every edge
+ * where the neighbouring cell belongs to a different cage) and the cage's sum in the top-left
+ * corner of its anchor cell (its lowest-indexed cell). A small white pad behind the sum keeps it
+ * legible over the dashed border.
+ */
+export function drawKillerGrid(
+  doc: any,
+  puzzle: KillerPuzzle,
+  startX: number,
+  startY: number,
+  gridDrawSize: number,
+  showSolution = false,
+): void {
+  const size = puzzle.gridSize;
+  const config = getGridConfig(size);
+  const cell = gridDrawSize / size;
+  const inset = cell * 0.09;
+
+  const cellCage = new Array<number>(size * size).fill(-1);
+  puzzle.cages.forEach((cage, index) => {
+    for (const c of cage.cells) cellCage[c] = index;
+  });
+  const cageAt = (r: number, c: number): number =>
+    r < 0 || c < 0 || r >= size || c >= size ? -1 : cellCage[r * size + c];
+
+  // Digits (solution on an answer page; nothing on the puzzle page — Killer has no givens).
+  const grid = showSolution ? puzzle.solution : puzzle.grid;
+  doc.fillColor('black').fontSize(cell * 0.5);
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const v = grid[r][c];
+      if (v === 0) continue;
+      const s = String(v);
+      const tw = doc.widthOfString(s);
+      const th = doc.heightOfString(s);
+      doc.text(s, startX + c * cell + (cell - tw) / 2, startY + r * cell + (cell - th) / 2 + th * 0.1, {
+        lineBreak: false,
+      });
+    }
+  }
+
+  // Base grid: thin cell lines, thick box lines.
+  doc.strokeColor('black');
+  for (let i = 0; i <= size; i++) {
+    doc.lineWidth(i % config.boxHeight === 0 ? 2 : 0.5);
+    doc.moveTo(startX, startY + i * cell).lineTo(startX + gridDrawSize, startY + i * cell).stroke();
+    doc.lineWidth(i % config.boxWidth === 0 ? 2 : 0.5);
+    doc.moveTo(startX + i * cell, startY).lineTo(startX + i * cell, startY + gridDrawSize).stroke();
+  }
+
+  // Cage outlines: a dashed segment inset from every cage-boundary edge.
+  doc.lineWidth(0.8).dash(2, { space: 2 }).strokeColor('black');
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const cg = cellCage[r * size + c];
+      const x = startX + c * cell;
+      const y = startY + r * cell;
+      if (cageAt(r - 1, c) !== cg) doc.moveTo(x + inset, y + inset).lineTo(x + cell - inset, y + inset).stroke();
+      if (cageAt(r + 1, c) !== cg) doc.moveTo(x + inset, y + cell - inset).lineTo(x + cell - inset, y + cell - inset).stroke();
+      if (cageAt(r, c - 1) !== cg) doc.moveTo(x + inset, y + inset).lineTo(x + inset, y + cell - inset).stroke();
+      if (cageAt(r, c + 1) !== cg) doc.moveTo(x + cell - inset, y + inset).lineTo(x + cell - inset, y + cell - inset).stroke();
+    }
+  }
+  doc.undash();
+
+  // Cage sums in the anchor (lowest-indexed) cell's corner, on a small white pad.
+  doc.fontSize(cell * 0.24);
+  for (const cage of puzzle.cages) {
+    const anchor = Math.min(...cage.cells);
+    const ar = Math.floor(anchor / size);
+    const ac = anchor % size;
+    const s = String(cage.sum);
+    const x = startX + ac * cell + inset + 1;
+    const y = startY + ar * cell + inset + 0.5;
+    doc.rect(x - 0.5, y, doc.widthOfString(s) + 1.5, cell * 0.24).fill('white');
+    doc.fillColor('black').text(s, x, y, { lineBreak: false });
+  }
+}
+
+/**
+ * Render a Killer Sudoku booklet: a title page, one page per puzzle (empty grid + cages), then
+ * one answer page each (filled solution + cages). Node runtime only (pdfkit).
+ */
+export async function generateKillerPDF(puzzles: KillerPuzzle[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ autoFirstPage: false, bufferPages: true, margin: 50 });
+    const buffers: Buffer[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const gridDrawSize = 400;
+
+    doc.addPage();
+    doc.fontSize(32).text('Killer Sudoku', { align: 'center' });
+    doc.moveDown(1);
+    doc.fontSize(14).text('No givens — the cage sums are the only clue.', { align: 'center' });
+
+    const drawPage = (p: KillerPuzzle, i: number, answer: boolean) => {
+      doc.addPage();
+      const title = `Killer #${i + 1} (${p.difficulty})${answer ? ' — Answer' : ''}`;
+      doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
+      doc.moveDown(1);
+      drawKillerGrid(doc, p, (doc.page.width - gridDrawSize) / 2, doc.y, gridDrawSize, answer);
+    };
+
+    puzzles.forEach((p, i) => drawPage(p, i, false));
+    puzzles.forEach((p, i) => drawPage(p, i, true));
+
+    doc.end();
+  });
 }
 
 export function drawPuzzles(
