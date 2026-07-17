@@ -101,10 +101,14 @@ export function drawKillerGrid(
     doc.moveTo(startX + i * cell, startY).lineTo(startX + i * cell, startY + gridDrawSize).stroke();
   }
 
-  // Cage outlines: dashed lines inset into each cage. Each boundary segment spans the FULL cell
-  // in its direction of travel and is trimmed only at true cage corners (where the perpendicular
-  // edge is also a boundary) — so segments in the same cage connect across cells into a
-  // continuous outline instead of stopping and restarting at every cell.
+  // Cage outlines: dashed lines inset into each cage, forming one continuous border per cage.
+  // Each boundary segment's endpoint is resolved by the in-line neighbour and the diagonal cell:
+  //  - CONVEX corner (in-line neighbour is a different cage): inset the end.
+  //  - STRAIGHT (in-line neighbour same cage, diagonal outside → it continues this border): run to
+  //    the cell edge so the two segments connect.
+  //  - REFLEX/inner corner (in-line neighbour same cage, diagonal INSIDE → it has no matching
+  //    border): run PAST the cell edge by `inset`, so this line meets the perpendicular border
+  //    turning the corner — the fix for L-shaped cages, whose inner corner was left open.
   doc.lineWidth(1.3).dash(2.4, { space: 1.6 }).strokeColor('black');
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
@@ -117,16 +121,24 @@ export function drawKillerGrid(
       const right = cageAt(r, c + 1) !== cg;
 
       if (top) {
-        doc.moveTo(left ? x + inset : x, y + inset).lineTo(right ? x + cell - inset : x + cell, y + inset).stroke();
+        const x1 = left ? x + inset : cageAt(r - 1, c - 1) === cg ? x - inset : x;
+        const x2 = right ? x + cell - inset : cageAt(r - 1, c + 1) === cg ? x + cell + inset : x + cell;
+        doc.moveTo(x1, y + inset).lineTo(x2, y + inset).stroke();
       }
       if (bottom) {
-        doc.moveTo(left ? x + inset : x, y + cell - inset).lineTo(right ? x + cell - inset : x + cell, y + cell - inset).stroke();
+        const x1 = left ? x + inset : cageAt(r + 1, c - 1) === cg ? x - inset : x;
+        const x2 = right ? x + cell - inset : cageAt(r + 1, c + 1) === cg ? x + cell + inset : x + cell;
+        doc.moveTo(x1, y + cell - inset).lineTo(x2, y + cell - inset).stroke();
       }
       if (left) {
-        doc.moveTo(x + inset, top ? y + inset : y).lineTo(x + inset, bottom ? y + cell - inset : y + cell).stroke();
+        const y1 = top ? y + inset : cageAt(r - 1, c - 1) === cg ? y - inset : y;
+        const y2 = bottom ? y + cell - inset : cageAt(r + 1, c - 1) === cg ? y + cell + inset : y + cell;
+        doc.moveTo(x + inset, y1).lineTo(x + inset, y2).stroke();
       }
       if (right) {
-        doc.moveTo(x + cell - inset, top ? y + inset : y).lineTo(x + cell - inset, bottom ? y + cell - inset : y + cell).stroke();
+        const y1 = top ? y + inset : cageAt(r - 1, c + 1) === cg ? y - inset : y;
+        const y2 = bottom ? y + cell - inset : cageAt(r + 1, c + 1) === cg ? y + cell + inset : y + cell;
+        doc.moveTo(x + cell - inset, y1).lineTo(x + cell - inset, y2).stroke();
       }
     }
   }
