@@ -85,7 +85,18 @@ tier reaches a few more of the larger, looser puzzles. The ~12% / ~79% of maxSiz
 full ladder still can't crack are simply **beyond the implemented techniques** — for grading that
 just means they're ungradeable and K5 discards them (it only ships puzzles it can grade).
 
-## Not yet here
+## The `maxTier` cap (grading speed)
 
-- **Grading integration** — K5 will loop generation until the graded tier matches the requested
-  band; right now the solver just reports the tier. (The technique ladder itself is complete.)
+`solve({ maxTier })` runs only techniques up to `maxTier` (default 4 = all). The generator
+passes the *target* tier, so grading a would-be "medium" never pays for the expensive Tier-4
+strategies: a puzzle needing more than `maxTier` simply returns `solved: false` — a cheap
+reject. This is the lever that makes difficulty-graded generation nearly free (see
+`killer-sudoku.md`).
+
+## Reach vs. what v1 ships
+
+Measured, the solver grades **tiers 1–3 abundantly**; tier-4 *solvable* layouts are a thin band
+and larger cages are dominated by puzzles beyond the current techniques. So K5 ships
+easy/medium/hard (tiers 1–3). Tier 4 stays wired and graded (and is exercised soundly by the
+maxSize-4 tests) for when more Killer techniques are added — cage splitting, deeper chains — to
+fill that band and unlock expert/extreme.

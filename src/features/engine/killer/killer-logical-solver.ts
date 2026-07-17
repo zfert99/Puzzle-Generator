@@ -26,7 +26,15 @@ import { applyWWing, applyALSXZ, applyAIC } from '../strategies/extreme';
 import { candidateMaskFor, guaranteedMaskFor } from './cage-combinations';
 import type { Cage } from './killer-types';
 
-/** 0 = nothing needed (already solved); 1 = Tier 1; 2 = Tier 2; higher tiers added later. */
+/**
+ * Grading tiers: 0 = already solved; 1 = magic cages / single-45 / singles; 2 = consistent-digit
+ * / pairs; 3 = multi-unit 45 / pointing; 4 = classic advanced + extreme (X-Wing … AIC).
+ *
+ * Killer v1 generates only tiers 1–3 (easy/medium/hard) — measured, those are abundant and fast;
+ * tier-4 puzzles that are *solvable* are a thin band and the "unsolvable-by-this-solver" fraction
+ * dominates larger cages. Tier 4 is still graded (and capped) so the ladder is complete for when
+ * more Killer techniques are added.
+ */
 export type KillerTier = 0 | 1 | 2 | 3 | 4;
 
 interface CageState {
@@ -305,8 +313,13 @@ export class KillerLogicalSolver {
   /**
    * Run the deduction loop until solved or stuck, cheapest technique first (so ripple effects are
    * exhausted before anything harder), recording the hardest tier that unsticks it — the grade.
+   *
+   * `maxTier` caps which techniques may run (default 4 = all). The generator passes the *target*
+   * tier so that grading a would-be "medium" never pays for the expensive Tier-4 strategies: a
+   * puzzle needing more than `maxTier` simply comes back `solved: false`, which is a reject.
    */
-  solve(): { solved: boolean; hardestTier: KillerTier } {
+  solve(options: { maxTier?: KillerTier } = {}): { solved: boolean; hardestTier: KillerTier } {
+    const cap = options.maxTier ?? 4;
     let changed = true;
     while (changed && !this.hs.isSolved()) {
       changed = false;
@@ -318,16 +331,20 @@ export class KillerLogicalSolver {
       if (this.applyRuleOf45()) { this.note(1); changed = true; continue; }
 
       // ---- Tier 2 ----
-      if (this.applyCageConsistentDigits()) { this.note(2); changed = true; continue; }
-      if (applyNakedPair(this.hs)) { this.note(2); changed = true; continue; }
-      if (applyHiddenPair(this.hs)) { this.note(2); changed = true; continue; }
+      if (cap >= 2) {
+        if (this.applyCageConsistentDigits()) { this.note(2); changed = true; continue; }
+        if (applyNakedPair(this.hs)) { this.note(2); changed = true; continue; }
+        if (applyHiddenPair(this.hs)) { this.note(2); changed = true; continue; }
+      }
 
       // ---- Tier 3 ----
-      if (this.applyRuleOf45Regions()) { this.note(3); changed = true; continue; }
-      if (applyPointingPairs(this.hs)) { this.note(3); changed = true; continue; }
+      if (cap >= 3) {
+        if (this.applyRuleOf45Regions()) { this.note(3); changed = true; continue; }
+        if (applyPointingPairs(this.hs)) { this.note(3); changed = true; continue; }
+      }
 
       // ---- Tier 4 (classic advanced + extreme, 9×9 only) ----
-      if (this.size === 9) {
+      if (cap >= 4 && this.size === 9) {
         if (applyXWing(this.hs)) { this.note(4); changed = true; continue; }
         if (applySwordfish(this.hs)) { this.note(4); changed = true; continue; }
         if (applyYWing(this.hs)) { this.note(4); changed = true; continue; }

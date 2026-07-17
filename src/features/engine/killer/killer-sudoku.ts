@@ -1,35 +1,37 @@
 /**
- * The Killer Sudoku generation pipeline — assembles K1–K3 into a `generateKillerSudoku` that
- * emits a **uniquely-solvable** puzzle.
+ * The Killer Sudoku generation pipeline — assembles K1–K4 into a `generateKillerSudoku` that
+ * emits a **uniquely-solvable, difficulty-graded** puzzle.
  *
- * Pipeline: solved grid (reuse the classic engine's `fillGrid`) → random cage partition (K3) →
- * uniqueness gate via the exact solver (K2). Repeat until unique — measured to converge in a
- * few attempts (~38–83% of random partitions are already unique, depending on cage size), so a
- * plain regenerate loop suffices; no ambiguity-repair machinery needed.
+ * Pipeline: solved grid (reuse `fillGrid`) → random cage partition (K3) → uniqueness gate via the
+ * exact solver (K2) → difficulty grade via the logical solver (K4). Regenerate until a puzzle
+ * grades to the requested tier.
  *
- * NOTE: difficulty is not yet GRADED — that's K4. Here `difficulty` only tunes generation
- * params (cage size) and is stamped provisionally; it is not a verified band. See
- * `killer-sudoku.md`.
+ * v1 offers three difficulties (easy/medium/hard → grading tiers 1/2/3), each tuned to a cage
+ * size where that tier is both abundant and fast to hit. Expert/extreme (tier 4+) are deferred:
+ * solvable tier-4 layouts are a thin band and larger cages are dominated by puzzles beyond the
+ * current technique set — they need more Killer techniques first. See `killer-sudoku.md`.
  */
 
-import { getGridConfig, type Difficulty } from '../sudoku';
+import { getGridConfig } from '../sudoku';
 import { createEmptyGrid, copyGrid, fillGrid } from '../grid-utils';
 import { generateCages } from './cage-generator';
 import { KillerSolver } from './killer-solver';
-import type { KillerPuzzle } from './killer-types';
+import { KillerLogicalSolver, type KillerTier } from './killer-logical-solver';
+import type { Cage, KillerPuzzle } from './killer-types';
 
 const GRID_SIZE = 9;
 
+export type KillerDifficulty = 'easy' | 'medium' | 'hard';
+
 /**
- * Provisional cage-size cap per difficulty (smaller cages → more sum clues → easier and more
- * often unique). A rough lever until K4 grades puzzles by the techniques they actually need.
+ * Per-difficulty target grading tier and the cage-size cap that makes that tier both common and
+ * fast to hit (measured): easy is dense with magic cages (Tier 1); medium/hard live at maxSize 3
+ * where Tiers 2/3 are abundant and larger-cage "beyond solver" puzzles are rare.
  */
-const MAX_SIZE_BY_DIFFICULTY: Record<Difficulty, number> = {
-  easy: 3,
-  medium: 4,
-  hard: 4,
-  expert: 4,
-  extreme: 4,
+const DIFFICULTY_CONFIG: Record<KillerDifficulty, { targetTier: KillerTier; maxSize: number }> = {
+  easy: { targetTier: 1, maxSize: 2 },
+  medium: { targetTier: 2, maxSize: 3 },
+  hard: { targetTier: 3, maxSize: 3 },
 };
 
 export interface KillerGenOptions {
@@ -37,31 +39,23 @@ export interface KillerGenOptions {
   rng?: () => number;
   /** A solved grid to build on. Default: a fresh random solution via `fillGrid` per attempt. */
   solution?: number[][];
-  /** Attempts to find a unique layout before giving up (default 100). */
+  /** Grading attempts before giving up (default 800). */
   maxAttempts?: number;
-  /** Override the difficulty→cage-size mapping. */
-  maxSize?: number;
 }
 
 /**
- * Generate a uniquely-solvable 9×9 Killer puzzle. `grid` is all-zero (Killer has no givens);
- * the cages are the clue. Throws if no unique layout is found within `maxAttempts` (astronomically
- * unlikely given the measured uniqueness rate).
+ * One uniquely-solvable Killer layout of the given max cage size (UNGRADED) — the building block.
+ * A fresh solved grid per attempt (unless one is injected) avoids thrashing on an unlucky grid.
  */
-export function generateKillerSudoku(
-  difficulty: Difficulty = 'medium',
-  options: KillerGenOptions = {},
-): KillerPuzzle {
+export function generateUniqueKiller(
+  maxSize: number,
+  options: { rng?: () => number; solution?: number[][]; maxAttempts?: number } = {},
+): { cages: Cage[]; solution: number[][] } {
   const config = getGridConfig(GRID_SIZE);
   const rng = options.rng ?? Math.random;
-  const maxAttempts = options.maxAttempts ?? 100;
-  const maxSize = options.maxSize ?? MAX_SIZE_BY_DIFFICULTY[difficulty];
+  const maxAttempts = options.maxAttempts ?? 200;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    // A fresh solved grid per attempt (unless one is injected). Counterintuitively this beats
-    // reusing one grid: `fillGrid` is cheap (~1.5ms), while a single unlucky grid whose
-    // partitions are often ambiguous makes the retry loop thrash. Re-rolling the grid avoids
-    // getting stuck and keeps generation time low-variance.
     let solution: number[][];
     if (options.solution) {
       solution = copyGrid(options.solution);
@@ -69,13 +63,39 @@ export function generateKillerSudoku(
       solution = createEmptyGrid(config.size);
       fillGrid(solution, config);
     }
-
     const cages = generateCages(solution, GRID_SIZE, { rng, maxSize });
+    if (new KillerSolver(cages, GRID_SIZE).countSolutions(2) === 1) return { cages, solution };
+  }
+  throw new Error(`Could not generate a unique Killer layout in ${maxAttempts} attempts`);
+}
 
-    if (new KillerSolver(cages, GRID_SIZE).countSolutions(2) === 1) {
+/**
+ * Generate a uniquely-solvable, difficulty-graded 9×9 Killer. `grid` is all-zero (no givens);
+ * the cages are the clue. The logical solver is capped at the target tier, so grading a would-be
+ * "medium" never pays for expensive higher-tier strategies. Throws if no puzzle grades to the
+ * requested difficulty within `maxAttempts` (astronomically unlikely at the tuned settings).
+ */
+export function generateKillerSudoku(
+  difficulty: KillerDifficulty = 'medium',
+  options: KillerGenOptions = {},
+): KillerPuzzle {
+  const { targetTier, maxSize } = DIFFICULTY_CONFIG[difficulty];
+  const rng = options.rng ?? Math.random;
+  const maxAttempts = options.maxAttempts ?? 800;
+  const config = getGridConfig(GRID_SIZE);
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { cages, solution } = generateUniqueKiller(maxSize, {
+      rng,
+      solution: options.solution,
+      maxAttempts: 100,
+    });
+
+    const grade = new KillerLogicalSolver(cages, GRID_SIZE).solve({ maxTier: targetTier });
+    if (grade.solved && grade.hardestTier === targetTier) {
       return {
         variant: 'killer',
-        grid: createEmptyGrid(config.size), // no givens — the cages are the clue
+        grid: createEmptyGrid(config.size),
         solution,
         cages,
         difficulty,
@@ -84,5 +104,5 @@ export function generateKillerSudoku(
     }
   }
 
-  throw new Error(`Could not generate a unique Killer (${difficulty}) in ${maxAttempts} attempts`);
+  throw new Error(`Could not generate a ${difficulty} Killer in ${maxAttempts} attempts`);
 }
