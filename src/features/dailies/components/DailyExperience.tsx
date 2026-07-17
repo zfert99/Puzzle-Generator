@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
@@ -62,6 +63,7 @@ type SubmitState =
  * erases it. A submit guard ref ensures the solve is posted exactly once per game.
  */
 export default function DailyExperience() {
+  const router = useRouter();
   const mounted = useHasMounted();
   const { data: session } = useSession();
   const [phase, setPhase] = useState<'select' | 'playing'>('select');
@@ -176,6 +178,19 @@ export default function DailyExperience() {
     setPendingDifficulty(null);
   };
 
+  const dismissWarn = () => {
+    setWarnOpen(false);
+    setPendingDifficulty(null);
+  };
+
+  // "Keep playing" — take the player to their saved game: resume it here if it's a daily,
+  // otherwise go to the surface that owns it (a saved free-play game lives on /play).
+  const keepPlaying = () => {
+    dismissWarn();
+    if (saved?.mode === 'daily') handleContinue();
+    else if (saved) router.push('/play');
+  };
+
   // Resume the parked daily — restore its difficulty/date from the store, no re-fetch.
   const handleContinue = () => {
     if (!saved) return;
@@ -284,11 +299,11 @@ export default function DailyExperience() {
           open={warnOpen}
           title="Start a new puzzle?"
           message="You have a saved puzzle in progress. Starting a new one will erase it — you can only save one puzzle at a time."
+          confirmLabel="Start new"
+          cancelLabel="Keep playing"
           onConfirm={confirmNew}
-          onCancel={() => {
-            setWarnOpen(false);
-            setPendingDifficulty(null);
-          }}
+          onCancel={keepPlaying}
+          onDismiss={dismissWarn}
         />
       </div>
     );
