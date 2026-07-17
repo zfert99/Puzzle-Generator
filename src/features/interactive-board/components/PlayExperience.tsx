@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
 import { GridSizeSelector } from '@/features/puzzle-configuration/components/GridSizeSelector';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
@@ -33,6 +34,7 @@ function useHasMounted(): boolean {
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
 export default function PlayExperience() {
+  const router = useRouter();
   const mounted = useHasMounted();
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
@@ -87,6 +89,14 @@ export default function PlayExperience() {
     if (status === 'paused') resume();
     setViewingSolved(false);
     setView('playing');
+  };
+
+  // "Keep playing" — take the player to their saved game: resume it here if it's a free-play
+  // game, otherwise go to the surface that owns it (a saved daily lives on /daily).
+  const keepPlaying = () => {
+    setWarnOpen(false);
+    if (saved?.mode === 'play') handleContinue();
+    else if (saved) router.push('/daily');
   };
 
   // Avoid a hydration mismatch: render a neutral placeholder until mounted.
@@ -155,8 +165,11 @@ export default function PlayExperience() {
           open={warnOpen}
           title="Start a new puzzle?"
           message="You have a saved puzzle in progress. Starting a new one will erase it — you can only save one puzzle at a time."
+          confirmLabel="Start new"
+          cancelLabel="Keep playing"
           onConfirm={confirmNew}
-          onCancel={() => setWarnOpen(false)}
+          onCancel={keepPlaying}
+          onDismiss={() => setWarnOpen(false)}
         />
       </div>
     );

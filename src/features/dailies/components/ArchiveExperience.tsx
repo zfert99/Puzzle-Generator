@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
 import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
@@ -37,6 +38,7 @@ function formatUtcDate(isoDate: string): string {
  * lifted here so the one `LeaderboardView` selector also drives the Play button.
  */
 export default function ArchiveExperience() {
+  const router = useRouter();
   const mounted = useHasMounted();
   const todayIso = toUtcDateString(new Date());
 
@@ -75,6 +77,13 @@ export default function ArchiveExperience() {
   const confirmNew = () => {
     setWarnOpen(false);
     void beginPlay();
+  };
+
+  // "Keep playing" — a saved game always lives on another surface from here, so go to it.
+  const keepPlaying = () => {
+    setWarnOpen(false);
+    if (saved?.mode === 'daily') router.push('/daily');
+    else if (saved) router.push('/play');
   };
 
   if (!mounted) {
@@ -173,8 +182,10 @@ export default function ArchiveExperience() {
         title="Start a new puzzle?"
         message="You have a saved puzzle in progress. Playing this archived puzzle will erase it — you can only save one puzzle at a time."
         confirmLabel="Play it"
+        cancelLabel="Keep playing"
         onConfirm={confirmNew}
-        onCancel={() => setWarnOpen(false)}
+        onCancel={keepPlaying}
+        onDismiss={() => setWarnOpen(false)}
       />
     </div>
   );
