@@ -5,6 +5,7 @@ import type { KeyboardEvent, CSSProperties } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 import { Cell } from './Cell';
+import { CageOverlay } from './CageOverlay';
 import styles from './Board.module.css';
 
 /**
@@ -18,11 +19,13 @@ import styles from './Board.module.css';
 export function Board() {
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const { size, selectedR, selectedC } = useBoardStore(
+  const { size, selectedR, selectedC, variant, cages } = useBoardStore(
     useShallow((s) => ({
       size: s.config.size,
       selectedR: s.selectedCell?.r ?? null,
       selectedC: s.selectedCell?.c ?? null,
+      variant: s.variant,
+      cages: s.cages,
     }))
   );
 
@@ -122,6 +125,7 @@ export function Board() {
       {Array.from({ length: size }, (_, r) =>
         Array.from({ length: size }, (_, c) => <Cell key={`${r}-${c}`} r={r} c={c} />)
       )}
+      {variant === 'killer' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
     </div>
   );
 }

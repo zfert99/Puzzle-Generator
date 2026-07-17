@@ -33,14 +33,18 @@ function useHasMounted(): boolean {
  * The timer ticks only while actively on the board (`view === 'playing'`), so stepping back
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
+const KILLER_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
+
 export default function PlayExperience() {
   const router = useRouter();
   const mounted = useHasMounted();
+  const [variant, setVariant] = useState<'classic' | 'killer'>('classic');
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [view, setView] = useState<'config' | 'playing'>('config');
   const [viewingSolved, setViewingSolved] = useState(false);
   const [warnOpen, setWarnOpen] = useState(false);
+  const isKiller = variant === 'killer';
 
   const { loading, error, fetchPuzzle } = usePuzzle();
   const status = useBoardStore((s) => s.status);
@@ -65,11 +69,19 @@ export default function PlayExperience() {
     if (size !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
+  const handleVariantChange = (v: 'classic' | 'killer') => {
+    setVariant(v);
+    if (v === 'killer') {
+      setGridSize(9); // Killer is 9×9 only
+      if (difficulty === 'expert' || difficulty === 'extreme') setDifficulty('hard');
+    }
+  };
+
   const startFresh = async () => {
-    const puzzle = await fetchPuzzle({ difficulty, gridSize });
+    const puzzle = await fetchPuzzle({ difficulty, gridSize: isKiller ? 9 : gridSize, variant });
     if (puzzle) {
       setViewingSolved(false);
-      startNewGame(puzzle); // mode defaults to 'play'
+      startNewGame(puzzle); // mode defaults to 'play'; variant/cages come from the puzzle
       setView('playing');
     }
   };
@@ -123,13 +135,33 @@ export default function PlayExperience() {
           </div>
         )}
 
-        <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
+        {/* Puzzle type toggle */}
+        <div className="flex gap-2 mb-6">
+          {(['classic', 'killer'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => handleVariantChange(v)}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
+                variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+              }`}
+            >
+              {v === 'classic' ? 'Sudoku' : 'Killer'}
+            </button>
+          ))}
+        </div>
+
+        {isKiller ? (
+          <p className="text-xs text-ink-soft text-center mb-6">9×9 · no givens — the cage sums are the only clue.</p>
+        ) : (
+          <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
+        )}
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Difficulty</label>
           <div className="flex flex-wrap justify-center gap-2">
-            {ALL_DIFFICULTIES.map((d) => {
-              const disabled = miniGrid && (d === 'expert' || d === 'extreme');
+            {(isKiller ? KILLER_DIFFICULTIES : ALL_DIFFICULTIES).map((d) => {
+              const disabled = !isKiller && miniGrid && (d === 'expert' || d === 'extreme');
               return (
                 <button
                   key={d}
@@ -145,7 +177,7 @@ export default function PlayExperience() {
               );
             })}
           </div>
-          {miniGrid && (
+          {!isKiller && miniGrid && (
             <p className="text-xs text-ink-soft text-center mt-2">Expert and Extreme are only available for 9×9 grids.</p>
           )}
         </div>

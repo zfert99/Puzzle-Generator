@@ -36,7 +36,7 @@ describe('usePuzzle', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/puzzle', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ difficulty: 'hard', gridSize: 9 }),
+      body: JSON.stringify({ difficulty: 'hard', gridSize: 9, variant: 'classic' }),
     }));
     expect(result.current.puzzle).toEqual(fakePuzzle);
     expect(result.current.loading).toBe(false);

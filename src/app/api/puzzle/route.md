@@ -3,6 +3,12 @@
 This document explains `route.ts` for `POST /api/puzzle`, the endpoint that backs
 the interactive board (Phase 3). It returns a single playable puzzle as JSON.
 
+## Killer branch
+
+When the body has `variant: 'killer'`, the route validates the difficulty is one of
+easy/medium/hard (Killer v1) and returns `generateKillerSudoku(difficulty)` — a `KillerPuzzle`
+with `cages`. The classic path (below) runs otherwise.
+
 ## Why this endpoint exists
 
 The interactive board needs a fresh puzzle on demand. Generating it **server-side**

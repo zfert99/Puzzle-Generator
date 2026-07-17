@@ -1,4 +1,5 @@
 .board {
+  position: relative; /* anchor for the Killer cage overlay */
   display: grid;
   grid-template-columns: repeat(var(--size), 1fr);
   /* Match rows to columns so every cell is an equal square regardless of content —
@@ -88,4 +89,30 @@
   font-size: 0.5em;
   font-weight: 600;
   color: var(--cell-candidate);
+}
+
+/* Killer cage overlay: an SVG in a 0..size viewBox laid over the whole grid. */
+.cageOverlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2; /* above cell backgrounds/highlights; digits stay readable (lines sit at cell edges) */
+}
+
+.cageOverlay line {
+  stroke: var(--ink);
+  stroke-width: 0.03; /* user units (cells) */
+  stroke-dasharray: 0.11 0.08;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+.cageSum {
+  fill: var(--ink);
+  opacity: 0.62;
+  font-family: var(--font-mono);
+  font-weight: 700;
 }

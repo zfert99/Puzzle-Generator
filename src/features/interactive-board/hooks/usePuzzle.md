@@ -30,6 +30,12 @@ Returns `{ puzzle, loading, error, fetchPuzzle }`:
 5. On any thrown error, store its message in `error` and return `null`.
 6. Always clear `loading` in the `finally` block.
 
+## Killer support
+
+`fetchPuzzle` takes an optional `variant: 'classic' | 'killer'` (default classic), forwarded to
+`/api/puzzle`. A Killer request returns a `KillerPuzzle` (with `cages`), so the hook's puzzle type
+is `SudokuPuzzle | KillerPuzzle`; the board's `startNewGame` handles either.
+
 ## Hydration and testing notes
 
 - The hook only runs on the client, in response to a user action (or a mount

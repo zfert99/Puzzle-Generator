@@ -2,6 +2,7 @@
 import PDFDocument from 'pdfkit';
 import { SudokuPuzzle, getGridConfig } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
+import { computeCageOutline } from '@/features/engine/killer/cage-geometry';
 
 export function drawTitlePage(doc: any): void {
   doc.addPage();
@@ -69,13 +70,6 @@ export function drawKillerGrid(
   const cell = gridDrawSize / size;
   const inset = cell * 0.09;
 
-  const cellCage = new Array<number>(size * size).fill(-1);
-  puzzle.cages.forEach((cage, index) => {
-    for (const c of cage.cells) cellCage[c] = index;
-  });
-  const cageAt = (r: number, c: number): number =>
-    r < 0 || c < 0 || r >= size || c >= size ? -1 : cellCage[r * size + c];
-
   // Digits (solution on an answer page; nothing on the puzzle page — Killer has no givens).
   const grid = showSolution ? puzzle.solution : puzzle.grid;
   doc.fillColor('black').fontSize(cell * 0.5);
@@ -101,63 +95,26 @@ export function drawKillerGrid(
     doc.moveTo(startX + i * cell, startY).lineTo(startX + i * cell, startY + gridDrawSize).stroke();
   }
 
-  // Cage outlines: dashed lines inset into each cage, forming one continuous border per cage.
-  // Each boundary segment's endpoint is resolved by the in-line neighbour and the diagonal cell:
-  //  - CONVEX corner (in-line neighbour is a different cage): inset the end.
-  //  - STRAIGHT (in-line neighbour same cage, diagonal outside → it continues this border): run to
-  //    the cell edge so the two segments connect.
-  //  - REFLEX/inner corner (in-line neighbour same cage, diagonal INSIDE → it has no matching
-  //    border): run PAST the cell edge by `inset`, so this line meets the perpendicular border
-  //    turning the corner — the fix for L-shaped cages, whose inner corner was left open.
-  doc.lineWidth(1.3).dash(2.4, { space: 1.6 }).strokeColor('black');
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      const cg = cellCage[r * size + c];
-      const x = startX + c * cell;
-      const y = startY + r * cell;
-      const top = cageAt(r - 1, c) !== cg;
-      const bottom = cageAt(r + 1, c) !== cg;
-      const left = cageAt(r, c - 1) !== cg;
-      const right = cageAt(r, c + 1) !== cg;
+  // Cage outlines + sum positions come from the shared geometry (cell-unit coords → scale to px).
+  // The inner/outer corner logic lives in `computeCageOutline`; here we just stroke the result.
+  const { lines, sums } = computeCageOutline(puzzle.cages, size, inset / cell);
 
-      if (top) {
-        const x1 = left ? x + inset : cageAt(r - 1, c - 1) === cg ? x - inset : x;
-        const x2 = right ? x + cell - inset : cageAt(r - 1, c + 1) === cg ? x + cell + inset : x + cell;
-        doc.moveTo(x1, y + inset).lineTo(x2, y + inset).stroke();
-      }
-      if (bottom) {
-        const x1 = left ? x + inset : cageAt(r + 1, c - 1) === cg ? x - inset : x;
-        const x2 = right ? x + cell - inset : cageAt(r + 1, c + 1) === cg ? x + cell + inset : x + cell;
-        doc.moveTo(x1, y + cell - inset).lineTo(x2, y + cell - inset).stroke();
-      }
-      if (left) {
-        const y1 = top ? y + inset : cageAt(r - 1, c - 1) === cg ? y - inset : y;
-        const y2 = bottom ? y + cell - inset : cageAt(r + 1, c - 1) === cg ? y + cell + inset : y + cell;
-        doc.moveTo(x + inset, y1).lineTo(x + inset, y2).stroke();
-      }
-      if (right) {
-        const y1 = top ? y + inset : cageAt(r - 1, c + 1) === cg ? y - inset : y;
-        const y2 = bottom ? y + cell - inset : cageAt(r + 1, c + 1) === cg ? y + cell + inset : y + cell;
-        doc.moveTo(x + cell - inset, y1).lineTo(x + cell - inset, y2).stroke();
-      }
-    }
+  doc.lineWidth(1.3).dash(2.4, { space: 1.6 }).strokeColor('black');
+  for (const l of lines) {
+    doc.moveTo(startX + l.x1 * cell, startY + l.y1 * cell).lineTo(startX + l.x2 * cell, startY + l.y2 * cell).stroke();
   }
   doc.undash();
 
-  // Cage sums, tucked into the anchor (lowest-indexed) cell's top-left corner — small and
-  // slightly dimmed so they read as annotations, not as the answer. A tiny white pad keeps them
-  // legible over the dashed cage line.
+  // Cage sums, tucked into the anchor cell's top-left corner — small and slightly dimmed so they
+  // read as annotations, not the answer. A tiny white pad keeps them legible over the cage line.
   const sumFont = cell * 0.2;
   doc.fontSize(sumFont);
-  for (const cage of puzzle.cages) {
-    const anchor = Math.min(...cage.cells);
-    const ar = Math.floor(anchor / size);
-    const ac = anchor % size;
-    const s = String(cage.sum);
-    const x = startX + ac * cell + 2.2;
-    const y = startY + ar * cell + 1.8;
-    doc.rect(x - 0.6, y, doc.widthOfString(s) + 1.2, sumFont).fill('white');
-    doc.fillColor('black').fillOpacity(0.55).text(s, x, y, { lineBreak: false });
+  for (const s of sums) {
+    const str = String(s.value);
+    const x = startX + s.col * cell + 2.2;
+    const y = startY + s.row * cell + 1.8;
+    doc.rect(x - 0.6, y, doc.widthOfString(str) + 1.2, sumFont).fill('white');
+    doc.fillColor('black').fillOpacity(0.55).text(str, x, y, { lineBreak: false });
     doc.fillOpacity(1);
   }
 }

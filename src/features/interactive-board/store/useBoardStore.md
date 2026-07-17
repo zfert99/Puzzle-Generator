@@ -21,6 +21,14 @@ The interactive board's single source of truth — a Zustand store wrapped in th
 (`play | daily`), `dailyDate` (the daily's UTC date, or `null` for free play), `elapsedTime`,
 and `mistakes` (count of wrong placements).
 
+### Why `variant` + `cages`
+
+`startNewGame` accepts a classic `SudokuPuzzle` *or* a `KillerPuzzle` (detected by `'cages' in
+puzzle`) and records `variant: 'classic' | 'killer'` plus the `cages`. The board reads these to
+render the cage overlay; `inputDigit` additionally strips a placed digit from its **cage-mates'**
+pencil marks (a cage can't repeat a digit — the solution already encodes this, so a repeat still
+counts as a mistake; this just keeps candidates honest). Both are persisted so a Killer resumes.
+
 ### Why `dailyDate`
 
 Set by `startNewGame(puzzle, mode, dailyDate)` and persisted so a **resumed daily** can

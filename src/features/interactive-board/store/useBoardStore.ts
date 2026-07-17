@@ -3,7 +3,11 @@ import { temporal } from 'zundo';
 import { persist } from 'zustand/middleware';
 import type { SudokuPuzzle, GridSize, GridConfig, Difficulty } from '@/features/engine/sudoku';
 import { getGridConfig } from '@/features/engine/sudoku';
+import type { Cage, KillerPuzzle } from '@/features/engine/killer/killer-types';
 import { computePeers, toggleBit } from '../board-utils';
+
+/** Sudoku or Killer — the board renders and plays either. */
+export type PuzzleVariant = 'classic' | 'killer';
 
 export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
 
@@ -24,6 +28,11 @@ export interface BoardState {
   solution: number[][];
   peers: number[][];       // flat peer indices per cell
 
+  /** 'classic' or 'killer'. Killer adds cage constraints + rendering. */
+  variant: PuzzleVariant;
+  /** Killer cages (empty for classic) — drives cage rendering and cage-mate pencil-mark stripping. */
+  cages: Cage[];
+
   // UI / session state (deliberately NOT tracked by undo/redo)
   difficulty: Difficulty;
   selectedCell: { r: number; c: number } | null;
@@ -41,7 +50,7 @@ export interface BoardState {
   mistakes: number;
 
   // Actions
-  startNewGame: (puzzle: SudokuPuzzle, mode?: BoardMode, dailyDate?: string | null) => void;
+  startNewGame: (puzzle: SudokuPuzzle | KillerPuzzle, mode?: BoardMode, dailyDate?: string | null) => void;
   configure: () => void;
   selectCell: (r: number, c: number) => void;
   inputDigit: (digit: number) => void;
@@ -82,6 +91,9 @@ export const useBoardStore = create<BoardState>()(
       solution: emptyGrid(9),
       peers: [],
 
+      variant: 'classic',
+      cages: [],
+
       difficulty: 'easy' as Difficulty,
       selectedCell: null,
       pencilMode: false,
@@ -92,9 +104,10 @@ export const useBoardStore = create<BoardState>()(
       elapsedTime: 0,
       mistakes: 0,
 
-      startNewGame: (puzzle: SudokuPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
+      startNewGame: (puzzle: SudokuPuzzle | KillerPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
         const size = puzzle.gridSize as GridSize;
         const config = getGridConfig(size);
+        const isKiller = 'cages' in puzzle;
         set({
           gridSize: size,
           config,
@@ -103,6 +116,8 @@ export const useBoardStore = create<BoardState>()(
           givens: puzzle.grid.map(row => row.map(v => v !== 0)),
           solution: puzzle.solution.map(row => [...row]),
           peers: computePeers(config),
+          variant: isKiller ? 'killer' : 'classic',
+          cages: isKiller ? puzzle.cages : [],
           difficulty: puzzle.difficulty,
           selectedCell: null,
           pencilMode: false,
@@ -122,7 +137,7 @@ export const useBoardStore = create<BoardState>()(
       selectCell: (r, c) => set({ selectedCell: { r, c } }),
 
       inputDigit: (digit: number) => {
-        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution, mistakes } = get();
+        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution, mistakes, variant, cages } = get();
         if (status !== 'playing' || !selectedCell) return;
         const { r, c } = selectedCell;
         if (givens[r][c]) return; // never edit a given clue
@@ -157,6 +172,19 @@ export const useBoardStore = create<BoardState>()(
             const pr = Math.floor(peer / config.size);
             const pc = peer % config.size;
             nextCandidates[pr][pc] &= bit;
+          }
+          // Killer: a digit can't repeat within a cage either — strip it from the cage-mates'
+          // pencil marks (the solution already encodes the constraint, so a repeat still counts
+          // as a mistake; this just keeps candidates honest).
+          if (variant === 'killer') {
+            const cellIdx = r * config.size + c;
+            const cage = cages.find((cg) => cg.cells.includes(cellIdx));
+            if (cage) {
+              for (const cell of cage.cells) {
+                if (cell === cellIdx) continue;
+                nextCandidates[Math.floor(cell / config.size)][cell % config.size] &= bit;
+              }
+            }
           }
           // A placement that doesn't match the solution is a mistake.
           if (digit !== solution[r][c]) mistakeIncrement = 1;
@@ -235,6 +263,8 @@ export const useBoardStore = create<BoardState>()(
           candidates: state.candidates,
           givens: state.givens,
           solution: state.solution,
+          variant: state.variant,
+          cages: state.cages,
           difficulty: state.difficulty,
           selectedCell: state.selectedCell,
           pencilMode: state.pencilMode,

@@ -387,7 +387,7 @@ Full plan (with resolved decisions): [phase5-implementation-plan.md](phase5-impl
 
 > **Tracks:** 🧮 Engine (v1), then 🎨 Frontend + 🗄️ Infrastructure (Phase 6b)
 > **Branch:** `feature/killer-sudoku`
-> **Status:** 🚧 In Progress — **engine v1 (K1–K5) complete**: combination oracle + types (K1), exact solver + uniqueness (K2), cage generator (K3), tiered logical solver + difficulty grading (K4), and the graded generate pipeline (K5). `generateKillerSudoku('easy'|'medium'|'hard')` emits unique, difficulty-graded puzzles in ~1/15/17 ms. 55 killer tests. **Phase 6b:** PDF rendering + generator UI (a Sudoku/Killer toggle on `/generate`) shipped; **remaining: interactive board** (cage rendering on `/play`) and an optional Killer daily. Expert/extreme deferred (need more solver techniques).
+> **Status:** 🚧 In Progress — **engine v1 (K1–K5) complete**: combination oracle + types (K1), exact solver + uniqueness (K2), cage generator (K3), tiered logical solver + difficulty grading (K4), and the graded generate pipeline (K5). `generateKillerSudoku('easy'|'medium'|'hard')` emits unique, difficulty-graded puzzles in ~1/15/17 ms. 58 killer tests. **Phase 6b:** PDF rendering + generator UI (`/generate` toggle) **and the interactive board** (Killer playable on `/play` with cage overlay + shared cage geometry) shipped; **remaining: an optional Killer daily**. Expert/extreme deferred (need more solver techniques).
 > **Estimated effort:** Large (2–3 weeks for the engine)
 > **Prerequisite:** Phase 3 (Interactive Board), Phase 5 (design system, for 6b)
 > **Full plan:** [killer-sudoku-implementation-plan.md](killer-sudoku-implementation-plan.md) · **Research:** [killer-sudoku.md](research/killer-sudoku.md)
