@@ -13,8 +13,9 @@ Like `usePuzzle`, it only ever runs client-side on a user action, so no puzzle l
 executes during SSR — sidestepping the hydration-mismatch pitfall (AGENTS.md §1).
 
 ```text
-fetchDaily(difficulty):
-  GET /api/daily?difficulty=<difficulty>
+fetchDaily(difficulty, date?):
+  GET /api/daily?difficulty=<difficulty>[&date=<YYYY-MM-DD>]
+  date omitted -> today's daily; date given -> that past day's daily (archive replay).
   On non-2xx: surface the server's error message (or a friendly 404 "not ready yet").
   On success: return the puzzle payload { grid, solution, difficulty, gridSize, date }.
   Always clear the loading flag when done.

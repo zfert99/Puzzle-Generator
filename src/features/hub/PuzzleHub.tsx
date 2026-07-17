@@ -1,4 +1,5 @@
 import { PuzzleCard } from './PuzzleCard';
+import { ContinueBanner } from './ContinueBanner';
 import { Sticker } from '@/features/chaos/Sticker';
 
 /**
@@ -11,36 +12,42 @@ import { Sticker } from '@/features/chaos/Sticker';
  */
 export function PuzzleHub() {
   return (
-    <div
-      className="grid gap-4 w-full"
-      style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}
-    >
-      <PuzzleCard
-        href="/daily"
-        emoji="🗓️"
-        title="Daily"
-        desc="One shared puzzle a day"
-        tilt="tilt-a"
-        sticker={
-          <Sticker color="pink" rotate={-12} className="absolute -top-3 -right-2 z-10">
-            new!
-          </Sticker>
-        }
-      />
-      <PuzzleCard href="/play" emoji="🧩" title="Free play" desc="Any size, any level" tilt="tilt-b" />
-      <PuzzleCard href="/leaderboard" emoji="🏆" title="Leaderboard" desc="Daily speed ranks" tilt="tilt-c" />
-      <PuzzleCard href="/generate" emoji="🖨️" title="Print packs" desc="PDF puzzle books" tilt="tilt-d" />
-      <PuzzleCard
-        emoji="🔪"
-        title="Killer"
-        desc="Coming soon"
-        tilt="tilt-b"
-        sticker={
-          <Sticker color="lime" rotate={10} className="absolute -top-3 -right-2 z-10">
-            soon
-          </Sticker>
-        }
-      />
+    <div className="w-full">
+      {/* Resume the one saved game, if any — only renders client-side when one exists. */}
+      <ContinueBanner />
+
+      <div
+        className="grid gap-4 w-full"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}
+      >
+        <PuzzleCard
+          href="/daily"
+          emoji="🗓️"
+          title="Daily"
+          desc="One shared puzzle a day"
+          tilt="tilt-a"
+          sticker={
+            <Sticker color="pink" rotate={-12} className="absolute -top-3 -right-2 z-10">
+              new!
+            </Sticker>
+          }
+        />
+        <PuzzleCard href="/play" emoji="🧩" title="Free play" desc="Any size, any level" tilt="tilt-b" />
+        <PuzzleCard href="/leaderboard" emoji="🏆" title="Leaderboard" desc="Daily speed ranks" tilt="tilt-c" />
+        <PuzzleCard href="/archive" emoji="📅" title="Archive" desc="Past dailies & boards" tilt="tilt-a" />
+        <PuzzleCard href="/generate" emoji="🖨️" title="Print packs" desc="PDF puzzle books" tilt="tilt-d" />
+        <PuzzleCard
+          emoji="🔪"
+          title="Killer"
+          desc="Coming soon"
+          tilt="tilt-b"
+          sticker={
+            <Sticker color="lime" rotate={10} className="absolute -top-3 -right-2 z-10">
+              soon
+            </Sticker>
+          }
+        />
+      </div>
     </div>
   );
 }

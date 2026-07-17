@@ -29,10 +29,11 @@ function isCompletedGrid(value: unknown): value is Grid {
 /**
  * POST /api/solve — submit a completed daily for ranking. Sign-in required.
  *
- * The server owns the truth (4.4 anti-cheat): it computes the time from its own clock
- * (start recorded by /api/daily/start), verifies the grid against the stored solution,
- * rejects implausibly fast times, and allows one ranked attempt per user per puzzle.
- * Body: `{ difficulty, grid, mistakes? }`. Returns `{ timeMs, rank }`.
+ * Ranking is timed by the CLIENT's in-game timer (`timeMs` in the body) so a player can pause
+ * by leaving and resume without their away-time counting; the server still verifies the grid
+ * against the stored solution, rejects implausibly fast times (the anti-cheat guard), and
+ * allows one ranked attempt per user per puzzle. Body: `{ difficulty, grid, timeMs, mistakes? }`.
+ * Returns `{ timeMs, rank }`.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -42,12 +43,16 @@ export async function POST(req: NextRequest) {
     const difficulty = body?.difficulty;
     const grid = body?.grid;
     const mistakes = typeof body?.mistakes === 'number' ? body.mistakes : 0;
+    const clientTimeMs = typeof body?.timeMs === 'number' && Number.isFinite(body.timeMs) ? body.timeMs : null;
 
     if (!isDailyDifficulty(difficulty)) {
       return NextResponse.json({ error: 'Invalid or missing difficulty' }, { status: 400 });
     }
     if (!isCompletedGrid(grid)) {
       return NextResponse.json({ error: 'Invalid grid: expected a completed 9x9 board' }, { status: 400 });
+    }
+    if (clientTimeMs === null || clientTimeMs < 0) {
+      return NextResponse.json({ error: 'Invalid or missing timeMs' }, { status: 400 });
     }
 
     const isoDate = toUtcDateString(new Date());
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
       difficulty,
       submittedGrid: grid,
       mistakes,
-      now: Date.now(),
+      clientTimeMs,
     });
 
     const rank = await getUserRank(db, puzzle.id, userId);

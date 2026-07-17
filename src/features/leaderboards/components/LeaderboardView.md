@@ -1,7 +1,16 @@
 # Leaderboard View (`LeaderboardView.tsx`)
 
-Client view for `/leaderboard`: difficulty tabs, today's board, and (signed in) the caller's
+Client view for the leaderboard: difficulty tabs, a day's board, and (signed in) the caller's
 own rank + streak.
+
+## Today vs. a past day (the archive)
+
+Pass `date` (YYYY-MM-DD) to show a **past** day's board (the archive reuses this component);
+omit it for today. For a past board the today-relative panels (streak + personal bests) are
+hidden — that effect gates on `!date` — while the caller's own historical rank still shows.
+Difficulty can also be **controlled** externally (`difficulty` + `onDifficultyChange`) so the
+archive drives one selector for both the board and its "Play (practice)" button; uncontrolled
+(internal state) by default.
 
 ## Why fetch effects avoid synchronous setState
 

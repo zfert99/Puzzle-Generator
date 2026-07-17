@@ -31,11 +31,17 @@ export interface BoardState {
   realTimeErrors: boolean;
   status: GameStatus;
   mode: BoardMode;
+  /**
+   * For a daily game, the UTC date (`YYYY-MM-DD`) it belongs to — persisted so a resumed
+   * daily can restore its header and decide whether it's today's (rankable) daily or an
+   * archived (unranked) one. `null` for free play.
+   */
+  dailyDate: string | null;
   elapsedTime: number;
   mistakes: number;
 
   // Actions
-  startNewGame: (puzzle: SudokuPuzzle, mode?: BoardMode) => void;
+  startNewGame: (puzzle: SudokuPuzzle, mode?: BoardMode, dailyDate?: string | null) => void;
   configure: () => void;
   selectCell: (r: number, c: number) => void;
   inputDigit: (digit: number) => void;
@@ -82,10 +88,11 @@ export const useBoardStore = create<BoardState>()(
       realTimeErrors: false,
       status: 'configuring',
       mode: 'play',
+      dailyDate: null,
       elapsedTime: 0,
       mistakes: 0,
 
-      startNewGame: (puzzle: SudokuPuzzle, mode: BoardMode = 'play') => {
+      startNewGame: (puzzle: SudokuPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
         const size = puzzle.gridSize as GridSize;
         const config = getGridConfig(size);
         set({
@@ -101,6 +108,7 @@ export const useBoardStore = create<BoardState>()(
           pencilMode: false,
           status: 'playing',
           mode,
+          dailyDate,
           elapsedTime: 0,
           mistakes: 0,
         });
@@ -233,6 +241,7 @@ export const useBoardStore = create<BoardState>()(
           realTimeErrors: state.realTimeErrors,
           status: state.status,
           mode: state.mode,
+          dailyDate: state.dailyDate,
           elapsedTime: state.elapsedTime,
           mistakes: state.mistakes,
         }),

@@ -7,14 +7,19 @@ import { gridsMatch, isImplausiblyFast } from './solve-rules';
 import type { Grid } from '@/lib/db/schema';
 
 /**
- * Recording a ranked solve — the anti-cheat core (4.4). Two rules are non-negotiable and
- * enforced here, server-side:
- *   1. **Time is server-measured.** The attempt row's `created_at` (set when the user
- *      *starts*, below) is the authoritative start; the submit time is the server clock.
- *      A client-reported duration is never trusted.
- *   2. **The grid is verified** against the stored solution before any time is recorded.
- * Plus a plausibility floor and one ranked attempt per user per puzzle
- * (`UNIQUE(user_id, puzzle_id)`). `userId` is always the caller's session id (BOLA, 4.3.1).
+ * Recording a ranked solve — the anti-cheat core (4.4).
+ *
+ * **Time is the client's in-game timer** (`elapsedTime`), which only advances while the
+ * player is actively on the board. This is a deliberate, pragmatic tradeoff: it lets a player
+ * pause a daily by leaving and resume later without their away-time counting against them
+ * (the "save & continue" feature). A client-reported duration is inherently less trustworthy
+ * than a server-measured one, so the **plausibility floor** (`isImplausiblyFast`) is the
+ * guard that stays — a submitted time below the human-possible minimum for that difficulty is
+ * rejected. Given this is a casual portfolio leaderboard, that tradeoff is acceptable.
+ *
+ * Non-negotiable regardless: the grid is **verified** against the stored solution before any
+ * time is recorded, there is one ranked attempt per user per puzzle
+ * (`UNIQUE(user_id, puzzle_id)`), and `userId` is always the caller's session id (BOLA, 4.3.1).
  */
 
 export type SolveErrorCode = 'NOT_STARTED' | 'ALREADY_COMPLETED' | 'INCORRECT_SOLUTION' | 'TOO_FAST';
@@ -68,10 +73,11 @@ export async function recordSolve(
     difficulty: DailyDifficulty;
     submittedGrid: Grid;
     mistakes: number;
-    now: number;
+    /** Client-reported in-game elapsed time in ms (the board timer). */
+    clientTimeMs: number;
   },
 ): Promise<SolveAttempt> {
-  const { userId, puzzle, difficulty, submittedGrid, mistakes, now } = args;
+  const { userId, puzzle, difficulty, submittedGrid, mistakes, clientTimeMs } = args;
 
   const attempt = await getUserAttemptForPuzzle(db, userId, puzzle.id);
   if (!attempt) {
@@ -84,7 +90,7 @@ export async function recordSolve(
     throw new SolveError('INCORRECT_SOLUTION', 400, 'The submitted grid is not the solution');
   }
 
-  const timeMs = now - attempt.createdAt.getTime();
+  const timeMs = Math.max(0, Math.trunc(clientTimeMs));
   if (isImplausiblyFast(difficulty, timeMs)) {
     throw new SolveError('TOO_FAST', 400, 'Solve time is implausibly fast');
   }

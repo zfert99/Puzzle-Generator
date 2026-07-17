@@ -18,7 +18,14 @@ The interactive board's single source of truth — a Zustand store wrapped in th
 `grid`, `candidates` (bitmask/cell), `givens` (immutable clues), `solution`, `peers`
 (precomputed), plus session state `difficulty`, `selectedCell`, `pencilMode`,
 `realTimeErrors`, `status` (`configuring | playing | paused | solved`), `mode`
-(`play | daily`), `elapsedTime`, and `mistakes` (count of wrong placements).
+(`play | daily`), `dailyDate` (the daily's UTC date, or `null` for free play), `elapsedTime`,
+and `mistakes` (count of wrong placements).
+
+### Why `dailyDate`
+
+Set by `startNewGame(puzzle, mode, dailyDate)` and persisted so a **resumed daily** can
+restore its header and decide whether it's today's (rankable) daily or an archived/expired one
+(unranked). `null` for free play. Consumed via `useSavedGame` (the save/continue descriptor).
 
 ### Why `mode`
 

@@ -2,6 +2,14 @@
 
 Renders the `size × size` grid and owns keyboard interaction. Client component.
 
+## Uniform cell sizing (`Board.module.css`)
+
+The board is a CSS grid with BOTH `grid-template-columns` **and** `grid-template-rows` set to
+`repeat(var(--size), 1fr)`, inside a `1/1` aspect-ratio box. Both axes are required: with only
+columns defined, rows size to their content, so an empty row/column (no digit) collapses —
+visible on 4×4/6×6 and any empty line on 9×9. Explicit `1fr` tracks on both axes make every
+cell an equal square regardless of content.
+
 ## Why it centralizes keyboard handling
 
 Per the WAI-ARIA grid pattern (research §6), a composite grid has ONE keyboard

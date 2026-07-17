@@ -1,6 +1,10 @@
 .board {
   display: grid;
   grid-template-columns: repeat(var(--size), 1fr);
+  /* Match rows to columns so every cell is an equal square regardless of content —
+     without explicit rows, an empty row/column has no digit to give it size and
+     collapses (visible on 4×4/6×6, and any empty line on 9×9). */
+  grid-template-rows: repeat(var(--size), 1fr);
   width: min(92vw, 520px);
   aspect-ratio: 1 / 1;
   border-top: 3px solid var(--grid-line-strong);
