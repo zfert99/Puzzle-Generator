@@ -1,20 +1,17 @@
 /**
- * Dev preview: generate one Killer Sudoku per difficulty and write a PDF booklet so the puzzles
- * (empty grid + dashed cages + sums, plus answer pages) can be eyeballed.
+ * Dev preview: generate a Killer Sudoku booklet (N of each difficulty + answer pages) so the
+ * puzzles — empty grid + dashed cages + sums — can be eyeballed.
  *
- * Run: `npx tsx src/features/pdf-generation/preview-killer.ts [outfile.pdf]`
+ * Run: `npx tsx src/features/pdf-generation/preview-killer.ts [outfile.pdf] [countPerDifficulty]`
  */
 import { writeFileSync } from 'node:fs';
-import { generateKillerSudoku } from '../engine/killer/killer-sudoku';
+import { generateKillerBatch } from '../engine/killer/killer-sudoku';
 import { generateKillerPDF } from './services/pdf.service';
 
 async function main(): Promise<void> {
   const out = process.argv[2] ?? 'killer-preview.pdf';
-  const puzzles = [
-    generateKillerSudoku('easy'),
-    generateKillerSudoku('medium'),
-    generateKillerSudoku('hard'),
-  ];
+  const count = Number(process.argv[3]) || 2;
+  const puzzles = generateKillerBatch({ easy: count, medium: count, hard: count });
   const pdf = await generateKillerPDF(puzzles);
   writeFileSync(out, pdf);
   console.log(`Wrote ${pdf.length} bytes to ${out} (${puzzles.length} puzzles + answers).`);
