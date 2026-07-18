@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     if (!isDailyDifficulty(difficulty)) {
       return NextResponse.json(
-        { error: 'Invalid or missing difficulty: must be easy, medium, hard, expert, or extreme' },
+        { error: 'Invalid or missing difficulty: must be easy, medium, hard, expert, extreme, or killer' },
         { status: 400 },
       );
     }
@@ -73,6 +73,8 @@ export async function GET(req: NextRequest) {
         grid: puzzle.grid,
         solution: puzzle.solution,
         clueCount: puzzle.clueCount,
+        // A Killer daily carries its cages; `variant` lets the board's startNewGame branch.
+        ...(puzzle.cages ? { variant: 'killer' as const, cages: puzzle.cages } : {}),
       },
       { status: 200 },
     );

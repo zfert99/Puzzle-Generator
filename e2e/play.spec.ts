@@ -5,9 +5,9 @@ import { test, expect } from '@playwright/test';
  * a real puzzle via /api/puzzle, and interact with the board in a real browser.
  */
 test.describe('Interactive play', () => {
-  test('links from the landing page into play mode', async ({ page }) => {
+  test('links from the hub into play mode', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: /play online/i }).click();
+    await page.getByRole('link', { name: /free play/i }).click();
     await expect(page).toHaveURL(/\/play$/);
     await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
   });
@@ -34,11 +34,11 @@ test.describe('Interactive play', () => {
     await page.getByRole('button', { name: /^Play$/ }).click();
     await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /new game/i }).click();
+    await page.getByRole('button', { name: /menu/i }).click();
 
-    // Back on the config screen.
+    // Back on the config screen (the in-progress game is offered as a Continue).
     await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Play$/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue/i })).toBeVisible();
   });
 
   test('disables Expert/Extreme for mini grids', async ({ page }) => {
@@ -85,9 +85,32 @@ test.describe('Interactive play', () => {
 
     await page.reload();
 
-    // Back in the game (not the config screen), with the placed value intact.
+    // The play surface is menu-first: after a reload it offers the saved game as a Continue.
+    await page.getByRole('button', { name: /continue/i }).click();
+
+    // Back in the game, with the placed value intact.
     const gridAfter = page.getByRole('grid', { name: /sudoku board/i });
     await expect(gridAfter).toBeVisible();
     await expect(gridAfter.getByRole('gridcell', { name: /value 1/i }).first()).toBeVisible();
+  });
+
+  test('plays a Killer puzzle: cage overlay renders and the board starts empty', async ({ page }) => {
+    await page.goto('/play');
+
+    await page.getByRole('button', { name: /^killer$/i }).click();
+    // Killer is 9×9 only with its own graded ladder (easy/medium/hard).
+    await expect(page.getByRole('button', { name: 'expert' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'easy', exact: true }).click();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+
+    const grid = page.getByRole('grid', { name: /sudoku board/i });
+    await expect(grid).toBeVisible({ timeout: 15000 });
+    await expect(grid.getByRole('gridcell')).toHaveCount(81);
+
+    // Killer ships no givens — every cell starts empty; the cages carry the clues.
+    await expect(grid.getByRole('gridcell', { name: /^Empty/ }).first()).toBeVisible();
+    // The cage overlay draws sum labels into an SVG layer on the board.
+    const cageSums = page.locator('svg text');
+    expect(await cageSums.count()).toBeGreaterThan(20);
   });
 });

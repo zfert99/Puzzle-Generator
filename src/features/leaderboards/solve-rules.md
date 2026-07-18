@@ -26,3 +26,9 @@ conservatively below real human records and rises with difficulty.
 MIN_SOLVE_MS: easy 15s · medium 20s · hard 25s · expert 30s · extreme 45s
 isImplausiblyFast(d, t) -> t < MIN_SOLVE_MS[d]
 ```
+
+## Killer floor
+
+`MIN_SOLVE_MS.killer` is 30 s — between classic hard and expert. Killer starts from an empty
+grid (no givens), so even the engine-medium daily takes longer than a classic medium; the
+floor only needs to exclude instant autofill, not police fast solvers.

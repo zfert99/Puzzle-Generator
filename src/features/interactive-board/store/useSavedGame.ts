@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import type { Difficulty, GridSize } from '@/features/engine/sudoku';
-import { useBoardStore, type BoardMode } from './useBoardStore';
+import type { GridSize } from '@/features/engine/sudoku';
+import { useBoardStore, type BoardMode, type BoardDifficulty } from './useBoardStore';
 
 /**
  * A one-slot description of the single in-progress game the board store is holding, or `null`
@@ -11,7 +11,7 @@ import { useBoardStore, type BoardMode } from './useBoardStore';
  */
 export interface SavedGame {
   mode: BoardMode;
-  difficulty: Difficulty;
+  difficulty: BoardDifficulty;
   gridSize: GridSize;
   /** Seconds elapsed (the client timer; frozen while away, resumes on continue). */
   elapsedTime: number;

@@ -33,6 +33,15 @@ describe('generateDailyPuzzles', () => {
     expect(rows.map((r: { difficulty: string }) => r.difficulty)).toEqual([...DAILY_DIFFICULTIES]);
     expect(rows.every((r: { date: string }) => r.date === '2026-07-11')).toBe(true);
     expect(rows.every((r: { clueCount: number }) => r.clueCount > 16 && r.clueCount < 81)).toBe(true);
+    // The Killer daily is the one row carrying cages (a full partition covers all 81 cells).
+    const killerRows = rows.filter((r: { cages: unknown }) => r.cages != null);
+    expect(killerRows).toHaveLength(1);
+    expect(killerRows[0].difficulty).toBe('killer');
+    const cageCells = killerRows[0].cages.reduce(
+      (total: number, cage: { cells: number[] }) => total + cage.cells.length,
+      0,
+    );
+    expect(cageCells).toBe(81);
     // Generates a real puzzle per difficulty, incl. the slow Extreme digger — allow headroom.
   }, 30_000);
 

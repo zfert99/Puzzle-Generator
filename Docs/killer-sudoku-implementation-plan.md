@@ -12,6 +12,11 @@
 > fully tested and benchmarked. UI (K6), PDF (K7), dailies (K8), and polish/QA (K9) are
 > **deferred to a follow-up (Phase 6b)** once the hard part — generation + grading — is proven.
 > Killer takes the **Phase 6** slot; Strategy Courses moves to **Phase 7**.
+>
+> **Status (July 2026): K1–K8 shipped** — engine v1 with research-aligned difficulty
+> rebalance + two-factor scoring, `/play` board, PDF export, and the Killer daily. Remaining:
+> K9 polish odds-and-ends and **K10 (expert/extreme)**, the planned next difficulty work with
+> its mandatory score-recalibration protocol.
 
 This plan turns the Killer Sudoku research into a buildable, sliced roadmap that fits the
 existing engine, board, PDF, and dailies architecture. It is grounded in three things: the
@@ -314,16 +319,22 @@ the order is fixed:
 - Outline/bookmark gains a **Killer** section; titles label the variant.
 - **Runtime:** stays Node (`export const runtime = 'nodejs'`) — pdfkit rule (§1) unchanged.
 
-### Slice K8 — Dailies + API integration — *deferred to Phase 6b*
+### Slice K8 — Dailies + API integration — ✅ *shipped (July 2026)*
 
-- Migration: add nullable `cages jsonb` + `variant text default 'classic'` to
-  `daily_puzzles`; hand-authored SQL + snapshot (the drizzle-kit TTY workaround we used for
-  `0001`). `toDailyPuzzleRow` maps cages; clue/cage count Killer-aware.
-- Decide the daily surface: a **Killer daily per difficulty** (expands the picker) vs. a
-  separate "Killer" tab. Anti-cheat: `solution` **not** served for a ranked killer daily;
-  server validates the completed grid against the stored solution (existing `solve.service`
-  path).
-- **This slice is separable** — Killer can ship to `/play` + PDF first, dailies later.
+- **As built (simpler than planned):** migration `0003` adds only a nullable `cages jsonb` —
+  **no variant column**. The Killer daily is stored with the literal difficulty `'killer'`
+  (one per day, engine-medium behind a service constant), so `UNIQUE(date, difficulty)`, the
+  solve route, leaderboard tabs, and streaks all picked it up with zero changes — `'killer'`
+  became the sixth entry in `DAILY_DIFFICULTIES` and every difficulty-keyed surface followed.
+- **Daily surface decision:** expands the picker (a `killer` chip on `/daily`), not a
+  separate tab.
+- **Anti-cheat:** follows the codebase's shipped pragmatic posture (`solve-rules.md`) — the
+  solution IS served (board hints/mistakes need it) and ranked solves are validated
+  server-side (grid equality + plausibility floor: `MIN_SOLVE_MS.killer` = 30 s + one attempt
+  per day). The plan's stricter "don't serve solution" idea was already superseded for
+  classic dailies; Killer inherits the same posture.
+- `toDailyPuzzleRow` accepts `SudokuPuzzle | KillerPuzzle`; `clue_count` stores the cage
+  count for Killer.
 
 ### Slice K9 — Polish, a11y, QA, benchmarks — *deferred to Phase 6b*
 

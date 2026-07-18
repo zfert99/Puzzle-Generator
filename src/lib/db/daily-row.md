@@ -48,3 +48,13 @@ in UTC — a local-time formatter would bucket late-evening solvers into the wro
 ```text
 Take the Date's ISO string and keep the leading YYYY-MM-DD (already UTC).
 ```
+
+## The Killer daily ('killer' as a sixth difficulty)
+
+`DAILY_DIFFICULTIES` ends with `'killer'` — one Killer daily per day, generated at engine
+difficulty medium (a service constant, not schema). `toDailyPuzzleRow` accepts
+`SudokuPuzzle | KillerPuzzle`; a Killer puzzle maps to difficulty `'killer'` (the engine
+difficulty is a generation detail), stores its cages, and records the cage count in
+`clue_count`. Treating `'killer'` as a difficulty rather than adding a variant column means
+every difficulty-keyed surface (picker, solve route, leaderboard tabs, streaks) picks the
+Killer daily up with zero changes.

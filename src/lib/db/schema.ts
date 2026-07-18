@@ -31,6 +31,14 @@ import { user } from './auth-schema';
 /** A 9x9 grid stored as JSON — rows of numbers, 0 for an empty cell. */
 export type Grid = number[][];
 
+/** A Killer cage as stored in `daily_puzzles.cages` — mirrors the engine's `Cage` shape. */
+export interface StoredCage {
+  id: number;
+  sum: number;
+  /** Flat cell indices (row * 9 + col) covered by this cage. */
+  cells: number[];
+}
+
 /**
  * One shared puzzle per difficulty per calendar day (UTC). The `UNIQUE(date,
  * difficulty)` constraint makes the daily-generation cron idempotent: re-running it
@@ -48,8 +56,15 @@ export const dailyPuzzles = pgTable(
     grid: jsonb('grid').$type<Grid>().notNull(),
     /** Solved grid — SERVER-ONLY. Never returned for an unsolved daily (anti-cheat). */
     solution: jsonb('solution').$type<Grid>().notNull(),
-    /** Number of given clues — denormalized for cheap display/sorting. */
+    /** Number of given clues — denormalized for cheap display/sorting. Cage count for Killer. */
     clueCount: integer('clue_count').notNull(),
+    /**
+     * Killer cages, or NULL for classic dailies. A row with cages is a Killer daily — its
+     * `difficulty` is the literal `'killer'` (one Killer daily per day), which keeps the
+     * `UNIQUE(date, difficulty)` idempotency key and the difficulty-keyed solve/leaderboard
+     * flow working without a separate variant column.
+     */
+    cages: jsonb('cages').$type<StoredCage[]>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [uniqueIndex('daily_puzzles_date_difficulty_key').on(table.date, table.difficulty)],

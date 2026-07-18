@@ -9,6 +9,18 @@ import { computePeers, toggleBit } from '../board-utils';
 /** Sudoku or Killer — the board renders and plays either. */
 export type PuzzleVariant = 'classic' | 'killer';
 
+/**
+ * What the board displays as the game's difficulty. The literal `'killer'` is the daily
+ * Killer's difficulty key (one Killer daily per day — see `daily-row.ts`); free-play Killer
+ * games carry their engine difficulty (easy/medium/hard) like classic.
+ */
+export type BoardDifficulty = Difficulty | 'killer';
+
+/** A puzzle the board can start — engine-generated or a daily row (whose key may be 'killer'). */
+export type BoardPuzzle =
+  | (Omit<SudokuPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
+  | (Omit<KillerPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
+
 export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
 
 /**
@@ -34,7 +46,7 @@ export interface BoardState {
   cages: Cage[];
 
   // UI / session state (deliberately NOT tracked by undo/redo)
-  difficulty: Difficulty;
+  difficulty: BoardDifficulty;
   selectedCell: { r: number; c: number } | null;
   pencilMode: boolean;
   realTimeErrors: boolean;
@@ -50,7 +62,7 @@ export interface BoardState {
   mistakes: number;
 
   // Actions
-  startNewGame: (puzzle: SudokuPuzzle | KillerPuzzle, mode?: BoardMode, dailyDate?: string | null) => void;
+  startNewGame: (puzzle: BoardPuzzle, mode?: BoardMode, dailyDate?: string | null) => void;
   configure: () => void;
   selectCell: (r: number, c: number) => void;
   inputDigit: (digit: number) => void;
@@ -104,7 +116,7 @@ export const useBoardStore = create<BoardState>()(
       elapsedTime: 0,
       mistakes: 0,
 
-      startNewGame: (puzzle: SudokuPuzzle | KillerPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
+      startNewGame: (puzzle: BoardPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
         const size = puzzle.gridSize as GridSize;
         const config = getGridConfig(size);
         const isKiller = 'cages' in puzzle;
