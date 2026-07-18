@@ -45,3 +45,11 @@ Return it, or null if none.
 All access is parameterized through Drizzle (AGENTS.md §6). Daily puzzles are shared,
 public, read-only to clients — no ownership check applies here. The BOLA-sensitive writes
 (a user's solve attempt) live in the leaderboard/solve service (4.3.1 / 4.4).
+
+## Killer daily generation
+
+`generateDailyPuzzles` special-cases the `'killer'` entry: it calls
+`generateKillerSudoku('medium')` (the score-banded graded generator) instead of
+`generateSudoku`. Generation cost is ~120 ms — negligible next to the classic Extreme digger
+the cron already pays for. Idempotency is unchanged: the `'killer'` row rides the same
+`UNIQUE(date, difficulty)` + `onConflictDoNothing` upsert.

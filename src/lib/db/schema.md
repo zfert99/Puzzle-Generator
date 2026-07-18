@@ -50,6 +50,15 @@ UNIQUE (user_id, puzzle_id)
 INDEX (puzzle_id, time_ms)
 ```
 
+## Killer dailies (July 2026)
+
+`daily_puzzles.cages` (nullable jsonb) carries the cage partition for a **Killer daily** —
+one per day, stored with the literal difficulty `'killer'`. Reusing the difficulty column as
+the variant key keeps the `UNIQUE(date, difficulty)` idempotency constraint and the entire
+difficulty-keyed solve/leaderboard/streak flow working with **no new tables or keys**; a
+classic row simply has `cages = NULL`. `clue_count` holds the cage count for Killer (it has
+no given clues — the cages are the clue). Migration `0003_killer_daily_cages.sql`.
+
 ## Security note
 
 Every column is reached only through Drizzle's parameterized query builder — never

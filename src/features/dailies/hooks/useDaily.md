@@ -20,3 +20,9 @@ fetchDaily(difficulty, date?):
   On success: return the puzzle payload { grid, solution, difficulty, gridSize, date }.
   Always clear the loading flag when done.
 ```
+
+## Killer dailies
+
+`DailyPuzzleResponse` optionally carries `variant: 'killer'` + `cages`. The board's
+`startNewGame` branches on the presence of `cages`, so the same fetch-and-start path serves
+both variants — no separate Killer code path in the hook or the experiences.

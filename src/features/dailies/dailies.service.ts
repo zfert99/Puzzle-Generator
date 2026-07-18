@@ -7,6 +7,14 @@ import {
   type DailyDifficulty,
 } from '@/lib/db/daily-row';
 import { generateSudoku } from '@/features/engine/sudoku';
+import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
+
+/**
+ * The engine difficulty behind the daily Killer. One Killer daily per day; medium is the
+ * approachable-but-real middle of the graded ladder. Tunable without schema impact — the row's
+ * difficulty stays the literal 'killer' either way.
+ */
+const KILLER_DAILY_ENGINE_DIFFICULTY = 'medium';
 
 /**
  * Daily-puzzle data access. Every function takes the Drizzle `db` as its first
@@ -36,7 +44,12 @@ export async function generateDailyPuzzles(
   isoDate: string,
 ): Promise<GenerateDailiesResult> {
   const rows = DAILY_DIFFICULTIES.map((difficulty) =>
-    toDailyPuzzleRow(generateSudoku(difficulty), isoDate),
+    toDailyPuzzleRow(
+      difficulty === 'killer'
+        ? generateKillerSudoku(KILLER_DAILY_ENGINE_DIFFICULTY)
+        : generateSudoku(difficulty),
+      isoDate,
+    ),
   );
 
   const inserted = await db

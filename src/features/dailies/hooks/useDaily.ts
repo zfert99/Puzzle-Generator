@@ -1,11 +1,19 @@
 import { useState, useCallback } from 'react';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
+import type { Cage } from '@/features/engine/killer/killer-types';
 import type { DailyDifficulty } from '@/lib/db/daily-row';
 
-/** The `/api/daily` payload: a playable puzzle plus the daily's date. */
-export interface DailyPuzzleResponse extends SudokuPuzzle {
+/**
+ * The `/api/daily` payload: a playable puzzle plus the daily's date. A Killer daily
+ * additionally carries `variant: 'killer'` + `cages` — `startNewGame` branches on the
+ * cages field, so the same object feeds the board for both variants.
+ */
+export interface DailyPuzzleResponse extends Omit<SudokuPuzzle, 'difficulty'> {
+  difficulty: DailyDifficulty;
   date: string;
   clueCount: number;
+  variant?: 'killer';
+  cages?: Cage[];
 }
 
 /**

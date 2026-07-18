@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSinglePuzzle } from '@/features/engine/services/generation.service';
+import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
+
+const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard'];
 
 // The engine is pure TypeScript, but keep this on the Node.js runtime for
 // consistency with the rest of the API and to leave room for future Node-only work.
@@ -34,7 +37,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or missing JSON body' }, { status: 400 });
     }
 
-    const { difficulty, gridSize = 9 } = body || {};
+    const { difficulty, gridSize = 9, variant = 'classic' } = body || {};
+
+    // ---- Killer branch (9×9, easy/medium/hard) ----
+    if (variant === 'killer') {
+      if (!KILLER_DIFFICULTIES.includes(difficulty)) {
+        return NextResponse.json({ error: 'Killer difficulty must be easy, medium, or hard' }, { status: 400 });
+      }
+      const puzzle = generateKillerSudoku(difficulty as KillerDifficulty);
+      logger.info(
+        { event: 'puzzle_success', variant: 'killer', difficulty, durationMs: Math.round(performance.now() - startTime) },
+        'Generated interactive Killer puzzle',
+      );
+      return NextResponse.json(puzzle, { status: 200 });
+    }
 
     // ==========================================
     // VALIDATION

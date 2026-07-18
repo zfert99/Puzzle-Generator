@@ -31,3 +31,9 @@ validated server-side against the stored solution instead (see
 `Docs/phase4-implementation-plan.md`, anti-cheat).
 
 Runs on the Node.js runtime (DB driver is Node-only).
+
+## Killer dailies
+
+When the fetched row has cages (difficulty `'killer'`), the response additionally includes
+`variant: 'killer'` and `cages`, which is all `startNewGame` needs to start it as a Killer
+board. Everything else — validation, anti-cheat posture, archive dates — is unchanged.

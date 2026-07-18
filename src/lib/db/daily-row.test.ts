@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateSudoku } from '@/features/engine/sudoku';
+import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
 import type { Grid } from './schema';
 import {
   DAILY_DIFFICULTIES,
@@ -53,7 +54,24 @@ describe('toDailyPuzzleRow', () => {
     expect(row.clueCount).toBeLessThan(countClues(puzzle.solution));
   });
 
-  it('includes the full difficulty range for dailies', () => {
-    expect([...DAILY_DIFFICULTIES]).toEqual(['easy', 'medium', 'hard', 'expert', 'extreme']);
+  it('includes the full difficulty range for dailies, plus the Killer daily', () => {
+    expect([...DAILY_DIFFICULTIES]).toEqual(['easy', 'medium', 'hard', 'expert', 'extreme', 'killer']);
+  });
+
+  it("maps a Killer puzzle to a 'killer' row carrying its cages and cage count", () => {
+    const puzzle = generateKillerSudoku('medium');
+    const row = toDailyPuzzleRow(puzzle, '2026-07-17');
+
+    expect(row.difficulty).toBe('killer'); // the daily key, not the engine difficulty
+    expect(row.cages).toBe(puzzle.cages);
+    expect(row.clueCount).toBe(puzzle.cages.length);
+    // Killer ships no givens — the grid the client sees is all zeros; cages are the clue.
+    expect(row.grid.flat().every((v) => v === 0)).toBe(true);
+    expect(countClues(row.solution)).toBe(81);
+  });
+
+  it('stores no cages for a classic row', () => {
+    const row = toDailyPuzzleRow(generateSudoku('easy'), '2026-07-17');
+    expect(row.cages).toBeNull();
   });
 });

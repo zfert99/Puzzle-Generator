@@ -26,7 +26,9 @@ The hook returns `{ loading, error, generate }`:
    authoritatively): reject when the total puzzle count is 0, or exceeds 50.
    These mirror the server's rules so the user gets instant feedback without a
    round trip.
-3. Set `loading` true and `POST` the config as JSON to `/api/generate`.
+3. Set `loading` true and `POST` the config as JSON to `/api/generate`. The `config` may include
+   `variant: 'killer'`, in which case the download is named `Killer_Sudoku.pdf` (else
+   `Sudoku_Puzzles.pdf`); `gridSize`/`expert`/`extreme` are optional and default sensibly.
 4. If the response is not OK, read the JSON body and throw its `error` field (the
    server sends a safe, generic message — no stack traces).
 5. On success, read the response as a binary `blob`, create a temporary object

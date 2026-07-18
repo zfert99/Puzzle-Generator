@@ -1,9 +1,13 @@
 import { useState, useCallback } from 'react';
 import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
+import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
+
+type AnyPuzzle = SudokuPuzzle | KillerPuzzle;
 
 interface PuzzleRequest {
   difficulty: Difficulty;
   gridSize?: GridSize;
+  variant?: 'classic' | 'killer';
 }
 
 /**
@@ -16,18 +20,18 @@ interface PuzzleRequest {
  * `Math.random()` server/client mismatch class of bugs (AGENTS.md Section 1).
  */
 export function usePuzzle() {
-  const [puzzle, setPuzzle] = useState<SudokuPuzzle | null>(null);
+  const [puzzle, setPuzzle] = useState<AnyPuzzle | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9 }: PuzzleRequest) => {
+  const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic' }: PuzzleRequest) => {
     setError('');
     setLoading(true);
     try {
       const res = await fetch('/api/puzzle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty, gridSize }),
+        body: JSON.stringify({ difficulty, gridSize, variant }),
       });
 
       if (!res.ok) {
@@ -35,7 +39,7 @@ export function usePuzzle() {
         throw new Error(data.error || 'Failed to generate puzzle');
       }
 
-      const data: SudokuPuzzle = await res.json();
+      const data: AnyPuzzle = await res.json();
       setPuzzle(data);
       return data;
     } catch (err: unknown) {

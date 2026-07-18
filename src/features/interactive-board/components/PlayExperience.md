@@ -10,6 +10,14 @@ entry that owns all interactivity (AGENTS.md Section 1, server-vs-client). It fe
 the puzzle **after mount** via `usePuzzle`, so nothing is generated during SSR and there
 is no hydration mismatch.
 
+## Sudoku / Killer toggle
+
+The menu has a puzzle-type toggle. In **Killer** mode it hides the grid-size selector (Killer is
+9×9), offers only easy/medium/hard, and shows a "no givens — the cage sums are the only clue"
+note. `startFresh` then calls `fetchPuzzle({ variant: 'killer', difficulty })`; the returned
+`KillerPuzzle` (with `cages`) flows through `startNewGame`, which sets the store's `variant`/`cages`
+so the board renders the cage overlay. Classic mode is unchanged.
+
 ## Menu-first, with save & continue
 
 The screen is driven by a LOCAL `view` ('config' | 'playing'), not the store `status`. It

@@ -17,10 +17,16 @@ unavailable rows — which would make the form jump around as the grid size chan
 — the component always renders all five difficulty rows and visually **disables**
 the ones that do not apply to the current grid size.
 
+## The optional `difficulties` override
+
+Callers can pass a `difficulties` array to override the grid-size-based availability — e.g.
+Killer mode passes `['easy','medium','hard']` so Expert/Extreme render disabled regardless of
+grid size. When omitted, availability falls back to the grid-size lookup (classic behaviour).
+
 ## What it does
 
-1. Look up which difficulties are available for the current `gridSize` from a
-   lookup table (4 and 6 -> easy/medium/hard; 9 -> all five).
+1. Use the `difficulties` prop if given, else look up which difficulties are available for the
+   current `gridSize` from a lookup table (4 and 6 -> easy/medium/hard; 9 -> all five).
 2. Render a row for every difficulty (easy, medium, hard, expert, extreme):
    - Determine whether the row is disabled (not in the available set).
    - Disabled rows render at 40% opacity, forced to a value of 0, and cannot be

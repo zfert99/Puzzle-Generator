@@ -76,6 +76,41 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 ---
 
+## 4b. Killer Sudoku Drawing
+
+### `drawKillerGrid(puzzle, startX, startY, gridDrawSize, showSolution)`
+
+**Goal:** Draw a Killer board — the same base grid, plus the two Killer-specific marks: dashed
+cage outlines and the cage sums.
+**Steps:**
+
+1. Build a `cell → cage index` lookup from the puzzle's cages.
+2. **Digits:** draw the solution on an answer page; draw nothing on the puzzle page (Killer has
+   no givens — the cages are the only clue).
+3. **Base grid:** thin cell lines, thick box lines (same as `drawGrid`).
+4. **Cage outlines:** dashed lines inset into each cage, forming one continuous border. For every
+   cell edge whose neighbour is a *different* cage (or off-grid), draw an inset segment; each
+   endpoint is resolved from the in-line neighbour and the diagonal cell into one of three cases:
+   - **convex** corner (in-line neighbour is a different cage) → inset the end;
+   - **straight** (in-line neighbour same cage, diagonal outside → it continues this border) → run
+     to the cell edge so the segments connect;
+   - **reflex / inner** corner (in-line neighbour same cage, diagonal *inside*) → run PAST the cell
+     edge by `inset` so this line meets the perpendicular border turning the corner. This is what
+     closes the inner corner of L-shaped cages (which otherwise leaves a gap).
+
+   `dash`/`undash` wrap it; the line is a touch thick (1.3) for legibility.
+5. **Cage sums:** in each cage's *anchor* cell (its lowest flat index — the top-left-most cell),
+   draw the sum small and slightly dimmed (`fillOpacity` ~0.55), tucked into the corner on a tiny
+   white pad so it reads as an annotation, not the answer, and stays legible over the cage line.
+
+### `generateKillerPDF(puzzles)`
+
+**Goal:** Render a Killer booklet — a title page, one page per puzzle (empty grid + cages), then
+one answer page each (filled solution + cages). Node runtime only (pdfkit). A dev preview script,
+`preview-killer.ts`, generates one puzzle per difficulty and writes a PDF for eyeballing.
+
+---
+
 ## 5. The Master Flow
 
 **Goal:** Execute all the steps in the right order to build the final book.

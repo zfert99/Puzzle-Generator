@@ -22,3 +22,8 @@ mismatch. The hook returns `null` until mounted (a `useSyncExternalStore` guard)
 and first client render agree and callers can treat `null` as "nothing to continue".
 
 `formatElapsed(seconds)` → `M:SS`, shared by every continue label.
+
+## Note
+
+`SavedGame.difficulty` is a `BoardDifficulty` (may be the literal `'killer'` for a parked
+Killer daily) — continue labels render it as-is.

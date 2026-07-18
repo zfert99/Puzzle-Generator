@@ -2,6 +2,13 @@
 
 Renders the `size × size` grid and owns keyboard interaction. Client component.
 
+## Killer cage overlay
+
+When the store's `variant === 'killer'`, the board renders a `CageOverlay` (an SVG over the grid)
+after the cells, drawing the dashed cage borders + sums from the shared `computeCageOutline`
+geometry. The `.board` is `position: relative` so the absolutely-positioned overlay anchors to it.
+See `CageOverlay.md`.
+
 ## Uniform cell sizing (`Board.module.css`)
 
 The board is a CSS grid with BOTH `grid-template-columns` **and** `grid-template-rows` set to
