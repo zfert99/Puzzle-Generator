@@ -22,6 +22,19 @@ export interface CageGenOptions {
    */
   maxSize?: number;
   /**
+   * Smallest cage to intend (target size is drawn from `[minSize, maxSize]`). Default 1. Setting
+   * it to 2+ suppresses *intentional* single-cell cages (which act as givens → too easy — see the
+   * difficulty research); a few forced singles can still occur when a cage boxes itself in.
+   */
+  minSize?: number;
+  /**
+   * Probability of drawing `maxSize` as the target instead of a uniform pick from
+   * `[minSize, maxSize]`. Default: uniform. This is the research's "2-cell cage count" lever
+   * (too many small cages = too constrained = easy) applied at the DRAW, so harder tiers get
+   * bigger-cage-heavy partitions without rejection-sampling a rare tail.
+   */
+  maxSizeBias?: number;
+  /**
    * Random source in [0, 1). Injectable so tests are deterministic; defaults to `Math.random`.
    * Killer generation is RNG-driven, so it must run client-side, never during SSR (AGENTS.md §1).
    */
@@ -44,6 +57,7 @@ export function generateCages(
 ): Cage[] {
   const size = getGridConfig(gridSize).size;
   const maxSize = Math.min(options.maxSize ?? 4, 9);
+  const minSize = Math.max(1, Math.min(options.minSize ?? 1, maxSize));
   const rng = options.rng ?? Math.random;
   const cellCount = size * size;
 
@@ -55,7 +69,10 @@ export function generateCages(
   for (let seed = 0; seed < cellCount; seed++) {
     if (assigned[seed]) continue;
 
-    const targetSize = 1 + Math.floor(rng() * maxSize); // 1..maxSize
+    const targetSize =
+      options.maxSizeBias !== undefined && rng() < options.maxSizeBias
+        ? maxSize
+        : minSize + Math.floor(rng() * (maxSize - minSize + 1)); // [minSize, maxSize]
     const cells = [seed];
     assigned[seed] = true;
     const usedDigits = new Set<number>([digitAt(seed)]);

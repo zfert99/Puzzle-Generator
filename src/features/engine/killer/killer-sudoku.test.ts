@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateKillerSudoku, type KillerDifficulty } from './killer-sudoku';
+import { combosFor } from './cage-combinations';
 import { KillerSolver } from './killer-solver';
 import { KillerLogicalSolver } from './killer-logical-solver';
 import { validateKillerCages } from './killer-types';
@@ -27,7 +28,11 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-const TARGET_TIER: Record<KillerDifficulty, number> = { easy: 1, medium: 2, hard: 3 };
+/** Solver-tier CEILING per difficulty — difficulty is shaped by cage structure, capped by tier. */
+const SOLVE_CAP: Record<KillerDifficulty, number> = { easy: 2, medium: 3, hard: 3 };
+
+/** Max single-cell cages (givens) per difficulty — the structural lever that separates tiers. */
+const MAX_SINGLES: Record<KillerDifficulty, number> = { easy: 12, medium: 4, hard: 1 };
 
 describe('generateKillerSudoku', () => {
   it('emits a uniquely-solvable puzzle whose only solution is the source grid', () => {
@@ -43,19 +48,27 @@ describe('generateKillerSudoku', () => {
     expect(new KillerSolver(puzzle.cages, 9).solve()).toEqual(SOL9);
   });
 
-  it.each(['easy', 'medium', 'hard'] as const)('generates a %s puzzle graded to its target tier', (difficulty) => {
+  it.each(['easy', 'medium', 'hard'] as const)('generates a %s puzzle solvable within its tier cap', (difficulty) => {
     const puzzle = generateKillerSudoku(difficulty, { solution: SOL9, rng: mulberry32(42) });
     expect(puzzle.difficulty).toBe(difficulty);
     expect(new KillerSolver(puzzle.cages, 9).countSolutions(2)).toBe(1);
-    // The logical solver must grade it to exactly the requested tier.
+    // Solvable within the difficulty's tier ceiling — cage shape, not exact tier, drives difficulty.
     const grade = new KillerLogicalSolver(puzzle.cages, 9).solve();
     expect(grade.solved).toBe(true);
-    expect(grade.hardestTier).toBe(TARGET_TIER[difficulty]);
+    expect(grade.hardestTier).toBeLessThanOrEqual(SOLVE_CAP[difficulty]);
   });
 
-  it('uses smaller cages for easier difficulties', () => {
-    const easy = generateKillerSudoku('easy', { solution: SOL9, rng: mulberry32(3) });
-    expect(Math.max(...easy.cages.map((c) => c.cells.length))).toBeLessThanOrEqual(2);
+  it.each(['easy', 'medium', 'hard'] as const)('respects the %s single-cage (given) budget', (difficulty) => {
+    const puzzle = generateKillerSudoku(difficulty, { solution: SOL9, rng: mulberry32(3) });
+    const singles = puzzle.cages.filter((c) => c.cells.length === 1).length;
+    expect(singles).toBeLessThanOrEqual(MAX_SINGLES[difficulty]);
+  });
+
+  it('keeps the medium/hard foothold bands apart (medium ≥ 3 anchors, hard ≤ 3)', () => {
+    const footholds = (puzzle: ReturnType<typeof generateKillerSudoku>) =>
+      puzzle.cages.filter((c) => c.cells.length >= 2 && combosFor(c.cells.length, c.sum).length === 1).length;
+    expect(footholds(generateKillerSudoku('medium', { solution: SOL9, rng: mulberry32(7) }))).toBeGreaterThanOrEqual(3);
+    expect(footholds(generateKillerSudoku('hard', { solution: SOL9, rng: mulberry32(7) }))).toBeLessThanOrEqual(3);
   });
 
   it('throws if it cannot grade a puzzle within the attempt budget', () => {

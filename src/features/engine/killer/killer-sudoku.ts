@@ -15,6 +15,7 @@
 import { getGridConfig } from '../sudoku';
 import { createEmptyGrid, copyGrid, fillGrid } from '../grid-utils';
 import { generateCages } from './cage-generator';
+import { combosFor } from './cage-combinations';
 import { KillerSolver } from './killer-solver';
 import { KillerLogicalSolver, type KillerTier } from './killer-logical-solver';
 import type { Cage, KillerPuzzle } from './killer-types';
@@ -23,16 +24,66 @@ const GRID_SIZE = 9;
 
 export type KillerDifficulty = 'easy' | 'medium' | 'hard';
 
+interface DifficultyConfig {
+  /**
+   * Solver tier the puzzle must be solvable WITHIN (a ceiling, not an exact match). Difficulty is
+   * driven mainly by cage SHAPE (below); the cap just guarantees the puzzle is logically solvable
+   * without techniques we don't have, and bounds grading cost. (Exact-tier matching craters yield
+   * once shape is constrained — measured; the two-factor score in #3 will refine within-cap.)
+   */
+  solveCap: KillerTier;
+  /** Cage-size window; `minSize ≥ 2` suppresses intentional single-cell "given" cages. */
+  minSize: number;
+  maxSize: number;
+  /** Cap on 1-cell cages (givens) — the biggest difficulty lever (research: Hard ≈ 0). */
+  maxSingles: number;
+  /**
+   * Foothold caps — a "foothold" is a single-combination cage of 2+ cells (e.g. a 3-in-2 = {1,2}),
+   * the research's lever (d): strong starting points, so fewer = harder. `minFootholds` guarantees
+   * medium keeps anchors (cuts its accidentally-hardest tail); `maxFootholds` denies hard easy
+   * starts (accepted-hard median is ~4 footholds; capping at 3 keeps the harder 38%).
+   */
+  minFootholds?: number;
+  maxFootholds?: number;
+}
+
 /**
- * Per-difficulty target grading tier and the cage-size cap that makes that tier both common and
- * fast to hit (measured): easy is dense with magic cages (Tier 1); medium/hard live at maxSize 3
- * where Tiers 2/3 are abundant and larger-cage "beyond solver" puzzles are rare.
+ * Per-difficulty cage-shape levers, tuned from the difficulty research (`Docs/research/…`) and
+ * calibrated by measurement. The generator was over-producing single-cell cages (givens) —
+ * ~52%/33% — making puzzles far too easy and medium/hard structurally identical. The four cage
+ * levers (single-cage count, size, sum, combination ambiguity) now separate the tiers: easy keeps
+ * givens; medium/hard shed them and grow cages (bigger sums), harder needing real deduction.
  */
-const DIFFICULTY_CONFIG: Record<KillerDifficulty, { targetTier: KillerTier; maxSize: number }> = {
-  easy: { targetTier: 1, maxSize: 2 },
-  medium: { targetTier: 2, maxSize: 3 },
-  hard: { targetTier: 3, maxSize: 3 },
+const DIFFICULTY_CONFIG: Record<KillerDifficulty, DifficultyConfig> = {
+  // easy keeps givens (it needs them to stay beginner-solvable) but far fewer than the old 52%,
+  // with bigger cages/sums. medium/hard suppress intentional singles (minSize 2) and tighten the
+  // forced-single cap — givens are the strongest lever, so the ladder rides on shedding them.
+  // Foothold bands (see DifficultyConfig) then split medium/hard from both sides: medium keeps
+  // ≥ 3 anchors, hard ≤ 3. All three stay at maxSize 3 and a 2-cell-heavy mix — measured walls:
+  // maxSize 4 makes `countSolutions` thrash (6–160+ s/puzzle), and shifting the mix toward
+  // 3-cell cages (maxSizeBias) collapses the tier-3-solvable rate to ~1% (the current technique
+  // set gets its traction from tight 2-cell cages). Both return with the expert tier: exact
+  // solver needs tighter cage-sum pruning, logical solver needs cage splitting/hard combos.
+  // A per-cage `maxCombos` gate was tried and dropped (no-op at maxSize 3, fatal at 4); the
+  // COUNT of single-combination cages (footholds) is the workable form of that lever.
+  easy: { solveCap: 2, minSize: 1, maxSize: 3, maxSingles: 12 },
+  medium: { solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 4, minFootholds: 3 },
+  hard: { solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 1, maxFootholds: 3 },
 };
+
+/** Reject a partition whose shape is wrong for the tier: given count or foothold count out of band. */
+function cageShapeOk(cages: Cage[], config: DifficultyConfig): boolean {
+  let singles = 0;
+  let footholds = 0;
+  for (const cage of cages) {
+    if (cage.cells.length === 1) singles += 1;
+    else if (combosFor(cage.cells.length, cage.sum).length === 1) footholds += 1;
+  }
+  if (singles > config.maxSingles) return false;
+  if (config.minFootholds !== undefined && footholds < config.minFootholds) return false;
+  if (config.maxFootholds !== undefined && footholds > config.maxFootholds) return false;
+  return true;
+}
 
 export interface KillerGenOptions {
   /** RNG for cage generation (default `Math.random`). Inject a seeded PRNG for determinism. */
@@ -49,11 +100,19 @@ export interface KillerGenOptions {
  */
 export function generateUniqueKiller(
   maxSize: number,
-  options: { rng?: () => number; solution?: number[][]; maxAttempts?: number } = {},
+  options: {
+    minSize?: number;
+    rng?: () => number;
+    solution?: number[][];
+    maxAttempts?: number;
+    /** Optional cage-shape gate applied BEFORE the (costlier) uniqueness check. */
+    shapeOk?: (cages: Cage[]) => boolean;
+  } = {},
 ): { cages: Cage[]; solution: number[][] } {
   const config = getGridConfig(GRID_SIZE);
   const rng = options.rng ?? Math.random;
   const maxAttempts = options.maxAttempts ?? 200;
+  const shapeOk = options.shapeOk ?? (() => true);
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     let solution: number[][];
@@ -63,7 +122,8 @@ export function generateUniqueKiller(
       solution = createEmptyGrid(config.size);
       fillGrid(solution, config);
     }
-    const cages = generateCages(solution, GRID_SIZE, { rng, maxSize });
+    const cages = generateCages(solution, GRID_SIZE, { rng, maxSize, minSize: options.minSize });
+    if (!shapeOk(cages)) continue; // cheap reject before the uniqueness check
     if (new KillerSolver(cages, GRID_SIZE).countSolutions(2) === 1) return { cages, solution };
   }
   throw new Error(`Could not generate a unique Killer layout in ${maxAttempts} attempts`);
@@ -79,29 +139,43 @@ export function generateKillerSudoku(
   difficulty: KillerDifficulty = 'medium',
   options: KillerGenOptions = {},
 ): KillerPuzzle {
-  const { targetTier, maxSize } = DIFFICULTY_CONFIG[difficulty];
+  const difficultyConfig = DIFFICULTY_CONFIG[difficulty];
+  const { solveCap, minSize, maxSize } = difficultyConfig;
   const rng = options.rng ?? Math.random;
-  const maxAttempts = options.maxAttempts ?? 800;
+  // Attempts are cheap now that grading precedes uniqueness (~0.5 ms each); a high cap makes
+  // exhaustion astronomically unlikely (hard accepts ~1 in 500) at a bounded worst case (~10 s).
+  const maxAttempts = options.maxAttempts ?? 20000;
   const config = getGridConfig(GRID_SIZE);
 
+  // One flat loop, cheapest gates first: shape (µs) → logical solve (~0.5 ms) → uniqueness
+  // (~10 ms, runs ONCE per accepted puzzle). The order matters: the logical solver makes only
+  // sound deductions (facts true in every solution), so a completed grid is necessarily the
+  // unique solution — solvability-within-cap implies uniqueness. The exact-solver check stays as
+  // a belt-and-braces verification against a strategy bug, but off the hot path. Reordering cut
+  // hard generation ~5× (measured; the old order paid ~10 ms uniqueness on every shape-passing
+  // candidate only to reject ~90% of them at the cheap grading step).
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const { cages, solution } = generateUniqueKiller(maxSize, {
-      rng,
-      solution: options.solution,
-      maxAttempts: 100,
-    });
-
-    const grade = new KillerLogicalSolver(cages, GRID_SIZE).solve({ maxTier: targetTier });
-    if (grade.solved && grade.hardestTier === targetTier) {
-      return {
-        variant: 'killer',
-        grid: createEmptyGrid(config.size),
-        solution,
-        cages,
-        difficulty,
-        gridSize: 9,
-      };
+    let solution: number[][];
+    if (options.solution) {
+      solution = copyGrid(options.solution);
+    } else {
+      solution = createEmptyGrid(config.size);
+      fillGrid(solution, config);
     }
+
+    const cages = generateCages(solution, GRID_SIZE, { rng, maxSize, minSize });
+    if (!cageShapeOk(cages, difficultyConfig)) continue;
+    if (!new KillerLogicalSolver(cages, GRID_SIZE).solve({ maxTier: solveCap }).solved) continue;
+    if (new KillerSolver(cages, GRID_SIZE).countSolutions(2) !== 1) continue;
+
+    return {
+      variant: 'killer',
+      grid: createEmptyGrid(config.size),
+      solution,
+      cages,
+      difficulty,
+      gridSize: 9,
+    };
   }
 
   throw new Error(`Could not generate a ${difficulty} Killer in ${maxAttempts} attempts`);

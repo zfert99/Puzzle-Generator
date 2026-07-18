@@ -8,7 +8,7 @@ KSudoku approach. Produces a valid partition only; it does **not** guarantee a u
 
 Think spilled ink. For each unassigned cell in scan order (which guarantees every cell is
 eventually covered and the loop terminates), we seed a cage and annex **random** eligible
-neighbours until it reaches a random target size:
+neighbours until it reaches a random target size drawn from `[minSize, maxSize]`:
 
 - **Eligible** = unassigned AND its solution digit isn't already in the cage. Enforcing
   no-repeat *during growth* means the finished cage satisfies the no-repeat invariant by
@@ -34,10 +34,28 @@ occasionally explode to seconds (large loose cages under-prune — see `killer-s
 default is **4**: a standard published cage cap that keeps verification cheap. Difficulty is
 tuned by cage *structure*, not by maximising size.
 
+## Why `minSize` exists (the biggest difficulty lever)
+
+Single-cell cages are **givens** — a sum over one cell just tells you the digit. The difficulty
+research (`Docs/research/`) identifies single-cage count as the strongest of the four cage
+levers, and the original `1 + floor(rng() * maxSize)` draw over-produced them (~52% of cages at
+maxSize 2). `minSize: 2` shifts the target-size draw to `[2, maxSize]`, suppressing *intentional*
+singles for medium/hard. A few **forced** singles can still occur when a growing cage boxes a
+cell in — the pipeline's per-difficulty `maxSingles` gate (K5) rejects partitions where that
+happens too often, rather than this generator trying to guarantee it.
+
+## Why `maxSizeBias` exists (but nothing uses it yet)
+
+The difficulty research's "2-cell cage count" lever (too many small cages = too constrained =
+easy) applied at the DRAW: with probability `maxSizeBias` the target size is `maxSize` instead
+of a uniform pick, so harder tiers can get bigger-cage-heavy partitions without
+rejection-sampling a rare tail. Measured outcome: the lever *works structurally* (bias 0.3
+drops 2-cell cages from ~17 to ~15.5 per grid) but is **unusable until the logical solver
+grows more Killer techniques** — the tier-3-solvable rate collapses from ~10% to ~1% → 0% as
+2-cell cages thin out, because the current technique set gets its traction from tight 2-cell
+cages. It stays as the ready-made knob for the expert tier.
+
 ## Not yet here (K3 refinements)
 
-- **`maxCombos` / singles bounds** — finer difficulty levers (fewer allowed combinations = more
-  constrained = easier; 1-cell cages act as givens, so their count is capped). Layered in when
-  K4/K5 need difficulty tuning.
 - **Symmetry** — an off-by-default aesthetic pass (rotational cage layout); costs generation
   attempts, doesn't affect difficulty.
