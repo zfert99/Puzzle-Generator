@@ -93,6 +93,21 @@ strategies: a puzzle needing more than `maxTier` simply returns `solved: false` 
 reject. This is the lever that makes difficulty-graded generation nearly free (see
 `killer-sudoku.md`).
 
+## The solve trace feeds two-factor scoring
+
+The deduction loop is a **tier-ordered technique table** (name, tier, apply), tried cheapest
+first each pass, restarting from the top after any hit so ripple effects are always exhausted
+before anything harder runs. Besides the grade, `solve()` returns the raw material for the
+two-factor difficulty score (`killer-score.ts`):
+
+- `techniqueCounts` — how many times each named technique fired (how much of *what* work);
+- `passes` and `avgOpenSingles` — at each pass start, one cheap popcount scan counts how many
+  naked singles are *simultaneously* available. The mean is the opportunity-density signal:
+  many parallel moves = an open, forgiving grid; near zero = a bottlenecked one that plays
+  harder than its technique list suggests.
+
+The sampling is a single 81-cell scan per pass (~µs), so grading cost is unchanged.
+
 ## Reach vs. what v1 ships
 
 Measured, the solver grades **tiers 1–3 abundantly**; tier-4 *solvable* layouts are a thin band

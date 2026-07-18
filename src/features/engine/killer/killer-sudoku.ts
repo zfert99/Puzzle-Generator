@@ -16,6 +16,7 @@ import { getGridConfig } from '../sudoku';
 import { createEmptyGrid, copyGrid, fillGrid } from '../grid-utils';
 import { generateCages } from './cage-generator';
 import { combosFor } from './cage-combinations';
+import { scoreKillerSolve } from './killer-score';
 import { KillerSolver } from './killer-solver';
 import { KillerLogicalSolver, type KillerTier } from './killer-logical-solver';
 import type { Cage, KillerPuzzle } from './killer-types';
@@ -45,6 +46,13 @@ interface DifficultyConfig {
    */
   minFootholds?: number;
   maxFootholds?: number;
+  /**
+   * Two-factor score band (`killer-score.ts`) the accepted puzzle must land in — the within-band
+   * refinement the tier ceiling can't provide. Cuts are DISJOINT across difficulties and placed
+   * on measured distributions (Stuart's relative-cut approach), so a grindy bottlenecked "medium"
+   * can no longer out-play a breezy "hard". Recalibrate whenever weights or shape gates change.
+   */
+  scoreBand?: { min?: number; max?: number };
 }
 
 /**
@@ -66,9 +74,17 @@ const DIFFICULTY_CONFIG: Record<KillerDifficulty, DifficultyConfig> = {
   // solver needs tighter cage-sum pruning, logical solver needs cage splitting/hard combos.
   // A per-cage `maxCombos` gate was tried and dropped (no-op at maxSize 3, fatal at 4); the
   // COUNT of single-combination cages (footholds) is the workable form of that lever.
-  easy: { solveCap: 2, minSize: 1, maxSize: 3, maxSingles: 12 },
-  medium: { solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 4, minFootholds: 3 },
-  hard: { solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 1, maxFootholds: 3 },
+  // Score cuts (42/62) sit on measured 30-sample distributions: easy p75 ≈ 40, medium median 56
+  // (p25 44, p75 74), hard median 65 — disjoint bands retain ~50–80% of each tier's yield.
+  easy: { solveCap: 2, minSize: 1, maxSize: 3, maxSingles: 12, scoreBand: { max: 42 } },
+  medium: {
+    solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 4, minFootholds: 3,
+    scoreBand: { min: 42, max: 62 },
+  },
+  hard: {
+    solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 1, maxFootholds: 3,
+    scoreBand: { min: 62 },
+  },
 };
 
 /** Reject a partition whose shape is wrong for the tier: given count or foothold count out of band. */
@@ -165,7 +181,16 @@ export function generateKillerSudoku(
 
     const cages = generateCages(solution, GRID_SIZE, { rng, maxSize, minSize });
     if (!cageShapeOk(cages, difficultyConfig)) continue;
-    if (!new KillerLogicalSolver(cages, GRID_SIZE).solve({ maxTier: solveCap }).solved) continue;
+
+    const solveResult = new KillerLogicalSolver(cages, GRID_SIZE).solve({ maxTier: solveCap });
+    if (!solveResult.solved) continue;
+    const band = difficultyConfig.scoreBand;
+    if (band) {
+      const { final } = scoreKillerSolve(solveResult);
+      if (band.min !== undefined && final < band.min) continue;
+      if (band.max !== undefined && final >= band.max) continue;
+    }
+
     if (new KillerSolver(cages, GRID_SIZE).countSolutions(2) !== 1) continue;
 
     return {

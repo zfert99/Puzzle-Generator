@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateKillerSudoku, type KillerDifficulty } from './killer-sudoku';
 import { combosFor } from './cage-combinations';
+import { scoreKillerSolve } from './killer-score';
 import { KillerSolver } from './killer-solver';
 import { KillerLogicalSolver } from './killer-logical-solver';
 import { validateKillerCages } from './killer-types';
@@ -62,6 +63,17 @@ describe('generateKillerSudoku', () => {
     const puzzle = generateKillerSudoku(difficulty, { solution: SOL9, rng: mulberry32(3) });
     const singles = puzzle.cages.filter((c) => c.cells.length === 1).length;
     expect(singles).toBeLessThanOrEqual(MAX_SINGLES[difficulty]);
+  });
+
+  it.each([
+    ['easy', undefined, 42],
+    ['medium', 42, 62],
+    ['hard', 62, undefined],
+  ] as const)('lands %s in its two-factor score band [%s, %s)', (difficulty, min, max) => {
+    const puzzle = generateKillerSudoku(difficulty, { solution: SOL9, rng: mulberry32(11) });
+    const { final } = scoreKillerSolve(new KillerLogicalSolver(puzzle.cages, 9).solve());
+    if (min !== undefined) expect(final).toBeGreaterThanOrEqual(min);
+    if (max !== undefined) expect(final).toBeLessThan(max);
   });
 
   it('keeps the medium/hard foothold bands apart (medium ≥ 3 anchors, hard ≤ 3)', () => {

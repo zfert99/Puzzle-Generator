@@ -223,3 +223,27 @@ grids with too many single-cell cages for higher grades), and the deferral of ex
 weights as backbone) and the necessity-testing caveat (verify a technique is required by
 *disabling* it and re-solving, not by reading a solve trace — our tier-cap check already works
 this way at band granularity).
+
+## Addendum 2: two-factor scoring (#3) implemented
+
+Stuart's `raw × density` architecture is now live (`killer-score.ts` + solver
+instrumentation):
+
+- **Factor 1 — weighted technique sum.** `KillerLogicalSolver.solve()` now returns
+  per-technique application counts (the deduction loop was refactored into a tier-ordered
+  technique table); `killer-score.ts` weights them on the Sudoku Explainer 1.0–11.9 backbone
+  with Killer techniques slotted per SudokuWiki's ordering (single-house R45 3.5, multi-unit
+  regions 4.5, cage arithmetic 1.0).
+- **Factor 2 — opportunity density.** Each deduction pass samples how many naked singles are
+  simultaneously available (one popcount scan, ~µs). The mean maps onto a [0.5, 2] multiplier:
+  bottlenecked grids score up, open grids down.
+- **Disjoint acceptance bands** placed on measured 30-sample distributions: easy < 42,
+  medium 42–62, hard ≥ 62. This closed a real, measured hole: before banding, medium's grindy
+  top quartile (p75 = 74) out-scored hard's median (65) — a "medium" could genuinely play
+  harder than a "hard". Generated puzzles now land at easy 18–41 / medium 43–61 / hard 64–96
+  with zero overlap.
+
+Speed after banding (20 samples, zero failures): easy 12 ms, medium 117 ms, hard 404 ms avg
+(1.45 s max) — the band rejections cost medium ~30 ms and hard ~120 ms over the unbanded
+pipeline, well within budget. The cuts must be re-measured whenever weights, shape gates, or
+solver techniques change (they are relative cuts, Stuart-style, not absolute numbers).

@@ -10,8 +10,9 @@ solved grid (reuse classic engine's fillGrid)
   → random cage partition (K3 generateCages, size window [minSize, maxSize])
     → cage-shape gate: singles budget + foothold band ok? (µs)
       → solvable within the tier cap? (K4 logical solver, solve({ maxTier }), ~0.5 ms)
-        → uniqueness verification: exact solver countSolutions(2) === 1 (K2, ~10 ms, once)
-          → return : retry with a fresh grid
+        → two-factor score in the difficulty's band? (killer-score.ts, ~µs on the same trace)
+          → uniqueness verification: exact solver countSolutions(2) === 1 (K2, ~10 ms, once)
+            → return : retry with a fresh grid
 ```
 
 One flat retry loop — cheapest gates first. **The logical solve runs BEFORE the uniqueness
@@ -38,11 +39,17 @@ Exact-tier matching was dropped deliberately — once shape is constrained it cr
 difficulty refinement is the two-factor scoring follow-up (technique frequency × opportunity
 density), not a binary gate.
 
-| Difficulty | solveCap | size window | maxSingles | foothold band | measured shape |
-|---|---|---|---|---|---|
-| easy | 2 | 1–3 | 12 | — | ~11 singles/puzzle, avgSum ~10 |
-| medium | 3 | 2–3 | 4 | ≥ 3 | ~2 singles, ~4.7 footholds/puzzle |
-| hard | 3 | 2–3 | 1 | ≤ 3 | ~1 single, ~2.4 footholds/puzzle |
+| Difficulty | solveCap | size window | maxSingles | foothold band | score band | measured shape |
+|---|---|---|---|---|---|---|
+| easy | 2 | 1–3 | 12 | — | < 42 | ~11 singles/puzzle, scores 18–41 |
+| medium | 3 | 2–3 | 4 | ≥ 3 | 42–62 | ~2 singles, ~4.7 footholds, scores 43–61 |
+| hard | 3 | 2–3 | 1 | ≤ 3 | ≥ 62 | ~1 single, ~2.4 footholds, scores 64–96 |
+
+The **score band** is the two-factor difficulty score (`killer-score.md`: weighted technique
+sum × opportunity density) with *disjoint* cuts placed on measured distributions. It closes the
+gap the tier ceiling can't: before banding, medium's grindy top quartile out-scored hard's
+median — a "medium" could genuinely play harder than a "hard". Now the played-difficulty
+ordering easy < medium < hard is enforced, not just likely.
 
 A **foothold** is a single-combination cage of 2+ cells (a 3-in-2 = {1,2}, a 24-in-3 =
 {7,8,9}) — the research's "prevalence of single-combination cages" lever: strong starting
@@ -77,13 +84,13 @@ form of that lever; full ambiguity weighting belongs in two-factor scoring.
 uniques) and larger cages are dominated by puzzles beyond the current technique set (~86% of
 maxSize-4 uniques). Expert/extreme wait for more Killer techniques.
 
-## Speed (measured, 15–25 samples each, real random grids)
+## Speed (measured, 15–25 samples each, real random grids, score bands on)
 
 | Difficulty | avg | median | max | fails |
 |---|---|---|---|---|
-| easy | 12 ms | 5 ms | 55 ms | 0 |
-| medium | 88 ms | 58 ms | 266 ms | 0 |
-| hard | 288 ms | 268 ms | 683 ms | 0 |
+| easy | 12 ms | 8 ms | 34 ms | 0 |
+| medium | 117 ms | 109 ms | 428 ms | 0 |
+| hard | 404 ms | 196 ms | 1 452 ms | 0 |
 
 Before the grade-before-uniqueness reorder, ~99% of time was `countSolutions` (~10 ms per
 shape-passing layout, ~28% unique) paid on candidates the grader then rejected; hard averaged

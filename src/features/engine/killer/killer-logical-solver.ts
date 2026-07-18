@@ -37,6 +37,37 @@ import type { Cage } from './killer-types';
  */
 export type KillerTier = 0 | 1 | 2 | 3 | 4;
 
+/** Every technique the deduction loop can apply, in priority order. */
+export type KillerTechnique =
+  | 'cageArithmetic'
+  | 'nakedSingle'
+  | 'hiddenSingle'
+  | 'ruleOf45'
+  | 'cageConsistentDigits'
+  | 'nakedPair'
+  | 'hiddenPair'
+  | 'ruleOf45Regions'
+  | 'pointingPairs'
+  | 'xWing'
+  | 'swordfish'
+  | 'yWing'
+  | 'xyzWing'
+  | 'wWing'
+  | 'alsXZ'
+  | 'aic';
+
+/** Outcome of a logical solve — the grade plus the raw material for two-factor scoring. */
+export interface KillerSolveResult {
+  solved: boolean;
+  hardestTier: KillerTier;
+  /** How many times each technique fired (absent = never). */
+  techniqueCounts: Partial<Record<KillerTechnique, number>>;
+  /** Deduction-loop iterations until solved/stuck. */
+  passes: number;
+  /** Mean naked singles simultaneously available per pass — opportunity density (high = open/easy). */
+  avgOpenSingles: number;
+}
+
 interface CageState {
   used: number; // bitmask of digits already placed in the cage
   sumLeft: number; // target minus placed digits
@@ -310,6 +341,19 @@ export class KillerLogicalSolver {
     return false;
   }
 
+  /** How many naked singles are simultaneously available — the "openness" of the current state. */
+  private countOpenSingles(): number {
+    let open = 0;
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
+        if (this.hs.grid[r][c] !== 0) continue;
+        const mask = this.hs.candidates[r][c];
+        if (mask !== 0 && (mask & (mask - 1)) === 0) open += 1;
+      }
+    }
+    return open;
+  }
+
   /**
    * Run the deduction loop until solved or stuck, cheapest technique first (so ripple effects are
    * exhausted before anything harder), recording the hardest tier that unsticks it — the grade.
@@ -317,43 +361,62 @@ export class KillerLogicalSolver {
    * `maxTier` caps which techniques may run (default 4 = all). The generator passes the *target*
    * tier so that grading a would-be "medium" never pays for the expensive Tier-4 strategies: a
    * puzzle needing more than `maxTier` simply comes back `solved: false`, which is a reject.
+   *
+   * The result carries the raw material for two-factor difficulty scoring (`killer-score.ts`):
+   * per-technique application counts (how much of WHAT work) and the mean number of naked singles
+   * simultaneously available across passes (opportunity density — many parallel moves = an open,
+   * forgiving grid; a bottlenecked grid forces one narrow path and plays harder). Openness is
+   * sampled at each pass start for one popcount-scan of the grid (~µs), keeping grading cheap.
    */
-  solve(options: { maxTier?: KillerTier } = {}): { solved: boolean; hardestTier: KillerTier } {
+  solve(options: { maxTier?: KillerTier } = {}): KillerSolveResult {
     const cap = options.maxTier ?? 4;
+    const techniques: { name: KillerTechnique; tier: KillerTier; apply: () => boolean }[] = [
+      { name: 'cageArithmetic', tier: 1, apply: () => this.applyCageArithmetic() },
+      { name: 'nakedSingle', tier: 1, apply: () => applyNakedSingle(this.hs) },
+      { name: 'hiddenSingle', tier: 1, apply: () => applyHiddenSingle(this.hs) },
+      { name: 'ruleOf45', tier: 1, apply: () => this.applyRuleOf45() },
+      { name: 'cageConsistentDigits', tier: 2, apply: () => this.applyCageConsistentDigits() },
+      { name: 'nakedPair', tier: 2, apply: () => applyNakedPair(this.hs) },
+      { name: 'hiddenPair', tier: 2, apply: () => applyHiddenPair(this.hs) },
+      { name: 'ruleOf45Regions', tier: 3, apply: () => this.applyRuleOf45Regions() },
+      { name: 'pointingPairs', tier: 3, apply: () => applyPointingPairs(this.hs) },
+      { name: 'xWing', tier: 4, apply: () => applyXWing(this.hs) },
+      { name: 'swordfish', tier: 4, apply: () => applySwordfish(this.hs) },
+      { name: 'yWing', tier: 4, apply: () => applyYWing(this.hs) },
+      { name: 'xyzWing', tier: 4, apply: () => applyXYZWing(this.hs) },
+      { name: 'wWing', tier: 4, apply: () => applyWWing(this.hs) },
+      { name: 'alsXZ', tier: 4, apply: () => applyALSXZ(this.hs) },
+      { name: 'aic', tier: 4, apply: () => applyAIC(this.hs) },
+    ];
+
+    const techniqueCounts: Partial<Record<KillerTechnique, number>> = {};
+    let passes = 0;
+    let opennessTotal = 0;
+
     let changed = true;
     while (changed && !this.hs.isSolved()) {
       changed = false;
+      passes += 1;
+      opennessTotal += this.countOpenSingles();
 
-      // ---- Tier 1 ----
-      if (this.applyCageArithmetic()) { this.note(1); changed = true; continue; }
-      if (applyNakedSingle(this.hs)) { this.note(1); changed = true; continue; }
-      if (applyHiddenSingle(this.hs)) { this.note(1); changed = true; continue; }
-      if (this.applyRuleOf45()) { this.note(1); changed = true; continue; }
-
-      // ---- Tier 2 ----
-      if (cap >= 2) {
-        if (this.applyCageConsistentDigits()) { this.note(2); changed = true; continue; }
-        if (applyNakedPair(this.hs)) { this.note(2); changed = true; continue; }
-        if (applyHiddenPair(this.hs)) { this.note(2); changed = true; continue; }
-      }
-
-      // ---- Tier 3 ----
-      if (cap >= 3) {
-        if (this.applyRuleOf45Regions()) { this.note(3); changed = true; continue; }
-        if (applyPointingPairs(this.hs)) { this.note(3); changed = true; continue; }
-      }
-
-      // ---- Tier 4 (classic advanced + extreme, 9×9 only) ----
-      if (cap >= 4 && this.size === 9) {
-        if (applyXWing(this.hs)) { this.note(4); changed = true; continue; }
-        if (applySwordfish(this.hs)) { this.note(4); changed = true; continue; }
-        if (applyYWing(this.hs)) { this.note(4); changed = true; continue; }
-        if (applyXYZWing(this.hs)) { this.note(4); changed = true; continue; }
-        if (applyWWing(this.hs)) { this.note(4); changed = true; continue; }
-        if (applyALSXZ(this.hs)) { this.note(4); changed = true; continue; }
-        if (applyAIC(this.hs)) { this.note(4); changed = true; continue; }
+      for (const technique of techniques) {
+        if (technique.tier > cap) break; // table is tier-ordered; nothing further may run
+        if (technique.tier === 4 && this.size !== 9) break;
+        if (technique.apply()) {
+          this.note(technique.tier);
+          techniqueCounts[technique.name] = (techniqueCounts[technique.name] ?? 0) + 1;
+          changed = true;
+          break; // restart from the cheapest technique so ripple effects are exhausted first
+        }
       }
     }
-    return { solved: this.hs.isSolved(), hardestTier: this.hardestTier };
+
+    return {
+      solved: this.hs.isSolved(),
+      hardestTier: this.hardestTier,
+      techniqueCounts,
+      passes,
+      avgOpenSingles: passes > 0 ? opennessTotal / passes : 0,
+    };
   }
 }

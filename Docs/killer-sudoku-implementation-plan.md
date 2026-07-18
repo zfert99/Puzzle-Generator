@@ -221,6 +221,13 @@ generator").
 - **Caveat (from research):** difficulty grading is not standardized and is the hard part of
   the whole project. We grade by hardest-required-technique (Andrew Stuart's approach), accept
   subjectivity, and calibrate bands against real solve feel later.
+- **✅ Shipped (see `killer-logical-solver.md` for the as-built ladder):** tiers 1–4 with the
+  tier-3 slot filled by multi-unit Rule of 45 + pointing pairs — **cage splitting and hard
+  combinations were deferred to the expert slice (K10)**, and tier 4 is the classic
+  advanced/extreme set. `solve()` also returns per-technique counts + opportunity-density
+  sampling, feeding **two-factor scoring** (`killer-score.ts`, Stuart's `raw × density`
+  architecture on SE-backboned weights) — the "how often" weighting the caveat asked for,
+  implemented as disjoint score bands per difficulty.
 
 ### Slice K5 — Generator pipeline
 
@@ -234,8 +241,57 @@ generator").
   size/combo count — loosening `maxCombos` alone may not move the grade. The fallback loop
   must be able to adjust `maxSize` and the singles bound too; treat the exact knob schedule as
   something the K5 benchmarks *prove*, not something assumed up front.
-- **Target:** end-to-end generate within the Extreme budget (**< 10 s**, ideally < 3 s for
-  easy/medium); log a `benchmark-killer.ts` tier table to `benchmark-logs.md`.
+- **✅ Shipped, with two design inversions the benchmarks forced** (full detail:
+  `killer-difficulty-rebalance-report.md` + `killer-sudoku.md`):
+  1. **Exact-tier matching → tier ceiling.** Requiring `hardestTier === target` craters yield
+     once cage shape is constrained (98% of unique medium-shaped layouts rejected). Difficulty
+     rides cage-shape gates (given budgets 12/4/1, foothold bands medium ≥ 3 / hard ≤ 3) plus
+     a **two-factor score band** (easy < 42 / medium 42–62 / hard ≥ 62, disjoint); the tier is
+     only a solvability ceiling. `maxCombos` as a per-cage gate was tried and dropped (no-op at
+     maxSize 3, fatal at 4) — the *count* of single-combination cages is the workable form.
+  2. **Grade before uniqueness.** Sound deductions ⇒ a completed logical solve is provably the
+     unique solution, so `countSolutions` is a once-per-accepted verification, not a per-
+     candidate toll. ~5–15× speedup; measured 12 / 117 / 404 ms avg — far under the < 3 s /
+     < 10 s targets.
+
+### Slice K10 — Expert/extreme difficulties — *future, sequenced by measured walls*
+
+Everything in this slice follows from walls we **measured** during the difficulty rebalance
+(July 2026 — see `killer-difficulty-rebalance-report.md`), not from speculation. The current
+technique set gets its traction from tight 2-cell cages and given-like footholds; every lever
+that makes puzzles structurally harder (maxSize 4, thinning 2-cell cages via the shipped-but-
+unused `maxSizeBias` knob, cutting footholds below ~2) collapses either the tier-3-solvable
+rate (~10% → ~1% → 0%) or the exact solver (uniqueness checks 10 ms → 579 ms → minutes). So
+the order is fixed:
+
+1. **Exact-solver pruning first** (`killer-solver.ts`): tighter cage-sum bound propagation
+   during backtracking (prune when a partial cage can't reach its sum with any remaining
+   combination), or a node-budget bail-out so pathological layouts die in milliseconds.
+   *Unlocks:* maxSize 4–5 at sane verify cost — and retroactively gives **hard** its big
+   cages/sums (> 24), which the rebalance had to forgo.
+2. **Killer techniques next** (`killer-logical-solver.ts`): cage splitting, hard combinations,
+   and chains — per the research ladder. Each added technique converts part of the measured
+   **~86% of maxSize-4 uniques that are currently ungradable** into expert-band territory.
+   Necessity-test by capability-toggling (disable the technique, require the solve to stall),
+   never by reading a single solve trace (order-dependence — HoDoKu's documented trap).
+3. **Cheap pre-filter before the expensive grade** (research: Stuart over-produces ~1-in-5000
+   for extreme): backdoor/"Magic Cells" count or a branch-difficulty score to reject
+   obviously-easy candidates before grading. Only needed if expert acceptance falls below
+   ~1-in-thousands.
+4. **⚠️ MANDATORY RECALIBRATION — on this slice and on ANY change to technique weights, shape
+   gates, solver techniques, or the cage generator:** the two-factor score cuts (currently
+   easy < 42 / medium 42–62 / hard ≥ 62) are **relative cuts on measured distributions**
+   (Stuart's sextile approach), not absolute numbers. Adding a technique changes every
+   puzzle's trace and therefore every score. The protocol: re-run the distribution sweep
+   (30+ generated puzzles per difficulty → score quantiles), re-place ALL band cuts (not just
+   the new tier's) so bands stay disjoint with ~50%+ yield each, re-run the generation
+   benchmark (avg/median/max + fail count per difficulty), and update `killer-score.md`,
+   `killer-sudoku.md`, and the band regression tests in `killer-sudoku.test.ts` with the new
+   numbers. Expert's own band gets placed the same way — measured, never invented.
+5. New difficulties keep the shape-gate + ceiling + score-band architecture — expert ≈
+   solveCap 4, maxSize 4–5, zero singles, foothold ≤ 1, `maxSizeBias` engaged, score band
+   above hard's — with each gate's threshold re-proven by the K5-style sweep discipline
+   (stage-rate diagnostics before end-to-end benchmarks).
 
 ### Slice K6 — Interactive board (cage rendering + play) — *deferred to Phase 6b*
 
@@ -311,9 +367,9 @@ to [benchmark-logs.md](../src/features/engine/benchmarks/benchmark-logs.md).
 | # | Item | Disposition |
 |---|---|---|
 | 0 | **K4 (grading) is the long pole of v1 — not K3/K5.** The research's own datapoint (Kevin Hooke: solver ~2 weeks, the *difficulty ranker* most of a year) is a sharp asymmetry. Slice ordering (K4 after the generator) can mislead velocity tracking. | Budget K4 as the dominant cost of K1–K5; expect it to blow a naive estimate. Land the grader's tiers incrementally (Tier 1–2 usable early) rather than all-at-once. |
-| 1 | **Difficulty grading is subjective** (research caveat) | Grade by hardest-required technique **and how often it's needed** (Andrew Stuart's weighting, not max-tier alone); calibrate bands against real solve data post-launch. Accept as known-imperfect. |
+| 1 | **Difficulty grading is subjective** (research caveat) | ✅ Resolved (July 2026): two-factor scoring shipped (`killer-score.ts` — Stuart's weighted-sum × opportunity-density on SE weights) with disjoint per-difficulty score bands placed on measured distributions. Bands are relative cuts — **recalibrate per the K10 protocol on any solver/weights/gate change**. Human solve-data calibration (Glicko-style) remains a post-launch option. |
 | 2 | **`KillerSolver`/`HumanSolver` candidate sharing** | Resolve in K4: compose via public API first; extract `CandidateGrid` only if forced (separate refactor). |
-| 3 | **Generation retry cost** if grading rejects many layouts | Cap attempts + progressively loosen **`maxCombos`, `maxSize`, *and* the singles bound** (one knob may not move a hard band — see K5); measure in K5 benchmarks. |
+| 3 | **Generation retry cost** if grading rejects many layouts | ✅ Resolved (July 2026): grade-before-uniqueness reorder made attempts ~0.5 ms, so rejection-heavy configs stay fast (12/117/404 ms avg, attempt cap 20 000). The loosen-knobs fallback proved unnecessary; `maxCombos` was dropped as a gate (see K5). |
 | 4 | **Cage border rendering fidelity** (dashed insets, sum placement) in both themes + PDF | Prototype early in K6/K7; verify via screenshots. |
 | 5 | **Daily scope** — new difficulty tier vs. separate Killer tab | ✅ Resolved: out of v1 (engine only). Revisit in Phase 6b (K8). |
 | 6 | **Sequencing vs. Strategy Courses** | ✅ Resolved: Killer is **Phase 6**; Strategy Courses moves to **Phase 7**. |
