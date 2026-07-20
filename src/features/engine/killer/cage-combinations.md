@@ -101,3 +101,19 @@ always a subset of the candidate mask (guaranteed ⊆ possible — asserted in t
 
 `combosFor`, `candidateMaskFor`, and `guaranteedMaskFor`, all backed by frozen precomputed
 tables. Cage/puzzle types and validators live in `killer-types.ts`.
+
+## `candidateMaskExcluding` (E1/P1 — the pruning fix)
+
+The plain union mask (`candidateMaskFor`) admits digits reachable *only* through combinations
+containing a digit the cage has already used — dead branches the exact solver then explores.
+`candidateMaskExcluding(size, sum, usedMask)` unions only combinations disjoint from
+`usedMask`, so the result is tighter, never contains used digits, and reads `0` when no
+completion exists (a prune signal).
+
+Two measured lessons shaped the implementation:
+
+- **Unmemoized, it was a net LOSS** (~3× slower verifies): the ≤12-mask scan ran inside every
+  `candidates()` call of every search node and cost more than the pruned branches saved.
+- **Memoized** into a flat `(size, sum, used)` Int32Array (~940 KB, −1 = unfilled since 0 is
+  a real answer), it is an array read after warmup — maxSize-4 verifies dropped ~1.4× on
+  average and the pathological biased class ~16×.

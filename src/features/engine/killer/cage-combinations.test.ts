@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { candidateMaskFor, combosFor, guaranteedMaskFor } from './cage-combinations';
+import { candidateMaskExcluding, candidateMaskFor, combosFor, guaranteedMaskFor } from './cage-combinations';
 
 /** Read a bitmask back out as an ascending digit list — makes mask assertions legible. */
 function digitsInMask(mask: number): number[] {
@@ -87,6 +87,42 @@ describe('candidateMaskFor', () => {
   it('is the empty set (0) for an impossible cage', () => {
     expect(candidateMaskFor(2, 18)).toBe(0);
     expect(digitsInMask(candidateMaskFor(2, 18))).toEqual([]);
+  });
+});
+
+describe('candidateMaskExcluding', () => {
+  it('drops digits reachable only through combinations containing a used digit', () => {
+    // 2-cell sum 8 = {1,7},{2,6},{3,5}. With 2 already used in the cage, {2,6} is impossible,
+    // so 6 must vanish from the mask (the plain union would keep it).
+    expect(digitsInMask(candidateMaskExcluding(2, 8, 1 << (2 - 1)))).toEqual([1, 3, 5, 7]);
+  });
+
+  it('equals the plain union mask when nothing is used', () => {
+    for (let size = 1; size <= 4; size++) {
+      for (let sum = 1; sum <= 45; sum++) {
+        expect(candidateMaskExcluding(size, sum, 0)).toBe(candidateMaskFor(size, sum));
+      }
+    }
+  });
+
+  it('never returns a used digit and is always a subset of the plain mask', () => {
+    for (let sum = 1; sum <= 45; sum++) {
+      for (const used of [0b1, 0b10010, 0b100000001]) {
+        const mask = candidateMaskExcluding(3, sum, used);
+        expect(mask & used).toBe(0);
+        expect(mask & candidateMaskFor(3, sum)).toBe(mask);
+      }
+    }
+  });
+
+  it('reads 0 when no disjoint combination exists (prune signal)', () => {
+    // 2-cell sum 17 = only {8,9}; with 8 used, no completion exists.
+    expect(candidateMaskExcluding(2, 17, 1 << (8 - 1))).toBe(0);
+  });
+
+  it('is memo-stable: repeated calls agree (cold vs cached path)', () => {
+    const first = candidateMaskExcluding(4, 20, 0b101);
+    expect(candidateMaskExcluding(4, 20, 0b101)).toBe(first);
   });
 });
 

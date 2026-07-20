@@ -75,3 +75,24 @@ size-5 cages.
 
 - **Tighter cage pruning / a verify budget** — only if size-5 (or extreme) puzzles are wanted.
 - **Logical (grading) mode** — a separate concern (K4); this file is exact-search only.
+
+## E1: pruning + node budget (July 2026)
+
+Two changes from the expert-tier work (`Docs/killer-expert-implementation-plan.md`, slice E1),
+both benchmark-driven on fixed layout fixtures:
+
+- **Combo-filtered candidates (P1).** `candidates()` now uses `candidateMaskExcluding` — only
+  digits from combinations disjoint from the cage's used digits. Baseline → P1 on maxSize-4
+  hard-shaped layouts: 191 ms → 155 ms avg verify (median 64 → 33 ms); the pathological
+  3-cell-biased class fell 33 s → 2.6 s avg; the existing hard path got faster (14 → 11 ms).
+- **Node budget (P3).** `countSolutions(limit, nodeBudget)` returns **−1** when the search
+  exhausts the budget — callers checking `=== 1` reject, so exhaustion can cost yield but
+  never correctness. At a 100 k-node budget, maxSize-4 verifies run **33.6 ms avg / 94 ms
+  max** (E1 gate: ≤ 50 ms avg ✓) and unique-layouts-per-second triples versus unbounded
+  (bounded rejects beat unbounded tails). `nodesUsed` exposes the per-run node count for
+  budget tuning. `solve()` is never budget-limited.
+
+**A 45-rule house-sum bound (P2) was tried and REMOVED**: on identical fixtures it was a pure
+25–30 % slowdown across every class — MRV plus the P1 cage masks already catch nearly
+everything the house bound would, and its per-placement min/max loops cost more than the rare
+extra prunes saved. Don't re-add it without a fixture A/B.

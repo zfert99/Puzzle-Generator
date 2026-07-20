@@ -259,7 +259,7 @@ generator").
      candidate toll. ~5–15× speedup; measured 12 / 117 / 404 ms avg — far under the < 3 s /
      < 10 s targets.
 
-### Slice K10 — Expert/extreme difficulties — *future, sequenced by measured walls*
+### Slice K10 — Expert/extreme difficulties — *planned; full plan in [killer-expert-implementation-plan.md](killer-expert-implementation-plan.md)*
 
 Everything in this slice follows from walls we **measured** during the difficulty rebalance
 (July 2026 — see `killer-difficulty-rebalance-report.md`), not from speculation. The current
