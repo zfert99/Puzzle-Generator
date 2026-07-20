@@ -253,3 +253,90 @@ h1, h2, .font-display {
     animation: none;
   }
 }
+
+/* ---- Site backdrop (juice layer): aurora blobs + drifting glyphs ---- */
+/* Fixed behind all content; the per-page dot pattern (transparent SVG) overlays it. Colors
+   derive from theme tokens via color-mix, so light gets a warm pastel wash and dark gets deep
+   glows from the same rules. Transform-only animations (GPU); frozen under reduced motion. */
+
+.site-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  /* Pre-soft radial gradients — no filter:blur, which is expensive at this size. */
+  background: radial-gradient(circle, var(--aurora-color) 0%, transparent 62%);
+  animation: aurora-drift ease-in-out infinite alternate;
+}
+
+.aurora-a {
+  --aurora-color: color-mix(in srgb, var(--butterscotch) 22%, transparent);
+  top: -25vmax;
+  left: -18vmax;
+  animation-duration: 52s;
+}
+
+.aurora-b {
+  --aurora-color: color-mix(in srgb, var(--grape) 17%, transparent);
+  bottom: -30vmax;
+  right: -20vmax;
+  animation-duration: 67s;
+  animation-delay: -20s;
+}
+
+.aurora-c {
+  --aurora-color: color-mix(in srgb, var(--mint) 14%, transparent);
+  top: 30%;
+  left: 55%;
+  width: 46vmax;
+  height: 46vmax;
+  animation-duration: 43s;
+  animation-delay: -35s;
+}
+
+@keyframes aurora-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(7vmax, -5vmax, 0) scale(1.18); }
+}
+
+.backdrop-glyph {
+  position: absolute;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(3rem, 7vw, 6rem);
+  font-weight: 800;
+  color: var(--ink);
+  opacity: 0.045;
+  transform: rotate(var(--glyph-rotate, 0deg));
+  animation-name: glyph-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  user-select: none;
+}
+
+@keyframes glyph-drift {
+  from { transform: translate3d(0, 0, 0) rotate(var(--glyph-rotate, 0deg)); }
+  to { transform: translate3d(1.5vmax, -2.5vmax, 0) rotate(calc(var(--glyph-rotate, 0deg) + 6deg)); }
+}
+
+/* Dark theme: the same blobs read as glows — nudge them up a touch so they stay visible
+   against the deep paper. */
+[data-theme='dark'] .aurora-a { --aurora-color: color-mix(in srgb, var(--butterscotch) 13%, transparent); }
+[data-theme='dark'] .aurora-b { --aurora-color: color-mix(in srgb, var(--grape) 22%, transparent); }
+[data-theme='dark'] .aurora-c { --aurora-color: color-mix(in srgb, var(--mint) 10%, transparent); }
+[data-theme='dark'] .backdrop-glyph { opacity: 0.06; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora,
+  .backdrop-glyph {
+    animation: none;
+  }
+}
