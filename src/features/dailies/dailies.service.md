@@ -53,3 +53,11 @@ public, read-only to clients — no ownership check applies here. The BOLA-sensi
 `generateSudoku`. Generation cost is ~120 ms — negligible next to the classic Extreme digger
 the cron already pays for. Idempotency is unchanged: the `'killer'` row rides the same
 `UNIQUE(date, difficulty)` + `onConflictDoNothing` upsert.
+
+## Registry-driven generation (July 2026)
+
+`generateDailyPuzzles` loops `DAILY_BOARDS` (19/day): classic via
+`generateSudoku(difficulty, gridSize)`, killer via `generateKillerSudoku(difficulty,
+{ gridSize })`. The slow ones are classic extreme (digger) and killer-extreme (~5.5 s
+tier-5 search); the cron route declares `maxDuration = 120` for headroom. Idempotency
+unchanged — same `UNIQUE(date, difficulty)` + `onConflictDoNothing`.

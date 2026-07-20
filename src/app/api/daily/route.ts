@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     if (!isDailyDifficulty(difficulty)) {
       return NextResponse.json(
-        { error: 'Invalid or missing difficulty: must be easy, medium, hard, expert, extreme, or killer' },
+        { error: 'Invalid or missing difficulty: must be a daily board key (see the daily picker)' },
         { status: 400 },
       );
     }
@@ -69,7 +69,8 @@ export async function GET(req: NextRequest) {
       {
         date: puzzle.date,
         difficulty: puzzle.difficulty,
-        gridSize: 9,
+        // Derived from the stored grid — mini boards are 4×4/6×6 (no grid_size column needed).
+        gridSize: puzzle.grid.length,
         grid: puzzle.grid,
         solution: puzzle.solution,
         clueCount: puzzle.clueCount,

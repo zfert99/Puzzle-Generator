@@ -26,3 +26,6 @@ fetchDaily(difficulty, date?):
 `DailyPuzzleResponse` optionally carries `variant: 'killer'` + `cages`. The board's
 `startNewGame` branches on the presence of `cages`, so the same fetch-and-start path serves
 both variants — no separate Killer code path in the hook or the experiences.
+
+`DailyPuzzleResponse` is a discriminated union (classic | killer) whose `difficulty` is a
+daily board KEY; `gridSize` comes from the stored grid (minis are 4×4/6×6).

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fredoka, Manrope, Space_Mono, Permanent_Marker, Caveat } from "next/font/google";
 import { THEME_PRE_PAINT_SCRIPT } from "@/features/theme/theme";
 import { AppHeader } from "@/features/chrome/AppHeader";
+import { Backdrop } from "@/features/chrome/Backdrop";
 import { WobbleDefs } from "@/features/chaos/Wobble";
 import "./globals.css";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
         {/* Applies data-theme before paint — must be the first thing to run. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_PRE_PAINT_SCRIPT }} />
         <WobbleDefs />
+        <Backdrop />
         <AppHeader />
         {children}
       </body>

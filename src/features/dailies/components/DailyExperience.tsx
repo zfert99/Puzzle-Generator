@@ -17,7 +17,7 @@ import { Sticker } from '@/features/chaos/Sticker';
 import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
-import { DAILY_DIFFICULTIES, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { DAILY_BOARDS, formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useDaily } from '../hooks/useDaily';
 
 const noopSubscribe = () => () => {};
@@ -241,32 +241,40 @@ export default function DailyExperience() {
                 onClick={handleContinue}
                 className="btn-primary w-full text-lg flex justify-center items-center"
               >
-                Continue {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
+                Continue {formatDailyKey(saved.difficulty)} · {formatElapsed(saved.elapsedTime)}
               </button>
               <p className="text-xs text-ink-soft text-center mt-3">— or start a new one —</p>
             </div>
           )}
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Difficulty</label>
-            <div className="flex flex-wrap justify-center gap-2">
-              {DAILY_DIFFICULTIES.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDifficulty(d)}
-                  className={`px-3 py-2 rounded-lg text-sm capitalize transition-all ${
-                    difficulty === d
-                      ? 'bg-butterscotch text-ink border-2 border-ink'
-                      : 'bg-paper border-2 border-ink hover:bg-paper-2'
-                  }`}
-                >
-                  {d}
-                  {completedToday[d] && <span className="ml-1 text-green-400">✓</span>}
-                </button>
-              ))}
+          {(
+            [
+              ['classic', 'Classic 9×9'],
+              ['killer', 'Killer 9×9'],
+              ['minis', 'Minis'],
+            ] as const
+          ).map(([section, heading]) => (
+            <div key={section} className="mb-4">
+              <label className="block text-sm font-medium text-ink-soft mb-2 text-center">{heading}</label>
+              <div className="flex flex-wrap justify-center gap-2">
+                {DAILY_BOARDS.filter((b) => b.section === section).map((b) => (
+                  <button
+                    key={b.key}
+                    type="button"
+                    onClick={() => setDifficulty(b.key)}
+                    className={`px-3 py-2 rounded-lg text-sm capitalize transition-all ${
+                      difficulty === b.key
+                        ? 'bg-butterscotch text-ink border-2 border-ink'
+                        : 'bg-paper border-2 border-ink hover:bg-paper-2'
+                    }`}
+                  >
+                    {b.label}
+                    {completedToday[b.key] && <span className="ml-1 text-green-400">✓</span>}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ))}
 
           {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
@@ -290,7 +298,7 @@ export default function DailyExperience() {
               disabled={loading}
               className="btn-primary w-full text-lg flex justify-center items-center"
             >
-              {loading ? 'Loading…' : `Play ${difficulty}`}
+              {loading ? 'Loading…' : `Play ${formatDailyKey(difficulty)}`}
             </button>
           )}
         </div>
@@ -322,7 +330,7 @@ export default function DailyExperience() {
         </button>
         {dailyDate && (
           <span className="text-xs text-ink-soft capitalize">
-            {difficulty} · {formatUtcDate(dailyDate)}
+            {formatDailyKey(difficulty)} · {formatUtcDate(dailyDate)}
           </span>
         )}
       </div>

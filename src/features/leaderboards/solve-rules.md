@@ -32,3 +32,8 @@ isImplausiblyFast(d, t) -> t < MIN_SOLVE_MS[d]
 `MIN_SOLVE_MS.killer` is 30 s — between classic hard and expert. Killer starts from an empty
 grid (no givens), so even the engine-medium daily takes longer than a classic medium; the
 floor only needs to exclude instant autofill, not police fast solvers.
+
+## Registry floors (July 2026)
+
+`MIN_SOLVE_MS` is now built from the daily-board registry (each board carries its own floor)
+plus the legacy `'killer'` key for archived replays.

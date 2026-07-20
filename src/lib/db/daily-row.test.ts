@@ -3,8 +3,10 @@ import { generateSudoku } from '@/features/engine/sudoku';
 import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
 import type { Grid } from './schema';
 import {
-  DAILY_DIFFICULTIES,
+  DAILY_BOARDS,
   countClues,
+  formatDailyKey,
+  isDailyDifficulty,
   toDailyPuzzleRow,
   toUtcDateString,
 } from './daily-row';
@@ -35,7 +37,7 @@ describe('toUtcDateString', () => {
 describe('toDailyPuzzleRow', () => {
   it('maps an engine puzzle to an insert row with a correct clue count', () => {
     const puzzle = generateSudoku('easy');
-    const row = toDailyPuzzleRow(puzzle, '2026-07-11');
+    const row = toDailyPuzzleRow(puzzle, '2026-07-11', 'easy');
 
     expect(row.date).toBe('2026-07-11');
     expect(row.difficulty).toBe('easy');
@@ -50,19 +52,29 @@ describe('toDailyPuzzleRow', () => {
   it('never emits solved cells in the grid it exposes to clients', () => {
     // The unsolved grid must have fewer givens than the full solution.
     const puzzle = generateSudoku('medium');
-    const row = toDailyPuzzleRow(puzzle, '2026-07-11');
+    const row = toDailyPuzzleRow(puzzle, '2026-07-11', 'medium');
     expect(row.clueCount).toBeLessThan(countClues(puzzle.solution));
   });
 
-  it('includes the full difficulty range for dailies, plus the Killer daily', () => {
-    expect([...DAILY_DIFFICULTIES]).toEqual(['easy', 'medium', 'hard', 'expert', 'extreme', 'killer']);
+  it('the board registry has three sections and keeps the legacy classic keys verbatim', () => {
+    expect(DAILY_BOARDS.filter((b) => b.section === 'classic').map((b) => b.key))
+      .toEqual(['easy', 'medium', 'hard', 'expert', 'extreme']);
+    expect(DAILY_BOARDS.filter((b) => b.section === 'killer')).toHaveLength(5);
+    expect(DAILY_BOARDS.filter((b) => b.section === 'minis')).toHaveLength(9);
+    // Keys are unique — they are the UNIQUE(date, difficulty) idempotency handle.
+    expect(new Set(DAILY_BOARDS.map((b) => b.key)).size).toBe(DAILY_BOARDS.length);
+    // The legacy single-killer key stays readable (archived rows) but is not generated.
+    expect(isDailyDifficulty('killer')).toBe(true);
+    expect((DAILY_BOARDS.map((b) => b.key) as string[]).includes('killer')).toBe(false);
+    expect(formatDailyKey('killer-expert')).toBe('killer expert');
+    expect(formatDailyKey('mini6-hard')).toBe('6×6 hard');
   });
 
-  it("maps a Killer puzzle to a 'killer' row carrying its cages and cage count", () => {
+  it('maps a Killer puzzle to its board key, carrying cages and cage count', () => {
     const puzzle = generateKillerSudoku('medium');
-    const row = toDailyPuzzleRow(puzzle, '2026-07-17');
+    const row = toDailyPuzzleRow(puzzle, '2026-07-17', 'killer-medium');
 
-    expect(row.difficulty).toBe('killer'); // the daily key, not the engine difficulty
+    expect(row.difficulty).toBe('killer-medium'); // the board key, not the engine difficulty
     expect(row.cages).toBe(puzzle.cages);
     expect(row.clueCount).toBe(puzzle.cages.length);
     // Killer ships no givens — the grid the client sees is all zeros; cages are the clue.
@@ -71,7 +83,7 @@ describe('toDailyPuzzleRow', () => {
   });
 
   it('stores no cages for a classic row', () => {
-    const row = toDailyPuzzleRow(generateSudoku('easy'), '2026-07-17');
+    const row = toDailyPuzzleRow(generateSudoku('easy'), '2026-07-17', 'easy');
     expect(row.cages).toBeNull();
   });
 });

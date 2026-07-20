@@ -9,12 +9,14 @@ import { computePeers, toggleBit } from '../board-utils';
 /** Sudoku or Killer — the board renders and plays either. */
 export type PuzzleVariant = 'classic' | 'killer';
 
+import type { DailyDifficulty } from '@/lib/db/daily-row';
+
 /**
- * What the board displays as the game's difficulty. The literal `'killer'` is the daily
- * Killer's difficulty key (one Killer daily per day — see `daily-row.ts`); free-play Killer
- * games carry their engine difficulty (easy/medium/hard) like classic.
+ * What the board holds as the game's difficulty: an engine difficulty for free play, or a
+ * daily board KEY (`killer-expert`, `mini6-hard`, legacy `killer`) for dailies — display
+ * surfaces prettify keys via `formatDailyKey`.
  */
-export type BoardDifficulty = Difficulty | 'killer';
+export type BoardDifficulty = Difficulty | DailyDifficulty;
 
 /** A puzzle the board can start — engine-generated or a daily row (whose key may be 'killer'). */
 export type BoardPuzzle =

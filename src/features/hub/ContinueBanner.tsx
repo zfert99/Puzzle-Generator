@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
+import { formatDailyKey } from '@/lib/db/daily-row';
 
 /**
  * Front-door "continue" affordance. Reads the single saved game from the board store and, if
@@ -16,7 +17,7 @@ export function ContinueBanner() {
   const href = saved.mode === 'daily' ? '/daily' : '/play';
   const what =
     saved.mode === 'daily'
-      ? `Daily · ${saved.difficulty}`
+      ? `Daily · ${formatDailyKey(saved.difficulty)}`
       : saved.variant === 'killer'
         ? `Killer · ${saved.difficulty}`
         : `${saved.gridSize}×${saved.gridSize} · ${saved.difficulty}`;
