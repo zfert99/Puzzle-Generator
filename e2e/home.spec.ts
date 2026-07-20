@@ -17,6 +17,20 @@ test.describe('Hub and generator', () => {
     // The hub's core cards link to the app's surfaces.
     await expect(page.getByRole('link', { name: /free play/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /print packs/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /killer/i })).toBeVisible();
+  });
+
+  test('the Killer card deep-links into play with Killer preselected', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('link', { name: /killer/i }).click();
+    await expect(page).toHaveURL(/\/play\?variant=killer$/);
+
+    await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
+    // Killer preselected: its 3-tier ladder shows (no expert/extreme) and no grid-size picker.
+    await expect(page.getByRole('button', { name: 'easy', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'expert' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '4×4' })).toHaveCount(0);
+    await expect(page.getByText(/cage sums are the only clue/i)).toBeVisible();
   });
 
   test('renders the PDF generator form on /generate', async ({ page }) => {

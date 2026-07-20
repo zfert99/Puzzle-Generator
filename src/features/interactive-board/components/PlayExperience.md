@@ -59,3 +59,13 @@ persisted store, so a resumed game never causes an SSR/client mismatch.
 > shows via Continue (gated on `saved.mode === 'play'`) or a fresh play.
 >
 > The solved modal renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge + confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).
+
+## Deep link: `/play?variant=killer`
+
+The hub's Killer card links here with a query param. A mount effect reads it via
+`useSearchParams` and preselects the Killer variant (forcing 9×9 and clamping
+expert/extreme to hard, same as a manual toggle). The route wraps the component in a
+`Suspense` boundary (required by `useSearchParams` on a statically prerendered page); the
+fallback matches the component's own pre-mount placeholder so there is no layout shift.
+The Continue button is also variant-aware: a saved Killer game reads "Continue Killer
+medium", not "Continue 9×9 medium".

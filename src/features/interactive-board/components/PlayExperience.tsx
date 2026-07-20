@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { GridSizeSelector } from '@/features/puzzle-configuration/components/GridSizeSelector';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
@@ -37,10 +37,21 @@ const KILLER_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
 
 export default function PlayExperience() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const mounted = useHasMounted();
   const [variant, setVariant] = useState<'classic' | 'killer'>('classic');
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+
+  // Deep link from the hub's Killer card (`/play?variant=killer`): preselect the variant.
+  // Runs before first paint is visible (the component renders a placeholder until mounted).
+  useEffect(() => {
+    if (searchParams.get('variant') === 'killer') {
+      setVariant('killer');
+      setGridSize(9); // Killer is 9×9 only
+      setDifficulty((d) => (d === 'expert' || d === 'extreme' ? 'hard' : d));
+    }
+  }, [searchParams]);
   const [view, setView] = useState<'config' | 'playing'>('config');
   const [viewingSolved, setViewingSolved] = useState(false);
   const [warnOpen, setWarnOpen] = useState(false);
@@ -129,7 +140,8 @@ export default function PlayExperience() {
               onClick={handleContinue}
               className="btn-primary w-full text-lg flex justify-center items-center"
             >
-              Continue {saved.gridSize}×{saved.gridSize} {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
+              Continue {saved.variant === 'killer' ? 'Killer' : `${saved.gridSize}×${saved.gridSize}`}{' '}
+              {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
             </button>
             <p className="text-xs text-ink-soft text-center mt-3">— or start a new game —</p>
           </div>
