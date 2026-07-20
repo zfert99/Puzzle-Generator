@@ -75,7 +75,7 @@ interface DifficultyConfig {
  * levers (single-cage count, size, sum, combination ambiguity) now separate the tiers: easy keeps
  * givens; medium/hard shed them and grow cages (bigger sums), harder needing real deduction.
  */
-const DIFFICULTY_CONFIG: Record<KillerDifficulty, DifficultyConfig> = {
+const DIFFICULTY_CONFIG_9: Record<KillerDifficulty, DifficultyConfig> = {
   // easy keeps givens (it needs them to stay beginner-solvable) but far fewer than the old 52%,
   // with bigger cages/sums. medium/hard suppress intentional singles (minSize 2) and tighten the
   // forced-single cap — givens are the strongest lever, so the ladder rides on shedding them.
@@ -120,13 +120,39 @@ const DIFFICULTY_CONFIG: Record<KillerDifficulty, DifficultyConfig> = {
   },
 };
 
+/**
+ * 6×6 Killer (M2, `Docs/killer-6x6-implementation-plan.md`): the research's beginner variant —
+ * digits 1–6, Rule of 21, easy/medium/hard ONLY (expert/extreme are 9×9 tiers; their tier-4/5
+ * techniques are size-gated anyway). Bands are placed on measured 6×6 distributions — a
+ * 36-cell trace scores in a different range than an 81-cell one, so 9×9 cuts must never be
+ * reused. Shape gates scale down with the grid (~13–16 cages).
+ */
+const DIFFICULTY_CONFIG_6: Partial<Record<KillerDifficulty, DifficultyConfig>> = {
+  // Cuts 16/28 from measured 60-sample distributions (easy med 13 / p75 17; medium med 22;
+  // hard med 31 / p25 26) — compressed relative to 9×9 as the plan expected, still disjoint.
+  easy: { solveCap: 2, minSize: 1, maxSize: 3, maxSingles: 6, scoreBand: { max: 16 } },
+  medium: {
+    solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 2, minFootholds: 2,
+    scoreBand: { min: 16, max: 28 },
+  },
+  hard: {
+    solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 1, maxFootholds: 1,
+    scoreBand: { min: 28 },
+  },
+};
+
+const DIFFICULTY_CONFIGS: Record<6 | 9, Partial<Record<KillerDifficulty, DifficultyConfig>>> = {
+  6: DIFFICULTY_CONFIG_6,
+  9: DIFFICULTY_CONFIG_9,
+};
+
 /** Reject a partition whose shape is wrong for the tier: given count or foothold count out of band. */
-function cageShapeOk(cages: Cage[], config: DifficultyConfig): boolean {
+function cageShapeOk(cages: Cage[], config: DifficultyConfig, gridSize: number): boolean {
   let singles = 0;
   let footholds = 0;
   for (const cage of cages) {
     if (cage.cells.length === 1) singles += 1;
-    else if (combosFor(cage.cells.length, cage.sum).length === 1) footholds += 1;
+    else if (combosFor(cage.cells.length, cage.sum, gridSize).length === 1) footholds += 1;
   }
   if (singles > config.maxSingles) return false;
   if (config.minFootholds !== undefined && footholds < config.minFootholds) return false;
@@ -135,6 +161,8 @@ function cageShapeOk(cages: Cage[], config: DifficultyConfig): boolean {
 }
 
 export interface KillerGenOptions {
+  /** 9 (default, full ladder) or 6 (beginner variant, easy/medium/hard only). */
+  gridSize?: 6 | 9;
   /** RNG for cage generation (default `Math.random`). Inject a seeded PRNG for determinism. */
   rng?: () => number;
   /** A solved grid to build on. Default: a fresh random solution via `fillGrid` per attempt. */
@@ -179,22 +207,28 @@ export function generateUniqueKiller(
 }
 
 /**
- * Generate a uniquely-solvable, difficulty-graded 9×9 Killer. `grid` is all-zero (no givens);
- * the cages are the clue. The logical solver is capped at the target tier, so grading a would-be
- * "medium" never pays for expensive higher-tier strategies. Throws if no puzzle grades to the
- * requested difficulty within `maxAttempts` (astronomically unlikely at the tuned settings).
+ * Generate a uniquely-solvable, difficulty-graded Killer (9×9 default, or 6×6 for the
+ * beginner variant). `grid` is all-zero (no givens); the cages are the clue. The logical
+ * solver is capped at the target tier, so grading a would-be "medium" never pays for
+ * expensive higher-tier strategies. Throws if no puzzle grades to the requested difficulty
+ * within `maxAttempts` (astronomically unlikely at the tuned settings) — or immediately if
+ * the difficulty doesn't exist at the size (expert/extreme are 9×9-only).
  */
 export function generateKillerSudoku(
   difficulty: KillerDifficulty = 'medium',
   options: KillerGenOptions = {},
 ): KillerPuzzle {
-  const difficultyConfig = DIFFICULTY_CONFIG[difficulty];
+  const gridSize = options.gridSize ?? GRID_SIZE;
+  const difficultyConfig = DIFFICULTY_CONFIGS[gridSize][difficulty];
+  if (!difficultyConfig) {
+    throw new Error(`Killer difficulty '${difficulty}' is not available at ${gridSize}×${gridSize}`);
+  }
   const { solveCap, minSize, maxSize } = difficultyConfig;
   const rng = options.rng ?? Math.random;
   // Attempts are cheap now that grading precedes uniqueness (~0.5 ms each); a high cap makes
   // exhaustion astronomically unlikely (hard accepts ~1 in 500) at a bounded worst case (~10 s).
   const maxAttempts = options.maxAttempts ?? 20000;
-  const config = getGridConfig(GRID_SIZE);
+  const config = getGridConfig(gridSize);
 
   // One flat loop, cheapest gates first: shape (µs) → logical solve (~0.5 ms) → uniqueness
   // (~10 ms, runs ONCE per accepted puzzle). The order matters: the logical solver makes only
@@ -212,15 +246,15 @@ export function generateKillerSudoku(
       fillGrid(solution, config);
     }
 
-    const cages = generateCages(solution, GRID_SIZE, { rng, maxSize, minSize });
-    if (!cageShapeOk(cages, difficultyConfig)) continue;
+    const cages = generateCages(solution, gridSize, { rng, maxSize, minSize });
+    if (!cageShapeOk(cages, difficultyConfig, gridSize)) continue;
 
-    const solveResult = new KillerLogicalSolver(cages, GRID_SIZE).solve({ maxTier: solveCap });
+    const solveResult = new KillerLogicalSolver(cages, gridSize).solve({ maxTier: solveCap });
     if (!solveResult.solved) continue;
     // Band-level necessity (expert): a fresh solve capped one tier below must STALL.
     if (
       difficultyConfig.minTier !== undefined &&
-      new KillerLogicalSolver(cages, GRID_SIZE).solve({
+      new KillerLogicalSolver(cages, gridSize).solve({
         maxTier: (difficultyConfig.minTier - 1) as KillerTier,
       }).solved
     ) {
@@ -233,7 +267,7 @@ export function generateKillerSudoku(
       if (band.max !== undefined && final >= band.max) continue;
     }
 
-    if (new KillerSolver(cages, GRID_SIZE).countSolutions(2, difficultyConfig.verifyNodeBudget) !== 1) continue;
+    if (new KillerSolver(cages, gridSize).countSolutions(2, difficultyConfig.verifyNodeBudget) !== 1) continue;
 
     return {
       variant: 'killer',
@@ -241,19 +275,25 @@ export function generateKillerSudoku(
       solution,
       cages,
       difficulty,
-      gridSize: 9,
+      gridSize,
     };
   }
 
   throw new Error(`Could not generate a ${difficulty} Killer in ${maxAttempts} attempts`);
 }
 
-/** Generate a batch of graded Killers — `counts[difficulty]` puzzles of each, easy→hard order. */
-export function generateKillerBatch(counts: Partial<Record<KillerDifficulty, number>>): KillerPuzzle[] {
+/** Generate a batch of graded Killers — `counts[difficulty]` puzzles of each, easy→hard order.
+ * At 6×6 only easy/medium/hard counts are honoured (expert/extreme are 9×9-only tiers). */
+export function generateKillerBatch(
+  counts: Partial<Record<KillerDifficulty, number>>,
+  options: { gridSize?: 6 | 9 } = {},
+): KillerPuzzle[] {
+  const gridSize = options.gridSize ?? 9;
+  const ladder = gridSize === 6 ? (['easy', 'medium', 'hard'] as const) : (['easy', 'medium', 'hard', 'expert', 'extreme'] as const);
   const puzzles: KillerPuzzle[] = [];
-  for (const difficulty of ['easy', 'medium', 'hard', 'expert', 'extreme'] as const) {
+  for (const difficulty of ladder) {
     const n = counts[difficulty] ?? 0;
-    for (let i = 0; i < n; i++) puzzles.push(generateKillerSudoku(difficulty));
+    for (let i = 0; i < n; i++) puzzles.push(generateKillerSudoku(difficulty, { gridSize }));
   }
   return puzzles;
 }

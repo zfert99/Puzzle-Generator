@@ -117,3 +117,12 @@ Two measured lessons shaped the implementation:
 - **Memoized** into a flat `(size, sum, used)` Int32Array (~940 KB, −1 = unfilled since 0 is
   a real answer), it is an array read after warmup — maxSize-4 verifies dropped ~1.4× on
   average and the pathological biased class ~16×.
+
+## Per-digit-count tables (6×6 Killer, M1)
+
+Tables are built per digit count (4, 6, 9) and every public function takes a trailing
+`maxDigit = 9`. Reusing 9-digit tables on a smaller grid is subtly wrong — a 2-cell sum-8
+cage would keep digit 1 via the 9-digit combo {1,7} even though no 6×6 combination contains
+a 1 — poisoning candidate masks, magic-cage detection, and foothold counts. The
+`candidateMaskExcluding` memo is likewise per digit count. Defaults preserve every existing
+9×9 call-site byte-for-byte.

@@ -217,7 +217,7 @@ export class KillerLogicalSolver {
     for (const cage of this.cages) {
       const { used, sumLeft, remaining } = this.cageState(cage);
       if (remaining.length === 0) continue;
-      const allowed = candidateMaskFor(remaining.length, sumLeft) & ~used;
+      const allowed = candidateMaskFor(remaining.length, sumLeft, this.size) & ~used;
       for (const cell of remaining) {
         const r = Math.floor(cell / this.size);
         const c = cell % this.size;
@@ -279,7 +279,7 @@ export class KillerLogicalSolver {
       const { used, sumLeft, remaining } = this.cageState(cage);
       if (remaining.length === 0) continue;
 
-      let guaranteed = guaranteedMaskFor(remaining.length, sumLeft) & ~used;
+      let guaranteed = guaranteedMaskFor(remaining.length, sumLeft, this.size) & ~used;
       while (guaranteed) {
         const bit = guaranteed & -guaranteed;
         const digit = 32 - Math.clz32(bit);
@@ -340,7 +340,7 @@ export class KillerLogicalSolver {
       for (const mask of cellMasks) homeMask |= mask;
 
       let viableMask = 0;
-      for (const combo of combosFor(remaining.length, sumLeft)) {
+      for (const combo of combosFor(remaining.length, sumLeft, this.size)) {
         let comboMask = 0;
         for (const digit of combo) comboMask |= 1 << (digit - 1);
         if (comboMask & used) continue; // contains a digit the cage already placed
@@ -474,7 +474,7 @@ export class KillerLogicalSolver {
       else empty.push(cell);
     }
     if (empty.length === 0) return false;
-    const allowed = candidateMaskExcluding(empty.length, remSum, used);
+    const allowed = candidateMaskExcluding(empty.length, remSum, used, this.size);
 
     let changed = false;
     for (const cell of empty) {

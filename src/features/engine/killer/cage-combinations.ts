@@ -16,6 +16,15 @@ const MAX_DIGIT = 9;
 const MAX_SUM = 45; // 1 + 2 + … + 9
 const ALL_DIGITS_MASK = (1 << MAX_DIGIT) - 1; // 0b111111111 — every digit on
 
+/**
+ * Digit counts we build tables for — 9 (classic), 6 (6×6 Killer, digits 1–6, Rule of 21), and
+ * 4 (the exact solver is size-generic and its 4×4 tests exercise it).
+ * The tables MUST be per-digit-count: reusing 9-digit tables on a 6×6 admits false candidates
+ * (2-cell sum 8 keeps digit 1 via the 9-digit combo {1,7} though no 6×6 combo contains a 1),
+ * and magic-cage / foothold detection miscounts (see the grid-sizes research).
+ */
+const SUPPORTED_DIGITS = [4, 6, 9] as const; // 4×4 kept for the size-generic exact solver
+
 /** An ascending set of distinct digits, e.g. `[1, 8]`. Shared from the frozen table — immutable. */
 export type Combination = readonly number[];
 /** All combinations for one (size, sum), e.g. every pair summing to 9. */
@@ -30,7 +39,7 @@ type ComboTable = readonly SumRow[];
  * precomputed table this feeds. Builds combinations by choosing digits in strictly
  * increasing order, which guarantees no repeats and no duplicate sets for free.
  */
-function enumerate(size: number, sum: number): number[][] {
+function enumerate(size: number, sum: number, maxDigit: number): number[][] {
   const results: number[][] = [];
   const current: number[] = [];
 
@@ -39,7 +48,7 @@ function enumerate(size: number, sum: number): number[][] {
       if (remainingSum === 0) results.push([...current]);
       return;
     }
-    for (let digit = start; digit <= MAX_DIGIT; digit++) {
+    for (let digit = start; digit <= maxDigit; digit++) {
       // Digits only grow from here, so once one overshoots the remaining target, every
       // larger one does too — abandon this branch.
       if (digit > remainingSum) break;
@@ -91,25 +100,26 @@ function deepFreeze<T>(value: T): T {
  */
 const EMPTY: CombinationList = deepFreeze([]);
 
-const COMBO_TABLE: ComboTable = deepFreeze(
-  Array.from({ length: MAX_DIGIT + 1 }, (_, size) =>
-    Array.from({ length: MAX_SUM + 1 }, (_, sum) => enumerate(size, sum)),
-  ),
-);
-
-const MASK_TABLE: readonly (readonly number[])[] = deepFreeze(
-  COMBO_TABLE.map((sumRow) => sumRow.map((combos) => unionMaskOf(combos))),
-);
-
-/** Each combination pre-packed as a bitmask, aligned with `COMBO_TABLE` — one array read +
- * bit-and per combination lets `candidateMaskExcluding` filter without touching digit arrays. */
-const COMBO_MASK_TABLE: readonly (readonly (readonly number[])[])[] = deepFreeze(
-  COMBO_TABLE.map((sumRow) => sumRow.map((combos) => combos.map((combo) => bitsOf(combo)))),
-);
-
-const GUARANTEED_TABLE: readonly (readonly number[])[] = deepFreeze(
-  COMBO_TABLE.map((sumRow) => sumRow.map((combos) => guaranteedMaskOf(combos))),
-);
+/** One full table set per supported digit count, indexed by digit count then [size][sum]. */
+const COMBO_TABLES: Record<number, ComboTable> = {};
+const MASK_TABLES: Record<number, readonly (readonly number[])[]> = {};
+const COMBO_MASK_TABLES: Record<number, readonly (readonly (readonly number[])[])[]> = {};
+const GUARANTEED_TABLES: Record<number, readonly (readonly number[])[]> = {};
+for (const digits of SUPPORTED_DIGITS) {
+  const table: ComboTable = deepFreeze(
+    Array.from({ length: MAX_DIGIT + 1 }, (_, size) =>
+      Array.from({ length: MAX_SUM + 1 }, (_, sum) => enumerate(size, sum, digits)),
+    ),
+  );
+  COMBO_TABLES[digits] = table;
+  MASK_TABLES[digits] = deepFreeze(table.map((sumRow) => sumRow.map((combos) => unionMaskOf(combos))));
+  // Each combination pre-packed as a bitmask, aligned with the combo table — one array read +
+  // bit-and per combination lets `candidateMaskExcluding` filter without touching digit arrays.
+  COMBO_MASK_TABLES[digits] = deepFreeze(
+    table.map((sumRow) => sumRow.map((combos) => combos.map((combo) => bitsOf(combo)))),
+  );
+  GUARANTEED_TABLES[digits] = deepFreeze(table.map((sumRow) => sumRow.map((combos) => guaranteedMaskOf(combos))));
+}
 
 /**
  * Every set of `size` DISTINCT digits from 1–9 that sums to `sum` (a constant-time lookup
@@ -123,8 +133,8 @@ const GUARANTEED_TABLE: readonly (readonly number[])[] = deepFreeze(
  * combosFor(2, 9)  // [[1,8],[2,7],[3,6],[4,5]]
  * combosFor(2, 17) // [[8, 9]]
  */
-export function combosFor(size: number, sum: number): readonly Combination[] {
-  return COMBO_TABLE[size]?.[sum] ?? EMPTY;
+export function combosFor(size: number, sum: number, maxDigit = 9): readonly Combination[] {
+  return COMBO_TABLES[maxDigit]?.[size]?.[sum] ?? EMPTY;
 }
 
 /**
@@ -139,8 +149,8 @@ export function combosFor(size: number, sum: number): readonly Combination[] {
  * candidateMaskFor(2, 9)  // 0b011111111  = {1..8}  (no pair summing to 9 uses a 9)
  * candidateMaskFor(2, 17) // 0b110000000  = {8,9}
  */
-export function candidateMaskFor(size: number, sum: number): number {
-  return MASK_TABLE[size]?.[sum] ?? 0;
+export function candidateMaskFor(size: number, sum: number, maxDigit = 9): number {
+  return MASK_TABLES[maxDigit]?.[size]?.[sum] ?? 0;
 }
 
 /**
@@ -156,8 +166,8 @@ export function candidateMaskFor(size: number, sum: number): number {
  * guaranteedMaskFor(4, 13) // {1}    — {1,2,3,7},{1,2,4,6},{1,3,4,5} all contain a 1
  * guaranteedMaskFor(2, 9)  // 0      — the four pairs share no common digit
  */
-export function guaranteedMaskFor(size: number, sum: number): number {
-  return GUARANTEED_TABLE[size]?.[sum] ?? 0;
+export function guaranteedMaskFor(size: number, sum: number, maxDigit = 9): number {
+  return GUARANTEED_TABLES[maxDigit]?.[size]?.[sum] ?? 0;
 }
 
 /**
@@ -179,18 +189,23 @@ export function guaranteedMaskFor(size: number, sum: number): number {
 // Int32 entries ≈ 940 KB, −1 = unfilled (0 is a real "impossible" answer). Measured: the
 // unmemoized ≤12-mask scan ran on every `candidates()` call of every search node and cost
 // MORE than the pruning saved (~3× slower verify); memoized it is an array read after warmup.
-const EXCLUDING_MEMO = new Int32Array(10 * (MAX_SUM + 1) * (1 << MAX_DIGIT)).fill(-1);
+const EXCLUDING_MEMOS: Record<number, Int32Array> = {
+  4: new Int32Array(10 * (MAX_SUM + 1) * (1 << 4)).fill(-1),
+  6: new Int32Array(10 * (MAX_SUM + 1) * (1 << 6)).fill(-1),
+  9: new Int32Array(10 * (MAX_SUM + 1) * (1 << MAX_DIGIT)).fill(-1),
+};
 
-export function candidateMaskExcluding(size: number, sum: number, usedMask: number): number {
+export function candidateMaskExcluding(size: number, sum: number, usedMask: number, maxDigit = 9): number {
   if (size < 0 || size > MAX_DIGIT || sum < 0 || sum > MAX_SUM) return 0;
-  const key = (size * (MAX_SUM + 1) + sum) * (1 << MAX_DIGIT) + usedMask;
-  const cached = EXCLUDING_MEMO[key];
+  const memo = EXCLUDING_MEMOS[maxDigit];
+  const key = (size * (MAX_SUM + 1) + sum) * (1 << maxDigit) + usedMask;
+  const cached = memo[key];
   if (cached !== -1) return cached;
-  const comboMasks = COMBO_MASK_TABLE[size][sum];
+  const comboMasks = COMBO_MASK_TABLES[maxDigit][size][sum];
   let mask = 0;
   for (const comboMask of comboMasks) {
     if ((comboMask & usedMask) === 0) mask |= comboMask;
   }
-  EXCLUDING_MEMO[key] = mask;
+  memo[key] = mask;
   return mask;
 }

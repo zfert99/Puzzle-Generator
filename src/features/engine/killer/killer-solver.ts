@@ -130,7 +130,7 @@ export class KillerSolver {
   private candidates(r: number, c: number): number {
     const cage = this.cellCage[r * this.size + c];
     let mask = this.full & ~(this.rowMask[r] | this.colMask[c] | this.boxMask[this.boxIndex(r, c)]);
-    mask &= candidateMaskExcluding(this.cageRemCells[cage], this.cageRemSum[cage], this.cageUsed[cage]);
+    mask &= candidateMaskExcluding(this.cageRemCells[cage], this.cageRemSum[cage], this.cageUsed[cage], this.size);
     return mask;
   }
 

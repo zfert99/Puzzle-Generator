@@ -127,3 +127,13 @@ so exhaustion is astronomically unlikely with a bounded ~10 s worst case).
 
 Injectable `rng` / `solution` keep the whole pipeline deterministic for tests (and RNG-driven →
 client-side only, AGENTS.md §1).
+
+## 6×6 Killer (M2)
+
+`generateKillerSudoku(difficulty, { gridSize: 6 })` — the research's beginner variant: digits
+1–6, mandatory 2×3 boxes, Rule of 21, **easy/medium/hard only** (expert/extreme are 9×9
+tiers; requesting them at 6×6 throws). `DIFFICULTY_CONFIGS` is keyed by size; the 6×6 score
+cuts (16/28) sit on measured 60-sample distributions — compressed relative to 9×9 exactly as
+the plan predicted, still disjoint. Generation: 1.7 / 2.6 / 9.2 ms avg (easy/medium/hard),
+0 fails, 180-solve soundness fuzz clean. `generateKillerBatch(counts, { gridSize })` honours
+only the 3-tier ladder at 6×6.

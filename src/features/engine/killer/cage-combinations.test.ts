@@ -152,6 +152,30 @@ describe('guaranteedMaskFor', () => {
   });
 });
 
+describe('6×6 tables (maxDigit = 6)', () => {
+  it('enumerates only digits 1–6 (2-cell sum 7 = three pairs, none using 7–9)', () => {
+    expect(combosFor(2, 7, 6)).toEqual([[1, 6], [2, 5], [3, 4]]);
+  });
+
+  it('drops 9-digit-only combinations (the false-candidate case: 2-cell sum 8 loses {1,7})', () => {
+    expect(combosFor(2, 8, 6)).toEqual([[2, 6], [3, 5]]);
+    // Digit 1 is a false candidate under the 9-digit table; the 6-digit table excludes it.
+    expect(digitsInMask(candidateMaskFor(2, 8, 6))).toEqual([2, 3, 5, 6]);
+    expect(digitsInMask(candidateMaskFor(2, 8))).toContain(1); // 9-digit table keeps {1,7}
+  });
+
+  it('caps sums at the Rule of 21 (3-cell max is 4+5+6 = 15; 21 needs all six digits)', () => {
+    expect(combosFor(3, 16, 6)).toEqual([]);
+    expect(combosFor(6, 21, 6)).toEqual([[1, 2, 3, 4, 5, 6]]);
+  });
+
+  it('parameterizes the excluding mask independently per digit count', () => {
+    // 2-cell sum 8 with 2 used: 6-digit leaves only {3,5}; 9-digit also keeps {1,7}.
+    expect(digitsInMask(candidateMaskExcluding(2, 8, 1 << (2 - 1), 6))).toEqual([3, 5]);
+    expect(digitsInMask(candidateMaskExcluding(2, 8, 1 << (2 - 1), 9))).toEqual([1, 3, 5, 7]);
+  });
+});
+
 describe('the precomputed table (compute-once + immutability)', () => {
   it('returns the SAME cached instance on repeated calls', () => {
     // Now that results are cached, two calls hand back the identical object.
