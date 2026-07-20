@@ -473,6 +473,38 @@ type SolveStep = {
 
 ---
 
+## Phase 8 — KenKen 🔢
+
+> **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
+> **Branch:** fresh (`feature/kenken`) — the Killer branch is retired
+> **Status:** 📋 Planned — full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md)
+> **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md)
+> **Estimated effort:** Medium-Large (the Killer machinery halves it)
+> **Prerequisite:** Phase 6 (shared cage engine, scoring, daily registry)
+
+Latin-square cage arithmetic (no boxes, digits repeat within cages, +−×÷ with operator-set
+difficulty). Sizes 4×4 + 6×6 first (5/7 later, 9 optional). Five slices K1–K5: multiset
+combination tables → exact solver/generator → logical tiers → measured difficulty bands →
+surfaces (play/PDF/dailies/hub — the "soon" card goes live). Reuses the cage overlay, the
+two-factor scorer, the generate-and-grade pipeline, and the daily-board registry. Ships
+under a neutral name (KenKen is trademarked).
+
+## Phase 9 — Social, Progression & Economy 🍪
+
+> **Tracks:** 🗄️ Infrastructure, 🎨 Frontend
+> **Branch:** fresh (`feature/progression`)
+> **Status:** 📋 Planned — implementation-ready plan: [social-progression-economy-plan.md](social-progression-economy-plan.md)
+> **Estimated effort:** Large (7 slices; S7 gated on new realtime infra)
+> **Prerequisite:** Phase 4 (auth, solve validation, leaderboards); benefits from Phase 8's fourth daily section
+
+Crumbs 🍪 (closed-loop soft currency minted only by server-validated completions),
+achievements, stored streaks with freezes, archive gold days, a readability-safe cosmetics
+shop, public profiles + friends + friend streaks, and async battles — with live battles
+(S7) quarantined behind a realtime-infra decision. Ledger-first design (append-only,
+idempotent payouts), BOLA-checked mutations throughout, zero client-trusted amounts.
+
+---
+
 ## Phase Map
 
 ```mermaid
@@ -495,6 +527,10 @@ gantt
 
     section 🧮 Engine (cont.)
     Phase 6 - Killer Sudoku             :p6, after p5, 21d
+    Phase 8 - KenKen                    :p8, after p6, 14d
+
+    section 🗄️ Infrastructure (cont.)
+    Phase 9 - Social & Economy          :p9, after p8, 21d
 ```
 
 > [!NOTE]
