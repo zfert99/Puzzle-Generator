@@ -3,22 +3,22 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession, signOut, passkey, updateUser, type SessionUser } from '../auth-client';
+import { useSession, signOut, updateUser, type SessionUser } from '../auth-client';
 
 const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
 
 /**
  * A small session-aware header control: shows the signed-in user's handle with actions to
- * change the username, add a passkey, and sign out — or a "Sign in" link when signed out.
- * Uses better-auth's reactive `useSession`, so it updates without a page reload.
+ * change the username and sign out — or a "Sign in" link when signed out. Uses better-auth's
+ * reactive `useSession`, so it updates without a page reload.
  *
- * "Add passkey" lives here (post-sign-in) because a passkey must be registered against an
- * existing account. Username editing is inline so a handle can be changed any time.
+ * "Add passkey" was removed from the header (deliberate declutter, July 2026) — passkey
+ * *sign-in/up* still lives on `/signin`; post-sign-in registration of an additional passkey
+ * has no UI for now and belongs on a future account/settings surface, not the banner.
  */
 export function AccountBadge() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
-  const [note, setNote] = useState('');
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
@@ -37,12 +37,6 @@ export function AccountBadge() {
 
   const user = session.user as SessionUser;
   const display = user.username || user.name || user.email;
-
-  const addPasskey = async () => {
-    setNote('');
-    const res = await passkey.addPasskey({ name: 'This device' });
-    setNote(res?.error ? 'Passkey setup failed' : 'Passkey added ✓');
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -94,13 +88,9 @@ export function AccountBadge() {
       >
         {user.username ? 'Change username' : 'Set username'}
       </button>
-      <button type="button" onClick={addPasskey} className="text-paper/90 hover:underline hidden sm:inline">
-        Add passkey
-      </button>
       <button type="button" onClick={handleSignOut} className="text-paper/70 hover:underline">
         Sign out
       </button>
-      {note && <span className="text-xs text-paper/70">{note}</span>}
     </div>
   );
 }
