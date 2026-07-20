@@ -19,6 +19,8 @@ function pdfResponse(pdf: Buffer, filename: string): NextResponse {
 
 // Explicitly require Node.js runtime because pdfkit uses native Node APIs (fs, stream)
 export const runtime = 'nodejs';
+// Killer extreme ≈ 5.5 s per puzzle; classic extreme diggers are also slow — give the batch room.
+export const maxDuration = 60;
 
 /**
  * POST /api/generate
@@ -45,13 +47,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or missing JSON body' }, { status: 400 });
     }
     
-    // ---- Killer Sudoku branch (9×9, easy/medium/hard/expert) ----
+    // ---- Killer Sudoku branch (9×9, easy/medium/hard/expert/extreme) ----
     if (body?.variant === 'killer') {
-      const { easy = 0, medium = 0, hard = 0, expert = 0 } = body || {};
-      if (![easy, medium, hard, expert].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
-        return NextResponse.json({ error: 'Killer counts (easy, medium, hard, expert) must be non-negative integers' }, { status: 400 });
+      const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0 } = body || {};
+      if (![easy, medium, hard, expert, extreme].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
+        return NextResponse.json({ error: 'Killer counts (easy, medium, hard, expert, extreme) must be non-negative integers' }, { status: 400 });
       }
-      const total = easy + medium + hard + expert;
+      // Extreme generates in ~5.5 s each (tier-5-necessary layouts are rare); cap the count so
+      // a PDF request stays inside the function duration budget.
+      if (extreme > 5) {
+        return NextResponse.json({ error: 'At most 5 extreme Killer puzzles per PDF request' }, { status: 400 });
+      }
+      const total = easy + medium + hard + expert + extreme;
       if (total === 0) {
         return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
       }
@@ -59,10 +66,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
       }
 
-      const puzzles = generateKillerBatch({ easy, medium, hard, expert });
+      const puzzles = generateKillerBatch({ easy, medium, hard, expert, extreme });
       const pdfBuffer = await generateKillerPDF(puzzles);
       logger.info(
-        { event: 'generation_success', variant: 'killer', counts: { easy, medium, hard, expert }, durationMs: Math.round(performance.now() - startTime) },
+        { event: 'generation_success', variant: 'killer', counts: { easy, medium, hard, expert, extreme }, durationMs: Math.round(performance.now() - startTime) },
         'Successfully generated Killer puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Killer_Sudoku.pdf');

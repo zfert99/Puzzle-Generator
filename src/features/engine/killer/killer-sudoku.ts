@@ -23,7 +23,7 @@ import type { Cage, KillerPuzzle } from './killer-types';
 
 const GRID_SIZE = 9;
 
-export type KillerDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
+export type KillerDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 
 interface DifficultyConfig {
   /**
@@ -106,6 +106,16 @@ const DIFFICULTY_CONFIG: Record<KillerDifficulty, DifficultyConfig> = {
   // sweep — needs more tier-5 techniques before it has a band to live in.
   expert: {
     solveCap: 4, minTier: 4, minSize: 2, maxSize: 4, maxSingles: 1, maxFootholds: 1,
+    scoreBand: { min: 90 }, verifyNodeBudget: 100_000,
+  },
+  // Extreme (E3 follow-up): same shape as expert, but tier-5-NECESSARY — solvable with the
+  // extreme techniques (XYZ/W-Wing, ALS-XZ, AIC), provably stuck without them (minTier 5).
+  // Necessity makes expert/extreme disjoint by construction (expert must SOLVE at cap 4,
+  // extreme must STALL there), so no score-cut conflict exists between them; extreme keeps a
+  // floor only to reject degenerate outliers. Rare by nature (~1 in 1 700 attempts — Stuart's
+  // extremes are 1-in-5 000), so it is the one tier where generation takes seconds.
+  extreme: {
+    solveCap: 5, minTier: 5, minSize: 2, maxSize: 4, maxSingles: 1, maxFootholds: 1,
     scoreBand: { min: 90 }, verifyNodeBudget: 100_000,
   },
 };
@@ -241,7 +251,7 @@ export function generateKillerSudoku(
 /** Generate a batch of graded Killers — `counts[difficulty]` puzzles of each, easy→hard order. */
 export function generateKillerBatch(counts: Partial<Record<KillerDifficulty, number>>): KillerPuzzle[] {
   const puzzles: KillerPuzzle[] = [];
-  for (const difficulty of ['easy', 'medium', 'hard', 'expert'] as const) {
+  for (const difficulty of ['easy', 'medium', 'hard', 'expert', 'extreme'] as const) {
     const n = counts[difficulty] ?? 0;
     for (let i = 0; i < n; i++) puzzles.push(generateKillerSudoku(difficulty));
   }

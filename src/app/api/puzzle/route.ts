@@ -4,11 +4,14 @@ import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/k
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 
-const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard', 'expert'];
+const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
 // The engine is pure TypeScript, but keep this on the Node.js runtime for
 // consistency with the rest of the API and to leave room for future Node-only work.
 export const runtime = 'nodejs';
+// Killer extreme generates in ~5.5 s avg / ~10 s max (tier-5-necessary layouts are rare by
+// nature) — the platform default duration cap would intermittently 504 it.
+export const maxDuration = 60;
 
 const VALID_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const VALID_GRID_SIZES: GridSize[] = [4, 6, 9];
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
     // ---- Killer branch (9×9, easy/medium/hard) ----
     if (variant === 'killer') {
       if (!KILLER_DIFFICULTIES.includes(difficulty)) {
-        return NextResponse.json({ error: 'Killer difficulty must be easy, medium, hard, or expert' }, { status: 400 });
+        return NextResponse.json({ error: 'Killer difficulty must be easy, medium, hard, expert, or extreme' }, { status: 400 });
       }
       const puzzle = generateKillerSudoku(difficulty as KillerDifficulty);
       logger.info(

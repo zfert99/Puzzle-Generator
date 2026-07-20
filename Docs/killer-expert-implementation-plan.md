@@ -144,8 +144,12 @@ uneconomical — add the stretch techniques before proceeding.
 ~85% of both). Config: solveCap 4 + **minTier 4 necessity** (fresh cap-3 solve must stall),
 sizes 2–4, ≤ 1 single, ≤ 1 foothold, no bias (measured 3× worse yield for nothing), 100 k-node
 verify budget. Max cage sums reach 29 — big cages are expert's signature since max4 layouts
-are ~never tier-3-solvable. **Extreme deferred by measurement** (0 tier-5-necessary layouts
-in 40 s — needs more tier-5 techniques first). **Hard keeps maxSize 3** — the E2 gains are
+are ~never tier-3-solvable. **Extreme initially deferred, then shipped**: a longer sweep
+found tier-5-necessary layouts at ~1-in-1 700 attempts in expert's exact shape (the 40 s
+sweep was unlucky, not wrong about rarity). Its minTier-5 necessity makes expert/extreme
+disjoint by construction; benchmarks 5.5 s avg / 9.2 s max, 0 fails, scores 97–208, every
+puzzle verified to stall at cap 4. Routes declare `maxDuration = 60`; the PDF branch caps
+extreme at 5/request. **Hard keeps maxSize 3** — the E2 gains are
 all tier-4 by design (tiers 1–3 frozen), so the "hard gets big cages back" hope was
 measured away rather than shipped blind.
 
