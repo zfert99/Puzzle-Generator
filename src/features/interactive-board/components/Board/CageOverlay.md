@@ -21,3 +21,11 @@ is recomputed only when the cages change (a new game), never on a keystroke — 
 cages, and small dimmed monospace sum labels tucked into each cage's anchor-cell corner. The
 overlay sits at `z-index: 2` — above cell backgrounds/highlights, but cage lines hug cell edges so
 placed digits (centred) stay readable.
+
+## PDF-parity sums (July 2026)
+
+Sums render exactly like the PDF's: tucked into the anchor cell's top-left corner at
+0.2 cell-units, on a small `--cell-bg` pad so the number visibly **breaks the dashed cage
+line** instead of colliding with it (the pad is theme-aware where the PDF's is plain white).
+Pad width is estimated from the mono font (~0.13 cell-units per digit) — reliable because the
+sum label uses `--font-mono`.

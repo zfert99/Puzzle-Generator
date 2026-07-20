@@ -110,6 +110,12 @@
   opacity: 0.8;
 }
 
+/* Pad behind each cage sum (PDF parity): matches the resting cell background so the number
+   visibly breaks the dashed cage line in both themes. */
+.cageSumPad {
+  fill: var(--cell-bg);
+}
+
 .cageSum {
   fill: var(--ink);
   opacity: 0.62;
