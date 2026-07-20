@@ -30,10 +30,10 @@ function mulberry32(seed: number): () => number {
 }
 
 /** Solver-tier CEILING per difficulty — difficulty is shaped by cage structure, capped by tier. */
-const SOLVE_CAP: Record<KillerDifficulty, number> = { easy: 2, medium: 3, hard: 3, expert: 4 };
+const SOLVE_CAP: Record<KillerDifficulty, number> = { easy: 2, medium: 3, hard: 3, expert: 4, extreme: 5 };
 
 /** Max single-cell cages (givens) per difficulty — the structural lever that separates tiers. */
-const MAX_SINGLES: Record<KillerDifficulty, number> = { easy: 12, medium: 4, hard: 1, expert: 1 };
+const MAX_SINGLES: Record<KillerDifficulty, number> = { easy: 12, medium: 4, hard: 1, expert: 1, extreme: 1 };
 
 describe('generateKillerSudoku', () => {
   it('emits a uniquely-solvable puzzle whose only solution is the source grid', () => {
@@ -82,6 +82,17 @@ describe('generateKillerSudoku', () => {
     expect(new KillerLogicalSolver(puzzle.cages, 9).solve({ maxTier: 3 }).solved).toBe(false);
     expect(new KillerLogicalSolver(puzzle.cages, 9).solve({ maxTier: 4 }).solved).toBe(true);
   });
+
+  it('extreme: tier-5-necessary, in band, shape-gated (one generation, all assertions)', () => {
+    // Consolidated because extreme generation averages ~5.5 s — one puzzle, every invariant.
+    const puzzle = generateKillerSudoku('extreme', { solution: SOL9, rng: mulberry32(31) });
+    expect(new KillerSolver(puzzle.cages, 9).countSolutions(2)).toBe(1);
+    expect(new KillerLogicalSolver(puzzle.cages, 9).solve({ maxTier: 4 }).solved).toBe(false); // needs tier 5
+    const full = new KillerLogicalSolver(puzzle.cages, 9).solve();
+    expect(full.solved).toBe(true);
+    expect(scoreKillerSolve(full).final).toBeGreaterThanOrEqual(90);
+    expect(puzzle.cages.filter((c) => c.cells.length === 1).length).toBeLessThanOrEqual(1);
+  }, 120_000);
 
   it('keeps the medium/hard foothold bands apart (medium ≥ 3 anchors, hard ≤ 3)', () => {
     const footholds = (puzzle: ReturnType<typeof generateKillerSudoku>) =>

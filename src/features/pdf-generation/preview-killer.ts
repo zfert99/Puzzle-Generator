@@ -11,7 +11,7 @@ import { generateKillerPDF } from './services/pdf.service';
 async function main(): Promise<void> {
   const out = process.argv[2] ?? 'killer-preview.pdf';
   const count = Number(process.argv[3]) || 2;
-  const puzzles = generateKillerBatch({ easy: count, medium: count, hard: count, expert: count });
+  const puzzles = generateKillerBatch({ easy: count, medium: count, hard: count, expert: count, extreme: count });
   const pdf = await generateKillerPDF(puzzles);
   writeFileSync(out, pdf);
   console.log(`Wrote ${pdf.length} bytes to ${out} (${puzzles.length} puzzles + answers).`);

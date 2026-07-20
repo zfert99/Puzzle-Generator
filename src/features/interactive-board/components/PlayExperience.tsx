@@ -33,7 +33,7 @@ function useHasMounted(): boolean {
  * The timer ticks only while actively on the board (`view === 'playing'`), so stepping back
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
-const KILLER_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert'];
+const KILLER_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
 export default function PlayExperience() {
   const router = useRouter();
@@ -164,7 +164,10 @@ export default function PlayExperience() {
         </div>
 
         {isKiller ? (
-          <p className="text-xs text-ink-soft text-center mb-6">9×9 · no givens — the cage sums are the only clue.</p>
+          <p className="text-xs text-ink-soft text-center mb-6">
+            9×9 · no givens — the cage sums are the only clue.
+            {difficulty === 'extreme' && ' Extreme puzzles are rare finds — generating one can take ~10 seconds.'}
+          </p>
         ) : (
           <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
         )}

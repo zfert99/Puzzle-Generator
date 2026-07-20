@@ -5,7 +5,7 @@ import { usePuzzleGeneration } from '../hooks/usePuzzleGeneration';
 import { GridSizeSelector } from './GridSizeSelector';
 import { DifficultyConfigurator } from './DifficultyConfigurator';
 
-const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert'];
+const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
 export default function PuzzleForm() {
   const [variant, setVariant] = useState<'classic' | 'killer'>('classic');
@@ -30,7 +30,7 @@ export default function PuzzleForm() {
 
   const handleGenerate = async () => {
     if (isKiller) {
-      await generate({ variant: 'killer', easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: counts.expert });
+      await generate({ variant: 'killer', easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: counts.expert, extreme: counts.extreme });
     } else {
       await generate({ ...counts, gridSize });
     }

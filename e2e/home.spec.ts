@@ -26,10 +26,10 @@ test.describe('Hub and generator', () => {
     await expect(page).toHaveURL(/\/play\?variant=killer$/);
 
     await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
-    // Killer preselected: its 4-tier ladder shows (easy…expert, no extreme) and no grid-size picker.
+    // Killer preselected: the full 5-tier ladder shows and no grid-size picker.
     await expect(page.getByRole('button', { name: 'easy', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'expert', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'extreme' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '4×4' })).toHaveCount(0);
     await expect(page.getByText(/cage sums are the only clue/i)).toBeVisible();
   });
