@@ -1,20 +1,18 @@
 import { useState, useCallback } from 'react';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
-import type { Cage } from '@/features/engine/killer/killer-types';
+import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { DailyDifficulty } from '@/lib/db/daily-row';
 
 /**
- * The `/api/daily` payload: a playable puzzle plus the daily's date. A Killer daily
- * additionally carries `variant: 'killer'` + `cages` — `startNewGame` branches on the
- * cages field, so the same object feeds the board for both variants.
+ * The `/api/daily` payload: a playable puzzle plus the daily's date, as a discriminated
+ * union — a Killer daily carries `variant: 'killer'` + `cages` (which `startNewGame`
+ * branches on), a classic daily carries neither. `difficulty` is the board KEY from the
+ * daily registry (`daily-row.ts`), e.g. `killer-expert` or `mini6-hard`.
  */
-export interface DailyPuzzleResponse extends Omit<SudokuPuzzle, 'difficulty'> {
-  difficulty: DailyDifficulty;
-  date: string;
-  clueCount: number;
-  variant?: 'killer';
-  cages?: Cage[];
-}
+type DailyBase = { difficulty: DailyDifficulty; date: string; clueCount: number };
+export type DailyPuzzleResponse =
+  | (Omit<SudokuPuzzle, 'difficulty'> & DailyBase & { variant?: undefined; cages?: undefined })
+  | (Omit<KillerPuzzle, 'difficulty'> & DailyBase);
 
 /**
  * Fetches today's daily puzzle from `GET /api/daily?difficulty=…`. The board's heavy

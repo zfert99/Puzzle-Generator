@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger';
 
 // Uses node:crypto + the DB driver — must run on the Node.js runtime, never the Edge.
 export const runtime = 'nodejs';
+// 19 boards/day; classic extreme + killer-extreme are the slow ones (~seconds each).
+export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
 /**

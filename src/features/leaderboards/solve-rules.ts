@@ -1,5 +1,5 @@
 import type { Grid } from '@/lib/db/schema';
-import type { DailyDifficulty } from '@/lib/db/daily-row';
+import { DAILY_BOARDS, type DailyDifficulty } from '@/lib/db/daily-row';
 
 /**
  * Pure anti-cheat rules for a daily solve — no DB, no clock — so they are unit-testable
@@ -32,13 +32,9 @@ export function gridsMatch(a: Grid, b: Grid): boolean {
  * not police fast solvers, so it is set conservatively below real human records.
  */
 export const MIN_SOLVE_MS: Record<DailyDifficulty, number> = {
-  easy: 15_000,
-  medium: 20_000,
-  hard: 25_000,
-  expert: 30_000,
-  extreme: 45_000,
-  // Killer starts from an empty grid (no givens) — even its engine-medium daily takes longer
-  // than a classic medium, so the floor sits between classic hard and expert.
+  // Per-board floors live in the daily-board registry (single source of truth); the legacy
+  // 'killer' key (pre-ladder single daily) keeps its original floor for archived replays.
+  ...(Object.fromEntries(DAILY_BOARDS.map((b) => [b.key, b.minSolveMs])) as Record<DailyDifficulty, number>),
   killer: 30_000,
 };
 

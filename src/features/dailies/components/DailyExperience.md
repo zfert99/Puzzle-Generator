@@ -79,3 +79,9 @@ competitive daily (they'd hand out answers), while free play keeps them.
 > emoji/`celebrate` CSS (5.3a). Chaos layer (5.5): the select screen also adds a
 > MarqueeTicker, a corner Sticker ("play me!"), and a Tape strip on the card — chrome
 > decoration only; the board itself stays clean.
+
+## Sectioned picker (July 2026)
+
+The single chip row became three sections — Classic 9×9, Killer 9×9, Minis — rendered from
+`DAILY_BOARDS`. Selection state holds the board KEY; labels go through `formatDailyKey`
+(header, Play button, Continue).

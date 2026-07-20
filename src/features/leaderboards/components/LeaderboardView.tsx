@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DAILY_DIFFICULTIES, type DailyDifficulty } from '@/lib/db/daily-row';
+import { DAILY_BOARDS, formatDailyKey, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useSession } from '@/features/auth/auth-client';
 import { useCountUp } from '@/features/juice/useCountUp';
 
@@ -119,18 +119,29 @@ export function LeaderboardView({
 
   return (
     <div className="glass-panel p-6 max-w-lg w-full mx-auto">
-      <div className="flex flex-wrap justify-center gap-2 mb-5">
-        {DAILY_DIFFICULTIES.map((d) => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => selectDifficulty(d)}
-            className={`px-3 py-1.5 rounded-lg text-sm capitalize transition-all ${
-              difficulty === d ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
-            }`}
-          >
-            {d}
-          </button>
+      <div className="mb-5 space-y-2">
+        {(
+          [
+            ['classic', 'Classic'],
+            ['killer', 'Killer'],
+            ['minis', 'Minis'],
+          ] as const
+        ).map(([section, heading]) => (
+          <div key={section} className="flex flex-wrap items-center justify-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-ink-soft w-14 text-right">{heading}</span>
+            {DAILY_BOARDS.filter((b) => b.section === section).map((b) => (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() => selectDifficulty(b.key)}
+                className={`px-2.5 py-1 rounded-lg text-xs capitalize transition-all ${
+                  difficulty === b.key ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
+                }`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
         ))}
       </div>
 
@@ -145,15 +156,12 @@ export function LeaderboardView({
         <div className="mb-4 text-center">
           <p className="text-xs uppercase tracking-wide text-ink-soft mb-1">Your personal bests</p>
           <div className="flex flex-wrap justify-center gap-2">
-            {DAILY_DIFFICULTIES.filter((d) => bests.some((b) => b.difficulty === d)).map((d) => {
-              const best = bests.find((b) => b.difficulty === d)!;
-              return (
-                <span key={d} className="px-2 py-1 rounded-md bg-paper text-xs">
-                  <span className="capitalize text-ink-soft">{d}</span>{' '}
-                  <span className="tabular-nums font-medium">{formatMs(best.bestMs)}</span>
-                </span>
-              );
-            })}
+            {bests.map((best) => (
+              <span key={best.difficulty} className="px-2 py-1 rounded-md bg-paper text-xs">
+                <span className="capitalize text-ink-soft">{formatDailyKey(best.difficulty)}</span>{' '}
+                <span className="tabular-nums font-medium">{formatMs(best.bestMs)}</span>
+              </span>
+            ))}
           </div>
         </div>
       )}

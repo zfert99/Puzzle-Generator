@@ -2,19 +2,12 @@ import { and, eq } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { dailyPuzzles, type DailyPuzzle } from '@/lib/db/schema';
 import {
-  DAILY_DIFFICULTIES,
+  DAILY_BOARDS,
   toDailyPuzzleRow,
   type DailyDifficulty,
 } from '@/lib/db/daily-row';
-import { generateSudoku } from '@/features/engine/sudoku';
-import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
-
-/**
- * The engine difficulty behind the daily Killer. One Killer daily per day; medium is the
- * approachable-but-real middle of the graded ladder. Tunable without schema impact — the row's
- * difficulty stays the literal 'killer' either way.
- */
-const KILLER_DAILY_ENGINE_DIFFICULTY = 'medium';
+import { generateSudoku, type Difficulty } from '@/features/engine/sudoku';
+import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
 
 /**
  * Daily-puzzle data access. Every function takes the Drizzle `db` as its first
@@ -43,12 +36,16 @@ export async function generateDailyPuzzles(
   db: Database,
   isoDate: string,
 ): Promise<GenerateDailiesResult> {
-  const rows = DAILY_DIFFICULTIES.map((difficulty) =>
+  // One row per registry board: three sections (classic 9×9, the full Killer ladder, minis).
+  // The heavy hitters are classic extreme (digger) and killer-extreme (~5.5 s tier-5 search);
+  // everything else is milliseconds — the cron route carries maxDuration headroom for the sum.
+  const rows = DAILY_BOARDS.map((board) =>
     toDailyPuzzleRow(
-      difficulty === 'killer'
-        ? generateKillerSudoku(KILLER_DAILY_ENGINE_DIFFICULTY)
-        : generateSudoku(difficulty),
+      board.variant === 'killer'
+        ? generateKillerSudoku(board.difficulty as KillerDifficulty, { gridSize: board.gridSize as 6 | 9 })
+        : generateSudoku(board.difficulty as Difficulty, board.gridSize),
       isoDate,
+      board.key,
     ),
   );
 

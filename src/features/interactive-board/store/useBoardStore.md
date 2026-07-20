@@ -114,3 +114,6 @@ A flat cell-index → cage-id map (−1 where uncaged, `[]` for classic), built 
 `peers` — never persisted). It exists so each cell's highlight selector can answer "same cage
 as the selection?" in O(1); scanning the cage list per cell per keystroke would blow the INP
 budget (AGENTS.md §3).
+
+`BoardDifficulty` widened to `Difficulty | DailyDifficulty` — dailies store their board key
+(e.g. `killer-expert`); display surfaces prettify via `formatDailyKey`.

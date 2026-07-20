@@ -58,3 +58,15 @@ difficulty is a generation detail), stores its cages, and records the cage count
 `clue_count`. Treating `'killer'` as a difficulty rather than adding a variant column means
 every difficulty-keyed surface (picker, solve route, leaderboard tabs, streaks) picks the
 Killer daily up with zero changes.
+
+## The daily-board registry (July 2026)
+
+`DAILY_BOARDS` replaced the flat difficulty list: 19 boards/day in three sections — classic
+9×9 (keys unchanged, so historical rows need no migration), the full Killer 9×9 ladder
+(`killer-easy` … `killer-extreme`), and minis (`mini4-*`, `mini6-*`, `killer6-*`). The `key`
+IS the `daily_puzzles.difficulty` value, the API/leaderboard key, and the idempotency handle.
+Each entry carries its section, label, variant, gridSize, engine difficulty, and anti-cheat
+floor (`minSolveMs` — single source of truth for `solve-rules`). `toDailyPuzzleRow` now takes
+the key explicitly (the same engine difficulty generates under different keys). The legacy
+`'killer'` key (the pre-ladder single daily) stays readable for archived rows but is never
+generated; `formatDailyKey` prettifies keys for display.

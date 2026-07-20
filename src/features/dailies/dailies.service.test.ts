@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/lib/db/connection';
 import { generateDailyPuzzles, getDailyPuzzle } from './dailies.service';
-import { DAILY_DIFFICULTIES } from '@/lib/db/daily-row';
+import { DAILY_BOARDS } from '@/lib/db/daily-row';
 
 /**
  * The DB is mocked at the boundary (a stand-in Drizzle client), never by mocking
@@ -13,7 +13,7 @@ describe('generateDailyPuzzles', () => {
   it('generates one row per daily difficulty and upserts idempotently', async () => {
     const values = vi.fn();
     // Simulate a first run: every row is newly inserted.
-    const returning = vi.fn(async () => DAILY_DIFFICULTIES.map((_, i) => ({ id: `id-${i}` })));
+    const returning = vi.fn(async () => DAILY_BOARDS.map((_: unknown, i: number) => ({ id: `id-${i}` })));
     const onConflictDoNothing = vi.fn(() => ({ returning }));
     values.mockReturnValue({ onConflictDoNothing });
     const insert = vi.fn(() => ({ values }));
@@ -23,25 +23,23 @@ describe('generateDailyPuzzles', () => {
 
     expect(result).toEqual({
       isoDate: '2026-07-11',
-      requested: DAILY_DIFFICULTIES.length,
-      inserted: DAILY_DIFFICULTIES.length,
+      requested: DAILY_BOARDS.length,
+      inserted: DAILY_BOARDS.length,
     });
 
     // One insert of exactly the daily difficulties, all dated for the given day.
     const rows = values.mock.calls[0][0];
-    expect(rows).toHaveLength(DAILY_DIFFICULTIES.length);
-    expect(rows.map((r: { difficulty: string }) => r.difficulty)).toEqual([...DAILY_DIFFICULTIES]);
+    expect(rows).toHaveLength(DAILY_BOARDS.length);
+    expect(rows.map((r: { difficulty: string }) => r.difficulty)).toEqual(DAILY_BOARDS.map((b) => b.key));
     expect(rows.every((r: { date: string }) => r.date === '2026-07-11')).toBe(true);
-    expect(rows.every((r: { clueCount: number }) => r.clueCount > 16 && r.clueCount < 81)).toBe(true);
-    // The Killer daily is the one row carrying cages (a full partition covers all 81 cells).
+    // Killer rows carry cages whose partition covers their whole grid; classic rows carry none.
+    const killerBoards = DAILY_BOARDS.filter((b) => b.variant === 'killer');
     const killerRows = rows.filter((r: { cages: unknown }) => r.cages != null);
-    expect(killerRows).toHaveLength(1);
-    expect(killerRows[0].difficulty).toBe('killer');
-    const cageCells = killerRows[0].cages.reduce(
-      (total: number, cage: { cells: number[] }) => total + cage.cells.length,
-      0,
-    );
-    expect(cageCells).toBe(81);
+    expect(killerRows).toHaveLength(killerBoards.length);
+    for (const row of killerRows) {
+      const cells = row.cages.reduce((t: number, c: { cells: number[] }) => t + c.cells.length, 0);
+      expect(cells).toBe(row.grid.length * row.grid.length);
+    }
     // Generates a real puzzle per difficulty, incl. the slow Extreme digger — allow headroom.
   }, 30_000);
 
@@ -53,7 +51,7 @@ describe('generateDailyPuzzles', () => {
 
     const result = await generateDailyPuzzles(db, '2026-07-11');
     expect(result.inserted).toBe(0);
-    expect(result.requested).toBe(DAILY_DIFFICULTIES.length);
+    expect(result.requested).toBe(DAILY_BOARDS.length);
   }, 30_000);
 });
 

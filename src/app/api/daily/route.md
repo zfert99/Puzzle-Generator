@@ -37,3 +37,6 @@ Runs on the Node.js runtime (DB driver is Node-only).
 When the fetched row has cages (difficulty `'killer'`), the response additionally includes
 `variant: 'killer'` and `cages`, which is all `startNewGame` needs to start it as a Killer
 board. Everything else — validation, anti-cheat posture, archive dates — is unchanged.
+
+Accepts any daily-board key (plus legacy `'killer'`); `gridSize` in the response derives from
+the stored grid's length, so mini boards need no schema change.
