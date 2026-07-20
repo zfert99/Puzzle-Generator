@@ -1,6 +1,7 @@
 # Grid-Size Landscape for Sudoku-Family and KenKen-Family Puzzles: A Build Guide
 
 ## TL;DR
+
 - **For Killer Sudoku, stick to composite sizes and keep the ladder short: 4×4, 6×6, 9×9 is the proven sweet spot, with 12×12 (3×4 boxes) as an optional "giant" tier; 16×16 and 25×25 are real but niche novelty formats that mostly reward endurance, not skill, and carry the worst generation-cost and mobile-UI penalties.** Box-Sudoku only exists at composite sizes (it needs a rows×cols box tiling), so 5×5, 7×7, 11×11, etc. are impossible.
 - **For KenKen/Calcudoku, the constraint model is Latin-square-only (no boxes), so ANY N≥3 works — this is the single most important structural difference, and it unlocks 5×5 and 7×7, which box-Sudoku cannot support. The canonical published range is 3×3–9×9 (NYT does 4×4/6×6 daily; kenkenpuzzle.com does 3×3–9×9), with calcudoku.org extending to a regular 12×12 and one-off grids to 15×15/17×17.**
 - **A shared cage engine across Killer Sudoku and KenKen is a proven pattern (KDE's KSudoku uses one `MathdokuGenerator`/`CageGenerator` for both). Recommended ladder: Killer at 4/6/9 (+optional 12), KenKen at 4/5/6/7 (+optional 9). Avoid 16×16+ for either unless you specifically want a "marathon" badge feature — the audience ROI is low and the pitfalls (pencil-mark explosion, mobile rendering, "long but shallow" difficulty) are high.**
@@ -30,6 +31,7 @@
 **Larger than 25×25 (36×36, 49×49, 100×100, 144×144):** These exist essentially only as programmer/enthusiast curiosities on the enjoysudoku.com forum and a handful of generator sites (sudokugeant.cabanova.fr offers 16×16 to 100×100; a mocha2007 generator offers up to 100×100). One forum member generated 1,000 100×100 *filled* grids in ~45 s (three threads); making a hard, minimal, unique *puzzle* at that scale is far harder, and human-technique difficulty raters ("Sudoku Explainer" ports) rate these giant grids as trivially easy (e.g., "ED=3.6/1.2/1.2") because they're shallow. Clarity Media will commercially supply up to 36×36. There is no meaningful consumer audience above 25×25.
 
 **Intermediate sizes:**
+
 - **8×8 (2×4 boxes, digits 1–8):** Published (David Smith's books; sudoku-download.net's "Brickwall/Ladder/Cross" patterns; sudoku-royal.com; playminisudoku.com's 8×8). Positioned as a "different, not harder" stepping stone. Legitimate but minor.
 - **10×10 (2×5 boxes, digits 1–10):** Published (sudoku4me, Sudoku Dragon, playminisudoku.com 10×10, LinkedIn-style mini-sudoku sites). Niche.
 - **12×12:** the strongest intermediate/large option (see above).
@@ -37,6 +39,7 @@
 - **Composite vs valid:** All composite sizes are theoretically valid; in practice 4, 6, 9 dominate, 12 and 16 are the common "large" choices, and 8/10/15/25 are minor/novelty. **Killer Sudoku** specifically is published at 12×12 (Clarity Media, John Collins, Mindful Puzzle Books) and 16×16 ("Monster Killer Sudoku," "Killer Level Mega Sudoku 16×16"), confirming that the cage mechanic scales to giant sizes commercially — but again as a specialty print product, not a mainstream digital format.
 
 **Generation pitfalls by size (Sudoku):**
+
 - 9×9: trivial — millions of unique puzzles per minute are possible; naive backtracking ~20–31 ms.
 - 12×12: still fast with a good solver; the giant that stays practical.
 - 16×16: the inflection point. Naive backtracking generation "prevents … a solution in any reasonable time-frame"; you *must* use DLX/constraint propagation. With DLX, ~115 ms solve; generation (many uniqueness checks) is seconds-plus.
@@ -46,6 +49,7 @@
 **Difficulty grading at scale:** Human-technique graders (naked/hidden singles, X-Wing, etc.) do port to larger grids, but the KDE devs note "nobody seems to have a good algorithm for predicting the difficulty of a generated Mathdoku or Killer Sudoku puzzle." At 16×16+ grids tend to become "long but shallow" — high time cost, modest technique depth — which undermines meaningful difficulty tiers.
 
 **UI/UX pitfalls (large Sudoku):**
+
 - Pencil marks: 16 candidates/cell (16×16) or 25 (25×25) overwhelm a cell on a phone. Sites explicitly recommend tablet/desktop.
 - Input beyond 9: needs a letter keypad or two-key entry. calcudoku.org's convention (press "1" then "0" for 10, or use a/b/c keys) is a good model; 16×16 apps use A–G/A–P.
 - Rendering: 625-cell grids need zoom/pan or a very large screen; box borders and given/entered color coding become critical for legibility.
@@ -61,10 +65,12 @@
 **Difficulty scaling with size:** Difficulty rises with N but is dominated by operator choice and cage structure, not size alone. EDC/Think Math and ThePuzzleLabs describe the progression: 3×3 gentle (mostly addition, single-cell givens); 4×4 adds subtraction and real deduction; 5×5 uses all four operations; 6×6/7×7 require chaining multiple cage constraints. **Addition-only (and multiplication-only, "Inshi no heya") puzzles are generally harder to pin down** because sums have many decompositions — one solver notes a "+ only" puzzle forced "trial-and-error … to pin it down." 9×9 with all operators is considered genuinely hard by the community (dedicated "how to solve hard 9×9 KenKen" material, plus blog write-ups of "the hardest KenKen I've ever come across" even at 6×6).
 
 **Cage arithmetic at larger N:**
+
 - **Multiplication cages with big products become a *solving aid*, not a burden:** a large product often has a unique factorization within 1..N. Example (EDC): a product-32 L-tromino in a 4×4 has exactly one filling; 60× in a three-cell cage of a 5×5 must be {3,4,5}. This is prime-factorization-as-technique, and it's a recognized method (Melkonian, "An Integer Programming Model for the KenKen Problem," details prime-factorization handling — e.g., target 2520 = 2³·3²·5·7).
 - **Combination-table growth:** because duplicates are allowed (subject to row/column), the number of valid multisets per cage grows with N and cage size. This enlarges precomputed cage tables but remains tractable at N≤9; it becomes a real memory/time consideration if you push to 12×12+.
 
 **Generation/solving pitfalls (KenKen):**
+
 - DLX/exact-cover and bitmask candidate approaches transfer directly: KDE uses one DLX solver for both Killer and Mathdoku. Bitmask candidate sets (one bit per digit) are standard; at N>9 you simply need a wider integer mask (still fits in a 32-bit int through N=32, 64-bit through N=64) — a minor but real code change from the "9 bits fits in an int" assumption.
 - Uniqueness verification is again the cost driver; at 9×9 KenKen it's fast, and larger Calcudoku (10×10, 12×12) is where it starts to matter.
 - Subtraction and division cages must be restricted to two cells (order-ambiguity: 6−(4−1)=3 but (6−4)−1=1) — this is a hard rule in KenKen and in KSudoku's generator, and it constrains cage shapes.
@@ -74,22 +80,26 @@
 ### PART C — Cross-cutting for the app builder
 
 **Audience demand vs novelty:**
+
 - **Real, broad demand:** 4×4, 6×6, 9×9 (both families); Killer 9×9 is a mainstream digital staple (sudoku.com runs daily Killer Easy→Expert).
 - **Solid secondary demand:** 12×12 Sudoku (daily on PuzzleMadness, multiple apps); KenKen 5×5/7×7 (fills out the ladder).
 - **Novelty / low ROI:** 16×16 and 25×25 Sudoku (many print SKUs and a few dedicated apps, but the audience is a small endurance-seeking segment); 10×10+ Calcudoku (enthusiast niche). 8×8/10×10/15×15 are minor.
 - App-store signals show 16×16 and Calcudoku apps exist and are rated well but are clearly specialty titles, not mass-market; mainstream Sudoku apps center on 9×9 (+Killer/variants).
 
 **Implementation implications moving from box-Sudoku to Latin-square KenKen:**
+
 1. **Drop the box constraint** — the solver/generator loses one of its three constraint families; the exact-cover matrix drops the box-column group. This *widens* the solution space (fewer constraints), which is partly why KenKen needs the cage arithmetic to pin down a unique solution.
 2. **Add cage-arithmetic constraints** with operator semantics (+, −, ×, ÷), the two-cell restriction for − and ÷, and the *duplicates-allowed-within-cage* rule (contrast Killer's no-duplicates rule). These two rules are the crux of a shared engine: your cage model needs a flag for "boxes present?" and "duplicates allowed in cage?".
 3. **Bitmask width:** widen candidate masks beyond 9 bits for N>9.
 4. **Shared engine is proven:** KSudoku's `MathdokuGenerator` builds both Killer and Mathdoku from a Latin square + `makeCages()`, differing only in operator set, box presence, and the duplicate rule — a clean template to copy.
 
 **Recommended size ladder:**
+
 - **Killer Sudoku:** 4×4, 6×6, 9×9 as the core (you already support these). Add **12×12 (3×4)** only if you want a "giant/marathon" tier — it's the last size that stays generation-friendly and has genuine daily-publisher precedent. **Skip 16×16+ Killer** unless it's a deliberate novelty SKU; pencil-mark and mobile-rendering pain is severe.
 - **KenKen:** 4×4, 5×5, 6×6, 7×7 as the core (5 and 7 are your differentiators vs Killer), plus **9×9** as the "expert" cap. Offer operator subsets (addition-only "easy," all-ops "hard") and optionally No-Op ("Mystery") as a difficulty axis rather than pushing to larger grids. Consider **10×10** only as an enthusiast extra.
 
 **Benchmarks that would change these recommendations:**
+
 - If your generator (with DLX) produces a unique, difficulty-graded 16×16 in well under ~1 s *and* telemetry shows users finishing 12×12 giants and asking for more → add 16×16.
 - If mobile analytics show a large tablet/desktop share and long average session times → large grids become more viable.
 - If KenKen 9×9 completion rates are healthy and users request harder content → add 10×10 Calcudoku before adding any 16×16 Sudoku.
@@ -105,6 +115,7 @@
 7. **Avoid impossible/awkward sizes:** never offer box-Sudoku at prime/odd-only sizes (5, 7, 11) — reserve those for KenKen. Deprioritize 8×8/10×10/15×15 Sudoku — valid but low-demand.
 
 ## Caveats
+
 - **Generation-time figures come from heterogeneous sources** (open-source repos, student reports, forum posts on varied hardware) and are indicative, not benchmarks for your stack; measure on your own engine. The DLX numbers (16×16 ~115 ms, 25×25 ~460 ms) are *solve* times, not full *generation-with-uniqueness* times, which are substantially higher.
 - **Some cited sites are commercial/marketing pages** (app listings, puzzle shops) whose difficulty and enjoyment claims are promotional; structural and performance claims here lean on primary/technical sources (KDE source code, academic solver papers, the enjoysudoku.com developer forum, the McGuire et al. proof, the MAA KenKen handout).
 - **The calcudoku.org forum threads on large grids could not be retrieved** (the phpBB forum returns 503 to automated fetchers); the large-grid cadence and the "single solution" guarantee are quoted from the site's main page, while the "niche/for-enthusiasts" characterization is an inference from those framings plus publisher behavior (book descriptions, on-request-only 15×15+), not a verbatim community quote.
