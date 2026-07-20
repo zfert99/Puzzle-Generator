@@ -43,7 +43,8 @@ monotonicity is load-bearing; the band cuts absorb the rest.
 ## How the generator uses it
 
 `DIFFICULTY_CONFIG` in `killer-sudoku.ts` gives each difficulty a **disjoint** `scoreBand`
-(easy < 42, medium 42–62, hard ≥ 62 — cuts placed on measured 30-sample distributions).
+(easy < 42, medium 42–62, hard 62–90, expert ≥ 90 — cuts placed on measured distributions;
+the 90 cut keeps ~85% of both hard and expert).
 A candidate that solves within its tier cap but scores outside its band is rejected, exactly
 like a failed shape gate. Measured result: generated scores land at easy 18–41 / medium 43–61 /
 hard 64–96 with no overlap, at a modest yield cost (medium ~88 → ~117 ms, hard ~288 → ~404 ms).

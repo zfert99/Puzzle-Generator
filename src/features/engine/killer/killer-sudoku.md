@@ -41,9 +41,17 @@ density), not a binary gate.
 
 | Difficulty | solveCap | size window | maxSingles | foothold band | score band | measured shape |
 |---|---|---|---|---|---|---|
-| easy | 2 | 1–3 | 12 | — | < 42 | ~11 singles/puzzle, scores 18–41 |
-| medium | 3 | 2–3 | 4 | ≥ 3 | 42–62 | ~2 singles, ~4.7 footholds, scores 43–61 |
-| hard | 3 | 2–3 | 1 | ≤ 3 | ≥ 62 | ~1 single, ~2.4 footholds, scores 64–96 |
+| easy | 2 | 1–3 | 12 | — | < 42 | ~11 singles/puzzle, scores 20–42 |
+| medium | 3 | 2–3 | 4 | ≥ 3 | 42–62 | ~2 singles, ~4.7 footholds, scores 49–62 |
+| hard | 3 | 2–3 | 1 | ≤ 3 | 62–90 | ~1 single, ~2.4 footholds, scores 63–89 |
+| expert | 4 (+ minTier 4) | 2–4 | 1 | ≤ 1 | ≥ 90 | maxSize-4 cages, sums to 29, scores 93–163 |
+
+Expert (E3) rides the E1 pruning + E2 techniques: **minTier 4** is a band-level necessity
+check (a fresh cap-3 solve must STALL — a trace's hardestTier can't prove necessity), and its
+uniqueness verification runs under a 100 k-node budget (exhaustion rejects, never mislabels).
+Big cages and sums > 24 are expert's signature — max4 layouts are ~never tier-3-solvable, so
+lower tiers structurally can't have them. Extreme (tier 5) was measured and deferred: 0
+tier-5-necessary layouts in a 40 s sweep.
 
 The **score band** is the two-factor difficulty score (`killer-score.md`: weighted technique
 sum × opportunity density) with *disjoint* cuts placed on measured distributions. It closes the
@@ -88,9 +96,14 @@ maxSize-4 uniques). Expert/extreme wait for more Killer techniques.
 
 | Difficulty | avg | median | max | fails |
 |---|---|---|---|---|
-| easy | 12 ms | 8 ms | 34 ms | 0 |
-| medium | 117 ms | 109 ms | 428 ms | 0 |
-| hard | 404 ms | 196 ms | 1 452 ms | 0 |
+| easy | 8 ms | 6 ms | 37 ms | 0 |
+| medium | 76 ms | 64 ms | 212 ms | 0 |
+| hard | 344 ms | 229 ms | 1 131 ms | 0 |
+| expert | 271 ms | 201 ms | 687 ms | 0 |
+
+Expert generating FASTER than hard looks paradoxical but follows from the E1 pruning economics:
+expert's shape gate is stricter (fewer candidates reach the solver) while its solve/necessity
+checks are cheap rejects, and the node-budgeted verify keeps the tail bounded.
 
 Before the grade-before-uniqueness reorder, ~99% of time was `countSolutions` (~10 ms per
 shape-passing layout, ~28% unique) paid on candidates the grader then rejected; hard averaged

@@ -30,10 +30,10 @@ function mulberry32(seed: number): () => number {
 }
 
 /** Solver-tier CEILING per difficulty — difficulty is shaped by cage structure, capped by tier. */
-const SOLVE_CAP: Record<KillerDifficulty, number> = { easy: 2, medium: 3, hard: 3 };
+const SOLVE_CAP: Record<KillerDifficulty, number> = { easy: 2, medium: 3, hard: 3, expert: 4 };
 
 /** Max single-cell cages (givens) per difficulty — the structural lever that separates tiers. */
-const MAX_SINGLES: Record<KillerDifficulty, number> = { easy: 12, medium: 4, hard: 1 };
+const MAX_SINGLES: Record<KillerDifficulty, number> = { easy: 12, medium: 4, hard: 1, expert: 1 };
 
 describe('generateKillerSudoku', () => {
   it('emits a uniquely-solvable puzzle whose only solution is the source grid', () => {
@@ -49,7 +49,7 @@ describe('generateKillerSudoku', () => {
     expect(new KillerSolver(puzzle.cages, 9).solve()).toEqual(SOL9);
   });
 
-  it.each(['easy', 'medium', 'hard'] as const)('generates a %s puzzle solvable within its tier cap', (difficulty) => {
+  it.each(['easy', 'medium', 'hard', 'expert'] as const)('generates a %s puzzle solvable within its tier cap', (difficulty) => {
     const puzzle = generateKillerSudoku(difficulty, { solution: SOL9, rng: mulberry32(42) });
     expect(puzzle.difficulty).toBe(difficulty);
     expect(new KillerSolver(puzzle.cages, 9).countSolutions(2)).toBe(1);
@@ -59,7 +59,7 @@ describe('generateKillerSudoku', () => {
     expect(grade.hardestTier).toBeLessThanOrEqual(SOLVE_CAP[difficulty]);
   });
 
-  it.each(['easy', 'medium', 'hard'] as const)('respects the %s single-cage (given) budget', (difficulty) => {
+  it.each(['easy', 'medium', 'hard', 'expert'] as const)('respects the %s single-cage (given) budget', (difficulty) => {
     const puzzle = generateKillerSudoku(difficulty, { solution: SOL9, rng: mulberry32(3) });
     const singles = puzzle.cages.filter((c) => c.cells.length === 1).length;
     expect(singles).toBeLessThanOrEqual(MAX_SINGLES[difficulty]);
@@ -68,12 +68,19 @@ describe('generateKillerSudoku', () => {
   it.each([
     ['easy', undefined, 42],
     ['medium', 42, 62],
-    ['hard', 62, undefined],
+    ['hard', 62, 90],
+    ['expert', 90, undefined],
   ] as const)('lands %s in its two-factor score band [%s, %s)', (difficulty, min, max) => {
     const puzzle = generateKillerSudoku(difficulty, { solution: SOL9, rng: mulberry32(11) });
     const { final } = scoreKillerSolve(new KillerLogicalSolver(puzzle.cages, 9).solve());
     if (min !== undefined) expect(final).toBeGreaterThanOrEqual(min);
     if (max !== undefined) expect(final).toBeLessThan(max);
+  });
+
+  it('expert genuinely needs tier 4: a cap-3 solve must stall (band-level necessity)', () => {
+    const puzzle = generateKillerSudoku('expert', { solution: SOL9, rng: mulberry32(21) });
+    expect(new KillerLogicalSolver(puzzle.cages, 9).solve({ maxTier: 3 }).solved).toBe(false);
+    expect(new KillerLogicalSolver(puzzle.cages, 9).solve({ maxTier: 4 }).solved).toBe(true);
   });
 
   it('keeps the medium/hard foothold bands apart (medium ≥ 3 anchors, hard ≤ 3)', () => {

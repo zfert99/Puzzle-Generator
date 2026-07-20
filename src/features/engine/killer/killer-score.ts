@@ -31,6 +31,10 @@ export const TECHNIQUE_WEIGHTS: Record<KillerTechnique, number> = {
   hiddenPair: 3.4,
   ruleOf45Regions: 4.5,
   pointingPairs: 2.6,
+  // E2 Killer-tough techniques (SE-scale per the research: hard combinations ≈ Cage
+  // Comparison ≈ 5.0; multi-cell innies/outies ≈ 4.5 — same family as ruleOf45Regions).
+  cageComboRestriction: 5.0,
+  ruleOf45MultiCell: 4.5,
   xWing: 3.2,
   swordfish: 3.8,
   yWing: 4.2,

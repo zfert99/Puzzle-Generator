@@ -45,13 +45,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or missing JSON body' }, { status: 400 });
     }
     
-    // ---- Killer Sudoku branch (9×9, easy/medium/hard only) ----
+    // ---- Killer Sudoku branch (9×9, easy/medium/hard/expert) ----
     if (body?.variant === 'killer') {
-      const { easy = 0, medium = 0, hard = 0 } = body || {};
-      if (![easy, medium, hard].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
-        return NextResponse.json({ error: 'Killer counts (easy, medium, hard) must be non-negative integers' }, { status: 400 });
+      const { easy = 0, medium = 0, hard = 0, expert = 0 } = body || {};
+      if (![easy, medium, hard, expert].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
+        return NextResponse.json({ error: 'Killer counts (easy, medium, hard, expert) must be non-negative integers' }, { status: 400 });
       }
-      const total = easy + medium + hard;
+      const total = easy + medium + hard + expert;
       if (total === 0) {
         return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
       }
@@ -59,10 +59,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
       }
 
-      const puzzles = generateKillerBatch({ easy, medium, hard });
+      const puzzles = generateKillerBatch({ easy, medium, hard, expert });
       const pdfBuffer = await generateKillerPDF(puzzles);
       logger.info(
-        { event: 'generation_success', variant: 'killer', counts: { easy, medium, hard }, durationMs: Math.round(performance.now() - startTime) },
+        { event: 'generation_success', variant: 'killer', counts: { easy, medium, hard, expert }, durationMs: Math.round(performance.now() - startTime) },
         'Successfully generated Killer puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Killer_Sudoku.pdf');

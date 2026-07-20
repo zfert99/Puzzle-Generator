@@ -11,7 +11,7 @@
  */
 
 import { getGridConfig, type GridSize } from '../sudoku';
-import { candidateMaskFor } from './cage-combinations';
+import { candidateMaskExcluding } from './cage-combinations';
 import type { Cage } from './killer-types';
 
 /** Number of set bits in a small integer (a digit-set mask). */
@@ -45,6 +45,10 @@ export class KillerSolver {
   private readonly cageRemCells: number[]; // empty cells still in the cage
 
   private solution: number[][] | null = null;
+  private nodesLeft = Infinity;
+  private budgetExhausted = false;
+  /** Search nodes consumed by the last `countSolutions`/`solve` — the budget-tuning signal. */
+  nodesUsed = 0;
 
   /**
    * @param cages    a partition of the grid (every cell in exactly one cage)
@@ -89,10 +93,11 @@ export class KillerSolver {
   /** Place `digit` at (r, c), updating every constraint tracker. */
   private place(r: number, c: number, digit: number): void {
     const bit = 1 << (digit - 1);
+    const box = this.boxIndex(r, c);
     this.grid[r][c] = digit;
     this.rowMask[r] |= bit;
     this.colMask[c] |= bit;
-    this.boxMask[this.boxIndex(r, c)] |= bit;
+    this.boxMask[box] |= bit;
     const cage = this.cellCage[r * this.size + c];
     this.cageUsed[cage] |= bit;
     this.cageRemSum[cage] -= digit;
@@ -102,10 +107,11 @@ export class KillerSolver {
   /** Reverse of `place` — remove `digit` from (r, c). */
   private unplace(r: number, c: number, digit: number): void {
     const bit = 1 << (digit - 1);
+    const box = this.boxIndex(r, c);
     this.grid[r][c] = 0;
     this.rowMask[r] &= ~bit;
     this.colMask[c] &= ~bit;
-    this.boxMask[this.boxIndex(r, c)] &= ~bit;
+    this.boxMask[box] &= ~bit;
     const cage = this.cellCage[r * this.size + c];
     this.cageUsed[cage] &= ~bit;
     this.cageRemSum[cage] += digit;
@@ -114,15 +120,17 @@ export class KillerSolver {
 
   /**
    * The legal digits for an empty cell, as a bitmask. Combines the classic Sudoku exclusions
-   * (row/col/box) with the two cage rules: no digit already used in the cage, and only digits
-   * that can appear in the cage's remaining (cells, sum) — which also forces the final cell,
-   * since `candidateMaskFor(1, S)` is the single digit S.
+   * (row/col/box) with the cage rule via `candidateMaskExcluding`: only digits from
+   * combinations of the cage's remaining (cells, sum) that are DISJOINT from its used digits
+   * (E1/P1 — the plain union mask admitted digits reachable only through combinations
+   * containing an already-used digit, and those dead branches were the bulk of the thrash on
+   * big loose cages). The mask never contains used digits, forces the final cell
+   * (`(1, S)` → the single digit S), and reads 0 when no completion exists.
    */
   private candidates(r: number, c: number): number {
     const cage = this.cellCage[r * this.size + c];
     let mask = this.full & ~(this.rowMask[r] | this.colMask[c] | this.boxMask[this.boxIndex(r, c)]);
-    mask &= ~this.cageUsed[cage];
-    mask &= candidateMaskFor(this.cageRemCells[cage], this.cageRemSum[cage]);
+    mask &= candidateMaskExcluding(this.cageRemCells[cage], this.cageRemSum[cage], this.cageUsed[cage]);
     return mask;
   }
 
@@ -133,6 +141,14 @@ export class KillerSolver {
    * any empty cell has zero candidates.
    */
   private search(limit: number, count: { n: number }): void {
+    // Node budget (E1/P3): a pathological layout dies in bounded time instead of thrashing.
+    // Exhaustion only ever REJECTS a candidate (countSolutions returns -1) — never a false
+    // "unique" — so the generator loses a little yield, never correctness.
+    this.nodesUsed += 1;
+    if (this.nodesLeft-- <= 0) {
+      this.budgetExhausted = true;
+      return;
+    }
     let bestR = -1;
     let bestC = -1;
     let bestMask = 0;
@@ -169,7 +185,7 @@ export class KillerSolver {
       this.place(bestR, bestC, digit);
       this.search(limit, count);
       this.unplace(bestR, bestC, digit);
-      if (count.n >= limit) return; // enough solutions found; stop early
+      if (count.n >= limit || this.budgetExhausted) return; // done, or out of budget
       m &= m - 1; // next candidate
     }
   }
@@ -178,16 +194,28 @@ export class KillerSolver {
    * How many solutions the puzzle has, capped at `limit` (default 2). `0` = unsolvable,
    * `1` = unique (what the generator wants), `≥2` = ambiguous. Capping makes the uniqueness
    * check cheap: it stops the instant a second solution appears.
+   *
+   * `nodeBudget` (search nodes, default unlimited) bounds worst-case cost for the generator:
+   * if the search exhausts it, the answer is **-1** ("could not verify in budget") — callers
+   * checking `=== 1` therefore reject, which is exactly the safe direction. The partial count
+   * is never returned, because "1 found so far" is not "unique".
    */
-  countSolutions(limit = 2): number {
+  countSolutions(limit = 2, nodeBudget = Infinity): number {
     const count = { n: 0 };
+    this.nodesLeft = nodeBudget;
+    this.budgetExhausted = false;
+    this.nodesUsed = 0;
     this.search(limit, count);
-    return count.n;
+    return this.budgetExhausted ? -1 : count.n;
   }
 
-  /** The puzzle's solution grid, or `null` if there is none. */
+  /** The puzzle's solution grid, or `null` if there is none. Never budget-limited. */
   solve(): number[][] | null {
-    if (!this.solution) this.search(1, { n: 0 });
+    if (!this.solution) {
+      this.nodesLeft = Infinity;
+      this.budgetExhausted = false;
+      this.search(1, { n: 0 });
+    }
     return this.solution;
   }
 }

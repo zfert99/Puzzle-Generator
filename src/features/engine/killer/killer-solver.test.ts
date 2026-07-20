@@ -112,6 +112,20 @@ describe('KillerSolver — solving & uniqueness', () => {
     expect(new KillerSolver(cages, 4).solve()).toEqual(SOL4);
   });
 
+  it('returns -1 (reject, never a false unique) when the node budget is exhausted', () => {
+    // One cage per row, each summing to 45, no givens — a massively ambiguous layout whose
+    // search cannot possibly finish inside a 5-node budget.
+    const cages: Cage[] = Array.from({ length: 9 }, (_, r) => ({
+      id: r,
+      sum: 45,
+      cells: Array.from({ length: 9 }, (_, c) => r * 9 + c),
+    }));
+    const solver = new KillerSolver(cages, 9);
+    expect(solver.countSolutions(2, 5)).toBe(-1);
+    // And an un-budgeted solve on a fresh instance still works (budget never leaks state).
+    expect(solver.solve()).not.toBeNull();
+  });
+
   it('reports 0 solutions for an impossible cage sum', () => {
     // A 2-cell cage summing to 3 = {1,2}, but pin a neighbor to 1 in the same row so the cage
     // cannot be completed — no solution.

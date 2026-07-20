@@ -101,6 +101,12 @@ const MASK_TABLE: readonly (readonly number[])[] = deepFreeze(
   COMBO_TABLE.map((sumRow) => sumRow.map((combos) => unionMaskOf(combos))),
 );
 
+/** Each combination pre-packed as a bitmask, aligned with `COMBO_TABLE` — one array read +
+ * bit-and per combination lets `candidateMaskExcluding` filter without touching digit arrays. */
+const COMBO_MASK_TABLE: readonly (readonly (readonly number[])[])[] = deepFreeze(
+  COMBO_TABLE.map((sumRow) => sumRow.map((combos) => combos.map((combo) => bitsOf(combo)))),
+);
+
 const GUARANTEED_TABLE: readonly (readonly number[])[] = deepFreeze(
   COMBO_TABLE.map((sumRow) => sumRow.map((combos) => guaranteedMaskOf(combos))),
 );
@@ -152,4 +158,39 @@ export function candidateMaskFor(size: number, sum: number): number {
  */
 export function guaranteedMaskFor(size: number, sum: number): number {
   return GUARANTEED_TABLE[size]?.[sum] ?? 0;
+}
+
+/**
+ * Like `candidateMaskFor`, but only over combinations DISJOINT from `usedMask` (digits already
+ * placed in the cage). This is the E1/P1 pruning fix: the plain union admits digits that
+ * appear only in combinations containing an already-used digit — dead branches the plain mask
+ * lets the exact solver explore. Measured on maxSize-4 no-givens layouts, that difference is
+ * the bulk of the solver's thrash (see `killer-expert-implementation-plan.md`).
+ *
+ * The result never contains `usedMask` digits (a disjoint combination can't contribute them),
+ * so callers don't need an extra `& ~used`. `0` means no completion exists — prune the branch.
+ * Linear scan over ≤ 12 precomputed masks; no memo needed (measured).
+ *
+ * @example
+ * candidateMaskFor(2, 8)                    // {1,2,3,5,6,7}   ({2,6} included)
+ * candidateMaskExcluding(2, 8, 1 << (2-1))  // {1,3,5,7}       (2 used → {2,6} filtered out)
+ */
+// Lazy memo for `candidateMaskExcluding`: flat (size, sum, used) → mask. 10 × 46 × 512
+// Int32 entries ≈ 940 KB, −1 = unfilled (0 is a real "impossible" answer). Measured: the
+// unmemoized ≤12-mask scan ran on every `candidates()` call of every search node and cost
+// MORE than the pruning saved (~3× slower verify); memoized it is an array read after warmup.
+const EXCLUDING_MEMO = new Int32Array(10 * (MAX_SUM + 1) * (1 << MAX_DIGIT)).fill(-1);
+
+export function candidateMaskExcluding(size: number, sum: number, usedMask: number): number {
+  if (size < 0 || size > MAX_DIGIT || sum < 0 || sum > MAX_SUM) return 0;
+  const key = (size * (MAX_SUM + 1) + sum) * (1 << MAX_DIGIT) + usedMask;
+  const cached = EXCLUDING_MEMO[key];
+  if (cached !== -1) return cached;
+  const comboMasks = COMBO_MASK_TABLE[size][sum];
+  let mask = 0;
+  for (const comboMask of comboMasks) {
+    if ((comboMask & usedMask) === 0) mask |= comboMask;
+  }
+  EXCLUDING_MEMO[key] = mask;
+  return mask;
 }
