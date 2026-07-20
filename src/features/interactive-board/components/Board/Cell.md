@@ -31,3 +31,10 @@ Render <div role="gridcell"> with:
   onClick -> selectCell.
   Body: the value if placed, else a mini grid of pencil-mark candidates from the mask.
 ```
+
+## Cage highlighting (Killer)
+
+The peer highlight covers the selected cell's **cage** as well as its row/column/box — a cage
+is a no-repeat constraint region, so its members are peers in every sense that matters to the
+player. The check is O(1) per cell via the store's precomputed `cellToCage` map (empty for
+classic games, so classic behaviour is untouched).

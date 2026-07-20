@@ -106,3 +106,11 @@ The store's `difficulty` is a `BoardDifficulty = Difficulty | 'killer'` — the 
 like classic). `startNewGame` accepts `BoardPuzzle`, which widens the engine puzzle types'
 difficulty to `BoardDifficulty` so a daily row keyed `'killer'` starts directly. The
 killer-vs-classic branch is unchanged: presence of `cages` on the puzzle object.
+
+## `cellToCage` (cage highlighting)
+
+A flat cell-index → cage-id map (−1 where uncaged, `[]` for classic), built once in
+`startNewGame` and rebuilt from `cages` on rehydration (same derived-state treatment as
+`peers` — never persisted). It exists so each cell's highlight selector can answer "same cage
+as the selection?" in O(1); scanning the cage list per cell per keystroke would blow the INP
+budget (AGENTS.md §3).

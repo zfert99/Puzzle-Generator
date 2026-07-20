@@ -44,6 +44,13 @@ export interface BoardState {
   variant: PuzzleVariant;
   /** Killer cages (empty for classic) — drives cage rendering and cage-mate pencil-mark stripping. */
   cages: Cage[];
+  /**
+   * Flat cell index → cage id (−1 = no cage / classic). Precomputed at game start so each
+   * cell's highlight selector answers "same cage as the selection?" in O(1) — scanning
+   * `cages` per cell per keystroke would break the INP budget. Derived from `cages`, so it
+   * is rebuilt on rehydration rather than persisted (same treatment as `peers`).
+   */
+  cellToCage: number[];
 
   // UI / session state (deliberately NOT tracked by undo/redo)
   difficulty: BoardDifficulty;
@@ -78,6 +85,16 @@ export interface BoardState {
 const emptyGrid = (size: number): number[][] =>
   Array.from({ length: size }, () => Array<number>(size).fill(0));
 
+/** Flat cell index → cage id map (−1 where uncaged); [] for classic games. */
+const buildCellToCage = (cages: Cage[], size: number): number[] => {
+  if (cages.length === 0) return [];
+  const map = new Array<number>(size * size).fill(-1);
+  for (const cage of cages) {
+    for (const cell of cage.cells) map[cell] = cage.id;
+  }
+  return map;
+};
+
 const initialConfig = getGridConfig(9);
 
 /**
@@ -105,6 +122,7 @@ export const useBoardStore = create<BoardState>()(
 
       variant: 'classic',
       cages: [],
+      cellToCage: [],
 
       difficulty: 'easy' as Difficulty,
       selectedCell: null,
@@ -130,6 +148,7 @@ export const useBoardStore = create<BoardState>()(
           peers: computePeers(config),
           variant: isKiller ? 'killer' : 'classic',
           cages: isKiller ? puzzle.cages : [],
+          cellToCage: isKiller ? buildCellToCage(puzzle.cages, size) : [],
           difficulty: puzzle.difficulty,
           selectedCell: null,
           pencilMode: false,
@@ -288,7 +307,10 @@ export const useBoardStore = create<BoardState>()(
           mistakes: state.mistakes,
         }),
         onRehydrateStorage: () => (state) => {
-          if (state && state.config) state.peers = computePeers(state.config);
+          if (state && state.config) {
+            state.peers = computePeers(state.config);
+            state.cellToCage = buildCellToCage(state.cages ?? [], state.config.size);
+          }
         },
       }
     ),

@@ -22,11 +22,20 @@ export function Cell({ r, c }: CellProps) {
       const sel = s.selectedCell;
       const cfg = s.config;
       const isSelf = sel != null && sel.r === r && sel.c === c;
+      // A Killer cage is a constraint region like a house — its members highlight as peers
+      // too. O(1) via the precomputed cellToCage map (empty for classic games).
+      const sameCage =
+        sel != null &&
+        !isSelf &&
+        s.cellToCage.length > 0 &&
+        s.cellToCage[sel.r * cfg.size + sel.c] !== -1 &&
+        s.cellToCage[sel.r * cfg.size + sel.c] === s.cellToCage[r * cfg.size + c];
       const samePeer =
         sel != null &&
         !isSelf &&
         (sel.r === r ||
           sel.c === c ||
+          sameCage ||
           (Math.floor(sel.r / cfg.boxHeight) === Math.floor(r / cfg.boxHeight) &&
             Math.floor(sel.c / cfg.boxWidth) === Math.floor(c / cfg.boxWidth)));
       const v = s.grid[r][c];
