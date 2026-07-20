@@ -1,6 +1,7 @@
 # Killer Sudoku Beyond 9×9: A Grid-Size Variant Guide for Engine Builders
 
 ## TL;DR
+
 - **6×6 (digits 1–6, rectangular 2×3 or 3×2 boxes) is the only widely published non-9×9 Killer size**, positioned as a beginner/tutorial format; 8×8, 12×12, and 16×16 exist as genuine published puzzles but are niche/novelty, and in every case the core rules scale mechanically — house-sum target, no-repeat-in-cage, and maximum cage size all track the digit count N.
 - **Nothing conceptual changes when you resize — only the constants do.** The "Rule of 45" generalizes to N(N+1)/2: Rule of 21 (6×6), 36 (8×8), 78 (12×12), 136 (16×16); the maximum cage size caps at N cells; and the combination tables shrink dramatically at 6×6 and explode at 12×12/16×16.
 - **For an engine, the correct design is a solver/generator fully parameterized on grid order N**, exactly as KDE's open-source KSudoku does (its `makeCages()` exposes maxSize, maxValue, and maxCombos as tunable parameters). Bitmask backtracking remains efficient at 16×16 provided you widen the per-house masks from 16-bit (which fits 1–9) to 32-bit.
