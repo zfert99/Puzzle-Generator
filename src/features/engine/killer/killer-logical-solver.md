@@ -115,3 +115,32 @@ and larger cages are dominated by puzzles beyond the current techniques. So K5 s
 easy/medium/hard (tiers 1–3). Tier 4 stays wired and graded (and is exercised soundly by the
 maxSize-4 tests) for when more Killer techniques are added — cage splitting, deeper chains — to
 fill that band and unlock expert/extreme.
+
+## E2: Killer-tough techniques + the 0–5 tier remap (July 2026)
+
+`KillerTier` grew to 0–5 (expert plan, slice E2). Tiers 1–3 are FROZEN — the shipped
+easy/medium/hard caps depend on their semantics. The old catch-all tier 4 split:
+
+- **Tier 4 — Killer-tough (expert's ceiling):** two new techniques plus classic
+  X-Wing/Swordfish/Y-Wing.
+  - `cageComboRestriction` ("hard combinations"): filters each cage's combinations by the
+    current candidate grid — every combo digit needs a home cell, and the combo must pass
+    **Hall's condition** (every digit-subset has enough host cells; ≤ 2⁵ subsets, trivially
+    cheap). Digits in no viable combination are eliminated. Sound because viability only
+    over-approximates.
+  - `ruleOf45MultiCell`: tier 3 places single innies/outies; this generalizes to 2–4-cell
+    leftovers as **pseudo-cages** with known sums — sound only under a distinctness
+    guarantor (all cells share a cage, row, column, or box; guarantors' placed digits feed
+    `candidateMaskExcluding`). Regions now include **single boxes** (previously only
+    row/column unions, so box innies/outies could never fire).
+- **Tier 5 — extreme:** XYZ-Wing, W-Wing, ALS-XZ, AIC (the old tier-4 tail).
+
+`solve({ disable })` skips named techniques — the capability-toggling hook the necessity
+tests use (research: never infer necessity from a single trace; disable and re-solve).
+
+**Measured gate (E2): met.** Gradable maxSize-4 unique layouts went ~7% (pre-E2 techniques,
+same fixture set) → 33% (same-cage-only pseudo-cages) → **57%** (house guarantors + Hall +
+box regions), with 93 logically-solved layouts fuzzing 0 mismatches against the exact
+solver. Tier spread on that set: 14× tier 4, 3× tier 5 — both new bands are populated.
+Existing tiers unaffected: identical traces for puzzles solvable ≤ tier 3 (cheapest-first
+ordering), bands hold, generation 9/75/291 ms.

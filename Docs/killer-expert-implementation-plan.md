@@ -105,7 +105,15 @@ uniqueness in **≤ 50 ms avg** (parent plan §7 target) and easy/medium/hard ge
 **no regression** (re-run the 20-sample benchmark). If P1+P2 both miss, stop and rethink —
 do not ship expert on multi-second verifies.
 
-### E2 — Killer techniques + tier remap (unlocks W2)
+### E2 — Killer techniques + tier remap (unlocks W2) — ✅ done (July 2026)
+
+**Outcome:** gate met — gradable maxSize-4 uniques 7% → **57%** (target ≥ 40%). Shipped:
+`cageComboRestriction` (combo viability + Hall's condition), `ruleOf45MultiCell`
+(2–4-cell pseudo-cages under cage/house distinctness guarantors), box regions, the 0–5
+tier remap (tier 4 = Killer-tough + classic advanced, tier 5 = extreme), technique
+weights, and `solve({ disable })` with a capability-toggling necessity test. Soundness:
+93 solved layouts fuzzed against the exact solver, 0 mismatches. Existing tiers:
+identical traces, bands hold, no speed regression. Details: `killer-logical-solver.md`.
 
 In `killer-logical-solver.ts` (technique table just grows rows):
 

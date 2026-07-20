@@ -23,19 +23,20 @@ import {
 } from '../strategies/basic';
 import { applyXWing, applyYWing, applySwordfish, applyXYZWing } from '../strategies/advanced';
 import { applyWWing, applyALSXZ, applyAIC } from '../strategies/extreme';
-import { candidateMaskFor, guaranteedMaskFor } from './cage-combinations';
+import { candidateMaskFor, candidateMaskExcluding, combosFor, guaranteedMaskFor } from './cage-combinations';
 import type { Cage } from './killer-types';
 
 /**
  * Grading tiers: 0 = already solved; 1 = magic cages / single-45 / singles; 2 = consistent-digit
- * / pairs; 3 = multi-unit 45 / pointing; 4 = classic advanced + extreme (X-Wing … AIC).
+ * / pairs; 3 = multi-unit 45 / pointing; 4 = Killer-tough (combo restriction, multi-cell
+ * innies/outies pseudo-cages) + classic advanced (X-Wing/Swordfish/Y-Wing); 5 = extreme
+ * (XYZ/W-Wing, ALS-XZ, AIC).
  *
- * Killer v1 generates only tiers 1–3 (easy/medium/hard) — measured, those are abundant and fast;
- * tier-4 puzzles that are *solvable* are a thin band and the "unsolvable-by-this-solver" fraction
- * dominates larger cages. Tier 4 is still graded (and capped) so the ladder is complete for when
- * more Killer techniques are added.
+ * The 0–5 remap is the E2 slice of the expert plan: tiers 1–3 semantics are FROZEN (the shipped
+ * easy/medium/hard caps depend on them); the old catch-all tier 4 split into a Killer-tough
+ * tier 4 (expert's ceiling) and an extreme tier 5.
  */
-export type KillerTier = 0 | 1 | 2 | 3 | 4;
+export type KillerTier = 0 | 1 | 2 | 3 | 4 | 5;
 
 /** Every technique the deduction loop can apply, in priority order. */
 export type KillerTechnique =
@@ -48,6 +49,8 @@ export type KillerTechnique =
   | 'hiddenPair'
   | 'ruleOf45Regions'
   | 'pointingPairs'
+  | 'cageComboRestriction'
+  | 'ruleOf45MultiCell'
   | 'xWing'
   | 'swordfish'
   | 'yWing'
@@ -132,7 +135,9 @@ export class KillerLogicalSolver {
     return houses;
   }
 
-  /** Unions of 1–3 contiguous rows and 1–3 contiguous columns — each a whole-house region. */
+  /** Unions of 1–3 contiguous rows / columns, plus every single box — whole-house regions.
+   * Boxes were added in E2: without them, a box's multi-cell innies/outies never fire (the
+   * single-cell box case is tier 1's, but the pseudo-cage generalization needs the region). */
   private buildRegions(): { cells: Set<number>; houseCount: number }[] {
     const size = this.size;
     const regions: { cells: Set<number>; houseCount: number }[] = [];
@@ -149,6 +154,17 @@ export class KillerLogicalSolver {
         regions.push({ cells: rowCells, houseCount: len });
         regions.push({ cells: colCells, houseCount: len });
       }
+    }
+    for (let b = 0; b < size; b++) {
+      const boxRow = Math.floor(b / this.boxesPerRow);
+      const boxCol = b % this.boxesPerRow;
+      const cells = new Set<number>();
+      for (let dr = 0; dr < this.boxHeight; dr++) {
+        for (let dc = 0; dc < this.boxWidth; dc++) {
+          cells.add((boxRow * this.boxHeight + dr) * size + (boxCol * this.boxWidth + dc));
+        }
+      }
+      regions.push({ cells, houseCount: 1 });
     }
     return regions;
   }
@@ -299,6 +315,190 @@ export class KillerLogicalSolver {
   }
 
   /**
+   * Combo-restricted cage arithmetic — "hard combinations" (Tier 4). Tier 1's cage arithmetic
+   * allows any digit from any remaining combination; this pass filters each cage's combinations
+   * by the CURRENT candidate grid: a combination is viable only if every one of its digits
+   * still has a home among the cage's remaining cells. Digits appearing in no viable
+   * combination are eliminated.
+   *
+   * Sound because viability only ever OVER-approximates: a digit with no candidate home makes
+   * its combination impossible in every solution, so discarding it can never discard a truth.
+   * (A full matching test would be tighter but costs factorially more — this is the SudokuWiki
+   * "hard combinations" level, not exact-cover.)
+   */
+  private applyCageComboRestriction(): boolean {
+    let changed = false;
+    for (const cage of this.cages) {
+      const { used, sumLeft, remaining } = this.cageState(cage);
+      if (remaining.length < 2) continue;
+
+      // Union of cell candidates per digit — which digits still have a home in this cage.
+      const cellMasks = remaining.map((cell) =>
+        this.hs.candidates[Math.floor(cell / this.size)][cell % this.size],
+      );
+      let homeMask = 0;
+      for (const mask of cellMasks) homeMask |= mask;
+
+      let viableMask = 0;
+      for (const combo of combosFor(remaining.length, sumLeft)) {
+        let comboMask = 0;
+        for (const digit of combo) comboMask |= 1 << (digit - 1);
+        if (comboMask & used) continue; // contains a digit the cage already placed
+        if ((comboMask & homeMask) !== comboMask) continue; // some digit has no home cell
+        if (!this.comboAssignable(comboMask, cellMasks)) continue; // fails Hall's condition
+        viableMask |= comboMask;
+      }
+
+      for (const cell of remaining) {
+        const r = Math.floor(cell / this.size);
+        const c = cell % this.size;
+        if ((this.hs.candidates[r][c] & ~viableMask) !== 0) {
+          this.hs.candidates[r][c] &= viableMask;
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  /**
+   * Hall's-condition test that a combination's digits can be simultaneously assigned to the
+   * cage's remaining cells: every SUBSET of the combo's digits must have at least |subset|
+   * cells that can host one of them. Cages are ≤ 5 cells in practice, so enumerating the
+   * ≤ 2^5 subsets is trivially cheap and strictly stronger than the digit-has-a-home check
+   * (which is the |subset| = 1 case). Sound: a combo failing Hall cannot occur in any
+   * solution, so discarding it never discards a truth.
+   */
+  private comboAssignable(comboMask: number, cellMasks: number[]): boolean {
+    const digits: number[] = [];
+    let m = comboMask;
+    while (m) {
+      const bit = m & -m;
+      digits.push(bit);
+      m &= m - 1;
+    }
+    const subsets = 1 << digits.length;
+    for (let subset = 1; subset < subsets; subset++) {
+      let subsetMask = 0;
+      let need = 0;
+      for (let i = 0; i < digits.length; i++) {
+        if (subset & (1 << i)) {
+          subsetMask |= digits[i];
+          need += 1;
+        }
+      }
+      let hosts = 0;
+      for (const cellMask of cellMasks) if (cellMask & subsetMask) hosts += 1;
+      if (hosts < need) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Multi-cell innies/outies as pseudo-cages (Tier 4). Tier 3 places a SINGLE leftover cell;
+   * this pass handles 2–4 leftover cells whose digits are guaranteed DISTINCT — either they
+   * all belong to one real cage (no-repeat rule) or they all share a house (row/col/box rule;
+   * the far more common case — a one-row region's innies are always same-house). The leftover
+   * set then behaves as a pseudo-cage with a known sum: restrict its cells to combinations of
+   * that (count, sum) disjoint from the digits its guarantor cage/house has already placed.
+   * Leftovers with no distinctness guarantor may legally repeat digits, so they are skipped.
+   */
+  private applyRuleOf45MultiCell(): boolean {
+    let changed = false;
+    for (const region of this.regions) {
+      const total = this.houseSum * region.houseCount;
+      const touching = new Set<number>();
+      for (const cell of region.cells) touching.add(this.cellToCage[cell]);
+
+      let touchingSum = 0;
+      let containedSum = 0;
+      const containedCells = new Set<number>();
+      const outieCells: number[] = [];
+      for (const cageIndex of touching) {
+        const cage = this.cages[cageIndex];
+        touchingSum += cage.sum;
+        if (cage.cells.every((cell) => region.cells.has(cell))) {
+          containedSum += cage.sum;
+          for (const cell of cage.cells) containedCells.add(cell);
+        } else {
+          for (const cell of cage.cells) if (!region.cells.has(cell)) outieCells.push(cell);
+        }
+      }
+      const innieCells: number[] = [];
+      for (const cell of region.cells) if (!containedCells.has(cell)) innieCells.push(cell);
+
+      changed = this.restrictPseudoCage(innieCells, total - containedSum) || changed;
+      changed = this.restrictPseudoCage(outieCells, touchingSum - total) || changed;
+    }
+    return changed;
+  }
+
+  /** Restrict a 2–4 cell pseudo-cage of known `sum` to its viable digits — sound only when a
+   * guarantor (shared cage or shared house) makes the cells' digits provably distinct. */
+  private restrictPseudoCage(cells: number[], sum: number): boolean {
+    if (cells.length < 2 || cells.length > 4) return false;
+
+    // Distinctness guarantors — combine every one that applies into the excluded-digit mask
+    // (a digit placed anywhere in a guarantor can't reappear in the pseudo-cage's cells).
+    let used = 0;
+    let guaranteed = false;
+    const cageIndex = this.cellToCage[cells[0]];
+    if (cells.every((cell) => this.cellToCage[cell] === cageIndex)) {
+      guaranteed = true;
+      used |= this.cageState(this.cages[cageIndex]).used;
+    }
+    const sharedRow = Math.floor(cells[0] / this.size);
+    const sharedCol = cells[0] % this.size;
+    const sharedBox = this.boxIndex(cells[0]);
+    if (cells.every((cell) => Math.floor(cell / this.size) === sharedRow)) {
+      guaranteed = true;
+      used |= this.placedMaskOfHouse(this.houses[sharedRow]);
+    }
+    if (cells.every((cell) => cell % this.size === sharedCol)) {
+      guaranteed = true;
+      used |= this.placedMaskOfHouse(this.houses[this.size + sharedCol]);
+    }
+    if (cells.every((cell) => this.boxIndex(cell) === sharedBox)) {
+      guaranteed = true;
+      used |= this.placedMaskOfHouse(this.houses[2 * this.size + sharedBox]);
+    }
+    if (!guaranteed) return false;
+
+    // Subtract already-placed pseudo-cage cells (their digits are inside `used` already, but
+    // the SUM still needs reducing); the empties must make up the rest with unused digits.
+    let remSum = sum;
+    const empty: number[] = [];
+    for (const cell of cells) {
+      const digit = this.hs.grid[Math.floor(cell / this.size)][cell % this.size];
+      if (digit !== 0) remSum -= digit;
+      else empty.push(cell);
+    }
+    if (empty.length === 0) return false;
+    const allowed = candidateMaskExcluding(empty.length, remSum, used);
+
+    let changed = false;
+    for (const cell of empty) {
+      const r = Math.floor(cell / this.size);
+      const c = cell % this.size;
+      if ((this.hs.candidates[r][c] & ~allowed) !== 0) {
+        this.hs.candidates[r][c] &= allowed;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  /** Bitmask of digits already placed in a house (list of flat cell indices). */
+  private placedMaskOfHouse(houseCells: number[]): number {
+    let mask = 0;
+    for (const cell of houseCells) {
+      const digit = this.hs.grid[Math.floor(cell / this.size)][cell % this.size];
+      if (digit !== 0) mask |= 1 << (digit - 1);
+    }
+    return mask;
+  }
+
+  /**
    * Multi-unit Rule of 45 (Tier 3) — innies and outies over regions that are unions of complete
    * houses (so their total is `houseSum × houseCount`). For a region R:
    *   sum(R) = total  ⇒  a single "innie" cell (in R, part of a cage straddling out) = total −
@@ -358,9 +558,10 @@ export class KillerLogicalSolver {
    * Run the deduction loop until solved or stuck, cheapest technique first (so ripple effects are
    * exhausted before anything harder), recording the hardest tier that unsticks it — the grade.
    *
-   * `maxTier` caps which techniques may run (default 4 = all). The generator passes the *target*
-   * tier so that grading a would-be "medium" never pays for the expensive Tier-4 strategies: a
+   * `maxTier` caps which techniques may run (default 5 = all). The generator passes the *target*
+   * tier so that grading a would-be "medium" never pays for the expensive tier-4/5 strategies: a
    * puzzle needing more than `maxTier` simply comes back `solved: false`, which is a reject.
+   * `disable` skips named techniques — the capability-toggling hook necessity tests use.
    *
    * The result carries the raw material for two-factor difficulty scoring (`killer-score.ts`):
    * per-technique application counts (how much of WHAT work) and the mean number of naked singles
@@ -368,8 +569,9 @@ export class KillerLogicalSolver {
    * forgiving grid; a bottlenecked grid forces one narrow path and plays harder). Openness is
    * sampled at each pass start for one popcount-scan of the grid (~µs), keeping grading cheap.
    */
-  solve(options: { maxTier?: KillerTier } = {}): KillerSolveResult {
-    const cap = options.maxTier ?? 4;
+  solve(options: { maxTier?: KillerTier; disable?: readonly KillerTechnique[] } = {}): KillerSolveResult {
+    const cap = options.maxTier ?? 5;
+    const disabled = new Set(options.disable ?? []);
     const techniques: { name: KillerTechnique; tier: KillerTier; apply: () => boolean }[] = [
       { name: 'cageArithmetic', tier: 1, apply: () => this.applyCageArithmetic() },
       { name: 'nakedSingle', tier: 1, apply: () => applyNakedSingle(this.hs) },
@@ -380,13 +582,17 @@ export class KillerLogicalSolver {
       { name: 'hiddenPair', tier: 2, apply: () => applyHiddenPair(this.hs) },
       { name: 'ruleOf45Regions', tier: 3, apply: () => this.applyRuleOf45Regions() },
       { name: 'pointingPairs', tier: 3, apply: () => applyPointingPairs(this.hs) },
+      // ---- Tier 4: Killer-tough (E2) + classic advanced — expert's ceiling ----
+      { name: 'cageComboRestriction', tier: 4, apply: () => this.applyCageComboRestriction() },
+      { name: 'ruleOf45MultiCell', tier: 4, apply: () => this.applyRuleOf45MultiCell() },
       { name: 'xWing', tier: 4, apply: () => applyXWing(this.hs) },
       { name: 'swordfish', tier: 4, apply: () => applySwordfish(this.hs) },
       { name: 'yWing', tier: 4, apply: () => applyYWing(this.hs) },
-      { name: 'xyzWing', tier: 4, apply: () => applyXYZWing(this.hs) },
-      { name: 'wWing', tier: 4, apply: () => applyWWing(this.hs) },
-      { name: 'alsXZ', tier: 4, apply: () => applyALSXZ(this.hs) },
-      { name: 'aic', tier: 4, apply: () => applyAIC(this.hs) },
+      // ---- Tier 5: extreme ----
+      { name: 'xyzWing', tier: 5, apply: () => applyXYZWing(this.hs) },
+      { name: 'wWing', tier: 5, apply: () => applyWWing(this.hs) },
+      { name: 'alsXZ', tier: 5, apply: () => applyALSXZ(this.hs) },
+      { name: 'aic', tier: 5, apply: () => applyAIC(this.hs) },
     ];
 
     const techniqueCounts: Partial<Record<KillerTechnique, number>> = {};
@@ -401,7 +607,8 @@ export class KillerLogicalSolver {
 
       for (const technique of techniques) {
         if (technique.tier > cap) break; // table is tier-ordered; nothing further may run
-        if (technique.tier === 4 && this.size !== 9) break;
+        if (technique.tier >= 4 && this.size !== 9) break;
+        if (disabled.has(technique.name)) continue; // necessity testing (capability toggling)
         if (technique.apply()) {
           this.note(technique.tier);
           techniqueCounts[technique.name] = (techniqueCounts[technique.name] ?? 0) + 1;

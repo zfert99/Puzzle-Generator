@@ -91,14 +91,34 @@ describe('KillerLogicalSolver — tiered grading', () => {
     expect(capped.hardestTier).toBeLessThanOrEqual(2);
   });
 
-  it('gets stuck (does not solve) on looser puzzles — without corrupting them', () => {
-    let anyUnsolved = false;
+  it('never corrupts a puzzle it works on, solved or stuck (maxSize-4 fuzz)', () => {
+    // Historical note: this test once ALSO asserted that some maxSize-4 puzzles must stay
+    // unsolved — true before E2, when ~86% were beyond the technique set. The E2 techniques
+    // (combo restriction with Hall's condition, multi-cell pseudo-cages, box regions) solve
+    // this fixture set outright, so the surviving invariant is the one that matters:
+    // everything the solver derives, on any puzzle, must match the true solution.
     for (let seed = 1; seed <= 20; seed++) {
       const { cages } = generateUniqueKiller(4, { solution: SOL9, rng: mulberry32(seed * 7) });
       const ls = new KillerLogicalSolver(cages, 9);
-      if (!ls.solve().solved) anyUnsolved = true;
+      ls.solve();
       expect(unsoundPlacements(ls.grid, SOL9)).toBe(0);
     }
-    expect(anyUnsolved).toBe(true); // some maxSize-4 puzzles are beyond the implemented techniques
+  });
+
+  it('exposes the new tier-4/5 split: capability-toggling the E2 techniques changes solvability', () => {
+    // Find a puzzle that SOLVES with the full technique set but STALLS when the two E2
+    // killer-tough techniques are disabled — proving they are necessary (research's
+    // capability-toggling necessity test), not merely present in a trace.
+    let proven = false;
+    for (let seed = 1; seed <= 60 && !proven; seed++) {
+      const { cages } = generateUniqueKiller(4, { solution: SOL9, rng: mulberry32(seed * 13) });
+      const withAll = new KillerLogicalSolver(cages, 9).solve();
+      if (!withAll.solved || withAll.hardestTier < 4) continue;
+      const without = new KillerLogicalSolver(cages, 9).solve({
+        disable: ['cageComboRestriction', 'ruleOf45MultiCell'],
+      });
+      if (!without.solved) proven = true;
+    }
+    expect(proven).toBe(true);
   });
 });
