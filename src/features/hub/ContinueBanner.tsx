@@ -17,7 +17,9 @@ export function ContinueBanner() {
   const what =
     saved.mode === 'daily'
       ? `Daily · ${saved.difficulty}`
-      : `${saved.gridSize}×${saved.gridSize} · ${saved.difficulty}`;
+      : saved.variant === 'killer'
+        ? `Killer · ${saved.difficulty}`
+        : `${saved.gridSize}×${saved.gridSize} · ${saved.difficulty}`;
 
   return (
     <Link

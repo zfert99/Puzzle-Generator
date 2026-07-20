@@ -16,3 +16,8 @@ Continue is offered in three places (hub + each config screen). The hub banner r
 owning surface's menu, where the same Continue button resumes play. Keeping the actual resume
 on the surface avoids threading a "resume now" signal through the URL (and the Suspense/render
 caveats that `useSearchParams` would add), at the cost of one extra click from the hub.
+
+## Killer-aware label
+
+A saved free-play Killer game reads "Killer · medium" instead of the misleading
+"9×9 · medium" (`SavedGame.variant`); a parked Killer daily reads "Daily · killer" as before.

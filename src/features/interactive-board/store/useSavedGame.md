@@ -27,3 +27,6 @@ and first client render agree and callers can treat `null` as "nothing to contin
 
 `SavedGame.difficulty` is a `BoardDifficulty` (may be the literal `'killer'` for a parked
 Killer daily) — continue labels render it as-is.
+
+`SavedGame.variant` (classic | killer) is included so continue labels can say "Killer ·
+medium" rather than the misleading "9×9 · medium".

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { GridSize } from '@/features/engine/sudoku';
-import { useBoardStore, type BoardMode, type BoardDifficulty } from './useBoardStore';
+import { useBoardStore, type BoardMode, type BoardDifficulty, type PuzzleVariant } from './useBoardStore';
 
 /**
  * A one-slot description of the single in-progress game the board store is holding, or `null`
@@ -12,6 +12,8 @@ import { useBoardStore, type BoardMode, type BoardDifficulty } from './useBoardS
 export interface SavedGame {
   mode: BoardMode;
   difficulty: BoardDifficulty;
+  /** Lets continue labels say "Killer · medium" instead of a misleading "9×9 · medium". */
+  variant: PuzzleVariant;
   gridSize: GridSize;
   /** Seconds elapsed (the client timer; frozen while away, resumes on continue). */
   elapsedTime: number;
@@ -41,6 +43,7 @@ export function useSavedGame(): SavedGame | null {
       return {
         mode: s.mode,
         difficulty: s.difficulty,
+        variant: s.variant,
         gridSize: s.gridSize,
         elapsedTime: s.elapsedTime,
         dailyDate: s.dailyDate,
