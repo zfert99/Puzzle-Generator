@@ -247,3 +247,27 @@ Speed after banding (20 samples, zero failures): easy 12 ms, medium 117 ms, hard
 (1.45 s max) — the band rejections cost medium ~30 ms and hard ~120 ms over the unbanded
 pipeline, well within budget. The cuts must be re-measured whenever weights, shape gates, or
 solver techniques change (they are relative cuts, Stuart-style, not absolute numbers).
+
+## Addendum 3: expert tier shipped (K10 E1–E4, July 2026)
+
+The walls this report documented came down in measured order (full detail:
+[killer-expert-implementation-plan.md](killer-expert-implementation-plan.md)):
+
+- **W1 (solver thrash):** combo-filtered candidate masks (memoized after the unmemoized
+  version measured 3× SLOWER — the per-node scan cost more than it saved) plus a node budget.
+  maxSize-4 verifies: 191 ms avg / 7.7 s max → **33.6 ms avg / 94 ms max**. A 45-rule house
+  bound was A/B'd on fixed fixtures, found a pure 25–30% loss, and removed.
+- **W2 (technique gap):** `cageComboRestriction` (combo viability + Hall's condition) and
+  `ruleOf45MultiCell` (pseudo-cages under cage/house distinctness guarantors) + box regions;
+  `KillerTier` remapped 0–5. Gradable max4 uniques **7% → 57%**; 93-layout soundness fuzz,
+  0 mismatches.
+- **W3 (thin band):** expert's shape is so constrained that necessity is nearly free (283 of
+  284 cap-4-solvable layouts genuinely need tier 4) and yield hit **4.6 unique experts/sec**
+  raw — no pre-filter needed. Shipped config: solveCap 4 + minTier 4, sizes 2–4, ≤ 1 single,
+  ≤ 1 foothold, 100 k-node verify, score ≥ 90 (hard re-cut to 62–90; both keep ~85%).
+- **Final ladder benchmarks** (20 each, 0 fails): easy 8 ms / medium 76 ms / hard 344 ms /
+  **expert 271 ms** avg — expert faster than hard, with cage sums to 29 that lower tiers
+  structurally cannot have.
+- **Measured non-ships:** extreme (0 tier-5-necessary layouts in 40 s — deferred until more
+  tier-5 techniques exist) and hard-at-maxSize-4 (E2's gains are all tier-4 by design; big
+  cages stay expert's signature).

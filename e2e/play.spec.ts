@@ -98,8 +98,9 @@ test.describe('Interactive play', () => {
     await page.goto('/play');
 
     await page.getByRole('button', { name: /^killer$/i }).click();
-    // Killer is 9×9 only with its own graded ladder (easy/medium/hard).
-    await expect(page.getByRole('button', { name: 'expert' })).toHaveCount(0);
+    // Killer is 9×9 only with its own graded ladder (easy/medium/hard/expert — no extreme yet).
+    await expect(page.getByRole('button', { name: 'expert', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'extreme' })).toHaveCount(0);
     await page.getByRole('button', { name: 'easy', exact: true }).click();
     await page.getByRole('button', { name: /^Play$/ }).click();
 

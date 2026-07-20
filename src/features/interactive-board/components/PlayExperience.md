@@ -69,3 +69,8 @@ expert/extreme to hard, same as a manual toggle). The route wraps the component 
 fallback matches the component's own pre-mount placeholder so there is no layout shift.
 The Continue button is also variant-aware: a saved Killer game reads "Continue Killer
 medium", not "Continue 9×9 medium".
+
+## Expert Killer (K10/E3)
+
+The Killer ladder is easy/medium/hard/**expert** (no extreme yet — deferred by measurement).
+Expert generates server-side in ~270 ms avg, so the existing "Generating…" state covers it.

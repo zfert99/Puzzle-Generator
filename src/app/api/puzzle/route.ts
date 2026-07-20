@@ -4,7 +4,7 @@ import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/k
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 
-const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard'];
+const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard', 'expert'];
 
 // The engine is pure TypeScript, but keep this on the Node.js runtime for
 // consistency with the rest of the API and to leave room for future Node-only work.
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     // ---- Killer branch (9×9, easy/medium/hard) ----
     if (variant === 'killer') {
       if (!KILLER_DIFFICULTIES.includes(difficulty)) {
-        return NextResponse.json({ error: 'Killer difficulty must be easy, medium, or hard' }, { status: 400 });
+        return NextResponse.json({ error: 'Killer difficulty must be easy, medium, hard, or expert' }, { status: 400 });
       }
       const puzzle = generateKillerSudoku(difficulty as KillerDifficulty);
       logger.info(
