@@ -94,6 +94,21 @@ test.describe('Interactive play', () => {
     await expect(gridAfter.getByRole('gridcell', { name: /value 1/i }).first()).toBeVisible();
   });
 
+  test('plays a 6×6 Killer: 36 cells, cage overlay, beginner ladder only', async ({ page }) => {
+    await page.goto('/play');
+    await page.getByRole('button', { name: /^killer$/i }).click();
+    await page.getByRole('button', { name: '6×6', exact: true }).click();
+    // Beginner size: expert/extreme chips disappear.
+    await expect(page.getByRole('button', { name: 'expert' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'easy', exact: true }).click();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+
+    const grid = page.getByRole('grid', { name: /sudoku board/i });
+    await expect(grid).toBeVisible({ timeout: 15000 });
+    await expect(grid.getByRole('gridcell')).toHaveCount(36);
+    expect(await page.locator('svg text').count()).toBeGreaterThan(8);
+  });
+
   test('plays a Killer puzzle: cage overlay renders and the board starts empty', async ({ page }) => {
     await page.goto('/play');
 

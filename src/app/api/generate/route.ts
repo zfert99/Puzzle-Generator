@@ -49,7 +49,13 @@ export async function POST(req: NextRequest) {
     
     // ---- Killer Sudoku branch (9×9, easy/medium/hard/expert/extreme) ----
     if (body?.variant === 'killer') {
-      const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0 } = body || {};
+      const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0, gridSize: killerSize = 9 } = body || {};
+      if (killerSize !== 9 && killerSize !== 6) {
+        return NextResponse.json({ error: 'Killer grid size must be 6 or 9' }, { status: 400 });
+      }
+      if (killerSize === 6 && (expert > 0 || extreme > 0)) {
+        return NextResponse.json({ error: '6×6 Killer supports easy, medium, and hard only' }, { status: 400 });
+      }
       if (![easy, medium, hard, expert, extreme].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
         return NextResponse.json({ error: 'Killer counts (easy, medium, hard, expert, extreme) must be non-negative integers' }, { status: 400 });
       }
@@ -66,7 +72,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
       }
 
-      const puzzles = generateKillerBatch({ easy, medium, hard, expert, extreme });
+      const puzzles = generateKillerBatch({ easy, medium, hard, expert, extreme }, { gridSize: killerSize });
       const pdfBuffer = await generateKillerPDF(puzzles);
       logger.info(
         { event: 'generation_success', variant: 'killer', counts: { easy, medium, hard, expert, extreme }, durationMs: Math.round(performance.now() - startTime) },

@@ -9,6 +9,7 @@ const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
 export default function PuzzleForm() {
   const [variant, setVariant] = useState<'classic' | 'killer'>('classic');
+  const [killerSize, setKillerSize] = useState<6 | 9>(9);
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
     easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0
@@ -30,7 +31,7 @@ export default function PuzzleForm() {
 
   const handleGenerate = async () => {
     if (isKiller) {
-      await generate({ variant: 'killer', easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: counts.expert, extreme: counts.extreme });
+      await generate({ variant: 'killer', gridSize: killerSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: killerSize === 9 ? counts.expert : 0, extreme: killerSize === 9 ? counts.extreme : 0 });
     } else {
       await generate({ ...counts, gridSize });
     }
@@ -59,9 +60,26 @@ export default function PuzzleForm() {
       </div>
 
       {isKiller ? (
-        <p className="text-xs text-ink-soft text-center mb-6">
-          9×9 · no givens — the cage sums are the only clue.
-        </p>
+        <>
+          <div className="flex gap-2 mb-3 justify-center">
+            {([6, 9] as const).map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setKillerSize(size)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
+                  killerSize === size ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+                }`}
+              >
+                {size}×{size}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-ink-soft text-center mb-6">
+            No givens — the cage sums are the only clue.
+            {killerSize === 6 && ' 6×6 is the beginner size: digits 1–6, easy/medium/hard.'}
+          </p>
+        </>
       ) : (
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
       )}
@@ -70,7 +88,7 @@ export default function PuzzleForm() {
         gridSize={gridSize}
         counts={counts}
         onChange={handleDifficultyChange}
-        difficulties={isKiller ? KILLER_DIFFICULTIES : undefined}
+        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : undefined}
       />
 
       {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}

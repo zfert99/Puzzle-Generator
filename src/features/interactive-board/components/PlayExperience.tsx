@@ -82,14 +82,19 @@ export default function PlayExperience() {
 
   const handleVariantChange = (v: 'classic' | 'killer') => {
     setVariant(v);
-    if (v === 'killer') {
-      setGridSize(9); // Killer is 9×9 only
-      if (difficulty === 'expert' || difficulty === 'extreme') setDifficulty('hard');
+    if (v === 'killer' && gridSize === 4) setGridSize(9); // Killer comes in 6×6 and 9×9
+    if (v === 'killer' && gridSize === 6 && (difficulty === 'expert' || difficulty === 'extreme')) {
+      setDifficulty('hard'); // 6×6 Killer is easy/medium/hard only
     }
   };
 
+  const handleKillerSizeChange = (size: 6 | 9) => {
+    setGridSize(size);
+    if (size === 6 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+  };
+
   const startFresh = async () => {
-    const puzzle = await fetchPuzzle({ difficulty, gridSize: isKiller ? 9 : gridSize, variant });
+    const puzzle = await fetchPuzzle({ difficulty, gridSize, variant });
     if (puzzle) {
       setViewingSolved(false);
       startNewGame(puzzle); // mode defaults to 'play'; variant/cages come from the puzzle
@@ -164,10 +169,27 @@ export default function PlayExperience() {
         </div>
 
         {isKiller ? (
-          <p className="text-xs text-ink-soft text-center mb-6">
-            9×9 · no givens — the cage sums are the only clue.
-            {difficulty === 'extreme' && ' Extreme puzzles are rare finds — generating one can take ~10 seconds.'}
-          </p>
+          <>
+            <div className="flex gap-2 mb-3 justify-center">
+              {([6, 9] as const).map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => handleKillerSizeChange(size)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
+                    gridSize === size ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+                  }`}
+                >
+                  {size}×{size}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-ink-soft text-center mb-6">
+              No givens — the cage sums are the only clue.
+              {gridSize === 6 && ' 6×6 is the friendly way in: digits 1–6, Rule of 21.'}
+              {difficulty === 'extreme' && gridSize === 9 && ' Extreme puzzles are rare finds — generating one can take ~10 seconds.'}
+            </p>
+          </>
         ) : (
           <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
         )}
@@ -175,7 +197,7 @@ export default function PlayExperience() {
         <div className="mb-6">
           <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Difficulty</label>
           <div className="flex flex-wrap justify-center gap-2">
-            {(isKiller ? KILLER_DIFFICULTIES : ALL_DIFFICULTIES).map((d) => {
+            {(isKiller ? (gridSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : ALL_DIFFICULTIES).map((d) => {
               const disabled = !isKiller && miniGrid && (d === 'expert' || d === 'extreme');
               return (
                 <button

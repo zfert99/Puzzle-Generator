@@ -42,12 +42,18 @@ export async function POST(req: NextRequest) {
 
     const { difficulty, gridSize = 9, variant = 'classic' } = body || {};
 
-    // ---- Killer branch (9×9, easy/medium/hard) ----
+    // ---- Killer branch (9×9 full ladder, or 6×6 easy/medium/hard) ----
     if (variant === 'killer') {
       if (!KILLER_DIFFICULTIES.includes(difficulty)) {
         return NextResponse.json({ error: 'Killer difficulty must be easy, medium, hard, expert, or extreme' }, { status: 400 });
       }
-      const puzzle = generateKillerSudoku(difficulty as KillerDifficulty);
+      if (gridSize !== 9 && gridSize !== 6) {
+        return NextResponse.json({ error: 'Killer grid size must be 6 or 9' }, { status: 400 });
+      }
+      if (gridSize === 6 && (difficulty === 'expert' || difficulty === 'extreme')) {
+        return NextResponse.json({ error: '6×6 Killer supports easy, medium, or hard' }, { status: 400 });
+      }
+      const puzzle = generateKillerSudoku(difficulty as KillerDifficulty, { gridSize });
       logger.info(
         { event: 'puzzle_success', variant: 'killer', difficulty, durationMs: Math.round(performance.now() - startTime) },
         'Generated interactive Killer puzzle',

@@ -74,3 +74,9 @@ medium", not "Continue 9×9 medium".
 
 The Killer ladder is easy/medium/hard/**expert** (no extreme yet — deferred by measurement).
 Expert generates server-side in ~270 ms avg, so the existing "Generating…" state covers it.
+
+## 6×6 Killer size choice (M3)
+
+The Killer menu offers a 6×6/9×9 toggle. At 6×6 the ladder trims to easy/medium/hard
+(expert/extreme chips hidden, selection clamped to hard); a 4×4 classic selection bumps to
+9×9 when switching into Killer. The board, cage overlay, and store were already size-generic.
