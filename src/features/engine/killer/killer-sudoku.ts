@@ -23,7 +23,7 @@ import type { Cage, KillerPuzzle } from './killer-types';
 
 const GRID_SIZE = 9;
 
-export type KillerDifficulty = 'easy' | 'medium' | 'hard';
+export type KillerDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
 interface DifficultyConfig {
   /**
@@ -53,6 +53,19 @@ interface DifficultyConfig {
    * can no longer out-play a breezy "hard". Recalibrate whenever weights or shape gates change.
    */
   scoreBand?: { min?: number; max?: number };
+  /**
+   * Band-level necessity: the puzzle must NOT be solvable with `maxTier: minTier − 1` — the
+   * capability-toggling check (research: a trace's hardestTier is order-dependent and can't
+   * prove necessity). Expert uses it so the label is honest: solvable at tier 4, stuck at 3.
+   * Measured nearly free for expert shapes (283 of 284 cap-4-solvable layouts pass).
+   */
+  minTier?: KillerTier;
+  /**
+   * Node budget for the uniqueness verification (E1/P3). Expert's big-cage layouts can
+   * pathologically thrash `countSolutions`; the budget bounds each check (~100 ms worst) at a
+   * small yield cost, never a correctness cost (budget exhaustion rejects).
+   */
+  verifyNodeBudget?: number;
 }
 
 /**
@@ -74,8 +87,9 @@ const DIFFICULTY_CONFIG: Record<KillerDifficulty, DifficultyConfig> = {
   // solver needs tighter cage-sum pruning, logical solver needs cage splitting/hard combos.
   // A per-cage `maxCombos` gate was tried and dropped (no-op at maxSize 3, fatal at 4); the
   // COUNT of single-combination cages (footholds) is the workable form of that lever.
-  // Score cuts (42/62) sit on measured 30-sample distributions: easy p75 ≈ 40, medium median 56
-  // (p25 44, p75 74), hard median 65 — disjoint bands retain ~50–80% of each tier's yield.
+  // Score cuts (42/62/90) sit on measured distributions (E3 recalibration): easy p75 ≈ 40,
+  // medium median 56, hard median 72 / p85 89, expert median 121 / p15 94 — the 90 cut keeps
+  // ~85% of both hard and expert while staying disjoint.
   easy: { solveCap: 2, minSize: 1, maxSize: 3, maxSingles: 12, scoreBand: { max: 42 } },
   medium: {
     solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 4, minFootholds: 3,
@@ -83,7 +97,16 @@ const DIFFICULTY_CONFIG: Record<KillerDifficulty, DifficultyConfig> = {
   },
   hard: {
     solveCap: 3, minSize: 2, maxSize: 3, maxSingles: 1, maxFootholds: 3,
-    scoreBand: { min: 62 },
+    scoreBand: { min: 62, max: 90 },
+  },
+  // Expert (E3): the tier the E1 pruning + E2 techniques unlocked. maxSize 4 → the big cages
+  // and > 24 sums the lower tiers can't have (max4 layouts are ~never tier-3-solvable, so big
+  // cages are expert's signature). No maxSizeBias — measured 3× worse yield for no difficulty
+  // gain. Extreme (tier 5) was measured and DEFERRED: 0 tier-5-necessary layouts in a 40 s
+  // sweep — needs more tier-5 techniques before it has a band to live in.
+  expert: {
+    solveCap: 4, minTier: 4, minSize: 2, maxSize: 4, maxSingles: 1, maxFootholds: 1,
+    scoreBand: { min: 90 }, verifyNodeBudget: 100_000,
   },
 };
 
@@ -184,6 +207,15 @@ export function generateKillerSudoku(
 
     const solveResult = new KillerLogicalSolver(cages, GRID_SIZE).solve({ maxTier: solveCap });
     if (!solveResult.solved) continue;
+    // Band-level necessity (expert): a fresh solve capped one tier below must STALL.
+    if (
+      difficultyConfig.minTier !== undefined &&
+      new KillerLogicalSolver(cages, GRID_SIZE).solve({
+        maxTier: (difficultyConfig.minTier - 1) as KillerTier,
+      }).solved
+    ) {
+      continue;
+    }
     const band = difficultyConfig.scoreBand;
     if (band) {
       const { final } = scoreKillerSolve(solveResult);
@@ -191,7 +223,7 @@ export function generateKillerSudoku(
       if (band.max !== undefined && final >= band.max) continue;
     }
 
-    if (new KillerSolver(cages, GRID_SIZE).countSolutions(2) !== 1) continue;
+    if (new KillerSolver(cages, GRID_SIZE).countSolutions(2, difficultyConfig.verifyNodeBudget) !== 1) continue;
 
     return {
       variant: 'killer',
@@ -209,7 +241,7 @@ export function generateKillerSudoku(
 /** Generate a batch of graded Killers — `counts[difficulty]` puzzles of each, easy→hard order. */
 export function generateKillerBatch(counts: Partial<Record<KillerDifficulty, number>>): KillerPuzzle[] {
   const puzzles: KillerPuzzle[] = [];
-  for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+  for (const difficulty of ['easy', 'medium', 'hard', 'expert'] as const) {
     const n = counts[difficulty] ?? 0;
     for (let i = 0; i < n; i++) puzzles.push(generateKillerSudoku(difficulty));
   }

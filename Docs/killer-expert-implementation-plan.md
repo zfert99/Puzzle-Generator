@@ -137,7 +137,17 @@ In `killer-logical-solver.ts` (technique table just grows rows):
 **~14% to ≥ 40%**, measured on a 100-layout sample. Below that, expert generation stays
 uneconomical — add the stretch techniques before proceeding.
 
-### E3 — Expert/extreme generation + full recalibration
+### E3 — Expert/extreme generation + full recalibration — ✅ done for expert (July 2026)
+
+**Outcome:** gate obliterated — expert generates in **271 ms avg / 687 ms max** (gate ≤ 5 s /
+15 s), 0 fails in 20, scores 93–163 in a disjoint ≥ 90 band (hard re-cut to 62–90; cut keeps
+~85% of both). Config: solveCap 4 + **minTier 4 necessity** (fresh cap-3 solve must stall),
+sizes 2–4, ≤ 1 single, ≤ 1 foothold, no bias (measured 3× worse yield for nothing), 100 k-node
+verify budget. Max cage sums reach 29 — big cages are expert's signature since max4 layouts
+are ~never tier-3-solvable. **Extreme deferred by measurement** (0 tier-5-necessary layouts
+in 40 s — needs more tier-5 techniques first). **Hard keeps maxSize 3** — the E2 gains are
+all tier-4 by design (tiers 1–3 frozen), so the "hard gets big cages back" hope was
+measured away rather than shipped blind.
 
 - Config (starting point, tuned by stage-rate sweeps exactly like the rebalance):
   `expert: { solveCap: 4, minSize: 2, maxSize: 4, maxSingles: 0–1, maxFootholds: 1,
