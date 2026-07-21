@@ -29,14 +29,17 @@ cheapest, most decision-informing ones come first.
 
 ## Gaps — prioritized
 
-### Do first (cheap, decision-informing)
+### Do first (cheap, decision-informing) — ✅ done (July 2026)
 
+- ✅ **P1 — done.** `@vercel/speed-insights` + `@vercel/analytics` mounted in the root layout;
+  p75 LCP/INP/CLS per route lands in the Vercel dashboard within ~24h. *(original note below)*
 - **P1 — No real-user monitoring (the doc's Stage 0).** No `@vercel/speed-insights` or
-  `@vercel/analytics`, so we have no p75 LCP/INP/CLS per route. Add both (a `<SpeedInsights/>`
-  + `<Analytics/>` in the root layout); field data appears within ~24h. **This is the gate for
+  `@vercel/analytics`, so we have no p75 LCP/INP/CLS per route. Add both (`<SpeedInsights/>` and `<Analytics/>` in the root layout); field data appears within ~24h. **This is the gate for
   everything below** — the doc is explicit that most of the rest is premature without it, and
   at our scale (small DOM, RSC pages, server-side solver) there may be no real problem to fix.
-- **P2 — `Cell` is not `React.memo`'d.** `Board`'s selector includes the selected row/col, so
+- ✅ **P2 — done.** `Cell` wrapped in `React.memo`; a selection change no longer re-runs all 81
+  cells' selectors, only the ones whose store slice changed. Interaction unchanged (E2E green).
+- **P2 — `Cell` was not `React.memo`'d.** `Board`'s selector includes the selected row/col, so
   every selection change re-renders `Board`, which re-creates all 81 `Cell` elements — without
   memo, all 81 re-run their selectors each keystroke/arrow. `Cell`'s only props are the stable
   `{r, c}`, so `React.memo(Cell)` lets React skip the ~77 unaffected cells (the changed ones
