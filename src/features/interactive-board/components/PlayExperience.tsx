@@ -50,7 +50,9 @@ export default function PlayExperience() {
   const [view, setView] = useState<'config' | 'playing'>('config');
   const [viewingSolved, setViewingSolved] = useState(false);
   const [warnOpen, setWarnOpen] = useState(false);
+  const [resumeHandled, setResumeHandled] = useState(false);
   const isKiller = variant === 'killer';
+  const wantsResume = searchParams.get('resume') === '1';
 
   const { loading, error, fetchPuzzle } = usePuzzle();
   const status = useBoardStore((s) => s.status);
@@ -59,6 +61,19 @@ export default function PlayExperience() {
   const tick = useBoardStore((s) => s.tick);
 
   const saved = useSavedGame();
+
+  // Deep link from the hub's Continue banner (`/play?resume=1`): jump straight into the saved
+  // free-play game instead of the menu. Adjust state during render (once, after mount, when the
+  // persisted game is readable) — the sanctioned prev-value pattern, not a setState-in-effect.
+  // Only honor it for a play-mode game so a daily in the shared store never opens here.
+  if (mounted && wantsResume && !resumeHandled) {
+    setResumeHandled(true);
+    if (saved?.mode === 'play') setView('playing');
+  }
+  // Unpause the resumed game (store action, not React state).
+  useEffect(() => {
+    if (view === 'playing' && wantsResume && useBoardStore.getState().status === 'paused') resume();
+  }, [view, wantsResume, resume]);
   const savedIsPlay = saved?.mode === 'play';
 
   // Timer: active only while actively playing on the board — never on the menu or when paused.

@@ -14,7 +14,8 @@ export function ContinueBanner() {
   const saved = useSavedGame();
   if (!saved) return null;
 
-  const href = saved.mode === 'daily' ? '/daily' : '/play';
+  // `?resume=1` tells the surface to jump straight into the parked game, not its menu.
+  const href = saved.mode === 'daily' ? '/daily?resume=1' : '/play?resume=1';
   const what =
     saved.mode === 'daily'
       ? `Daily · ${formatDailyKey(saved.difficulty)}`

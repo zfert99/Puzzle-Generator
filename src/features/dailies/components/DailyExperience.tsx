@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
@@ -64,6 +64,7 @@ type SubmitState =
  */
 export default function DailyExperience() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const mounted = useHasMounted();
   const { data: session } = useSession();
   const [phase, setPhase] = useState<'select' | 'playing'>('select');
@@ -71,6 +72,8 @@ export default function DailyExperience() {
   const [dailyDate, setDailyDate] = useState<string>('');
   const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
   const [warnOpen, setWarnOpen] = useState(false);
+  const [resumeHandled, setResumeHandled] = useState(false);
+  const wantsResume = searchParams.get('resume') === '1';
   const [pendingDifficulty, setPendingDifficulty] = useState<DailyDifficulty | null>(null);
   const [completedToday, setCompletedToday] = useState<
     Record<string, { timeMs: number; rank: number | null }>
@@ -85,6 +88,23 @@ export default function DailyExperience() {
 
   const saved = useSavedGame();
   const savedIsDaily = saved?.mode === 'daily';
+
+  // Deep link from the hub's Continue banner (`/daily?resume=1`): jump straight into the parked
+  // daily instead of the picker. Adjust state during render (once, after mount) — restoring the
+  // difficulty/date the playing view needs, exactly as handleContinue does. Store actions (like
+  // resume) run in the effect below, not during render.
+  if (mounted && wantsResume && !resumeHandled) {
+    setResumeHandled(true);
+    if (saved?.mode === 'daily') {
+      setDifficulty(saved.difficulty as DailyDifficulty);
+      setDailyDate(saved.dailyDate ?? '');
+      setSubmit({ status: 'idle' });
+      setPhase('playing');
+    }
+  }
+  useEffect(() => {
+    if (phase === 'playing' && wantsResume && useBoardStore.getState().status === 'paused') resume();
+  }, [phase, wantsResume, resume]);
   const todayIso = toUtcDateString(new Date());
   // A daily left running across the UTC rollover is no longer today's — finishable for fun,
   // but not rankable. Derived here so the solved modal can say so without a setState-in-effect.
