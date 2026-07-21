@@ -2,6 +2,8 @@
 
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
+import { useSetting } from '@/features/settings/useSettings';
+import { setSetting } from '@/features/settings/settings';
 
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -16,19 +18,20 @@ function formatTime(totalSeconds: number): string {
  * store so it survives a persisted refresh.
  */
 export function GameHeader() {
-  const { size, difficulty, elapsedTime, mistakes, status, realTimeErrors } = useBoardStore(
+  const { size, difficulty, elapsedTime, mistakes, status } = useBoardStore(
     useShallow((s) => ({
       size: s.config.size,
       difficulty: s.difficulty,
       elapsedTime: s.elapsedTime,
       mistakes: s.mistakes,
       status: s.status,
-      realTimeErrors: s.realTimeErrors,
     }))
   );
   const pause = useBoardStore((s) => s.pause);
   const resume = useBoardStore((s) => s.resume);
-  const toggleRealTimeErrors = useBoardStore((s) => s.toggleRealTimeErrors);
+  // Error highlighting is an app-wide setting now (also in the Settings panel); this in-game
+  // button is a convenient shortcut to the same value.
+  const errorHighlight = useSetting('errorHighlight');
 
   return (
     <div className="w-full max-w-[520px] mx-auto mb-4 flex items-center justify-between gap-4 text-sm">
@@ -52,10 +55,10 @@ export function GameHeader() {
       <div className="flex items-center gap-2">
         <button
           type="button"
-          aria-pressed={realTimeErrors}
-          onClick={() => toggleRealTimeErrors()}
+          aria-pressed={errorHighlight}
+          onClick={() => setSetting('errorHighlight', !errorHighlight)}
           className={`px-2 py-1 rounded transition-colors ${
-            realTimeErrors ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
+            errorHighlight ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
           }`}
           title="Highlight incorrect entries"
         >

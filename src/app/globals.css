@@ -84,7 +84,8 @@ body {
   background: var(--paper);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  min-height: 100vh; /* fallback for browsers without svh */
+  min-height: 100svh; /* small viewport unit — no jump when mobile browser chrome hides */
 }
 
 /* Display headings default to the chunky face. */
@@ -106,10 +107,8 @@ h1, h2, .font-display {
   box-shadow: 0 0 0 0 var(--ink);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pressable {
-    transition: none;
-  }
+:root[data-motion="reduce"] .pressable {
+  transition: none;
 }
 
 /* ============================================================================
@@ -137,12 +136,10 @@ h1, h2, .font-display {
 .marquee-track { display: inline-flex; white-space: nowrap; animation: marquee-scroll 22s linear infinite; }
 .marquee:hover .marquee-track { animation-play-state: paused; }
 
-@media (prefers-reduced-motion: reduce) {
-  .wobble-hover { transition: none; }
-  .wobble-hover:hover { transform: rotate(var(--tilt, 0deg)); }
-  .idle-wobble { animation: none; }
-  .marquee-track { animation: none; }
-}
+:root[data-motion="reduce"] .wobble-hover { transition: none; }
+:root[data-motion="reduce"] .wobble-hover:hover { transform: rotate(var(--tilt, 0deg)); }
+:root[data-motion="reduce"] .idle-wobble { animation: none; }
+:root[data-motion="reduce"] .marquee-track { animation: none; }
 
 /* ============================================================================
    Shared component classes — Biscuit Lab. These were the legacy indigo/glass
@@ -228,11 +225,9 @@ h1, h2, .font-display {
   box-shadow: 0 0 0 3px var(--butterscotch);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .btn-primary,
-  .btn-secondary {
-    transition: none;
-  }
+:root[data-motion="reduce"] .btn-primary,
+:root[data-motion="reduce"] .btn-secondary {
+  transition: none;
 }
 
 /* Ranked-daily result: the rank pops in a beat after the solved stamp (a small reveal).
@@ -248,10 +243,8 @@ h1, h2, .font-display {
   animation: rank-reveal 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rank-reveal {
-    animation: none;
-  }
+:root[data-motion="reduce"] .rank-reveal {
+  animation: none;
 }
 
 /* ---- Site backdrop (juice layer): aurora blobs + drifting glyphs ---- */
@@ -334,9 +327,7 @@ h1, h2, .font-display {
 [data-theme='dark'] .aurora-c { --aurora-color: color-mix(in srgb, var(--mint) 10%, transparent); }
 [data-theme='dark'] .backdrop-glyph { opacity: 0.06; }
 
-@media (prefers-reduced-motion: reduce) {
-  .aurora,
-  .backdrop-glyph {
-    animation: none;
-  }
+:root[data-motion="reduce"] .aurora,
+:root[data-motion="reduce"] .backdrop-glyph {
+  animation: none;
 }

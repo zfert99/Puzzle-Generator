@@ -34,23 +34,23 @@ gaps below are the genuine deltas, prioritized by leverage.
 
 ### Quick wins (high leverage, ~an afternoon total)
 
-- **G1 — No board-state live region (WCAG 4.1.3 / the doc's #1 a11y gap).** When a digit is
+- ✅ **G1 — No board-state live region (WCAG 4.1.3 / the doc's #1 a11y gap).** When a digit is
   typed, focus stays on the cell, so a screen reader announces *nothing*. Add one
   visually-hidden `aria-live="polite"` region (the DOM already has live-region infra in
   `GameHeader`/`MarqueeTicker` to copy) and write short messages on change: "5 entered",
   "conflict: 5 already in this row", "cell cleared", "puzzle solved". *~1 file + a store
   subscription.*
-- **G2 — Automate what we just did by hand.** The mobile-width overflow check was manual this
+- ✅ **G2 — Automate what we just did by hand.** The mobile-width overflow check was manual this
   pass. Codify it as a Playwright test (`documentElement.scrollWidth <= clientWidth + 1`
   looped over 320/360/390/430/768/1024/1440, skipping the intentionally-scrollable board),
   **and** wire up the already-installed `@axe-core/playwright` on the top journeys (hub,
   daily, archive, a board in each variant, sign-in). Near-zero new deps; turns a one-time
   eyeball into a CI guardrail. *Directly closes the loop on this pass.*
-- **G3 — `min-height: 100vh` → `100svh` (the doc's "single most common mobile bug").**
+- ✅ **G3 — `min-height: 100vh` → `100svh` (the doc's "single most common mobile bug").**
   `globals.css:87` uses `100vh`, which on mobile Safari equals the *largest* viewport, so the
   layout jumps when the address bar retracts. Swap to `100svh` with a `100vh` fallback line.
   *One line; our static screenshots couldn't catch it but real devices will.*
-- **G4 — Conflict cells rely on color + motion only (WCAG 1.4.1).** An error cell shows a red
+- ✅ **G4 — Conflict cells rely on color + motion only (WCAG 1.4.1).** An error cell shows a red
   tint + one-time shake; under reduced-motion only the red remains — no non-color channel for
   a colorblind sighted player. Add a persistent non-color cue (corner mark / underline /
   bold). G1 covers the screen-reader path; this covers the visual one. *CSS-only.*

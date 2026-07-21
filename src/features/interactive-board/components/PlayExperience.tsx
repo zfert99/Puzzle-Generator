@@ -39,19 +39,14 @@ export default function PlayExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mounted = useHasMounted();
-  const [variant, setVariant] = useState<'classic' | 'killer'>('classic');
+  // Deep link from the hub's Killer card (`/play?variant=killer`): preselect the variant as the
+  // initial state (not via a setState-in-effect). Killer is 9×9, difficulty 'easy' is valid for
+  // both, so no clamping is needed on mount.
+  const [variant, setVariant] = useState<'classic' | 'killer'>(
+    searchParams.get('variant') === 'killer' ? 'killer' : 'classic',
+  );
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
-
-  // Deep link from the hub's Killer card (`/play?variant=killer`): preselect the variant.
-  // Runs before first paint is visible (the component renders a placeholder until mounted).
-  useEffect(() => {
-    if (searchParams.get('variant') === 'killer') {
-      setVariant('killer');
-      setGridSize(9); // Killer is 9×9 only
-      setDifficulty((d) => (d === 'expert' || d === 'extreme' ? 'hard' : d));
-    }
-  }, [searchParams]);
   const [view, setView] = useState<'config' | 'playing'>('config');
   const [viewingSolved, setViewingSolved] = useState(false);
   const [warnOpen, setWarnOpen] = useState(false);
