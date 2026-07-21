@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useSetting } from '@/features/settings/useSettings';
@@ -16,8 +17,14 @@ interface CellProps {
  * that affect its own render (value, candidates, given, selected, peer, error) — so
  * moving the selection re-renders just the cells whose flags actually change, not the
  * whole grid. This granular subscription is what keeps input latency (INP) low.
+ *
+ * Wrapped in `React.memo`: `Board` re-renders on every selection change (its selector reads
+ * the selected row/col), which re-creates all N² Cell elements. The props here are the stable
+ * `{r, c}`, so memo lets React skip re-rendering the cells whose flags didn't change — only
+ * the handful whose own store slice moved re-render (via their subscription). On a 9×9 that's
+ * ~4–20 cells per keystroke instead of 81 (INP; `Docs/performance-audit.md`).
  */
-export function Cell({ r, c }: CellProps) {
+export const Cell = memo(function Cell({ r, c }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
   const { value, mask, isGiven, isSelected, isPeer, isWrong, isSameNumber, size, boxWidth, boxHeight, isDaily } = useBoardStore(
@@ -113,4 +120,4 @@ export function Cell({ r, c }: CellProps) {
       ) : null}
     </div>
   );
-}
+});

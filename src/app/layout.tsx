@@ -5,6 +5,8 @@ import { SETTINGS_PRE_PAINT_SCRIPT } from "@/features/settings/settings";
 import { AppHeader } from "@/features/chrome/AppHeader";
 import { Backdrop } from "@/features/chrome/Backdrop";
 import { WobbleDefs } from "@/features/chaos/Wobble";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 /**
@@ -65,6 +67,10 @@ export default function RootLayout({
         <Backdrop />
         <AppHeader />
         {children}
+        {/* Real-user monitoring: p75 LCP/INP/CLS per route (Speed Insights) + page analytics.
+            Zero-config, tied to the deployment; data appears in the Vercel dashboard within ~24h. */}
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
