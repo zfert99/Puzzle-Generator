@@ -9,14 +9,17 @@ const GRID_SIZE_OPTIONS = [
 interface Props {
   value: 4 | 6 | 9;
   onChange: (size: 4 | 6 | 9) => void;
+  /** Restrict the offered sizes (e.g. Killer has no 4×4). Defaults to all three. */
+  sizes?: readonly (4 | 6 | 9)[];
 }
 
-export function GridSizeSelector({ value, onChange }: Props) {
+export function GridSizeSelector({ value, onChange, sizes }: Props) {
+  const options = sizes ? GRID_SIZE_OPTIONS.filter((o) => sizes.includes(o.value)) : GRID_SIZE_OPTIONS;
   return (
     <div className="mb-6">
       <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Grid Size</label>
       <div className="flex justify-center gap-2">
-        {GRID_SIZE_OPTIONS.map(({ value: optionValue, label }) => (
+        {options.map(({ value: optionValue, label }) => (
           <button
             key={optionValue}
             type="button"

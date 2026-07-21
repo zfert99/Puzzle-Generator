@@ -22,3 +22,8 @@ grape bar (ink bottom border):
   layer; until then it falls back to a system cursive, so the slot is reserved now.
 - `ThemeToggle` and `AccountBadge` are restyled cream-on-grape for this bar (they used to sit
   on paper backgrounds in the per-page rows).
+
+## Archive link (July 2026)
+
+Archive joined the nav (`sm+` only — small screens stay uncrowded and reach it via the hub
+card).

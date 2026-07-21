@@ -85,3 +85,8 @@ competitive daily (they'd hand out answers), while free play keeps them.
 The single chip row became three sections — Classic 9×9, Killer 9×9, Minis — rendered from
 `DAILY_BOARDS`. Selection state holds the board KEY; labels go through `formatDailyKey`
 (header, Play button, Continue).
+
+## Desktop width (July 2026)
+
+The config panel is `max-w-md md:max-w-2xl` — the three chip sections fit without page
+scroll on desktop while the mobile layout is unchanged.

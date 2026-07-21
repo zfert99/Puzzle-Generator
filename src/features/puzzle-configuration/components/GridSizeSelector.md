@@ -20,3 +20,6 @@ selection and reports clicks upward.
    in a muted style.
 5. When a button is clicked, call `onChange` with that option's value. The parent
    owns the state and decides what to do.
+
+`sizes` (optional) restricts the offered options — Killer passes `[6, 9]` so both variants
+share one selector and one visual layout.

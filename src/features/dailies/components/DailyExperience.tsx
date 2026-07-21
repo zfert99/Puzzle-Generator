@@ -209,13 +209,13 @@ export default function DailyExperience() {
   };
 
   if (!mounted) {
-    return <div className="glass-panel p-8 max-w-md w-full mx-auto h-48" aria-hidden="true" />;
+    return <div className="glass-panel p-8 max-w-md md:max-w-2xl w-full mx-auto h-48" aria-hidden="true" />;
   }
 
   // ---- Difficulty picker ----
   if (phase === 'select') {
     return (
-      <div className="w-full max-w-md mx-auto">
+      <div className="w-full max-w-md md:max-w-2xl mx-auto">
         <div className="mb-4">
           <MarqueeTicker
             items={['new puzzle daily', 'easy → extreme', 'beat your streak', 'no cookies, only biscuits']}

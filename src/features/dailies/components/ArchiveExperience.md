@@ -36,3 +36,11 @@ view 'playing':
   reused board (GameHeader / Board / Numpad / KeyboardHints); hints allowed (it's practice)
   solved → unranked modal (time + mistakes + "not ranked") → back to browse
 ```
+
+## Browse layout (July 2026)
+
+Desktop is two columns — calendar + practice button on the left, the board picker /
+leaderboard panel on the right (`md:grid-cols-2`, `max-w-4xl`) — so the page needs no
+scroll. Mobile stacks in the order calendar → practice button → types (the button moved
+between them deliberately). Archive also joined the header nav (`sm+`; mobile reaches it
+via the hub card).

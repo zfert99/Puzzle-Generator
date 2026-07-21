@@ -12,7 +12,7 @@ import { KeyboardHints } from '@/features/interactive-board/components/KeyboardH
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { LeaderboardView } from '@/features/leaderboards/components/LeaderboardView';
-import { toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useDaily } from '../hooks/useDaily';
 import { Calendar } from './Calendar';
 
@@ -149,33 +149,39 @@ export default function ArchiveExperience() {
   }
 
   // ---- Browse ----
+  // Desktop: calendar + practice button beside the board picker/leaderboard (two columns, no
+  // page scroll). Mobile: the same order stacked — calendar, button, then the types.
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full max-w-lg md:max-w-4xl mx-auto">
       <p className="text-center text-sm text-ink-soft mb-4">
         Pick a past day to replay its puzzle (unranked) or view that day&apos;s final board.
       </p>
 
-      <div className="mb-6">
-        <Calendar value={selectedDate} onChange={setSelectedDate} maxDate={todayIso} />
-        <p className="text-center text-sm mt-2 font-medium">{formatUtcDate(selectedDate)}</p>
+      <div className="md:grid md:grid-cols-2 md:gap-6 md:items-start">
+        <div>
+          <div className="mb-4">
+            <Calendar value={selectedDate} onChange={setSelectedDate} maxDate={todayIso} />
+            <p className="text-center text-sm mt-2 font-medium">{formatUtcDate(selectedDate)}</p>
+          </div>
+
+          {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
+
+          <button
+            type="button"
+            onClick={handlePlay}
+            disabled={loading}
+            className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
+          >
+            {loading ? 'Loading…' : `Play ${formatDailyKey(difficulty)} (practice)`}
+          </button>
+        </div>
+
+        <LeaderboardView
+          date={selectedDate}
+          difficulty={difficulty}
+          onDifficultyChange={setDifficulty}
+        />
       </div>
-
-      <LeaderboardView
-        date={selectedDate}
-        difficulty={difficulty}
-        onDifficultyChange={setDifficulty}
-      />
-
-      {error && <p className="text-cherry text-sm mt-4 text-center">{error}</p>}
-
-      <button
-        type="button"
-        onClick={handlePlay}
-        disabled={loading}
-        className="btn-primary w-full text-lg flex justify-center items-center mt-4"
-      >
-        {loading ? 'Loading…' : `Play ${difficulty} (practice)`}
-      </button>
 
       <ConfirmModal
         open={warnOpen}
