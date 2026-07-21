@@ -289,6 +289,11 @@ export const useBoardStore = create<BoardState>()(
         // peers are recomputed on rehydration rather than stored.
         name: 'sudoku-board',
         version: 2, // bumped: added `mode`; discards pre-mode persisted games on update
+        // A saved game is ephemeral, so old persisted shapes aren't worth migrating — but a
+        // version mismatch with NO migrate makes zustand log a console.error (surfaced as the
+        // Next.js error overlay). Discard cleanly instead: drop the stale game and land the
+        // player on the menu (no resumable state), silently.
+        migrate: () => ({ status: 'configuring' as GameStatus }),
         partialize: (state) => ({
           gridSize: state.gridSize,
           config: state.config,
