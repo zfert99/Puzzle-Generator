@@ -58,7 +58,6 @@ export interface BoardState {
   difficulty: BoardDifficulty;
   selectedCell: { r: number; c: number } | null;
   pencilMode: boolean;
-  realTimeErrors: boolean;
   status: GameStatus;
   mode: BoardMode;
   /**
@@ -78,7 +77,6 @@ export interface BoardState {
   clearCell: () => void;
   hint: () => void;
   togglePencilMode: () => void;
-  toggleRealTimeErrors: () => void;
   tick: () => void;
   pause: () => void;
   resume: () => void;
@@ -129,7 +127,6 @@ export const useBoardStore = create<BoardState>()(
       difficulty: 'easy' as Difficulty,
       selectedCell: null,
       pencilMode: false,
-      realTimeErrors: false,
       status: 'configuring',
       mode: 'play',
       dailyDate: null,
@@ -277,7 +274,6 @@ export const useBoardStore = create<BoardState>()(
       },
 
       togglePencilMode: () => set(state => ({ pencilMode: !state.pencilMode })),
-      toggleRealTimeErrors: () => set(state => ({ realTimeErrors: !state.realTimeErrors })),
 
       tick: () => set(state => (state.status === 'playing' ? { elapsedTime: state.elapsedTime + 1 } : {})),
       pause: () => set(state => (state.status === 'playing' ? { status: 'paused' } : {})),
@@ -289,6 +285,11 @@ export const useBoardStore = create<BoardState>()(
         // peers are recomputed on rehydration rather than stored.
         name: 'sudoku-board',
         version: 2, // bumped: added `mode`; discards pre-mode persisted games on update
+        // A saved game is ephemeral, so old persisted shapes aren't worth migrating — but a
+        // version mismatch with NO migrate makes zustand log a console.error (surfaced as the
+        // Next.js error overlay). Discard cleanly instead: drop the stale game and land the
+        // player on the menu (no resumable state), silently.
+        migrate: () => ({ status: 'configuring' as GameStatus }),
         partialize: (state) => ({
           gridSize: state.gridSize,
           config: state.config,
@@ -301,7 +302,6 @@ export const useBoardStore = create<BoardState>()(
           difficulty: state.difficulty,
           selectedCell: state.selectedCell,
           pencilMode: state.pencilMode,
-          realTimeErrors: state.realTimeErrors,
           status: state.status,
           mode: state.mode,
           dailyDate: state.dailyDate,

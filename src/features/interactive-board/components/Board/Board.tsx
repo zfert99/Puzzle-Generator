@@ -6,6 +6,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 import { Cell } from './Cell';
 import { CageOverlay } from './CageOverlay';
+import { BoardAnnouncer } from './BoardAnnouncer';
 import styles from './Board.module.css';
 
 /**
@@ -114,18 +115,21 @@ export function Board() {
   );
 
   return (
-    <div
-      ref={gridRef}
-      role="grid"
-      aria-label="Sudoku board"
-      className={styles.board}
-      style={{ '--size': size } as CSSProperties}
-      onKeyDown={handleKeyDown}
-    >
-      {Array.from({ length: size }, (_, r) =>
-        Array.from({ length: size }, (_, c) => <Cell key={`${r}-${c}`} r={r} c={c} />)
-      )}
-      {variant === 'killer' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
-    </div>
+    <>
+      <div
+        ref={gridRef}
+        role="grid"
+        aria-label="Sudoku board"
+        className={styles.board}
+        style={{ '--size': size } as CSSProperties}
+        onKeyDown={handleKeyDown}
+      >
+        {Array.from({ length: size }, (_, r) =>
+          Array.from({ length: size }, (_, c) => <Cell key={`${r}-${c}`} r={r} c={c} />)
+        )}
+        {variant === 'killer' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
+      </div>
+      <BoardAnnouncer />
+    </>
   );
 }

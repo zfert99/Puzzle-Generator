@@ -98,8 +98,9 @@ test.describe('Interactive play', () => {
     await page.goto('/play');
     await page.getByRole('button', { name: /^killer$/i }).click();
     await page.getByRole('button', { name: '6×6', exact: true }).click();
-    // Beginner size: expert/extreme chips disappear.
-    await expect(page.getByRole('button', { name: 'expert' })).toHaveCount(0);
+    // Beginner size: expert/extreme gray out (same behavior as classic minis).
+    await expect(page.getByRole('button', { name: 'expert', exact: true })).toBeDisabled();
+    await expect(page.getByText(/only available for 9×9 grids/i)).toBeVisible();
     await page.getByRole('button', { name: 'easy', exact: true }).click();
     await page.getByRole('button', { name: /^Play$/ }).click();
 

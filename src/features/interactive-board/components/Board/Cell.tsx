@@ -2,6 +2,7 @@
 
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
+import { useSetting } from '@/features/settings/useSettings';
 import { maskToDigits } from '../../board-utils';
 import styles from './Board.module.css';
 
@@ -17,7 +18,9 @@ interface CellProps {
  * whole grid. This granular subscription is what keeps input latency (INP) low.
  */
 export function Cell({ r, c }: CellProps) {
-  const { value, mask, isGiven, isSelected, isPeer, isError, isSameNumber, size, boxWidth, boxHeight } = useBoardStore(
+  // Error highlighting is an app-wide setting (features/settings), not per-game.
+  const errorHighlight = useSetting('errorHighlight');
+  const { value, mask, isGiven, isSelected, isPeer, isWrong, isSameNumber, size, boxWidth, boxHeight, isDaily } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
@@ -46,11 +49,12 @@ export function Cell({ r, c }: CellProps) {
         isGiven: s.givens[r][c],
         isSelected: isSelf,
         isPeer: samePeer,
-        isError: s.realTimeErrors && v !== 0 && !s.givens[r][c] && v !== s.solution[r][c],
+        isWrong: v !== 0 && !s.givens[r][c] && v !== s.solution[r][c],
         isSameNumber: v !== 0 && v === selValue && !isSelf, // another cell holding the selected value
         size: cfg.size,
         boxWidth: cfg.boxWidth,
         boxHeight: cfg.boxHeight,
+        isDaily: s.mode === 'daily',
       };
     })
   );
@@ -59,6 +63,10 @@ export function Cell({ r, c }: CellProps) {
 
   const thickRight = (c + 1) % boxWidth === 0 && c + 1 !== size;
   const thickBottom = (r + 1) % boxHeight === 0 && r + 1 !== size;
+
+  // Dailies never highlight wrong cells during play (no hand-holding on the ranked board);
+  // once solved there are no wrong cells anyway.
+  const isError = errorHighlight && isWrong && !isDaily;
 
   // One background wins, by precedence: error > selected > same-number > peer.
   // Errors take priority so a wrong value reads red even while it's the selected cell.

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import DailyExperience from '@/features/dailies/components/DailyExperience';
 
 /**
@@ -7,6 +8,9 @@ import DailyExperience from '@/features/dailies/components/DailyExperience';
  * today's puzzle live in the client `DailyExperience` leaf, so nothing puzzle-related is
  * computed during SSR — sidestepping the hydration-mismatch pitfall (AGENTS.md §1),
  * exactly like /play. Nav lives in the global `AppHeader`.
+ *
+ * The Suspense boundary is required by `useSearchParams` in `DailyExperience` (the Continue
+ * banner deep-links `/daily?resume=1`) — it keeps the route statically prerenderable.
  */
 export default function DailyPage() {
   return (
@@ -15,7 +19,9 @@ export default function DailyPage() {
         <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Daily Sudoku</h1>
       </div>
 
-      <DailyExperience />
+      <Suspense fallback={<div className="glass-panel p-8 max-w-md md:max-w-2xl w-full mx-auto h-48" aria-hidden="true" />}>
+        <DailyExperience />
+      </Suspense>
     </main>
   );
 }

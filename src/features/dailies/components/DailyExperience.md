@@ -85,3 +85,19 @@ competitive daily (they'd hand out answers), while free play keeps them.
 The single chip row became three sections — Classic 9×9, Killer 9×9, Minis — rendered from
 `DAILY_BOARDS`. Selection state holds the board KEY; labels go through `formatDailyKey`
 (header, Play button, Continue).
+
+## Desktop width (July 2026)
+
+The config panel is `max-w-md md:max-w-2xl` — the three chip sections fit without page
+scroll on desktop while the mobile layout is unchanged.
+
+## Full-board review (July 2026)
+
+Dailies give no live error feedback, so completion is judged on **fullness**, not correctness.
+When every cell is filled:
+
+- correct → the existing "Daily solved!" (won) modal + ranked submit; otherwise
+- incorrect → a **"Not quite!"** modal reporting how many cells are wrong (`wrongCount`) —
+  *not which* — with a "Keep looking" dismiss. The dismissal resets whenever the board drops
+  below full (adjust-state-during-render keyed on previous fullness), so each re-fill reports a
+  fresh count. `status === 'solved'` suppresses the review modal, so the two never overlap.

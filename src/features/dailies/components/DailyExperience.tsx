@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
@@ -64,6 +64,7 @@ type SubmitState =
  */
 export default function DailyExperience() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const mounted = useHasMounted();
   const { data: session } = useSession();
   const [phase, setPhase] = useState<'select' | 'playing'>('select');
@@ -71,6 +72,8 @@ export default function DailyExperience() {
   const [dailyDate, setDailyDate] = useState<string>('');
   const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
   const [warnOpen, setWarnOpen] = useState(false);
+  const [resumeHandled, setResumeHandled] = useState(false);
+  const wantsResume = searchParams.get('resume') === '1';
   const [pendingDifficulty, setPendingDifficulty] = useState<DailyDifficulty | null>(null);
   const [completedToday, setCompletedToday] = useState<
     Record<string, { timeMs: number; rank: number | null }>
@@ -78,17 +81,53 @@ export default function DailyExperience() {
   const submittedRef = useRef(false);
 
   const { loading, error, fetchDaily } = useDaily();
-  const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
+  const { status, grid, solution } = useBoardStore(
+    useShallow((s) => ({ status: s.status, grid: s.grid, solution: s.solution })),
+  );
+  const [reviewDismissed, setReviewDismissed] = useState(false);
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const resume = useBoardStore((s) => s.resume);
   const tick = useBoardStore((s) => s.tick);
 
   const saved = useSavedGame();
   const savedIsDaily = saved?.mode === 'daily';
+
+  // Deep link from the hub's Continue banner (`/daily?resume=1`): jump straight into the parked
+  // daily instead of the picker. Adjust state during render (once, after mount) — restoring the
+  // difficulty/date the playing view needs, exactly as handleContinue does. Store actions (like
+  // resume) run in the effect below, not during render.
+  if (mounted && wantsResume && !resumeHandled) {
+    setResumeHandled(true);
+    if (saved?.mode === 'daily') {
+      setDifficulty(saved.difficulty as DailyDifficulty);
+      setDailyDate(saved.dailyDate ?? '');
+      setSubmit({ status: 'idle' });
+      setPhase('playing');
+    }
+  }
+  useEffect(() => {
+    if (phase === 'playing' && wantsResume && useBoardStore.getState().status === 'paused') resume();
+  }, [phase, wantsResume, resume]);
   const todayIso = toUtcDateString(new Date());
   // A daily left running across the UTC rollover is no longer today's — finishable for fun,
   // but not rankable. Derived here so the solved modal can say so without a setState-in-effect.
   const isExpiredDaily = dailyDate !== '' && dailyDate !== todayIso;
+
+  // Dailies give no live error feedback, so completion is checked on FULLNESS, not correctness:
+  // when every cell is filled, either it's solved (the "you won" modal) or we tell the player
+  // how many cells are wrong (without which). `wrongCount` counts currently-incorrect cells.
+  const isFull = grid.length > 0 && grid.every((row) => row.every((v) => v !== 0));
+  const wrongCount = isFull
+    ? grid.reduce((acc, row, r) => acc + row.reduce((a, v, c) => a + (v !== solution[r][c] ? 1 : 0), 0), 0)
+    : 0;
+  // Let the review modal re-appear each time the board is re-filled: clear the dismissal once
+  // the board is no longer full (adjust-state-during-render, keyed on the previous fullness).
+  const [wasFull, setWasFull] = useState(isFull);
+  if (isFull !== wasFull) {
+    setWasFull(isFull);
+    if (!isFull) setReviewDismissed(false);
+  }
+  const showReview = phase === 'playing' && isFull && status !== 'solved' && !reviewDismissed;
 
   // Timer: one interval, active only while actively playing the daily (not on the picker).
   useEffect(() => {
@@ -209,13 +248,13 @@ export default function DailyExperience() {
   };
 
   if (!mounted) {
-    return <div className="glass-panel p-8 max-w-md w-full mx-auto h-48" aria-hidden="true" />;
+    return <div className="glass-panel p-8 max-w-md md:max-w-2xl w-full mx-auto h-48" aria-hidden="true" />;
   }
 
   // ---- Difficulty picker ----
   if (phase === 'select') {
     return (
-      <div className="w-full max-w-md mx-auto">
+      <div className="w-full max-w-md md:max-w-2xl mx-auto">
         <div className="mb-4">
           <MarqueeTicker
             items={['new puzzle daily', 'easy → extreme', 'beat your streak', 'no cookies, only biscuits']}
@@ -396,6 +435,33 @@ export default function DailyExperience() {
                 Leaderboard
               </Link>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Board full but not correct — tell the player how many cells are wrong (not which), and
+          let them go back to fix them. Dailies have no live error feedback, so this is the
+          moment they learn their count. */}
+      {showReview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Board full"
+        >
+          <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
+            <div className="text-4xl mb-2" aria-hidden="true">🔍</div>
+            <h2 className="font-display text-2xl mb-1">Not quite!</h2>
+            <p className="text-sm text-ink-soft mb-6">
+              The board is full, but{' '}
+              <strong className="text-ink">
+                {wrongCount} cell{wrongCount === 1 ? ' is' : 's are'}
+              </strong>{' '}
+              still incorrect. Find and fix {wrongCount === 1 ? 'it' : 'them'} to solve the daily.
+            </p>
+            <button type="button" onClick={() => setReviewDismissed(true)} className="btn-primary w-full">
+              Keep looking
+            </button>
           </div>
         </div>
       )}

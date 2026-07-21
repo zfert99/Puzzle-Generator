@@ -26,12 +26,12 @@ test.describe('Hub and generator', () => {
     await expect(page).toHaveURL(/\/play\?variant=killer$/);
 
     await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
-    // Killer preselected: the full 5-tier ladder shows and no grid-size picker.
-    await expect(page.getByRole('button', { name: 'easy', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'expert', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeVisible();
+    // Killer preselected: same layout as Sudoku — Grid Size selector (6/9 only) + full ladder.
+    await expect(page.getByText('Grid Size')).toBeVisible();
+    await expect(page.getByRole('button', { name: '9×9', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '4×4' })).toHaveCount(0);
-    await expect(page.getByText(/cage sums are the only clue/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'easy', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeEnabled();
   });
 
   test('renders the PDF generator form on /generate', async ({ page }) => {

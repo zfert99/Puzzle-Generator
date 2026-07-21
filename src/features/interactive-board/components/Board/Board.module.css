@@ -26,6 +26,33 @@
   --cell-candidate: var(--ink-soft);
 }
 
+/* Colorblind mode (features/settings): repaint the cell-state tints with the Okabe-Ito
+   colorblind-safe hues, differentiated by LIGHTNESS as well as hue (the reliable axis for
+   red-green CVD), and reinforce the two highest-stakes states with SHAPE — a ring on the
+   selected cell, a wavy underline on errors — so they read with no reliance on color at all.
+   Mixed with --paper, so it still flips with the light/dark theme. `:global` reaches the root
+   attribute from inside this CSS module. Verified under simulated deuteranopia / protanopia /
+   tritanopia. */
+:global(:root[data-colorblind="true"]) .board {
+  --cell-selected: color-mix(in srgb, #0072b2 34%, var(--paper)); /* deep blue */
+  --cell-peer: color-mix(in srgb, #56b4e9 18%, var(--paper));     /* light sky blue */
+  --cell-same: color-mix(in srgb, #e69f00 30%, var(--paper));     /* amber */
+  --cell-error-bg: color-mix(in srgb, #d55e00 36%, var(--paper)); /* vermillion */
+  --cell-error-fg: #d55e00;
+}
+
+/* Shape cues for the two critical states — shown in colorblind mode OR whenever the motion
+   cue (the shake) is off, so an error is never color-only. */
+:global(:root[data-colorblind="true"]) .selected {
+  box-shadow: inset 0 0 0 3px #0072b2;
+}
+:global(:root[data-colorblind="true"]) .error,
+:global(:root[data-motion="reduce"]) .error {
+  text-decoration: underline wavy var(--cell-error-fg);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
 .cell {
   position: relative;
   display: flex;
@@ -74,9 +101,10 @@
   80% { transform: translateX(2px); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .selected, .error { animation: none; }
-}
+/* Motion is app-controlled via [data-motion] (features/settings); `:global` reaches the
+   root attribute from this CSS module. */
+:global(:root[data-motion="reduce"]) .selected,
+:global(:root[data-motion="reduce"]) .error { animation: none; }
 
 .candidates {
   position: absolute;

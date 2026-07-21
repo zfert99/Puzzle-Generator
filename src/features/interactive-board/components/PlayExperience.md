@@ -80,3 +80,12 @@ Expert generates server-side in ~270 ms avg, so the existing "Generating…" sta
 The Killer menu offers a 6×6/9×9 toggle. At 6×6 the ladder trims to easy/medium/hard
 (expert/extreme chips hidden, selection clamped to hard); a 4×4 classic selection bumps to
 9×9 when switching into Killer. The board, cage overlay, and store were already size-generic.
+
+## Menu consistency pass (July 2026)
+
+The Killer menu now mirrors the Sudoku one exactly: the shared `GridSizeSelector` (with a
+`sizes` subset — Killer has no 4×4) under the same "Grid Size" header, the full difficulty
+ladder always visible with expert/extreme GRAYED at non-9×9 sizes (same rule and same
+"only available for 9×9 grids" subtext as classic minis), and the variant-specific
+"no givens" blurb removed. The only Killer-specific line left is the extreme
+generation-time hint, shown only when extreme is selected.
