@@ -20,7 +20,7 @@ interface CellProps {
 export function Cell({ r, c }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isWrong, isSameNumber, size, boxWidth, boxHeight } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isWrong, isSameNumber, size, boxWidth, boxHeight, isDaily } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
@@ -54,6 +54,7 @@ export function Cell({ r, c }: CellProps) {
         size: cfg.size,
         boxWidth: cfg.boxWidth,
         boxHeight: cfg.boxHeight,
+        isDaily: s.mode === 'daily',
       };
     })
   );
@@ -63,7 +64,9 @@ export function Cell({ r, c }: CellProps) {
   const thickRight = (c + 1) % boxWidth === 0 && c + 1 !== size;
   const thickBottom = (r + 1) % boxHeight === 0 && r + 1 !== size;
 
-  const isError = errorHighlight && isWrong;
+  // Dailies never highlight wrong cells during play (no hand-holding on the ranked board);
+  // once solved there are no wrong cells anyway.
+  const isError = errorHighlight && isWrong && !isDaily;
 
   // One background wins, by precedence: error > selected > same-number > peer.
   // Errors take priority so a wrong value reads red even while it's the selected cell.

@@ -19,7 +19,9 @@ export function BoardAnnouncer() {
   const grid = useBoardStore((s) => s.grid);
   const solution = useBoardStore((s) => s.solution);
   const status = useBoardStore((s) => s.status);
-  const errorHighlight = useSetting('errorHighlight');
+  const isDaily = useBoardStore((s) => s.mode === 'daily');
+  // Match the visual rule: no live "incorrect" feedback on a daily, or when the setting is off.
+  const announceWrong = useSetting('errorHighlight') && !isDaily;
   // Track the previous grid/status in STATE (not a ref) so we can derive the announcement
   // during render — React's sanctioned "adjust state when a value changed since last render"
   // pattern, which avoids a setState-in-effect cascade.
@@ -36,7 +38,7 @@ export function BoardAnnouncer() {
     setPrevGrid(grid);
     // Skip a grid-size change (a new game) — nothing to diff.
     if (before.length === grid.length) {
-      const next = describeChange(grid, before, solution, errorHighlight);
+      const next = describeChange(grid, before, solution, announceWrong);
       if (next && next !== message) setMessage(next);
     }
   }
