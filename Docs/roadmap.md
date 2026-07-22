@@ -6,7 +6,7 @@
 
 ---
 
-## Where We Are Today (v3.0.0)
+## Where We Are Today (v4.0.0)
 
 ```mermaid
 graph LR
@@ -30,6 +30,9 @@ books, but it also offers an in-browser board (`/play`), a shared daily puzzle p
 difficulty (`/daily`), user accounts (passkeys-first), anti-cheat leaderboards, and
 streaks — all backed by Neon Postgres and dressed in the **Biscuit Lab** design system.
 The stateless PDF generator is now one entry on the puzzle hub rather than the whole app.
+**Killer Sudoku** (Phase 6) shipped since v3.0.0 — its own cage-aware engine, a five-tier
+difficulty ladder on 9×9 plus a 6×6 beginner variant, PDF export, and a spot in the daily
+rotation alongside classic Sudoku.
 
 ### What's Built
 
@@ -46,7 +49,10 @@ The stateless PDF generator is now one entry on the puzzle hub rather than the w
 | **Auth** | better-auth — passkeys-first, email/password (Argon2id), Google OAuth, DB sessions, BOLA-scoped access | ✅ Shipped |
 | **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (server-timed) | ✅ Shipped |
 | **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
-| **Testing** | Vitest unit suite (124 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
+| **Engine** | Killer Sudoku — cage-aware bitmask backtracking + MRV exact solver, randomized cage generator, five-tier grader (Basic → Extreme), 6×6 beginner variant | ✅ Shipped |
+| **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and a 19-board `/daily` registry (Classic + 5 Killer tiers + Minis) | ✅ Shipped |
+| **QoL** | Save & continue — one saved-game slot, puzzle archive, deep-linkable "Continue" banners | ✅ Shipped |
+| **Testing** | Vitest unit suite (239 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
 | **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) + baseline security headers | ✅ Shipped |
 | **Leaderboards** | "Sudoku Bot" — a transparent, 🤖-badged system account posting a tuned, beatable time on every daily board | ✅ Shipped |
 
