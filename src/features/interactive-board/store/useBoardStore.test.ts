@@ -113,6 +113,43 @@ describe('digit lockout', () => {
   });
 });
 
+describe('stale `peers` self-heals instead of crashing (rehydration race)', () => {
+  // Simulates the narrow window where `config`/`status` have restored from persistence but
+  // the separate `onRehydrateStorage` callback hasn't yet rebuilt `peers` — bypassing the
+  // store's own actions to force it into that state directly.
+  it('inputDigit still strips peers\' candidates when peers was stale/empty', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 1);
+    store.togglePencilMode();
+    store.inputDigit(1); // candidate 1 pencilled into (0,1)
+    store.togglePencilMode();
+
+    useBoardStore.setState({ peers: [] }); // simulate the race
+    store.selectCell(0, 0);
+    expect(() => store.inputDigit(1)).not.toThrow();
+
+    const s = useBoardStore.getState();
+    expect(s.grid[0][0]).toBe(1);
+    expect(hasBit(s.candidates[0][1], 1)).toBe(false); // still stripped correctly
+  });
+
+  it('hint still strips peers\' candidates when peers was stale/empty', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 1);
+    store.togglePencilMode();
+    store.inputDigit(1); // candidate 1 pencilled into (0,1) — (0,0)'s solved value
+    store.togglePencilMode();
+
+    useBoardStore.setState({ peers: [] }); // simulate the race
+    store.selectCell(0, 0);
+    expect(() => store.hint()).not.toThrow();
+
+    const s = useBoardStore.getState();
+    expect(s.grid[0][0]).toBe(SOLUTION[0][0]); // 1
+    expect(hasBit(s.candidates[0][1], 1)).toBe(false); // stripped even though peers was stale
+  });
+});
+
 describe('hint', () => {
   it('reveals the correct value for the selected empty cell', () => {
     const store = useBoardStore.getState();
