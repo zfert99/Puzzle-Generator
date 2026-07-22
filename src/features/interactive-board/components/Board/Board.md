@@ -34,6 +34,11 @@ The pencil-mark 3×3 layout inside each cell went through two rounds:
   sudoku.com's own layout, which reserves a plain top strip for the sum rather than a top-left
   corner block, and lets the candidate grid use the cell's full width. Classic games are
   unaffected (no `data-variant='killer'` match, so no offset, no reserved space).
+- **Third pass: more top margin, smaller font (Killer only).** 25% top inset still let digit 1
+  graze the cage sum on 2-digit sums — direct user feedback with a screenshot. Bumped to 30%
+  and dropped the Killer candidate font to `0.4em` (classic stays at the base `0.46em`, which
+  the same feedback confirmed already reads well — this tweak is deliberately Killer-only, not
+  a global shrink).
 
 ## Uniform cell sizing (`Board.module.css`)
 
