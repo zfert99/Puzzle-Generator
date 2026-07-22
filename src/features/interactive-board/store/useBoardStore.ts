@@ -53,12 +53,6 @@ export interface BoardState {
    * is rebuilt on rehydration rather than persisted (same treatment as `peers`).
    */
   cellToCage: number[];
-  /**
-   * Flat cell index → true iff this cell is its cage's anchor (the one `CageOverlay` draws
-   * the sum label into, top-left-most cell — same rule as `computeCageOutline`'s `anchor`).
-   * Lets `Cell` answer "do I need to leave room for a cage sum?" in O(1); empty for classic.
-   */
-  cageAnchorCell: boolean[];
 
   // UI / session state (deliberately NOT tracked by undo/redo)
   difficulty: BoardDifficulty;
@@ -101,19 +95,6 @@ const buildCellToCage = (cages: Cage[], size: number): number[] => {
   return map;
 };
 
-/**
- * Flat cell index → true for each cage's anchor cell (`Math.min(...cage.cells)`, matching
- * `computeCageOutline`'s anchor rule); [] for classic games.
- */
-const buildCageAnchors = (cages: Cage[], size: number): boolean[] => {
-  if (cages.length === 0) return [];
-  const anchors = new Array<boolean>(size * size).fill(false);
-  for (const cage of cages) {
-    anchors[Math.min(...cage.cells)] = true;
-  }
-  return anchors;
-};
-
 const initialConfig = getGridConfig(9);
 
 /**
@@ -142,7 +123,6 @@ export const useBoardStore = create<BoardState>()(
       variant: 'classic',
       cages: [],
       cellToCage: [],
-      cageAnchorCell: [],
 
       difficulty: 'easy' as Difficulty,
       selectedCell: null,
@@ -168,7 +148,6 @@ export const useBoardStore = create<BoardState>()(
           variant: isKiller ? 'killer' : 'classic',
           cages: isKiller ? puzzle.cages : [],
           cellToCage: isKiller ? buildCellToCage(puzzle.cages, size) : [],
-          cageAnchorCell: isKiller ? buildCageAnchors(puzzle.cages, size) : [],
           difficulty: puzzle.difficulty,
           selectedCell: null,
           pencilMode: false,
@@ -333,7 +312,6 @@ export const useBoardStore = create<BoardState>()(
           if (state && state.config) {
             state.peers = computePeers(state.config);
             state.cellToCage = buildCellToCage(state.cages ?? [], state.config.size);
-            state.cageAnchorCell = buildCageAnchors(state.cages ?? [], state.config.size);
           }
         },
       }

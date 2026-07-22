@@ -224,6 +224,13 @@ These were consciously skipped to ship the core; come back to them:
 - [ ] **Sound effects** for placement / error / win.
 - [ ] **Strategy-aware "why" hints** — name the technique instead of just revealing a
       cell (overlaps Phase 6's solver-step serialization).
+- [ ] **Auto-candidate ("show all pencil marks") — free play only** (July 2026). Auto-fill
+      every empty cell's valid candidates on demand, sudoku.com-style. Deliberately scoped to
+      free play, never dailies — same "no hand-holding on the ranked board" posture that
+      already disables Hint there (`Numpad`'s `showHint={false}` for daily). Needs a decision
+      on whether it's a one-shot fill (stale the moment the board changes) or a live-maintained
+      auto-updating set (recomputed on every placement, more useful but pricier — worth
+      checking against the INP budget, AGENTS.md §3, before committing to the live version).
 
 This is the **architectural pivot point**. Everything after this phase depends on having a playable, in-browser Sudoku board instead of a PDF-only output.
 

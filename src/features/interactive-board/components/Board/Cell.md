@@ -16,10 +16,12 @@ Select from the store (shallow):
   isSelected    = the store's selectedCell is this cell,
   isPeer        = selectedCell shares this cell's row/column/box,
   isCagePeer    = selectedCell shares this cell's Killer cage (see below),
-  hasCageSum    = this cell is its cage's anchor (CageOverlay draws a sum into its corner),
   isError       = real-time errors ON and a wrong, non-given value is present,
   isSameNumber  = this cell holds the same non-zero value as the selected cell
-                  (highlights every matching number across the board).
+                  (highlights every matching number across the board),
+  selValue      = the selected cell's placed value (0 if none/empty) — passed through so
+                  this cell's own candidate render can highlight the one pencil mark
+                  matching it (the candidate-side echo of isSameNumber, see below).
 
 Choose ONE background by precedence: error > selected > same-number > cage-peer > peer.
 Errors win, so a wrong value reads red even while it is the selected cell; a thin
@@ -32,8 +34,9 @@ Render <div role="gridcell"> with:
   aria-label synthesized ("Given clue 7, row 2, column 4" / "Candidates 2, 5, 8" / "Empty…"),
   aria-selected, tabIndex (0 if selected else -1),
   onClick -> selectCell.
-  Body: the value if placed, else a mini grid of pencil-mark candidates from the mask
-        (offset via .candidatesCageSum if hasCageSum, so digit 1 doesn't sit under the sum).
+  Body: the value if placed, else a mini grid of pencil-mark candidates from the mask.
+        Cage-sum clearance (Killer) is a pure CSS concern now — see Board.md — not something
+        this component computes per cell.
 ```
 
 ## Cage highlighting (Killer)
@@ -45,11 +48,12 @@ cage membership was OR'd straight into the generic peer check, so a cage read id
 a plain row/box peer). The check is O(1) per cell via the store's precomputed `cellToCage` map
 (empty for classic games, so classic behaviour is untouched).
 
-## Cage-sum clearance (Killer)
+## Candidate-match highlighting (July 2026)
 
-`hasCageSum` (from the store's precomputed `cageAnchorCell`, mirroring `computeCageOutline`'s
-anchor rule — `Math.min(...cage.cells)`) marks the one cell per cage where `CageOverlay` draws
-the sum label into the top-left corner. Without accounting for that, a cell's own pencil-mark
-1 (fixed to the top-left of its 3×3 candidate layout) could sit directly under the sum's
-background pad. `.candidatesCageSum` nudges the whole candidate grid down/right just for that
-cell, so nothing is hidden.
+`isSameNumber` already highlights every other cell holding the same *placed* value as the
+selection. This cell's own candidate render extends that idea to pencil marks: for each of its
+own candidate digits, if it equals `selValue` (and isn't empty), that one `<span>` gets
+`.candidateMatch` (grape, bold) instead of the default muted candidate color — so selecting a
+placed "4" now also calls out every *pencil-marked* 4 across the board, not just other placed
+4s. Computed per-digit at render time (a cheap `mask & (1 << i)` check already happening
+anyway), not a new store field.
