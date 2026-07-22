@@ -40,12 +40,24 @@
    selected cell, a wavy underline on errors — so they read with no reliance on color at all.
    Mixed with --paper, so it still flips with the light/dark theme. `:global` reaches the root
    attribute from inside this CSS module. Verified under simulated deuteranopia / protanopia /
-   tritanopia. */
+   tritanopia.
+
+   `--cell-cage-peer` didn't exist yet the last time this block was written (Killer came
+   later) — it was never added here, so it silently fell back to its base-`.board` definition,
+   which mixes grape at only 12% into whatever `--cell-peer` currently is. Under colorblind
+   mode that meant cage-peer rendered as ~88% of the SAME blue as plain peer — reported
+   directly by a red-green CVD user as "everything looks the same kind of blue" in a Killer
+   game, where a selection triggers both states side by side. Bluish-green is the fifth Okabe-
+   Ito hue (distinct from both blues and from amber/vermillion under red-green CVD) — given its
+   own override here instead of deriving off peer. Peer's own mix also bumped up (18% -> 24%)
+   since a low-saturation tint loses hue signal, cutting into deep-blue selected's separation
+   too, not just cage-peer's. */
 :global(:root[data-colorblind="true"]) .board {
-  --cell-selected: color-mix(in srgb, #0072b2 34%, var(--paper)); /* deep blue */
-  --cell-peer: color-mix(in srgb, #56b4e9 18%, var(--paper));     /* light sky blue */
-  --cell-same: color-mix(in srgb, #e69f00 30%, var(--paper));     /* amber */
-  --cell-error-bg: color-mix(in srgb, #d55e00 36%, var(--paper)); /* vermillion */
+  --cell-selected: color-mix(in srgb, #0072b2 34%, var(--paper));   /* deep blue */
+  --cell-peer: color-mix(in srgb, #56b4e9 24%, var(--paper));       /* light sky blue */
+  --cell-cage-peer: color-mix(in srgb, #009e73 26%, var(--paper));  /* bluish green */
+  --cell-same: color-mix(in srgb, #e69f00 30%, var(--paper));       /* amber */
+  --cell-error-bg: color-mix(in srgb, #d55e00 36%, var(--paper));   /* vermillion */
   --cell-error-fg: #d55e00;
 }
 
@@ -119,14 +131,19 @@
   position: absolute;
   inset: 2%;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   /* Explicit row tracks too — without this, rows size to their own content, so a row with
      no candidates yet (e.g. only 1-3 marked) collapses and the others drift to fill the
      space, making digits shift position as marks are added/removed. Fixed 3×3 rows give
      every digit 1-9 one stable slot for the cell's whole lifetime. No visible gridlines
      between slots (tried once, didn't like it) — consistent positioning alone reads as a
-     grid without needing drawn lines, closer to sudoku.com's plainer look. */
-  grid-template-rows: repeat(3, 1fr);
+     grid without needing drawn lines, closer to sudoku.com's plainer look.
+     `minmax(0, 1fr)`, not bare `1fr` — a bare `1fr` track still respects its content's
+     min-content size, so the `.candidateMatch` chip (a wider/taller element than a lone
+     digit) grew its own row/column and visibly shifted every OTHER candidate's position
+     (direct user feedback, before/after screenshots). `minmax(0, 1fr)` pins every track to
+     an even third regardless of what's inside it. */
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   align-items: center;
   justify-items: center;
   font-size: 0.46em;
@@ -136,12 +153,27 @@
 
 /* The pencil mark matching the selected cell's placed value — the candidate-side echo of
    `.sameNumber` (which highlights other cells' PLACED values). Selecting a placed digit now
-   also calls out every candidate mention of it, not just other placed instances. Color +
-   weight only, same treatment `.sameNumber`/`.peer`/`.cagePeer` already get — a lower-stakes
-   echo state, not one of the two shape-cued critical states (selected/error). */
+   also calls out every candidate mention of it, not just other placed instances. A solid
+   chip (not just color+weight, which blended into the board — placed digits are ALSO grape
+   via `--cell-user`, so a small bold grape candidate read as just another ordinary digit
+   rather than a highlight) — closer to sudoku.com's own solid-circle candidate highlight,
+   and the background shape is itself a cue that doesn't rely on color perception alone. */
 .candidateMatch {
-  color: var(--grape);
+  color: var(--paper);
+  background: var(--grape);
   font-weight: 700;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Sized to just clear the digit, not to fill its grid track — the track is a fixed even
+     third (see `.candidates`'s `minmax(0, 1fr)` note) whether or not this chip exists, so an
+     oversized chip here would just get visually clipped/cramped against its neighbors
+     instead of shifting them. 1.15em was the smallest that still read as a distinct chip
+     rather than a barely-there halo, checked live against the actual 3×3 track size. */
+  min-width: 1.15em;
+  min-height: 1.15em;
+  line-height: 1;
 }
 
 /* Killer: EVERY cell's candidate grid — not just cage-anchor cells — reserves the same top
@@ -179,12 +211,6 @@
   stroke-dasharray: 0.11 0.08;
   stroke-linecap: round;
   opacity: 0.8;
-}
-
-/* Pad behind each cage sum (PDF parity): matches the resting cell background so the number
-   visibly breaks the dashed cage line in both themes. */
-.cageSumPad {
-  fill: var(--cell-bg);
 }
 
 .cageSum {
