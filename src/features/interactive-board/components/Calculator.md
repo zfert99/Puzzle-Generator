@@ -37,6 +37,24 @@ Escape / backdrop click / ✕ -> close the popup. Trigger button re-opens it fre
   (state is NOT reset on close, so a half-finished calculation survives a re-open).
 ```
 
+## Keyboard entry (July 2026)
+
+**Why:** Every button has a key equivalent (digits, `.`, `+ - * /` for the four operators —
+`*`/`x` both map to `×`, `/` maps to `÷`, and `Enter` doubles for `=`), so the calculator is
+fully operable without a mouse/touch once open, matching how a real desktop calculator app
+behaves. The keydown listener is the same `window`-level one Escape already used; it now
+reads `e.key` against digits/operator characters and calls the matching handler.
+
+**Why `useCallback` on every handler:** the listener effect closes over `inputDigit`,
+`chooseOp`, etc. — if those were plain `const`s (recreated fresh every render) the effect
+would either need to re-run on every render (to avoid a stale closure holding onto whatever
+`display`/`stored`/`pendingOp` existed when the calculator was first opened) or silently use
+stale state. Wrapping each handler in `useCallback` with its actual dependencies gives them a
+stable identity that only changes when the state they close over does, so the effect's
+dependency array is both correct (no stale closures) and doesn't thrash on every keystroke.
+Not the board's INP-critical hot path (AGENTS.md §3) — this is a low-frequency popup — but the
+correct fix costs nothing extra here.
+
 ## Future ideas (not built — deliberately deferred, per user request)
 
 Two richer versions of this were discussed and explicitly parked for later, in increasing
