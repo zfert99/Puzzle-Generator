@@ -170,6 +170,16 @@ Design principles locked for v1:
 Shop anchors: common 150–300, rare 600–1200, legendary 2500+ — a daily-ish player earning
 ~100/day reaches a rare in ~1–2 weeks, legendary in ~a month. Watch and retune (Risk 1).
 
+**Future idea (not yet designed): a small crumbs bonus for beating "Sudoku Bot"'s time**
+(the bot's identity and per-board target times live in `features/leaderboards/bot.ts` /
+`bot.md`, shipped July 2026 as a leaderboard-only "time to beat"). The user's own suggestion
+was something like "+5 crumbs" for finishing faster than the bot on a board. Flagging the
+tension with Risk 4 below before this gets built: Risk 4 deliberately keeps speed out of the
+payout formula so grinding slow easies never out-earns a fast attempt at a harder puzzle. A
+bot-beat bonus is speed-conditioned by construction, so if/when this is designed for real,
+it should be sized and capped (e.g. a flat one-time per-board bonus, not a repeatable
+per-solve one) so it can't become a backdoor way to re-introduce speed-grinding.
+
 ## 5. Risks
 
 1. **Economy balancing is a workstream, not a formula** — ship S4 early enough to observe

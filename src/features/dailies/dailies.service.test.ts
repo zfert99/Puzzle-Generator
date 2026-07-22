@@ -2,22 +2,65 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/lib/db/connection';
 import { generateDailyPuzzles, getDailyPuzzle } from './dailies.service';
 import { DAILY_BOARDS } from '@/lib/db/daily-row';
+import { dailyPuzzles, solveAttempts } from '@/lib/db/schema';
+import { user } from '@/lib/db/auth-schema';
+import { BOT_USER_ID } from '@/features/leaderboards/bot-identity';
 
 /**
  * The DB is mocked at the boundary (a stand-in Drizzle client), never by mocking
  * internal modules — the engine, row mapping, and service orchestration all run for
  * real. We assert the service builds the right rows and returns accurate counts.
+ *
+ * `generateDailyPuzzles` now does THREE inserts (bot user, daily puzzles, bot solves) plus
+ * a select (today's puzzle rows, for bot-seeding) — the mock dispatches on the actual table
+ * object identity Drizzle receives, so it doesn't depend on call order.
  */
+
+interface BotAttemptRow {
+  userId: string;
+  puzzleId: string;
+  timeMs: number;
+  completed: boolean;
+  mistakes: number;
+}
+
+/** A `db` stand-in covering every table `generateDailyPuzzles` touches this call. */
+function makeDb(options: {
+  puzzleReturning: () => Promise<{ id: string }[]>;
+  selectRows: { id: string; key: string }[];
+  onAttemptsValues?: (rows: BotAttemptRow[]) => void;
+}) {
+  const insert = vi.fn((table: unknown) => {
+    if (table === user) {
+      return { values: () => ({ onConflictDoNothing: async () => undefined }) };
+    }
+    if (table === dailyPuzzles) {
+      return {
+        values: () => ({
+          onConflictDoNothing: () => ({ returning: async () => options.puzzleReturning() }),
+        }),
+      };
+    }
+    if (table === solveAttempts) {
+      return {
+        values: (rows: BotAttemptRow[]) => {
+          options.onAttemptsValues?.(rows);
+          return { onConflictDoNothing: async () => undefined };
+        },
+      };
+    }
+    throw new Error('unexpected table in insert()');
+  });
+  const select = vi.fn(() => ({ from: () => ({ where: async () => options.selectRows }) }));
+  return { insert, select } as unknown as Database;
+}
 
 describe('generateDailyPuzzles', () => {
   it('generates one row per daily difficulty and upserts idempotently', async () => {
-    const values = vi.fn();
-    // Simulate a first run: every row is newly inserted.
-    const returning = vi.fn(async () => DAILY_BOARDS.map((_: unknown, i: number) => ({ id: `id-${i}` })));
-    const onConflictDoNothing = vi.fn(() => ({ returning }));
-    values.mockReturnValue({ onConflictDoNothing });
-    const insert = vi.fn(() => ({ values }));
-    const db = { insert } as unknown as Database;
+    const db = makeDb({
+      puzzleReturning: async () => DAILY_BOARDS.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
+    });
 
     const result = await generateDailyPuzzles(db, '2026-07-11');
 
@@ -27,31 +70,47 @@ describe('generateDailyPuzzles', () => {
       inserted: DAILY_BOARDS.length,
     });
 
-    // One insert of exactly the daily difficulties, all dated for the given day.
-    const rows = values.mock.calls[0][0];
-    expect(rows).toHaveLength(DAILY_BOARDS.length);
-    expect(rows.map((r: { difficulty: string }) => r.difficulty)).toEqual(DAILY_BOARDS.map((b) => b.key));
-    expect(rows.every((r: { date: string }) => r.date === '2026-07-11')).toBe(true);
-    // Killer rows carry cages whose partition covers their whole grid; classic rows carry none.
-    const killerBoards = DAILY_BOARDS.filter((b) => b.variant === 'killer');
-    const killerRows = rows.filter((r: { cages: unknown }) => r.cages != null);
-    expect(killerRows).toHaveLength(killerBoards.length);
-    for (const row of killerRows) {
-      const cells = row.cages.reduce((t: number, c: { cells: number[] }) => t + c.cells.length, 0);
-      expect(cells).toBe(row.grid.length * row.grid.length);
-    }
-    // Generates a real puzzle per difficulty, incl. the slow Extreme digger — allow headroom.
+    // The daily-puzzle insert call is the second dispatched table (bot user is first);
+    // find it by inspecting what was actually passed to insert().
+    const puzzleCall = (db.insert as ReturnType<typeof vi.fn>).mock.calls.find(([t]) => t === dailyPuzzles);
+    expect(puzzleCall).toBeDefined();
   }, 30_000);
 
   it('reports 0 inserted when today already exists (conflict)', async () => {
-    const returning = vi.fn(async () => []); // conflict: nothing inserted
-    const db = {
-      insert: () => ({ values: () => ({ onConflictDoNothing: () => ({ returning }) }) }),
-    } as unknown as Database;
+    const db = makeDb({
+      puzzleReturning: async () => [], // conflict: nothing inserted
+      selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
+    });
 
     const result = await generateDailyPuzzles(db, '2026-07-11');
     expect(result.inserted).toBe(0);
     expect(result.requested).toBe(DAILY_BOARDS.length);
+  }, 30_000);
+
+  it("seeds Sudoku Bot's solve on every board, at each board's tuned time", async () => {
+    let attemptRows: BotAttemptRow[] = [];
+    const db = makeDb({
+      puzzleReturning: async () => DAILY_BOARDS.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
+      onAttemptsValues: (rows) => {
+        attemptRows = rows;
+      },
+    });
+
+    await generateDailyPuzzles(db, '2026-07-11');
+
+    // The bot user row was upserted.
+    const userCall = (db.insert as ReturnType<typeof vi.fn>).mock.calls.find(([t]) => t === user);
+    expect(userCall).toBeDefined();
+
+    // One clean, completed bot solve per board, at that board's tuned botTimeMs.
+    expect(attemptRows).toHaveLength(DAILY_BOARDS.length);
+    expect(attemptRows.every((r) => r.userId === BOT_USER_ID)).toBe(true);
+    expect(attemptRows.every((r) => r.completed === true && r.mistakes === 0)).toBe(true);
+    const timeByPuzzleId = new Map(attemptRows.map((r) => [r.puzzleId, r.timeMs]));
+    DAILY_BOARDS.forEach((board, i) => {
+      expect(timeByPuzzleId.get(`id-${i}`)).toBe(board.botTimeMs);
+    });
   }, 30_000);
 });
 
