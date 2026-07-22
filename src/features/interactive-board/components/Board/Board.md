@@ -43,6 +43,16 @@ The pencil-mark 3×3 layout inside each cell went through two rounds:
   30% left more headroom above the candidates than needed — direct user feedback asked to
   "lift" them slightly. 27% still clears a 2-digit cage sum's ~21%-tall background pad with
   margin (verified against one), just less of it wasted as empty space above row 1.
+- **Fifth pass: down to 24%, the geometric sweet spot.** Still visibly more headroom than
+  needed, so this time it's worth stating the actual math rather than nudging by feel: the
+  cage-sum pad's height (`cage-geometry.ts`) is a FIXED ~21% of the cell regardless of digit
+  count (only its *width* varies with 1 vs. 2 digits — irrelevant now that clearance is
+  top-only) — so 23.5% (2.5% pad top + 21% pad height) is the true minimum with zero overlap,
+  for any cage sum. 24% keeps a small margin above that. Spot-checked at 22%/23%/24% against
+  several 2-digit sums in the same board (13/17/18/24/16/14/15) before settling on 24% — the
+  user's fallback idea of extending the cage-outline inset closer to the cell edges (freeing
+  more usable interior space) wasn't needed once the actual minimum was computed properly
+  instead of guessed at.
 
 ## Uniform cell sizing (`Board.module.css`)
 
