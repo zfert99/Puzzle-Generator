@@ -91,6 +91,18 @@ export interface BoardState {
 const emptyGrid = (size: number): number[][] =>
   Array.from({ length: size }, () => Array<number>(size).fill(0));
 
+/**
+ * `peers` self-heal: normally precomputed once and reused (the whole point is avoiding an
+ * O(size²) rebuild per keystroke), but it can momentarily lag `config` during Zustand
+ * rehydration — `config`/`status` restore synchronously from localStorage, while the
+ * `onRehydrateStorage` callback that rebuilds `peers` (never persisted) can run a tick later.
+ * A stale/empty `peers` indexed by the CURRENT config's size throws ("is not iterable")
+ * instead of silently doing nothing, so callers that read `peers[r * config.size + c]` route
+ * through this first rather than crashing on that narrow window.
+ */
+const resolvePeers = (peers: number[][], config: GridConfig): number[][] =>
+  peers.length === config.size * config.size ? peers : computePeers(config);
+
 /** Flat cell index → cage id map (−1 where uncaged); [] for classic games. */
 const buildCellToCage = (cages: Cage[], size: number): number[] => {
   if (cages.length === 0) return [];
@@ -219,7 +231,7 @@ export const useBoardStore = create<BoardState>()(
           nextCandidates[r][c] = 0; // a placed value has no pencil marks
           // Strip the placed digit from every peer's candidates (O(1) peer lookup).
           const bit = ~(1 << (digit - 1));
-          for (const peer of peers[r * config.size + c]) {
+          for (const peer of resolvePeers(peers, config)[r * config.size + c]) {
             const pr = Math.floor(peer / config.size);
             const pc = peer % config.size;
             nextCandidates[pr][pc] &= bit;
@@ -287,7 +299,7 @@ export const useBoardStore = create<BoardState>()(
         nextGrid[r][c] = value;
         nextCandidates[r][c] = 0;
         const bit = ~(1 << (value - 1));
-        for (const peer of peers[r * config.size + c]) {
+        for (const peer of resolvePeers(peers, config)[r * config.size + c]) {
           nextCandidates[Math.floor(peer / config.size)][peer % config.size] &= bit;
         }
         const solved = nextGrid.every((row, rr) => row.every((v, cc) => v === solution[rr][cc]));

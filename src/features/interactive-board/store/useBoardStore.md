@@ -60,6 +60,19 @@ serialization and re-supplied by the store creator. `persist` sits
 Because the persisted state only exists on the client, `PlayExperience` gates its
 first render on a mounted check to avoid an SSR/hydration mismatch.
 
+### `resolvePeers` — self-healing against a rehydration race (July 2026)
+
+**Why:** `config`/`status` restore synchronously as part of the persisted state merge, but
+`peers` isn't persisted — it's rebuilt by the separate `onRehydrateStorage` callback, which
+can run a tick *after* that merge. In that narrow window a component could technically read
+a `status: 'playing'`/real `config` alongside a still-empty `peers` (`[]`, the store's initial
+value). `inputDigit`/`hint` used to index straight into `peers[r * config.size + c]` and crash
+("is not iterable") if that ever lined up with a real keystroke — reported once, in the wild.
+`resolvePeers(peers, config)` checks `peers.length === config.size ** 2` before trusting it,
+recomputing via `computePeers(config)` on the spot if it doesn't match, so a placement/hint
+either uses the fast precomputed path (the common case) or self-heals for that one call
+instead of throwing — never a user-visible crash either way.
+
 ## Key actions
 
 ```text
