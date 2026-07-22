@@ -59,7 +59,7 @@ rotation alongside classic Sudoku.
 > **Hardening pass (landed):** a full audit against `AGENTS.md` plus remediation —
 > Jest→Vitest migration, an API stack-trace-leak fix, the bitmask/MRV engine rework,
 > broad test coverage, and CI. Details in
-> [agents-compliance-audit.md](agents-compliance-audit.md).
+> [agents-compliance-audit.md](archive/agents-compliance-audit.md).
 
 <!-- -->
 
@@ -278,11 +278,11 @@ graph TD
 
 > **Tracks:** 🗄️ Infrastructure, 🎨 Frontend
 > **Branch:** `feature/daily-leaderboards`
-> **Status:** ✅ Done — all slices **4.1–4.4 deployed to production** (`puzzles.biscuitlab.net`) and verified live: DB, daily cron, passkeys-first auth (email/password + Google), BOLA ownership, anti-cheat leaderboards + streaks, and the full UI. Running log: [phase4-walkthrough.md](phase4-walkthrough.md)
+> **Status:** ✅ Done — all slices **4.1–4.4 deployed to production** (`puzzles.biscuitlab.net`) and verified live: DB, daily cron, passkeys-first auth (email/password + Google), BOLA ownership, anti-cheat leaderboards + streaks, and the full UI. Running log: [phase4-walkthrough.md](archive/phase4-walkthrough.md)
 > **Estimated effort:** Large (2–3 weeks)
 > **Prerequisite:** Phase 3 (Interactive Board)
 
-This phase introduces **state and persistence**. The app goes from stateless to having a database, user accounts, and scheduled puzzle generation. It ships in independently-mergeable slices (4.1 → 4.4); see [phase4-implementation-plan.md](phase4-implementation-plan.md) for the security-first plan and confirmed stack (Neon Postgres · Drizzle · better-auth · Vercel Cron · Upstash).
+This phase introduces **state and persistence**. The app goes from stateless to having a database, user accounts, and scheduled puzzle generation. It ships in independently-mergeable slices (4.1 → 4.4); see [phase4-implementation-plan.md](archive/phase4-implementation-plan.md) for the security-first plan and confirmed stack (Neon Postgres · Drizzle · better-auth · Vercel Cron · Upstash).
 
 ### Phase 4 Deliverables
 
@@ -418,7 +418,7 @@ Replaced the original indigo/glassmorphism theme with the **[Biscuit Lab design 
 
 - Accessibility pass (contrast, focus, motion, + the chaos a11y carve-out), an INP budget for interactions, visual QA across all routes, and a Playwright smoke of the key flows under the new theme.
 
-Full plan (with resolved decisions): [phase5-implementation-plan.md](phase5-implementation-plan.md).
+Full plan (with resolved decisions): [phase5-implementation-plan.md](archive/phase5-implementation-plan.md).
 
 ---
 
@@ -426,10 +426,10 @@ Full plan (with resolved decisions): [phase5-implementation-plan.md](phase5-impl
 
 > **Tracks:** 🧮 Engine (v1), then 🎨 Frontend + 🗄️ Infrastructure (Phase 6b)
 > **Branch:** `feature/killer-sudoku`
-> **Status:** ✅ Done (v1 + 6b; expert/extreme = planned K10 follow-up) — **engine v1 (K1–K5) complete**: combination oracle + types (K1), exact solver + uniqueness (K2), cage generator (K3), tiered logical solver + difficulty grading (K4), and the graded generate pipeline (K5). **Difficulty rebalanced** per the cage-lever research: difficulty rides cage *shape* — given budgets 12/4/1 (`minSize` 2 for medium+; singles dropped from ~52%/33% of cages to ~29%/6%/2%) plus **foothold bands** (single-combination cages: medium ≥ 3 anchors, hard ≤ 3) — with the solver tier as a ceiling. Grade-before-uniqueness reorder (sound deductions ⇒ completion implies uniqueness) made generation fast, and **two-factor difficulty scoring** (Stuart-style weighted technique sum × opportunity density, SE-backboned weights, disjoint score bands easy < 42 / medium 42–62 / hard ≥ 62) now enforces played-difficulty ordering: `generateKillerSudoku('easy'|'medium'|'hard')` emits unique, score-banded puzzles in ~12 / 117 / 404 ms avg (≤ 1.5 s max). 67 killer tests. **Phase 6b:** PDF rendering + generator UI (`/generate` toggle), **the interactive board** (Killer playable on `/play` with cage overlay + shared cage geometry), **and the Killer daily** (a `killer` chip on `/daily` — one engine-medium Killer per day stored as difficulty `'killer'`, riding the existing solve/leaderboard/streak flow; migration `0003` adds `cages jsonb`) all shipped — **Phase 6 scope complete**. **Expert Killer shipped (K10 E1–E4)**: exact-solver pruning (verify 191 ms → 34 ms avg on max4 shapes), Killer-tough techniques + 0–5 tier remap (gradable max4 uniques 7% → 57%), expert tier (solveCap 4 + band-level necessity, big cages with sums > 24, generates in ~271 ms avg — faster than hard), full band recalibration (42/62/90 cuts), playable on `/play` + `/generate` PDF. **Extreme shipped too** (tier-5-necessary via minTier: solvable with AIC/ALS-class techniques, provably stuck without — ~5.5 s generation, the one slow tier, `maxDuration` raised accordingly). Full plan + gates: [killer-expert-implementation-plan.md](killer-expert-implementation-plan.md). **Dailies expanded to a 19-board registry** (Classic 9×9 / full Killer ladder / Minis sections — classic keys unchanged so no migration; per-board anti-cheat floors; sectioned picker + leaderboard tabs). **6×6 Killer shipped** (beginner variant per the grid-sizes research: digit-parameterized combination tables, measured 16/28 bands, ~2–9 ms generation, size toggle on `/play` + `/generate`; plan: [killer-6x6-implementation-plan.md](killer-6x6-implementation-plan.md)).
+> **Status:** ✅ Done (v1 + 6b; expert/extreme = planned K10 follow-up) — **engine v1 (K1–K5) complete**: combination oracle + types (K1), exact solver + uniqueness (K2), cage generator (K3), tiered logical solver + difficulty grading (K4), and the graded generate pipeline (K5). **Difficulty rebalanced** per the cage-lever research: difficulty rides cage *shape* — given budgets 12/4/1 (`minSize` 2 for medium+; singles dropped from ~52%/33% of cages to ~29%/6%/2%) plus **foothold bands** (single-combination cages: medium ≥ 3 anchors, hard ≤ 3) — with the solver tier as a ceiling. Grade-before-uniqueness reorder (sound deductions ⇒ completion implies uniqueness) made generation fast, and **two-factor difficulty scoring** (Stuart-style weighted technique sum × opportunity density, SE-backboned weights, disjoint score bands easy < 42 / medium 42–62 / hard ≥ 62) now enforces played-difficulty ordering: `generateKillerSudoku('easy'|'medium'|'hard')` emits unique, score-banded puzzles in ~12 / 117 / 404 ms avg (≤ 1.5 s max). 67 killer tests. **Phase 6b:** PDF rendering + generator UI (`/generate` toggle), **the interactive board** (Killer playable on `/play` with cage overlay + shared cage geometry), **and the Killer daily** (a `killer` chip on `/daily` — one engine-medium Killer per day stored as difficulty `'killer'`, riding the existing solve/leaderboard/streak flow; migration `0003` adds `cages jsonb`) all shipped — **Phase 6 scope complete**. **Expert Killer shipped (K10 E1–E4)**: exact-solver pruning (verify 191 ms → 34 ms avg on max4 shapes), Killer-tough techniques + 0–5 tier remap (gradable max4 uniques 7% → 57%), expert tier (solveCap 4 + band-level necessity, big cages with sums > 24, generates in ~271 ms avg — faster than hard), full band recalibration (42/62/90 cuts), playable on `/play` + `/generate` PDF. **Extreme shipped too** (tier-5-necessary via minTier: solvable with AIC/ALS-class techniques, provably stuck without — ~5.5 s generation, the one slow tier, `maxDuration` raised accordingly). Full plan + gates: [killer-expert-implementation-plan.md](archive/killer-expert-implementation-plan.md). **Dailies expanded to a 19-board registry** (Classic 9×9 / full Killer ladder / Minis sections — classic keys unchanged so no migration; per-board anti-cheat floors; sectioned picker + leaderboard tabs). **6×6 Killer shipped** (beginner variant per the grid-sizes research: digit-parameterized combination tables, measured 16/28 bands, ~2–9 ms generation, size toggle on `/play` + `/generate`; plan: [killer-6x6-implementation-plan.md](archive/killer-6x6-implementation-plan.md)).
 > **Estimated effort:** Large (2–3 weeks for the engine)
 > **Prerequisite:** Phase 3 (Interactive Board), Phase 5 (design system, for 6b)
-> **Full plan:** [killer-sudoku-implementation-plan.md](killer-sudoku-implementation-plan.md) · **Research:** [killer-sudoku.md](research/killer-sudoku.md)
+> **Full plan:** [killer-sudoku-implementation-plan.md](archive/killer-sudoku-implementation-plan.md) · **Research:** [killer-sudoku.md](research/killer-sudoku.md)
 
 A brand-new puzzle type: standard Sudoku plus **cages** (connected regions with a target sum
 and no repeated digit), and **no given digits** — the arithmetic *is* the clue. This is a new
@@ -627,7 +627,7 @@ first) and **Phase 7 — Strategy Courses** (both above). Beyond them, the backl
 (Killer's operator-based cousin) plus the three features deferred from Phase 4 — **multiplayer
 speed races**, **community puzzle sharing**, and a **mobile app**.
 
-- **Killer Sudoku** → now **Phase 6**; full [implementation plan](killer-sudoku-implementation-plan.md) drafted from the [research](research/killer-sudoku.md).
+- **Killer Sudoku** → now **Phase 6**; full [implementation plan](archive/killer-sudoku-implementation-plan.md) drafted from the [research](research/killer-sudoku.md).
 - **App design & game-feel ("juice")** → research: [web-design-and-game-juice.md](research/web-design-and-game-juice.md) (modern web-design craft + Flash-era feedback principles). Its concrete output is the **[design system](design/design-system.md)** ("Biscuit Lab" — biscuit/butterscotch/grape palette, chunky Flash-portal UI, a defined juice interaction language) with a [visual mockup](design/design-system-mockup.html). This identity **shipped in Phase 5** — it is the live theme at `puzzles.biscuitlab.net` and now guides the UI of all upcoming work.
 
 The subsections below capture the remaining backlog items.
@@ -644,7 +644,7 @@ Once the Phase 6 Killer engine lands, KenKen is a natural extension of the same
 > This is not a refactor of `sudoku.ts`. Killer and KenKen are fundamentally different puzzle
 > types with distinct constraint models; they live in their own engine module
 > (`src/features/engine/killer/`), reusing only variant-agnostic primitives (grid fill, the
-> classic `HumanSolver` techniques). See the [Killer plan](killer-sudoku-implementation-plan.md).
+> classic `HumanSolver` techniques). See the [Killer plan](archive/killer-sudoku-implementation-plan.md).
 
 ### Multiplayer Speed Races 🔜 Up next (deferred from Phase 4)
 
@@ -735,7 +735,7 @@ These were open questions earlier in the roadmap; all are now resolved.
 > **Phase 3 scope:** ✅ Decided — the Interactive Board shipped supporting **all grid sizes** (4×4, 6×6, 9×9) from the start.
 >
 > [!NOTE]
-> **Killer Sudoku timing:** ✅ Decided — Killer Sudoku is **Phase 6** (Strategy Courses moves to Phase 7). v1 is **engine-only** (solver + generator + grading); surfaces follow in Phase 6b. Built as a new module (`src/features/engine/killer/`), not an extension of `sudoku.ts`. Plan: [killer-sudoku-implementation-plan.md](killer-sudoku-implementation-plan.md).
+> **Killer Sudoku timing:** ✅ Decided — Killer Sudoku is **Phase 6** (Strategy Courses moves to Phase 7). v1 is **engine-only** (solver + generator + grading); surfaces follow in Phase 6b. Built as a new module (`src/features/engine/killer/`), not an extension of `sudoku.ts`. Plan: [killer-sudoku-implementation-plan.md](archive/killer-sudoku-implementation-plan.md).
 >
 > [!NOTE]
 > **Killer exact solver:** ✅ Decided — **bitmask backtracking + MRV** with cage-aware pruning, *not* DLX/CP-SAT (the research default). AGENTS.md §1 forbids preferring DLX for this engine, and bitmask backtracking hits the < 50 ms verify budget with no new heavy dependency.

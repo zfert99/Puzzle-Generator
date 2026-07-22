@@ -78,7 +78,7 @@ size-5 cages.
 
 ## E1: pruning + node budget (July 2026)
 
-Two changes from the expert-tier work (`Docs/killer-expert-implementation-plan.md`, slice E1),
+Two changes from the expert-tier work (`Docs/archive/killer-expert-implementation-plan.md`, slice E1),
 both benchmark-driven on fixed layout fixtures:
 
 - **Combo-filtered candidates (P1).** `candidates()` now uses `candidateMaskExcluding` — only

@@ -79,7 +79,7 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 | **8** | **KenKen** 🔢 — Latin-square cage arithmetic ([plan](Docs/kenken-implementation-plan.md)) | 🧮 Engine → 🎨 UI | 📋 Planned |
 | **9** | **Social & Economy** 🍪 — Crumbs, achievements, friends, battles ([plan](Docs/social-progression-economy-plan.md)) | 🗄️ Infra + 🎨 UI | 📋 Planned |
 
-> Phases 1 & 2 ran in parallel. Phase 6 (Killer Sudoku) shipped — graded engine, `/play` board, PDF export, and a Killer daily ([plan](Docs/killer-sudoku-implementation-plan.md)); expert/extreme tiers are a planned follow-up (plan slice K10). Phase 7 (strategy courses) follows and builds on the Phase 5 design system.
+> Phases 1 & 2 ran in parallel. Phase 6 (Killer Sudoku) shipped — graded engine, `/play` board, PDF export, and a Killer daily ([plan](Docs/archive/killer-sudoku-implementation-plan.md)); expert/extreme tiers are a planned follow-up (plan slice K10). Phase 7 (strategy courses) follows and builds on the Phase 5 design system.
 >
 > \* Phase 3 core is shipped at `/play`; optional polish may still be applied.
 

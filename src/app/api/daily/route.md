@@ -28,7 +28,7 @@ solution locally for mistake highlighting and hints. There is no leaderboard to 
 yet, so serving it is acceptable. **This changes in 4.4:** once solves are ranked, the
 solution must no longer be served for an unranked/unsolved daily, and completion is
 validated server-side against the stored solution instead (see
-`Docs/phase4-implementation-plan.md`, anti-cheat).
+`Docs/archive/phase4-implementation-plan.md`, anti-cheat).
 
 Runs on the Node.js runtime (DB driver is Node-only).
 

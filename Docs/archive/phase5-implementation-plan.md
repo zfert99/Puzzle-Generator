@@ -4,12 +4,12 @@
 
 Phases 1–4 built the *substance* (engine, board, dailies, accounts, leaderboards) on a
 placeholder **indigo / glassmorphism** skin. Phase 5 gives the app its *identity*: the
-**[Biscuit Lab design system](design/design-system.md)** — a warm biscuit/butterscotch
+**[Biscuit Lab design system](../design/design-system.md)** — a warm biscuit/butterscotch
 palette with a bold grape "lab" accent, chunky Flash-portal-era UI (thick ink outlines,
 hard offset "pressable" shadows, squash-and-stretch), a **mono** puzzle-grid voice, and a
 calibrated **"juice"** interaction language — all on an accessible (WCAG 2.2 AA) Next.js +
-Tailwind foundation. It's grounded in [web-design-and-game-juice.md](research/web-design-and-game-juice.md)
-and rendered concretely in the [visual mockup](design/design-system-mockup.html).
+Tailwind foundation. It's grounded in [web-design-and-game-juice.md](../research/web-design-and-game-juice.md)
+and rendered concretely in the [visual mockup](../design/design-system-mockup.html).
 
 The design system has two layers. **Sections 1–7 are the clean chunky skeleton** (palette,
 type, the pressable mechanic) — that's 5.1–5.4. **Section 8 is a "chaos layer"**: a
@@ -125,7 +125,7 @@ Retire `glass-panel`, the old `.btn-primary`, and indigo utilities once unrefere
 
 ### 5.3 — The juice layer
 
-Implement the [juice table](design/design-system.md) at **medium** intensity (Kao's
+Implement the [juice table](../design/design-system.md) at **medium** intensity (Kao's
 research: medium beats none *and* extreme), **in two parts** — the big meaningful payoff
 first (5.3a), the finishing micro-interactions fast-followed (5.3b). All effects gate on
 `useReducedMotion` (instant/opacity-only fallback).

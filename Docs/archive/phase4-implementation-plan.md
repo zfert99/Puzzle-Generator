@@ -7,7 +7,7 @@ the architectural pivot to **stateful** — introducing a database, user account
 shared daily puzzle per difficulty, and solve-time leaderboards with streaks. This is
 the phase with the largest new attack surface (auth, personal data, writes), so it is
 planned security-first against AGENTS.md Section 6 and
-[web-security-mitigation.md](research/web-security-mitigation.md).
+[web-security-mitigation.md](../research/web-security-mitigation.md).
 
 It builds directly on the Phase 3 interactive board: the daily puzzle loads into the
 existing `useBoardStore`, and completing it records a verified solve time.
@@ -31,7 +31,7 @@ the word to switch.
 
 | Decision | Recommended | Alternatives / trade-offs |
 | --- | --- | --- |
-| **Database** | **Neon Postgres** — installed via the **Vercel Marketplace integration** (Vercel's first-party "Vercel Postgres" was retired and migrated to Neon in Dec 2024; there is no "Storage → Postgres" button anymore). Serverless driver, generous free tier. | **Supabase** (Postgres + built-in auth/storage; heavier but batteries-included). See [portfolio-hosting.md](research/portfolio-hosting.md). |
+| **Database** | **Neon Postgres** — installed via the **Vercel Marketplace integration** (Vercel's first-party "Vercel Postgres" was retired and migrated to Neon in Dec 2024; there is no "Storage → Postgres" button anymore). Serverless driver, generous free tier. | **Supabase** (Postgres + built-in auth/storage; heavier but batteries-included). See [portfolio-hosting.md](../research/portfolio-hosting.md). |
 | **ORM** | **Drizzle** — lightweight, SQL-first, type-safe, serverless/edge-friendly, parameterized by default | **Prisma** — more mature, richer tooling, heavier bundle/cold start. Both satisfy the "type-safe ORM, parameterized queries" rule. |
 | **Auth** | **better-auth** with the Drizzle adapter — TypeScript-first, with **first-class (production-ready) passkeys** + 2FA plugins and OAuth. Neon's official Vercel+Neon starter ships better-auth + Drizzle for exactly this stack. | **Auth.js (NextAuth v5)** — its OAuth is battle-tested, but its **WebAuthn/passkey provider is explicitly experimental / "not recommended for production,"** which undermines a passkeys-first mandate. Or keep Auth.js for OAuth and bolt on a dedicated passkey service (Hanko/Corbado) — more moving parts. |
 | **Cron** | **Vercel Cron** (`vercel.json`) hitting a secret-guarded route | Supabase scheduled functions / external scheduler. |

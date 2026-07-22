@@ -4,7 +4,7 @@
 > rebalance (research levers #1 + #2; #3 two-factor scoring deferred)
 >
 > Reference document: successes, failures, benchmarks, and the blockers gating harder tiers.
-> Research basis: [killer-sudoku-difficulty-tiers.md](research/killer-sudoku-difficulty-tiers.md).
+> Research basis: [killer-sudoku-difficulty-tiers.md](../research/killer-sudoku-difficulty-tiers.md).
 
 ## What we set out to fix
 
@@ -157,17 +157,17 @@ expert from hard honestly). Until then, three well-separated difficulties is the
 
 - All **184 tests pass** (60 Killer); two tests that encoded the old exact-tier contract were
   updated to the ceiling contract, plus a new per-difficulty singles-budget test.
-- Mirrored docs updated ([killer-sudoku.md](../src/features/engine/killer/killer-sudoku.md),
-  [cage-generator.md](../src/features/engine/killer/cage-generator.md)); roadmap status
+- Mirrored docs updated ([killer-sudoku.md](../../src/features/engine/killer/killer-sudoku.md),
+  [cage-generator.md](../../src/features/engine/killer/cage-generator.md)); roadmap status
   refreshed with the new numbers.
 - The research doc had a non-compliant auto-generated filename — renamed to
-  [killer-sudoku-difficulty-tiers.md](research/killer-sudoku-difficulty-tiers.md) and
+  [killer-sudoku-difficulty-tiers.md](../research/killer-sudoku-difficulty-tiers.md) and
   lint-cleaned.
 - Fixed a real repo hazard: the on-disk directory had drifted to lowercase `docs` while git
   tracks `Docs/` — invisible on macOS, but it would have split the tree on any case-sensitive
   system (CI, Linux).
 - New sample regenerated and visually verified:
-  [killer-sudoku-sample.pdf](samples/killer-sudoku-sample.pdf).
+  [killer-sudoku-sample.pdf](../samples/killer-sudoku-sample.pdf).
 
 ## Bottom line
 
@@ -181,7 +181,7 @@ piece of future engine work.
 ## Addendum (same day): research-alignment pass
 
 A second research doc
-([killer-difficulty-grading-systems.md](research/killer-difficulty-grading-systems.md) —
+([killer-difficulty-grading-systems.md](../research/killer-difficulty-grading-systems.md) —
 Stuart's scoring architecture, SE weights, HoDoKu's generator) prompted a follow-up pass
 applying its cage-structure levers. Outcomes:
 

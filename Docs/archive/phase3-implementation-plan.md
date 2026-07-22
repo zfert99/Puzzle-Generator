@@ -9,7 +9,7 @@ stateful puzzle platform: a fully responsive, playable Sudoku board in the brows
 at `/play`, alongside the existing PDF flow at `/`.
 
 > **What changed since this plan was first drafted:** the engine was hardened and
-> refactored (see [agents-compliance-audit.md](../agents-compliance-audit.md)). It now
+> refactored (see [agents-compliance-audit.md](agents-compliance-audit.md)). It now
 > has a **bitmask + MRV generator**, a fast bitmask `HumanSolver`, structured Pino
 > logging, a **Vitest** unit suite, and a **Playwright** E2E harness. This plan is
 > updated to **reuse** that work rather than rebuild it, and to follow the newer

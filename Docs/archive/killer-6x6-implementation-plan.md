@@ -1,7 +1,7 @@
 # 6×6 Killer Sudoku — Implementation Plan
 
 > **Status:** ✅ Done (July 2026) — all three gates met; see slice outcomes inline · **Branch:** `feature/killer-sudoku`
-> **Research:** [killer-grid-sizes.md](research/killer-grid-sizes.md) ·
+> **Research:** [killer-grid-sizes.md](../research/killer-grid-sizes.md) ·
 > **Sibling plans:** [killer-sudoku-implementation-plan.md](killer-sudoku-implementation-plan.md),
 > [killer-expert-implementation-plan.md](killer-expert-implementation-plan.md)
 

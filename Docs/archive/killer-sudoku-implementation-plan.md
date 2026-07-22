@@ -5,7 +5,7 @@
 > **Tracks:** 🧮 Engine, 🎨 Frontend, 🗄️ Infrastructure
 > **Status:** 📋 Planned (design)
 > **Prerequisite:** Phase 3 (Interactive Board), Phase 5 (design system)
-> **Research:** [killer-sudoku.md](research/killer-sudoku.md)
+> **Research:** [killer-sudoku.md](../research/killer-sudoku.md)
 >
 > **v1 scope decision (locked):** **engine only** — slices **K1–K5** (combination tables,
 > exact solver + uniqueness, cage generator, logical solver + grading, generator pipeline),
@@ -20,8 +20,8 @@
 
 This plan turns the Killer Sudoku research into a buildable, sliced roadmap that fits the
 existing engine, board, PDF, and dailies architecture. It is grounded in three things: the
-[research report](research/killer-sudoku.md), the current codebase seams (surveyed below),
-and the project rules in [AGENTS.md](../AGENTS.md).
+[research report](../research/killer-sudoku.md), the current codebase seams (surveyed below),
+and the project rules in [AGENTS.md](../../AGENTS.md).
 
 ---
 
@@ -39,7 +39,7 @@ Killer Sudoku keeps the standard Sudoku constraints (1–9 once per row/column/b
 
 Because there are no givens and the constraint model is combinatorial rather than positional,
 this is a genuinely different puzzle — the roadmap's standing guidance is a **new module, not
-a refactor of `sudoku.ts`** ([roadmap.md](roadmap.md) §"Killer Sudoku & KenKen"). We still
+a refactor of `sudoku.ts`** ([roadmap.md](../roadmap.md) §"Killer Sudoku & KenKen"). We still
 reuse the primitives that are variant-agnostic (grid fill, `isValid`, and the classic
 `HumanSolver` techniques), but the Killer generation/solve logic lives on its own.
 
@@ -47,7 +47,7 @@ reuse the primitives that are variant-agnostic (grid fill, `isValid`, and the cl
 
 ## 2. Reconciling the research with our house rules
 
-The research and [AGENTS.md](../AGENTS.md) disagree in two places. **The house rules win**;
+The research and [AGENTS.md](../../AGENTS.md) disagree in two places. **The house rules win**;
 both deviations are deliberate and noted here so nobody "corrects" them later.
 
 | Topic | Research default | Our choice | Why |
@@ -77,12 +77,12 @@ Other rules this plan honors throughout:
 
 | Seam | File | What changes |
 |---|---|---|
-| Puzzle type | [sudoku.ts](../src/features/engine/sudoku.ts) — `SudokuPuzzle` `{grid, solution, difficulty, gridSize}` | Introduce a discriminated `Puzzle` union so a killer puzzle can carry `cages`. |
-| Board store | [useBoardStore.ts](../src/features/interactive-board/store/useBoardStore.ts) — `startNewGame(puzzle, mode)` | Accept + persist `cages` and a `variant`; cage no-repeat validation on input. |
-| Board render | [Board.tsx](../src/features/interactive-board/components/Board/Board.tsx) / `Cell.tsx` | Draw cage borders (dashed) + a sum label on each cage's anchor cell. |
-| DB row | [daily-row.ts](../src/lib/db/daily-row.ts) + [schema.ts](../src/lib/db/schema.ts) — `daily_puzzles(grid, solution, clue_count)` | Add nullable `cages jsonb` + `variant`; a Killer-aware clue/cage count. |
-| API | [/api/puzzle](../src/app/api/puzzle/route.ts), [/api/daily](../src/app/api/daily/route.ts) | Serve `cages`; keep `solution` server-only rules intact. |
-| PDF | [pdf.service.ts](../src/features/pdf-generation/services/pdf.service.ts) — `drawGrid` | Draw cage outlines + corner sum labels; Killer section in the outline. |
+| Puzzle type | [sudoku.ts](../../src/features/engine/sudoku.ts) — `SudokuPuzzle` `{grid, solution, difficulty, gridSize}` | Introduce a discriminated `Puzzle` union so a killer puzzle can carry `cages`. |
+| Board store | [useBoardStore.ts](../../src/features/interactive-board/store/useBoardStore.ts) — `startNewGame(puzzle, mode)` | Accept + persist `cages` and a `variant`; cage no-repeat validation on input. |
+| Board render | [Board.tsx](../../src/features/interactive-board/components/Board/Board.tsx) / `Cell.tsx` | Draw cage borders (dashed) + a sum label on each cage's anchor cell. |
+| DB row | [daily-row.ts](../../src/lib/db/daily-row.ts) + [schema.ts](../../src/lib/db/schema.ts) — `daily_puzzles(grid, solution, clue_count)` | Add nullable `cages jsonb` + `variant`; a Killer-aware clue/cage count. |
+| API | [/api/puzzle](../../src/app/api/puzzle/route.ts), [/api/daily](../../src/app/api/daily/route.ts) | Serve `cages`; keep `solution` server-only rules intact. |
+| PDF | [pdf.service.ts](../../src/features/pdf-generation/services/pdf.service.ts) — `drawGrid` | Draw cage outlines + corner sum labels; Killer section in the outline. |
 
 ---
 
@@ -356,7 +356,7 @@ the order is fixed:
 | Board interaction (INP) | ≤ 200 ms | AGENTS.md §3 |
 
 Benchmarks use **randomized** grids/cages (avoid V8 dead-code/shape caching, §5) and append
-to [benchmark-logs.md](../src/features/engine/benchmarks/benchmark-logs.md).
+to [benchmark-logs.md](../../src/features/engine/benchmarks/benchmark-logs.md).
 
 ---
 

@@ -2,8 +2,8 @@
 
 > **Status:** 📋 Planned · **Branch:** `feature/killer-sudoku` (kept open for exactly this)
 > **Parent plan:** [killer-sudoku-implementation-plan.md](killer-sudoku-implementation-plan.md) (slice K10)
-> **Research:** [killer-sudoku-difficulty-tiers.md](research/killer-sudoku-difficulty-tiers.md) ·
-> [killer-difficulty-grading-systems.md](research/killer-difficulty-grading-systems.md)
+> **Research:** [killer-sudoku-difficulty-tiers.md](../research/killer-sudoku-difficulty-tiers.md) ·
+> [killer-difficulty-grading-systems.md](../research/killer-difficulty-grading-systems.md)
 > **History that constrains this plan:** [killer-difficulty-rebalance-report.md](killer-difficulty-rebalance-report.md)
 
 Adds **expert** (and, gated on measurement, **extreme**) Killer difficulties. Everything here
