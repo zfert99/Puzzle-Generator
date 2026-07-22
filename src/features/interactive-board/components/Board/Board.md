@@ -13,6 +13,20 @@ See `CageOverlay.md`.
 specifically so `Board.module.css` can style descendants (currently just `.candidates`; see
 below) differently for Killer vs. classic with a pure CSS selector, no per-cell JS needed.
 
+## Colorblind mode: cage-peer had no override at all (July 2026)
+
+`--cell-cage-peer` (Killer's row/column/box-vs-cage distinction) was added to the base `.board`
+rule as `grape 12% mixed into --cell-peer`, but the `data-colorblind` block was never updated
+to give it its own override — it was written before Killer existed. Under colorblind mode that
+meant cage-peer inherited ~88% of whatever `--cell-peer`'s blue happened to be, rendering as
+nearly the same color as plain peer — reported directly by a red-green CVD user as "everything
+looks the same kind of blue," specifically hit in a Killer game where a selection lights up
+both states at once. Fixed with its own override using Okabe-Ito's bluish-green (`#009e73`),
+distinct from both blues and from the amber/vermillion error-adjacent hues; `--cell-peer`'s own
+mix also bumped 18% → 24% since a low-saturation tint was cutting into its separation from
+`--cell-selected` too. Verified live: cage-peer now renders visibly teal/green against peer's
+sky blue and selected's deep blue with the ring.
+
 ## Candidate grid: consistent positioning, no drawn gridlines (July 2026, revised)
 
 The pencil-mark 3×3 layout inside each cell went through two rounds:
@@ -53,6 +67,30 @@ The pencil-mark 3×3 layout inside each cell went through two rounds:
   user's fallback idea of extending the cage-outline inset closer to the cell edges (freeing
   more usable interior space) wasn't needed once the actual minimum was computed properly
   instead of guessed at.
+
+## Candidate-match: solid chip, not just color+weight (July 2026)
+
+`.candidateMatch` (see `Cell.md`) used to be color+font-weight only — direct user feedback
+was that it wasn't noticeable. The reason wasn't primarily a colorblindness issue: ordinary
+placed digits are *already* grape (`--cell-user`), so a small bold grape candidate read as
+just another normal digit rather than a highlight, on top of everything else being small.
+It's now a solid chip (`background: var(--grape)`, `color: var(--paper)`, `border-radius:
+999px`), closer to sudoku.com's own solid-circle candidate highlight — a shape cue as well
+as a color one, which also happens to help colorblind users even though no `data-colorblind`
+override was added (grape/purple isn't a hue red-green CVD confuses, and the shape itself
+doesn't depend on hue perception at all). Verified in light, dark, and colorblind mode.
+
+## Cage-sum pad: replaced with an SVG mask (July 2026)
+
+The cage sum's "break the dashed line" pad used to be a small `rect` painted in the resting
+`--cell-bg` color — but that's a fixed color, and no fixed color is right for every highlight
+state a cell can be in (a flat pad read as a mismatched floating box on a highlighted cell;
+dropping it to partial opacity to fix that let the dashed line ghost through instead — two
+different symptoms of the same root cause). `CageOverlay.tsx` now masks a gap in the dashed
+line itself at each sum's position instead of painting anything there, so whatever the cell
+actually looks like underneath — any highlight, any theme — simply shows through correctly,
+with no pad-vs-highlight mismatch possible at all. See `CageOverlay.md` for the full
+reasoning and the mask mechanics.
 
 ## Uniform cell sizing (`Board.module.css`)
 
