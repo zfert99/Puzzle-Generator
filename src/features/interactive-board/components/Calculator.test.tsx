@@ -99,4 +99,52 @@ describe('Calculator', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Close calculator' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  describe('keyboard entry', () => {
+    it('does basic addition via the keyboard: 5+3=8', async () => {
+      const { user, display } = await openCalculator();
+      await user.keyboard('5+3=');
+      expect(display()).toBe('8');
+    });
+
+    it('accepts Enter as an alternative to =', async () => {
+      const { user, display } = await openCalculator();
+      await user.keyboard('4+4{Enter}');
+      expect(display()).toBe('8');
+    });
+
+    it('maps * to × and / to ÷', async () => {
+      const { user, display } = await openCalculator();
+      await user.keyboard('6*7=');
+      expect(display()).toBe('42');
+      await user.keyboard('c9/3=');
+      expect(display()).toBe('3');
+    });
+
+    it('supports a decimal point via the keyboard', async () => {
+      const { user, display } = await openCalculator();
+      await user.keyboard('1.5+2=');
+      expect(display()).toBe('3.5');
+    });
+
+    it('supports Backspace via the keyboard', async () => {
+      const { user, display } = await openCalculator();
+      await user.keyboard('42{Backspace}');
+      expect(display()).toBe('4');
+    });
+
+    it('supports C via the keyboard', async () => {
+      const { user, display } = await openCalculator();
+      await user.keyboard('7+c3=');
+      expect(display()).toBe('3');
+    });
+
+    it('does not close on typed keys, only Escape', async () => {
+      const { user, dialog } = await openCalculator();
+      await user.keyboard('5+3=');
+      expect(dialog).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
 });

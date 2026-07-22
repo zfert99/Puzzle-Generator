@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Op = '+' | '−' | '×' | '÷';
 
@@ -37,55 +37,48 @@ export function Calculator() {
   const [freshEntry, setFreshEntry] = useState(true);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        setOpen(false);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  const inputDigit = useCallback(
+    (d: string) => {
+      setDisplay((prev) => (freshEntry || prev === '0' ? d : prev + d));
+      setFreshEntry(false);
+    },
+    [freshEntry],
+  );
 
-  const inputDigit = (d: string) => {
-    setDisplay((prev) => (freshEntry || prev === '0' ? d : prev + d));
-    setFreshEntry(false);
-  };
-
-  const inputDecimal = () => {
+  const inputDecimal = useCallback(() => {
     setDisplay((prev) => (freshEntry ? '0.' : prev.includes('.') ? prev : `${prev}.`));
     setFreshEntry(false);
-  };
+  }, [freshEntry]);
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     setDisplay('0');
     setStored(null);
     setPendingOp(null);
     setFreshEntry(true);
-  };
+  }, []);
 
-  const backspace = () => {
+  const backspace = useCallback(() => {
     setDisplay((prev) => (prev.length > 1 ? prev.slice(0, -1) : '0'));
-  };
+  }, []);
 
   /** Commits any pending operation against the current display, then queues the next one. */
-  const chooseOp = (op: Op) => {
-    const current = Number.parseFloat(display);
-    if (pendingOp && !freshEntry && stored !== null) {
-      const result = compute(stored, current, pendingOp);
-      setDisplay(String(result));
-      setStored(result);
-    } else {
-      setStored(current);
-    }
-    setPendingOp(op);
-    setFreshEntry(true);
-  };
+  const chooseOp = useCallback(
+    (op: Op) => {
+      const current = Number.parseFloat(display);
+      if (pendingOp && !freshEntry && stored !== null) {
+        const result = compute(stored, current, pendingOp);
+        setDisplay(String(result));
+        setStored(result);
+      } else {
+        setStored(current);
+      }
+      setPendingOp(op);
+      setFreshEntry(true);
+    },
+    [display, pendingOp, freshEntry, stored],
+  );
 
-  const equals = () => {
+  const equals = useCallback(() => {
     if (pendingOp === null || stored === null) return;
     const current = Number.parseFloat(display);
     const result = compute(stored, current, pendingOp);
@@ -93,7 +86,70 @@ export function Calculator() {
     setStored(null);
     setPendingOp(null);
     setFreshEntry(true);
-  };
+  }, [pendingOp, stored, display]);
+
+  // Keyboard entry — every button has a key equivalent, so this can be operated without a
+  // mouse/touch once open. Re-attaches on every render (all these handlers are plain
+  // consts, not useCallback'd, so they get fresh closures each render) rather than once per
+  // `open` toggle — otherwise the listener would keep using the state from whenever it was
+  // first attached instead of the latest display/stored/pendingOp. Cheap for a low-frequency
+  // popup like this; not the board's INP-critical hot path (AGENTS.md §3).
+  useEffect(() => {
+    if (!open) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setOpen(false);
+        return;
+      }
+      if (/^[0-9]$/.test(e.key)) {
+        e.preventDefault();
+        inputDigit(e.key);
+        return;
+      }
+      switch (e.key) {
+        case '.':
+          e.preventDefault();
+          inputDecimal();
+          return;
+        case '+':
+          e.preventDefault();
+          chooseOp('+');
+          return;
+        case '-':
+          e.preventDefault();
+          chooseOp('−');
+          return;
+        case '*':
+        case 'x':
+        case 'X':
+          e.preventDefault();
+          chooseOp('×');
+          return;
+        case '/':
+          e.preventDefault(); // also stops Firefox's quick-find-by-slash
+          chooseOp('÷');
+          return;
+        case 'Enter':
+        case '=':
+          e.preventDefault();
+          equals();
+          return;
+        case 'Backspace':
+          e.preventDefault();
+          backspace();
+          return;
+        case 'c':
+        case 'C':
+          e.preventDefault();
+          clearAll();
+          return;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, inputDigit, inputDecimal, chooseOp, equals, clearAll, backspace]);
 
   return (
     <>
