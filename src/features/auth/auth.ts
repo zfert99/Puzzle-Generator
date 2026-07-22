@@ -6,6 +6,7 @@ import { passkey } from '@better-auth/passkey';
 import { db } from '@/lib/db/client';
 import * as authSchema from '@/lib/db/auth-schema';
 import { hashPassword, verifyPassword } from './password';
+import { upstashRateLimitStorage } from './rate-limit-storage';
 
 /**
  * The better-auth server instance — the single source of truth for authentication.
@@ -39,6 +40,13 @@ export const auth = betterAuth({
   // trust to Vercel's own preview domains, it can't loosen anything in production.
   trustedOrigins: ['https://*.vercel.app'],
   database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
+  // Rate-limit storage: shared across Vercel's separate serverless instances via Upstash
+  // when configured, instead of the library's default in-memory counters (which don't
+  // survive a cold start or coordinate across instances). Scoped to `rateLimit.customStorage`
+  // rather than the top-level `secondaryStorage` option deliberately — see rate-limit-
+  // storage.md for why. Falls back to in-memory when Upstash env vars are unset (e.g. local
+  // dev) — same conditional pattern as Google below.
+  ...(upstashRateLimitStorage ? { rateLimit: { customStorage: upstashRateLimitStorage } } : {}),
   // Public leaderboard handle — settable via updateUser, returned in the session user.
   // Uniqueness is enforced by the DB constraint (a taken handle surfaces as an error).
   user: {
