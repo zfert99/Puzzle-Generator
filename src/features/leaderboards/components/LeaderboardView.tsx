@@ -41,14 +41,17 @@ export function LeaderboardView({
   date,
   difficulty: controlledDifficulty,
   onDifficultyChange,
+  initialDifficulty,
 }: {
   date?: string;
   /** Control the difficulty externally (the archive drives one selector for board + play). */
   difficulty?: DailyDifficulty;
   onDifficultyChange?: (d: DailyDifficulty) => void;
+  /** Seed the (uncontrolled) initial tab — e.g. deep-linking from "just solved X" to X's board. */
+  initialDifficulty?: DailyDifficulty;
 } = {}) {
   const { data: session } = useSession();
-  const [internalDifficulty, setInternalDifficulty] = useState<DailyDifficulty>('easy');
+  const [internalDifficulty, setInternalDifficulty] = useState<DailyDifficulty>(initialDifficulty ?? 'easy');
   const difficulty = controlledDifficulty ?? internalDifficulty;
   const [entries, setEntries] = useState<Entry[]>([]);
   const [me, setMe] = useState<Me | null>(null);

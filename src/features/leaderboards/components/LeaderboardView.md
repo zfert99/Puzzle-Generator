@@ -10,7 +10,10 @@ omit it for today. For a past board the today-relative panels (streak + personal
 hidden — that effect gates on `!date` — while the caller's own historical rank still shows.
 Difficulty can also be **controlled** externally (`difficulty` + `onDifficultyChange`) so the
 archive drives one selector for both the board and its "Play (practice)" button; uncontrolled
-(internal state) by default.
+(internal state) by default. `initialDifficulty` (July 2026) only seeds that internal state's
+starting value — for deep-linking straight to a specific board (e.g. `/leaderboard` from the
+daily's post-solve "Leaderboard" link) without going fully controlled; the tabs stay clickable
+afterward exactly like the plain uncontrolled case.
 
 ## Why fetch effects avoid synchronous setState
 

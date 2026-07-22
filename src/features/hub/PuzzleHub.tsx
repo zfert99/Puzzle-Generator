@@ -34,7 +34,7 @@ export function PuzzleHub() {
           tilt="tilt-b"
           sticker={
             <Sticker color="lime" rotate={10} className="absolute -top-3 -right-2 z-10">
-              in progress
+              new!
             </Sticker>
           }
         />

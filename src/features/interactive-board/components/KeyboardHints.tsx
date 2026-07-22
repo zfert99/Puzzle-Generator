@@ -8,13 +8,15 @@ const HINTS: ReadonlyArray<readonly [string, string]> = [
 ];
 
 /**
- * A compact, always-visible legend of the board's keyboard controls, so the
- * shortcuts implemented in `Board` are discoverable rather than hidden. Purely
- * presentational (no store access), and irrelevant-but-harmless on touch devices.
+ * A compact legend of the board's keyboard controls, so the shortcuts implemented in
+ * `Board` are discoverable rather than hidden. Purely presentational (no store access).
+ * Hidden below the `sm` breakpoint — a touch-only device has no keyboard, so the legend
+ * is just noise there. A pure CSS breakpoint (not a JS viewport check) so there is no
+ * server/client mismatch to worry about (AGENTS.md hydration-safety rule).
  */
 export function KeyboardHints() {
   return (
-    <div className="mt-6 w-full max-w-[520px] mx-auto text-xs text-ink-soft">
+    <div className="hidden sm:block mt-6 w-full max-w-[520px] mx-auto text-xs text-ink-soft">
       <p className="mb-2 font-medium uppercase tracking-wide">Keyboard</p>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5">
         {HINTS.map(([keys, description]) => (

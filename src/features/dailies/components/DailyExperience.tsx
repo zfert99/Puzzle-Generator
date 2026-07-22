@@ -326,7 +326,7 @@ export default function DailyExperience() {
               <p className="text-xs text-ink-soft mb-4">
                 One attempt per day — new puzzle at 00:00 UTC. Try another difficulty, or:
               </p>
-              <Link href="/leaderboard" className="btn-primary w-full inline-flex justify-center">
+              <Link href={`/leaderboard?difficulty=${difficulty}`} className="btn-primary w-full inline-flex justify-center">
                 View leaderboard
               </Link>
             </div>
@@ -429,7 +429,7 @@ export default function DailyExperience() {
                 Back to difficulties
               </button>
               <Link
-                href="/leaderboard"
+                href={`/leaderboard?difficulty=${difficulty}`}
                 className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
               >
                 Leaderboard

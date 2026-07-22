@@ -3,6 +3,7 @@
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
+import { Calculator } from '../Calculator';
 
 /**
  * On-screen controls for mouse/touch users: a digit pad plus Erase, an
@@ -15,6 +16,7 @@ import { useBoardStore } from '../../store/useBoardStore';
  */
 export function Numpad({ showHint = true }: { showHint?: boolean }) {
   const size = useBoardStore((s) => s.config.size);
+  const isKiller = useBoardStore((s) => s.variant === 'killer');
   const pencilMode = useBoardStore((s) => s.pencilMode);
   // Which digits have all `size` instances placed (locked out).
   const completed = useBoardStore(
@@ -53,7 +55,11 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
         ))}
       </div>
 
-      <div className={`grid ${showHint ? 'grid-cols-5' : 'grid-cols-4'} gap-2`}>
+      <div
+        className={`grid ${
+          showHint && isKiller ? 'grid-cols-6' : showHint || isKiller ? 'grid-cols-5' : 'grid-cols-4'
+        } gap-2`}
+      >
         <button type="button" onClick={() => clearCell()} className={controlClass}>
           Erase
         </button>
@@ -78,6 +84,8 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
         <button type="button" onClick={redo} disabled={!canRedo} className={controlClass}>
           Redo
         </button>
+        {/* Killer only — cage-sum arithmetic is worth having a calculator for. */}
+        {isKiller && <Calculator />}
       </div>
     </div>
   );

@@ -15,13 +15,16 @@ Select from the store (shallow):
   value, candidate mask, isGiven,
   isSelected    = the store's selectedCell is this cell,
   isPeer        = selectedCell shares this cell's row/column/box,
+  isCagePeer    = selectedCell shares this cell's Killer cage (see below),
+  hasCageSum    = this cell is its cage's anchor (CageOverlay draws a sum into its corner),
   isError       = real-time errors ON and a wrong, non-given value is present,
   isSameNumber  = this cell holds the same non-zero value as the selected cell
                   (highlights every matching number across the board).
 
-Choose ONE background by precedence: error > selected > same-number > peer.
+Choose ONE background by precedence: error > selected > same-number > cage-peer > peer.
 Errors win, so a wrong value reads red even while it is the selected cell; a thin
-selection ring is added on top in that case so the selection is still visible.
+selection ring is added on top in that case so the selection is still visible. Cage
+membership outranks generic peering — it's the rarer, more specific constraint.
 
 Compute thick-border flags from box geometry (adapts to 4/6/9 grids).
 
@@ -29,12 +32,24 @@ Render <div role="gridcell"> with:
   aria-label synthesized ("Given clue 7, row 2, column 4" / "Candidates 2, 5, 8" / "Empty…"),
   aria-selected, tabIndex (0 if selected else -1),
   onClick -> selectCell.
-  Body: the value if placed, else a mini grid of pencil-mark candidates from the mask.
+  Body: the value if placed, else a mini grid of pencil-mark candidates from the mask
+        (offset via .candidatesCageSum if hasCageSum, so digit 1 doesn't sit under the sum).
 ```
 
 ## Cage highlighting (Killer)
 
-The peer highlight covers the selected cell's **cage** as well as its row/column/box — a cage
-is a no-repeat constraint region, so its members are peers in every sense that matters to the
-player. The check is O(1) per cell via the store's precomputed `cellToCage` map (empty for
-classic games, so classic behaviour is untouched).
+A Killer cage is a no-repeat constraint region like a house, but its members get their **own**
+tint (`.cagePeer`, a touch more grape-leaning than the generic `.peer`) rather than folding
+into the row/column/box highlight — they read as related but distinct (July 2026; previously
+cage membership was OR'd straight into the generic peer check, so a cage read identically to
+a plain row/box peer). The check is O(1) per cell via the store's precomputed `cellToCage` map
+(empty for classic games, so classic behaviour is untouched).
+
+## Cage-sum clearance (Killer)
+
+`hasCageSum` (from the store's precomputed `cageAnchorCell`, mirroring `computeCageOutline`'s
+anchor rule — `Math.min(...cage.cells)`) marks the one cell per cage where `CageOverlay` draws
+the sum label into the top-left corner. Without accounting for that, a cell's own pencil-mark
+1 (fixed to the top-left of its 3×3 candidate layout) could sit directly under the sum's
+background pad. `.candidatesCageSum` nudges the whole candidate grid down/right just for that
+cell, so nothing is hidden.
