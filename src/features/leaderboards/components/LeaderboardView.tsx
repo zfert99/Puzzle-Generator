@@ -114,6 +114,12 @@ export function LeaderboardView({
     };
   }, [session, date]);
 
+  // Scoped to the currently-viewed board, not every board the player has ever completed —
+  // with 19 possible boards, showing all of them unconditionally on every tab would be a
+  // long, mostly-irrelevant wall of pills (fetched once above; this is just a client-side
+  // filter, so switching tabs doesn't need a re-fetch).
+  const myBest = bests.find((b) => b.difficulty === difficulty);
+
   const selectDifficulty = (d: DailyDifficulty) => {
     if (d === difficulty) return;
     setLoading(true);
@@ -156,17 +162,13 @@ export function LeaderboardView({
         </p>
       )}
 
-      {session && bests.length > 0 && (
+      {session && myBest && (
         <div className="mb-4 text-center">
-          <p className="text-xs uppercase tracking-wide text-ink-soft mb-1">Your personal bests</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {bests.map((best) => (
-              <span key={best.difficulty} className="px-2 py-1 rounded-md bg-paper text-xs">
-                <span className="capitalize text-ink-soft">{formatDailyKey(best.difficulty)}</span>{' '}
-                <span className="tabular-nums font-medium">{formatMs(best.bestMs)}</span>
-              </span>
-            ))}
-          </div>
+          <p className="text-xs uppercase tracking-wide text-ink-soft mb-1">Your personal best</p>
+          <span className="px-2 py-1 rounded-md bg-paper text-xs">
+            <span className="capitalize text-ink-soft">{formatDailyKey(myBest.difficulty)}</span>{' '}
+            <span className="tabular-nums font-medium">{formatMs(myBest.bestMs)}</span>
+          </span>
         </div>
       )}
 
