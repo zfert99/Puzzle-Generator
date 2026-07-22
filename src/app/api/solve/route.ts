@@ -7,22 +7,29 @@ import { recordSolve, SolveError } from '@/features/leaderboards/solve.service';
 import { getUserRank } from '@/features/leaderboards/leaderboard.service';
 import { isDailyDifficulty, toUtcDateString } from '@/lib/db/daily-row';
 import type { Grid } from '@/lib/db/schema';
+import type { GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** A valid submission grid is 9 rows × 9 cells of integers 1–9 (a completed board). */
+const VALID_GRID_SIZES: readonly GridSize[] = [4, 6, 9];
+
+/**
+ * A valid submission grid is `size` rows × `size` cells of integers `1..size` (a completed
+ * board) for one of this app's supported grid sizes — 4×4/6×6 minis or a 9×9 board. This used
+ * to hardcode 9×9, which rejected every mini daily solve outright (400 "expected a completed
+ * 9x9 board") before it ever reached `recordSolve`'s solution check, so mini completions never
+ * made it onto the leaderboard or the dailies "completed" list.
+ */
 function isCompletedGrid(value: unknown): value is Grid {
-  return (
-    Array.isArray(value) &&
-    value.length === 9 &&
-    value.every(
-      (row) =>
-        Array.isArray(row) &&
-        row.length === 9 &&
-        row.every((n) => Number.isInteger(n) && n >= 1 && n <= 9),
-    )
+  if (!Array.isArray(value) || !VALID_GRID_SIZES.includes(value.length as GridSize)) return false;
+  const size = value.length;
+  return value.every(
+    (row) =>
+      Array.isArray(row) &&
+      row.length === size &&
+      row.every((n) => Number.isInteger(n) && n >= 1 && n <= size),
   );
 }
 
@@ -49,7 +56,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or missing difficulty' }, { status: 400 });
     }
     if (!isCompletedGrid(grid)) {
-      return NextResponse.json({ error: 'Invalid grid: expected a completed 9x9 board' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid grid: expected a completed 4x4, 6x6, or 9x9 board' }, { status: 400 });
     }
     if (clientTimeMs === null || clientTimeMs < 0) {
       return NextResponse.json({ error: 'Invalid or missing timeMs' }, { status: 400 });

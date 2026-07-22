@@ -27,13 +27,15 @@ interface CellProps {
 export const Cell = memo(function Cell({ r, c }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isWrong, isSameNumber, size, boxWidth, boxHeight, isDaily } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, hasCageSum, isWrong, isSameNumber, size, boxWidth, boxHeight, isDaily } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
       const isSelf = sel != null && sel.r === r && sel.c === c;
-      // A Killer cage is a constraint region like a house — its members highlight as peers
-      // too. O(1) via the precomputed cellToCage map (empty for classic games).
+      // A Killer cage is a constraint region like a house, but a distinct one from
+      // row/column/box — kept separate from `samePeer` so it can render its own tint
+      // (`.cagePeer`) instead of blending into the generic peer highlight. O(1) via the
+      // precomputed cellToCage map (empty for classic games).
       const sameCage =
         sel != null &&
         !isSelf &&
@@ -45,7 +47,6 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
         !isSelf &&
         (sel.r === r ||
           sel.c === c ||
-          sameCage ||
           (Math.floor(sel.r / cfg.boxHeight) === Math.floor(r / cfg.boxHeight) &&
             Math.floor(sel.c / cfg.boxWidth) === Math.floor(c / cfg.boxWidth)));
       const v = s.grid[r][c];
@@ -56,6 +57,10 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
         isGiven: s.givens[r][c],
         isSelected: isSelf,
         isPeer: samePeer,
+        isCagePeer: sameCage,
+        // CageOverlay draws this cell's cage sum into its top-left corner — the candidate
+        // grid needs to leave that corner clear (see .candidatesCageSum).
+        hasCageSum: s.cageAnchorCell.length > 0 && s.cageAnchorCell[r * cfg.size + c],
         isWrong: v !== 0 && !s.givens[r][c] && v !== s.solution[r][c],
         isSameNumber: v !== 0 && v === selValue && !isSelf, // another cell holding the selected value
         size: cfg.size,
@@ -75,13 +80,16 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
   // once solved there are no wrong cells anyway.
   const isError = errorHighlight && isWrong && !isDaily;
 
-  // One background wins, by precedence: error > selected > same-number > peer.
+  // One background wins, by precedence: error > selected > same-number > cage-peer > peer.
   // Errors take priority so a wrong value reads red even while it's the selected cell.
+  // Cage membership outranks generic row/column/box peering since it's the rarer, more
+  // specific constraint worth calling out with its own tint.
   const classes = [styles.cell];
   if (isGiven) classes.push(styles.given);
   if (isError) classes.push(styles.error);
   else if (isSelected) classes.push(styles.selected);
   else if (isSameNumber) classes.push(styles.sameNumber);
+  else if (isCagePeer) classes.push(styles.cagePeer);
   else if (isPeer) classes.push(styles.peer);
   if (isSelected && isError) classes.push(styles.selectedRing); // still show selection on a red cell
   if (thickRight) classes.push(styles.thickRight);
@@ -112,7 +120,10 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
       {value !== 0 ? (
         value
       ) : candidates.length ? (
-        <div className={styles.candidates} aria-hidden="true">
+        <div
+          className={hasCageSum ? `${styles.candidates} ${styles.candidatesCageSum}` : styles.candidates}
+          aria-hidden="true"
+        >
           {Array.from({ length: size }, (_, i) => (
             <span key={i}>{mask & (1 << i) ? i + 1 : ''}</span>
           ))}

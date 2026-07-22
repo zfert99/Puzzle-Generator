@@ -16,7 +16,8 @@ future puzzle types (Phase 6+).
 ## Killer card (live since Phase 6)
 
 The Killer card deep-links to `/play?variant=killer`; the play menu reads the query param and
-preselects the Killer variant (9×9, easy/medium/hard). Its sticker reads "in progress" —
-Killer is live but its harder tiers (expert/extreme, plan slice K10) are still coming. A
-dimmed KenKen placeholder card ("soon") holds the next puzzle type's spot, the same
-pattern the Killer card used before Phase 6.
+preselects the Killer variant. Its sticker reads "new!" (July 2026) — Killer shipped its full
+five-tier ladder (easy through extreme, plan slice K10) plus 6×6 minis and is considered
+solid, so the earlier "in progress" wording no longer applied. A dimmed KenKen placeholder
+card ("soon") holds the next puzzle type's spot, the same pattern the Killer card used before
+Phase 6.

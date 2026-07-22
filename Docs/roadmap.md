@@ -665,6 +665,50 @@ reward-granting endpoints worth rate-limiting hardest:
   downgrades `drizzle-kit` to 0.18.1 (breaking), and the exposure is local-dev-only
   (`drizzle-kit studio` invoked while an attacker shares your network).
 
+### Header "back to menu" links 🔜 Up next (attempted + reverted, July 2026)
+
+**The ask:** clicking "Daily"/"Play" in the global header while already mid-game on that page
+should return to the difficulty picker / config menu — the same place the in-page "←
+Difficulties" / "← Menu" buttons go — instead of just sitting on the unchanged board.
+
+**Why it's harder than it looks:** `DailyExperience`/`PlayExperience` each keep their own
+local "menu vs. playing" view state, deliberately decoupled from the shared board store (see
+`DailyExperience.md`/`PlayExperience.md`) so a game left in progress on one surface doesn't
+leak onto the other. `AppHeader` is a *different* component (rendered once in the root
+layout), so it has no reference to that local state to call directly — some cross-component
+signal is needed.
+
+**What was attempted:** a `?menu=1` query param on the header links (mirroring the existing
+`?resume=1` pattern from the hub's Continue banner), read by each component to force itself
+back to its menu view. This went through three iterations before it was fully correct:
+
+1. First cut used a render-time "handled" boolean, set once and never reset — worked exactly
+   once per page load, then permanently blocked every later click (e.g. Play → Continue →
+   Play again did nothing).
+2. Second cut moved the logic into a `useEffect` to allow stripping the URL after use — but
+   called component `setState` directly inside that effect, which `react-hooks/set-state-in-
+   effect` (part of this project's lint config) correctly flags as an anti-pattern.
+3. Third cut fixed both: state changes moved back to render-time, edge-detected against the
+   *previous* value of the query flag (not "have we ever handled this") so it re-fires on
+   every genuine occurrence; a separate effect (no `setState` inside it) stripped the URL
+   afterward. Stress-tested — 3 repeat cycles on both surfaces, 20/20 checks passing, full
+   lint/type/test battery green.
+
+**Why it was reverted anyway:** even fully correct, the mechanism (dual render-time
+edge-detection blocks + a cleanup effect, duplicated across both files) was judged too fragile
+and non-obvious for the value delivered — it took three attempts to get right, and a future
+"simplification" of the pattern could easily reintroduce the exact bug that took three rounds
+to fix. The header links are back to plain `/daily` / `/play` for now. The working (reverted)
+implementation is recoverable from this branch's git history if revisited — see
+`Docs/roadmap.md` history around July 2026 for the commit, or ask for the diff.
+
+**If revisited:** consider lifting the "menu vs. playing" view into a piece of state either
+component can share more directly (e.g. non-persisted board-store fields, carefully excluded
+from `partialize`) so the header can call a plain setter instead of round-tripping through the
+URL — trades a bigger refactor (and reopening the exact cross-surface bleed risk local state
+was created to avoid) for a mechanism that's easier to reason about. Either way, ship it with
+a real regression test this time, not just manual verification.
+
 ---
 
 ## Key Decisions

@@ -17,6 +17,15 @@ columns defined, rows size to their content, so an empty row/column (no digit) c
 visible on 4×4/6×6 and any empty line on 9×9. Explicit `1fr` tracks on both axes make every
 cell an equal square regardless of content.
 
+## Outer border, all four sides (July 2026)
+
+`.board` sets a thick `border-*` on all four sides. Previously only `border-top`/`border-left`
+were set, relying on the last row/column's own cells to supply the right/bottom edge — but
+`Cell.tsx`'s `thickRight`/`thickBottom` flags deliberately exclude the outermost row/column
+(they mark *box* boundaries, not the board's own edge), so the right and bottom edges fell
+back to the thin per-cell grid line instead of the strong outer border. Setting all four sides
+directly on `.board` fixes it without touching that per-cell logic.
+
 ## Why it centralizes keyboard handling
 
 Per the WAI-ARIA grid pattern (research §6), a composite grid has ONE keyboard
