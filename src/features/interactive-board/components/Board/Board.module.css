@@ -154,7 +154,7 @@
    the top alone fully clears it without needing to also give up horizontal space; sudoku.com's
    own layout reserves a plain top strip for the sum rather than a top-left corner block. */
 .board[data-variant='killer'] .candidates {
-  inset: 30% 2% 2% 2%;
+  inset: 27% 2% 2% 2%;
   /* A touch smaller than classic's 0.46em — the top clearance above already eats into the
      cell's height, so the candidate rows have less room than a classic cell's do; a smaller
      font keeps digit 1 comfortably clear of the cage-sum text above it instead of just

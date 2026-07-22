@@ -39,6 +39,10 @@ The pencil-mark 3×3 layout inside each cell went through two rounds:
   and dropped the Killer candidate font to `0.4em` (classic stays at the base `0.46em`, which
   the same feedback confirmed already reads well — this tweak is deliberately Killer-only, not
   a global shrink).
+- **Fourth pass: nudged back down to 27%.** With the smaller `0.4em` font from the third pass,
+  30% left more headroom above the candidates than needed — direct user feedback asked to
+  "lift" them slightly. 27% still clears a 2-digit cage sum's ~21%-tall background pad with
+  margin (verified against one), just less of it wasted as empty space above row 1.
 
 ## Uniform cell sizing (`Board.module.css`)
 
