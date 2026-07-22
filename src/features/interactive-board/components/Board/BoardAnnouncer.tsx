@@ -20,8 +20,11 @@ export function BoardAnnouncer() {
   const solution = useBoardStore((s) => s.solution);
   const status = useBoardStore((s) => s.status);
   const isDaily = useBoardStore((s) => s.mode === 'daily');
-  // Match the visual rule: no live "incorrect" feedback on a daily, or when the setting is off.
-  const announceWrong = useSetting('errorHighlight') && !isDaily;
+  const errorsRevealed = useBoardStore((s) => s.errorsRevealed);
+  const errorHighlightSetting = useSetting('errorHighlight');
+  // Match the visual rule: on a daily, "incorrect" is only announced once the player opts in
+  // via the review modal's reveal; in free play it follows the app-wide setting.
+  const announceWrong = isDaily ? errorsRevealed : errorHighlightSetting;
   // Track the previous grid/status in STATE (not a ref) so we can derive the announcement
   // during render — React's sanctioned "adjust state when a value changed since last render"
   // pattern, which avoids a setState-in-effect cascade.

@@ -19,7 +19,18 @@ The interactive board's single source of truth — a Zustand store wrapped in th
 (precomputed), plus session state `difficulty`, `selectedCell`, `pencilMode`,
 `realTimeErrors`, `status` (`configuring | playing | paused | solved`), `mode`
 (`play | daily`), `dailyDate` (the daily's UTC date, or `null` for free play), `elapsedTime`,
-and `mistakes` (count of wrong placements).
+`mistakes` (count of wrong placements), and `errorsRevealed` (see below).
+
+### Why `errorsRevealed`
+
+Dailies never show live error highlighting by default (`Cell.md`/`BoardAnnouncer.md`) — no
+hand-holding on the ranked board. `errorsRevealed` is the escape hatch: a one-way flag flipped
+by `revealErrors()`, called only from the "Not quite!" full-board review modal
+(`DailyExperience.md`) when the player explicitly asks to see what's wrong. Once true, `Cell`
+and `BoardAnnouncer` highlight/announce wrong cells for the rest of that attempt, exactly as
+free play's `errorHighlight` setting would. It's per-game session state (persisted like
+`mistakes`, so a refresh mid-review doesn't un-reveal it), reset to `false` by every
+`startNewGame` — free play ignores it entirely and keeps following the app-wide setting.
 
 ### Why `variant` + `cages`
 
@@ -104,6 +115,7 @@ hint():
   Phase 5 concern; this reveal-a-cell hint keeps the heavy solver out of the client.)
 
 togglePencilMode / toggleRealTimeErrors: flip the respective flag.
+revealErrors(): errorsRevealed = true (one-way; reset only by startNewGame).
 
 tick(): +1 second, but only while playing.
 pause() / resume(): toggle between playing and paused.

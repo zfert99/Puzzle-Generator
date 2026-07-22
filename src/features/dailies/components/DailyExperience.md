@@ -101,3 +101,13 @@ When every cell is filled:
   *not which* — with a "Keep looking" dismiss. The dismissal resets whenever the board drops
   below full (adjust-state-during-render keyed on previous fullness), so each re-fill reports a
   fresh count. `status === 'solved'` suppresses the review modal, so the two never overlap.
+
+### Opt-in error reveal (July 2026)
+
+The "Not quite!" modal also offers a **"Show me what's wrong"** button (hidden once already
+used) alongside "Keep looking". It calls the board store's `revealErrors()`, which flips
+`errorsRevealed` to `true` — a one-way, per-attempt override that `Cell`/`BoardAnnouncer` read
+to highlight (and announce) wrong cells on this daily for the rest of the attempt, same as the
+free-play `errorHighlight` setting would. This is a deliberate ask from the modal, not a
+passive default: the board otherwise stays hand-holding-free per the rule above, and
+`errorsRevealed` resets to `false` on the next `startNewGame` (see `useBoardStore.md`).

@@ -16,7 +16,9 @@ Select from the store (shallow):
   isSelected    = the store's selectedCell is this cell,
   isPeer        = selectedCell shares this cell's row/column/box,
   isCagePeer    = selectedCell shares this cell's Killer cage (see below),
-  isError       = real-time errors ON and a wrong, non-given value is present,
+  isError       = a wrong, non-given value is present AND (free play: the `errorHighlight`
+                  setting is on; daily: the player opted in via the "Not quite!" review
+                  modal's `revealErrors`, see `useBoardStore.md`/`DailyExperience.md`),
   isSameNumber  = this cell holds the same non-zero value as the selected cell
                   (highlights every matching number across the board),
   selValue      = the selected cell's placed value (0 if none/empty) — passed through so

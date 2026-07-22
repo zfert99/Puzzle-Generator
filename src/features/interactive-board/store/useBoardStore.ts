@@ -68,6 +68,14 @@ export interface BoardState {
   dailyDate: string | null;
   elapsedTime: number;
   mistakes: number;
+  /**
+   * Opt-in, one-way reveal of error highlighting on a daily (which otherwise never shows
+   * wrong cells — see `Cell.tsx`/`BoardAnnouncer.tsx`). Off by default so the ranked board
+   * stays hand-holding-free; a player can flip it on themselves from the "Not quite!" full-
+   * board review modal (`DailyExperience`) once they're stuck. Ignored in free play, where
+   * highlighting instead follows the app-wide `errorHighlight` setting.
+   */
+  errorsRevealed: boolean;
 
   // Actions
   startNewGame: (puzzle: BoardPuzzle, mode?: BoardMode, dailyDate?: string | null) => void;
@@ -77,6 +85,7 @@ export interface BoardState {
   clearCell: () => void;
   hint: () => void;
   togglePencilMode: () => void;
+  revealErrors: () => void;
   tick: () => void;
   pause: () => void;
   resume: () => void;
@@ -144,6 +153,7 @@ export const useBoardStore = create<BoardState>()(
       dailyDate: null,
       elapsedTime: 0,
       mistakes: 0,
+      errorsRevealed: false,
 
       startNewGame: (puzzle: BoardPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
         const size = puzzle.gridSize as GridSize;
@@ -168,6 +178,7 @@ export const useBoardStore = create<BoardState>()(
           dailyDate,
           elapsedTime: 0,
           mistakes: 0,
+          errorsRevealed: false,
         });
         // Drop any history from a previous game so the first move can't be undone
         // "before" the puzzle started.
@@ -286,6 +297,7 @@ export const useBoardStore = create<BoardState>()(
       },
 
       togglePencilMode: () => set(state => ({ pencilMode: !state.pencilMode })),
+      revealErrors: () => set({ errorsRevealed: true }),
 
       tick: () => set(state => (state.status === 'playing' ? { elapsedTime: state.elapsedTime + 1 } : {})),
       pause: () => set(state => (state.status === 'playing' ? { status: 'paused' } : {})),
@@ -319,6 +331,7 @@ export const useBoardStore = create<BoardState>()(
           dailyDate: state.dailyDate,
           elapsedTime: state.elapsedTime,
           mistakes: state.mistakes,
+          errorsRevealed: state.errorsRevealed,
         }),
         onRehydrateStorage: () => (state) => {
           if (state && state.config) {

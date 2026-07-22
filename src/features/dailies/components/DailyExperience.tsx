@@ -81,13 +81,14 @@ export default function DailyExperience() {
   const submittedRef = useRef(false);
 
   const { loading, error, fetchDaily } = useDaily();
-  const { status, grid, solution } = useBoardStore(
-    useShallow((s) => ({ status: s.status, grid: s.grid, solution: s.solution })),
+  const { status, grid, solution, errorsRevealed } = useBoardStore(
+    useShallow((s) => ({ status: s.status, grid: s.grid, solution: s.solution, errorsRevealed: s.errorsRevealed })),
   );
   const [reviewDismissed, setReviewDismissed] = useState(false);
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const resume = useBoardStore((s) => s.resume);
   const tick = useBoardStore((s) => s.tick);
+  const revealErrors = useBoardStore((s) => s.revealErrors);
 
   const saved = useSavedGame();
   const savedIsDaily = saved?.mode === 'daily';
@@ -441,7 +442,8 @@ export default function DailyExperience() {
 
       {/* Board full but not correct — tell the player how many cells are wrong (not which), and
           let them go back to fix them. Dailies have no live error feedback, so this is the
-          moment they learn their count. */}
+          moment they learn their count. They can optionally opt into highlighting from here
+          (revealErrors) rather than hunt blind — a one-way reveal for the rest of this attempt. */}
       {showReview && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -459,9 +461,23 @@ export default function DailyExperience() {
               </strong>{' '}
               still incorrect. Find and fix {wrongCount === 1 ? 'it' : 'them'} to solve the daily.
             </p>
-            <button type="button" onClick={() => setReviewDismissed(true)} className="btn-primary w-full">
-              Keep looking
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button type="button" onClick={() => setReviewDismissed(true)} className="btn-primary">
+                Keep looking
+              </button>
+              {!errorsRevealed && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    revealErrors();
+                    setReviewDismissed(true);
+                  }}
+                  className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
+                >
+                  Show me what&apos;s wrong
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

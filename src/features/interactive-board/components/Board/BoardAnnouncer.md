@@ -12,6 +12,8 @@ satisfies the `react-hooks` lint rules.
 
 ## Daily suppression
 
-The "…, incorrect" announcement follows the same rule as the visual highlight: suppressed on a
-daily (and when the setting is off), so a screen-reader player gets no live correctness signal
-on the ranked board either.
+The "…, incorrect" announcement follows the same rule as the visual highlight: on a daily it's
+suppressed unless the player opted in via the "Not quite!" review modal's error reveal
+(`errorsRevealed` in the board store); in free play it follows the `errorHighlight` setting
+instead. Either way, a screen-reader player gets no live correctness signal until it's actually
+turned on.

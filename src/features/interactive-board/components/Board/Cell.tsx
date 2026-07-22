@@ -27,7 +27,7 @@ interface CellProps {
 export const Cell = memo(function Cell({ r, c }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, boxWidth, boxHeight, isDaily } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, boxWidth, boxHeight, isDaily, errorsRevealed } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
@@ -67,6 +67,7 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
         boxWidth: cfg.boxWidth,
         boxHeight: cfg.boxHeight,
         isDaily: s.mode === 'daily',
+        errorsRevealed: s.errorsRevealed,
       };
     })
   );
@@ -76,9 +77,12 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
   const thickRight = (c + 1) % boxWidth === 0 && c + 1 !== size;
   const thickBottom = (r + 1) % boxHeight === 0 && r + 1 !== size;
 
-  // Dailies never highlight wrong cells during play (no hand-holding on the ranked board);
-  // once solved there are no wrong cells anyway.
-  const isError = errorHighlight && isWrong && !isDaily;
+  // Dailies never highlight wrong cells during play by default (no hand-holding on the ranked
+  // board) — unless the player opted into a reveal from the "Not quite!" review modal
+  // (`errorsRevealed`), which overrides the daily gate but not the app-wide setting (an
+  // explicit ask beats a passive default). Free play instead follows the `errorHighlight`
+  // setting.
+  const isError = isWrong && (isDaily ? errorsRevealed : errorHighlight);
 
   // One background wins, by precedence: error > selected > same-number > cage-peer > peer.
   // Errors take priority so a wrong value reads red even while it's the selected cell.
