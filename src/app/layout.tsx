@@ -36,9 +36,17 @@ const spaceMono = Space_Mono({
 });
 
 // Chaos-layer marginalia (5.5) — DECORATIVE only, never body copy. Marker for bold scrawl,
-// Caveat for lighter cursive notes.
-const permanentMarker = Permanent_Marker({ subsets: ["latin"], weight: "400", variable: "--font-permanent-marker" });
-const caveat = Caveat({ subsets: ["latin"], variable: "--font-caveat" });
+// Caveat for lighter cursive notes. `preload: false`: next/font preloads every font
+// declared at the root by default regardless of whether the current route renders it above
+// the fold, and neither of these two is guaranteed to paint quickly on every page — that
+// tripped Firefox's "preloaded but not used within a few seconds" warning on /daily.
+const permanentMarker = Permanent_Marker({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-permanent-marker",
+  preload: false,
+});
+const caveat = Caveat({ subsets: ["latin"], variable: "--font-caveat", preload: false });
 
 export const metadata: Metadata = {
   title: "Puzzle Generator",

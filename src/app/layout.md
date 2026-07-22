@@ -20,6 +20,14 @@ Space Mono + Permanent Marker are not variable, so their weights are pinned. The
 fonts are decorative only (never body copy). The layout also renders `<WobbleDefs/>` once —
 the SVG filter for the hand-inked wobble (chaos §8).
 
+**Why `preload: false` on the two marker fonts (July 2026):** `next/font` preloads every
+font declared at the root on every route by default, but the decorative marker/cursive
+fonts aren't guaranteed to render above the fold on every page — on `/daily` this tripped
+Firefox's "preloaded but not used within a few seconds" console warning. Disabling preload
+for those two only (Fredoka/Manrope/Space Mono still preload — they're used near-universally
+on first paint) drops the noise without touching the self-hosted, no-layout-shift loading
+this section already covers.
+
 ## Pre-paint theme script (why it must run first)
 
 **Why:** The theme is a `data-theme` attribute on `<html>`. If it were set after React
