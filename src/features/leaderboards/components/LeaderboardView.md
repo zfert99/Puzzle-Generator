@@ -6,7 +6,7 @@ own rank + streak.
 ## Today vs. a past day (the archive)
 
 Pass `date` (YYYY-MM-DD) to show a **past** day's board (the archive reuses this component);
-omit it for today. For a past board the today-relative panels (streak + personal bests) are
+omit it for today. For a past board the today-relative panels (streak + personal best) are
 hidden — that effect gates on `!date` — while the caller's own historical rank still shows.
 Difficulty can also be **controlled** externally (`difficulty` + `onDifficultyChange`) so the
 archive drives one selector for both the board and its "Play (practice)" button; uncontrolled
@@ -28,8 +28,19 @@ synchronous reset. All ranking/ownership is decided server-side; this is a pure 
 effect [difficulty] -> GET /api/leaderboard -> setEntries/setMe (async)
 effect [session]    -> if signed in, GET /api/me/streak + /api/me/bests -> setStreak/setBests (async)
 tab click           -> setLoading(true) + setDifficulty (event handler)
-render              -> tabs · (streak · your rank) · personal bests · table (caller's row highlighted)
+render              -> tabs · (streak · your rank) · personal best (this tab only) · table (caller's row highlighted)
 ```
+
+## Personal best is scoped to the current tab (July 2026)
+
+**Why:** `/api/me/bests` returns the caller's best time for *every* board they've ever
+completed — up to 19 rows (5 classic + 5 killer + 9 minis). The component used to render all
+of them as a wrapping row of pills on every tab, regardless of which board was actually being
+viewed — cluttered, and mostly showing bests for boards you weren't even looking at. `myBest`
+is a plain client-side `bests.find(b => b.difficulty === difficulty)`, so only the entry
+matching the currently-selected tab renders. Deliberately kept as a filter over one
+fetch-everything call (not a per-tab refetch) — the payload is small and this avoids a network
+round-trip on every tab click.
 
 ## "Sudoku Bot" badge (July 2026)
 
