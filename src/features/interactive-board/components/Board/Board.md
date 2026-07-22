@@ -13,25 +13,27 @@ See `CageOverlay.md`.
 specifically so `Board.module.css` can style descendants (currently just `.candidates`; see
 below) differently for Killer vs. classic with a pure CSS selector, no per-cell JS needed.
 
-## Candidate grid: gridlines + Killer clearance (July 2026)
+## Candidate grid: consistent positioning, no drawn gridlines (July 2026, revised)
 
-Two related fixes to the pencil-mark 3×3 layout inside each cell:
+The pencil-mark 3×3 layout inside each cell went through two rounds:
 
-- **Faint gridlines.** `.candidates span` gets thin borders (right on columns 1–2, bottom on
-  rows 1–2) at a low-opacity ink tint, so the 3×3 layout reads as an actual grid — previously it
-  was a bare CSS grid with no visible structure, which looked like loosely-scattered numbers
-  rather than a mini-grid, especially with only one or two marks placed. Same visual language
-  as the board's own thin cell borders, just fainter to stay out of the way of small digits.
-- **Killer clearance, applied uniformly.** `.board[data-variant='killer'] .candidates` reserves
-  a top-left margin on the candidate grid, via a plain CSS descendant selector keyed on the
-  board's `data-variant` — **every** cell in a Killer game gets the same offset, not just cells
-  that happen to be a cage's anchor. An earlier version (`.candidatesCageSum`, driven by a
-  per-cell `hasCageSum` flag from the store) only shifted anchor cells, which meant a given
-  digit (e.g. "5") sat at a *different* pixel position in an anchor cell than in its non-anchor
-  neighbor — inconsistent across the board. Applying the offset to the whole Killer board keeps
-  every cell's layout pixel-identical, at the cost of reserved-but-unused corner space in cells
-  without a cage sum — a deliberate trade for consistency, per direct user feedback. Classic
-  games are unaffected (no `data-variant='killer'` match, so no offset, no reserved space).
+- **v1 added faint gridlines** between the 3×3 slots (thin borders on `.candidates span`) to
+  make the grid structure visible. **Reverted per direct user feedback** — referencing
+  sudoku.com's plainer style, drawn lines next to tiny digits read as visually busy; consistent
+  positioning alone (the fixed `grid-template-columns`/`grid-template-rows` tracks) is enough to
+  read as an organized layout without needing lines drawn between the slots.
+- **Killer clearance, top-only, applied uniformly.** `.board[data-variant='killer'] .candidates`
+  reserves a top margin (not top-*and*-left) on the candidate grid, via a plain CSS descendant
+  selector keyed on the board's `data-variant` — **every** cell in a Killer game gets the same
+  offset, not just cells that happen to be a cage's anchor (an even earlier, per-cell
+  `hasCageSum`-driven version made candidate positions inconsistent across the board — see git
+  history). The top-only inset is a geometric observation, not just a smaller version of the old
+  top-left one: the cage sum's background pad (`cage-geometry.ts`) is only ~21% of the cell tall
+  *regardless of how many digits the sum has* — a 2-digit sum is wider, not taller — so clearing
+  the top alone fully clears it without also sacrificing horizontal space. This reads closer to
+  sudoku.com's own layout, which reserves a plain top strip for the sum rather than a top-left
+  corner block, and lets the candidate grid use the cell's full width. Classic games are
+  unaffected (no `data-variant='killer'` match, so no offset, no reserved space).
 
 ## Uniform cell sizing (`Board.module.css`)
 

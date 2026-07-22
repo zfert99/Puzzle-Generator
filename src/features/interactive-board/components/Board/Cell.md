@@ -18,7 +18,10 @@ Select from the store (shallow):
   isCagePeer    = selectedCell shares this cell's Killer cage (see below),
   isError       = real-time errors ON and a wrong, non-given value is present,
   isSameNumber  = this cell holds the same non-zero value as the selected cell
-                  (highlights every matching number across the board).
+                  (highlights every matching number across the board),
+  selValue      = the selected cell's placed value (0 if none/empty) — passed through so
+                  this cell's own candidate render can highlight the one pencil mark
+                  matching it (the candidate-side echo of isSameNumber, see below).
 
 Choose ONE background by precedence: error > selected > same-number > cage-peer > peer.
 Errors win, so a wrong value reads red even while it is the selected cell; a thin
@@ -44,3 +47,13 @@ into the row/column/box highlight — they read as related but distinct (July 20
 cage membership was OR'd straight into the generic peer check, so a cage read identically to
 a plain row/box peer). The check is O(1) per cell via the store's precomputed `cellToCage` map
 (empty for classic games, so classic behaviour is untouched).
+
+## Candidate-match highlighting (July 2026)
+
+`isSameNumber` already highlights every other cell holding the same *placed* value as the
+selection. This cell's own candidate render extends that idea to pencil marks: for each of its
+own candidate digits, if it equals `selValue` (and isn't empty), that one `<span>` gets
+`.candidateMatch` (grape, bold) instead of the default muted candidate color — so selecting a
+placed "4" now also calls out every *pencil-marked* 4 across the board, not just other placed
+4s. Computed per-digit at render time (a cheap `mask & (1 << i)` check already happening
+anyway), not a new store field.
