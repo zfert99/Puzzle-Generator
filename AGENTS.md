@@ -97,7 +97,12 @@ When operating within this codebase, AI agents MUST adhere to the following work
 - **Authorization & BOLA (AI Pitfall):** Do not solely verify authentication ("is the user logged in?"). Always verify authorization ownership ("does the user own this specific record?") at the data-access layer using strict `WHERE` clauses or RBAC/ABAC models. AI tends to hallucinate CRUD endpoints that forget to verify resource ownership — this and unparameterized queries are the two categories most likely to be wrong in AI-generated endpoints, so review both manually regardless of how confident the generated code looks. This maps to OWASP Top 10:2025 "Broken Access Control" (#1) and "Security Misconfiguration" (#2, up from #5 in 2021).
 - **Database Hardening:** Exclusively use parameterized queries (via a type-safe ORM like Prisma or Drizzle) to eliminate SQL injection vulnerabilities. Enforce the principle of least privilege for the database connection.
 - **Prompt Injection Defense:** Any untrusted user input passed into future AI logic must be rigorously sanitized and architecturally isolated to prevent Prompt Injection attacks.
-- **CI Security Scanning:** Wire up free-tier tooling before launch — GitHub CodeQL (SAST) and Dependabot (SCA) are free on public/private repos, `npm audit`/`pnpm audit` catch known-vulnerable dependencies at zero cost. None of this replaces the manual review called out above, but it's a reasonable free baseline for a solo project.
+- **CI Security Scanning:** Wire up free-tier tooling before launch — GitHub CodeQL (SAST) and Dependabot (SCA) are free on public/private repos, `npm audit`/`pnpm audit` catch known-vulnerable dependencies at zero cost. None of this replaces the manual review called out above, but it's a reasonable free baseline for a solo project. **Gotcha:** a top-level version bump doesn't always reach a natively-compiled sub-dependency a framework bundles internally (e.g., Next.js pins its own nested `sharp`) — after patching a CVE, confirm with `npm ls <pkg>` that no vulnerable nested copy remains, and add a `package.json` `overrides` entry if it does.
+- **Middleware Is Not an Auth Boundary (AI Pitfall):** CVE-2025-29927 let attackers bypass all Next.js middleware-based auth via a spoofed `x-middleware-subrequest` header. Real authorization must live in Server Actions, Route Handlers, or a Data Access Layer — never middleware alone. Treat middleware auth checks as an optimization/early-reject at best, and make sure they fail closed. This project currently ships no `middleware.ts` at all, which sidesteps the bug entirely — keep it that way unless a genuine need for middleware-level logic arises.
+- **Origin/CSRF Trust Is Explicit, Not Assumed:** Auth libraries typically auto-trust only your primary deployment origin. Every additional real origin a session/OAuth/passkey flow must work from — including Vercel preview deployments (`*.vercel.app`) — needs to be added to `trustedOrigins` (or the library's equivalent) explicitly, and re-verified after any auth-config change; getting this wrong either breaks preview auth or silently widens trust.
+- **Security Headers & CSP:** Ship baseline security headers (`X-Content-Type-Options`, `X-Frame-Options`/`frame-ancestors`, `Referrer-Policy`, `Permissions-Policy`) via `next.config.ts` `headers()` for every route — a zero-cost default, not optional polish. A full nonce-based CSP is the eventual target but is real, separate work (it forces nonce'd inline scripts and dynamic rendering on the routes that need it) — don't let its absence block shipping the cheaper headers now.
+- **Rate Limiting on Serverless:** A rate limiter's default in-memory store does not share state across Vercel's separate serverless instances/cold starts — it looks like protection but mostly isn't, especially once real value (currency, purchases, auth) is on the line. Back it with shared storage (e.g., Upstash Redis) before an endpoint is worth abusing at scale; framework defaults are an acceptable stopgap only while traffic stays low.
+- **AI-Generated Code Is Unaudited by Default:** Per Veracode's 2025/2026 GenAI Code Security Reports, models pick the insecure implementation roughly half the time regardless of model generation, and CodeRabbit's 2025 study found AI-authored PRs ~1.9x more likely to introduce IDOR — passing tests or compiling is not evidence of security. Run a dedicated, separately-prompted security self-review pass on auth/authz/data-access changes before calling them done (a "review your own code for security issues, then fix what you found" loop measurably reduces vulnerability density); don't rely on "act as a security expert"-style persona prompting alone — the same research found it *increases* average vulnerabilities. Before adding any newly-suggested package, confirm it actually exists and is real/maintained — LLMs hallucinate plausible package names at a meaningful rate ("slopsquatting"), and attackers register the hallucinated ones.
 
 ### 7. Documentation Standards
 
@@ -123,4 +128,27 @@ When operating within this codebase, AI agents MUST adhere to the following work
 - Added `pageExtensions` as an explicit anti-pattern (Section 1) — a plausible-looking colocation trick that causes real App Router bugs.
 - Added Core Web Vitals/INP guidance (Section 3), a Pino + Edge Runtime gotcha (Section 5), passkeys-first auth and free CI security tooling (Section 6), and a hydration-safety rule plus bitmask-vs-DLX engine guidance (Section 1) — all previously absent from this file.
 - No changes were made to the Documentation, Roadmap, Markdown Linting, or Git Rules sections; nothing in the research contradicted them.
+
+**July 22, 2026:** Revised after auditing the codebase against a new web-security research
+doc (`Docs/research/ai-assisted-nextjs-security-reference.md` — OWASP Top 10:2025, Next.js/
+Drizzle/better-auth-specific CVEs, and AI-generated-code security data) and applying its
+cheapest, highest-value fixes live. Notable changes:
+
+- Added six Section 6 rules previously absent: a dependency-patching gotcha (natively-
+  compiled sub-dependencies a framework bundles internally, e.g. Next.js's nested `sharp`,
+  may need an explicit `overrides` entry even after the top-level package is patched),
+  middleware-is-not-an-auth-boundary (CVE-2025-29927), explicit origin/CSRF trust
+  configuration (the Vercel-preview `trustedOrigins` gotcha), baseline security headers as a
+  standing requirement (nonce-based CSP named as deliberate follow-up work, not a blocker),
+  rate-limiting-on-serverless (in-memory vs. shared-store reality), and treating AI-generated
+  code as unaudited by default (a security self-review loop + a package-hallucination
+  caution).
+- Concretely applied this pass to the codebase in the same session: fixed a red CI
+  `npm audit --audit-level=high` gate (`sharp`/`brace-expansion` CVEs), added the
+  `trustedOrigins` wildcard for Vercel previews in `auth.ts`, and shipped the baseline
+  security headers via `next.config.ts`.
+- Upstash-backed rate-limit storage and the nonce-based CSP were deliberately tabled for a
+  dedicated future security pass (tracked in `Docs/roadmap.md`'s backlog) rather than
+  implemented now — noted here so the gap stays visible, not silent.
+- No changes to the Documentation, Roadmap, Markdown Linting, or Git Rules sections.
 <!-- END:update-log -->

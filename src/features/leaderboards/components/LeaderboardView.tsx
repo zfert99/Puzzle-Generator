@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { DAILY_BOARDS, formatDailyKey, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useSession } from '@/features/auth/auth-client';
 import { useCountUp } from '@/features/juice/useCountUp';
+import { BOT_USER_ID } from '@/features/leaderboards/bot-identity';
 
 interface Entry {
   rank: number;
@@ -186,6 +187,7 @@ export function LeaderboardView({
           <tbody>
             {entries.map((e) => {
               const isMe = session?.user.id === e.userId;
+              const isBot = e.userId === BOT_USER_ID;
               return (
                 <tr
                   key={e.userId}
@@ -193,7 +195,9 @@ export function LeaderboardView({
                 >
                   <td className="py-2">{e.rank}</td>
                   <td className="py-2">
+                    {isBot && <span aria-hidden="true">🤖 </span>}
                     {e.name}
+                    {isBot && <span className="text-ink-soft text-xs"> (bot — beat it!)</span>}
                     {isMe && <span className="text-grape"> (you)</span>}
                   </td>
                   <td className="py-2 text-right tabular-nums">{formatMs(e.timeMs)}</td>

@@ -16,6 +16,14 @@ import type { Grid, NewDailyPuzzle } from './schema';
  *
  * `minSolveMs` is the anti-cheat plausibility floor (see `solve-rules.md`) — conservative
  * lower bounds per board, not records to police fast solvers.
+ *
+ * `botTimeMs` is "Sudoku Bot"'s daily time on this board (`features/leaderboards/bot.ts`) —
+ * a hand-tuned "good, beatable" human time, not a record. Sourced from the difficulty
+ * research gathered across this project (Stuart's classic-Sudoku community solve-time
+ * bands; our own Killer research noting it runs slower than classic since it starts with
+ * no givens; minis scale down with the smaller grid). Deliberately well above
+ * `minSolveMs` (which marks "impossibly fast", not "typical") so it reads as a genuine
+ * skilled solve. Retune freely — it's flavor, not a derived/anti-cheat value.
  */
 export interface DailyBoard {
   key: string;
@@ -27,31 +35,32 @@ export interface DailyBoard {
   /** The engine difficulty used to generate this board. */
   difficulty: Difficulty | KillerDifficulty;
   minSolveMs: number;
+  botTimeMs: number;
 }
 
 export const DAILY_BOARDS = [
   // ---- Classic 9×9 (legacy keys — never rename; historical rows depend on them) ----
-  { key: 'easy', section: 'classic', label: 'easy', variant: 'classic', gridSize: 9, difficulty: 'easy', minSolveMs: 15_000 },
-  { key: 'medium', section: 'classic', label: 'medium', variant: 'classic', gridSize: 9, difficulty: 'medium', minSolveMs: 20_000 },
-  { key: 'hard', section: 'classic', label: 'hard', variant: 'classic', gridSize: 9, difficulty: 'hard', minSolveMs: 25_000 },
-  { key: 'expert', section: 'classic', label: 'expert', variant: 'classic', gridSize: 9, difficulty: 'expert', minSolveMs: 30_000 },
-  { key: 'extreme', section: 'classic', label: 'extreme', variant: 'classic', gridSize: 9, difficulty: 'extreme', minSolveMs: 45_000 },
+  { key: 'easy', section: 'classic', label: 'easy', variant: 'classic', gridSize: 9, difficulty: 'easy', minSolveMs: 15_000, botTimeMs: 210_000 },
+  { key: 'medium', section: 'classic', label: 'medium', variant: 'classic', gridSize: 9, difficulty: 'medium', minSolveMs: 20_000, botTimeMs: 360_000 },
+  { key: 'hard', section: 'classic', label: 'hard', variant: 'classic', gridSize: 9, difficulty: 'hard', minSolveMs: 25_000, botTimeMs: 600_000 },
+  { key: 'expert', section: 'classic', label: 'expert', variant: 'classic', gridSize: 9, difficulty: 'expert', minSolveMs: 30_000, botTimeMs: 960_000 },
+  { key: 'extreme', section: 'classic', label: 'extreme', variant: 'classic', gridSize: 9, difficulty: 'extreme', minSolveMs: 45_000, botTimeMs: 1_500_000 },
   // ---- Killer 9×9 (full ladder) ----
-  { key: 'killer-easy', section: 'killer', label: 'easy', variant: 'killer', gridSize: 9, difficulty: 'easy', minSolveMs: 20_000 },
-  { key: 'killer-medium', section: 'killer', label: 'medium', variant: 'killer', gridSize: 9, difficulty: 'medium', minSolveMs: 30_000 },
-  { key: 'killer-hard', section: 'killer', label: 'hard', variant: 'killer', gridSize: 9, difficulty: 'hard', minSolveMs: 40_000 },
-  { key: 'killer-expert', section: 'killer', label: 'expert', variant: 'killer', gridSize: 9, difficulty: 'expert', minSolveMs: 50_000 },
-  { key: 'killer-extreme', section: 'killer', label: 'extreme', variant: 'killer', gridSize: 9, difficulty: 'extreme', minSolveMs: 60_000 },
+  { key: 'killer-easy', section: 'killer', label: 'easy', variant: 'killer', gridSize: 9, difficulty: 'easy', minSolveMs: 20_000, botTimeMs: 330_000 },
+  { key: 'killer-medium', section: 'killer', label: 'medium', variant: 'killer', gridSize: 9, difficulty: 'medium', minSolveMs: 30_000, botTimeMs: 540_000 },
+  { key: 'killer-hard', section: 'killer', label: 'hard', variant: 'killer', gridSize: 9, difficulty: 'hard', minSolveMs: 40_000, botTimeMs: 840_000 },
+  { key: 'killer-expert', section: 'killer', label: 'expert', variant: 'killer', gridSize: 9, difficulty: 'expert', minSolveMs: 50_000, botTimeMs: 1_200_000 },
+  { key: 'killer-extreme', section: 'killer', label: 'extreme', variant: 'killer', gridSize: 9, difficulty: 'extreme', minSolveMs: 60_000, botTimeMs: 1_800_000 },
   // ---- Minis (4×4 / 6×6 classic, 6×6 Killer) ----
-  { key: 'mini4-easy', section: 'minis', label: '4×4 easy', variant: 'classic', gridSize: 4, difficulty: 'easy', minSolveMs: 3_000 },
-  { key: 'mini4-medium', section: 'minis', label: '4×4 medium', variant: 'classic', gridSize: 4, difficulty: 'medium', minSolveMs: 4_000 },
-  { key: 'mini4-hard', section: 'minis', label: '4×4 hard', variant: 'classic', gridSize: 4, difficulty: 'hard', minSolveMs: 5_000 },
-  { key: 'mini6-easy', section: 'minis', label: '6×6 easy', variant: 'classic', gridSize: 6, difficulty: 'easy', minSolveMs: 8_000 },
-  { key: 'mini6-medium', section: 'minis', label: '6×6 medium', variant: 'classic', gridSize: 6, difficulty: 'medium', minSolveMs: 10_000 },
-  { key: 'mini6-hard', section: 'minis', label: '6×6 hard', variant: 'classic', gridSize: 6, difficulty: 'hard', minSolveMs: 12_000 },
-  { key: 'killer6-easy', section: 'minis', label: 'killer 6×6 easy', variant: 'killer', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000 },
-  { key: 'killer6-medium', section: 'minis', label: 'killer 6×6 medium', variant: 'killer', gridSize: 6, difficulty: 'medium', minSolveMs: 12_000 },
-  { key: 'killer6-hard', section: 'minis', label: 'killer 6×6 hard', variant: 'killer', gridSize: 6, difficulty: 'hard', minSolveMs: 15_000 },
+  { key: 'mini4-easy', section: 'minis', label: '4×4 easy', variant: 'classic', gridSize: 4, difficulty: 'easy', minSolveMs: 3_000, botTimeMs: 40_000 },
+  { key: 'mini4-medium', section: 'minis', label: '4×4 medium', variant: 'classic', gridSize: 4, difficulty: 'medium', minSolveMs: 4_000, botTimeMs: 60_000 },
+  { key: 'mini4-hard', section: 'minis', label: '4×4 hard', variant: 'classic', gridSize: 4, difficulty: 'hard', minSolveMs: 5_000, botTimeMs: 90_000 },
+  { key: 'mini6-easy', section: 'minis', label: '6×6 easy', variant: 'classic', gridSize: 6, difficulty: 'easy', minSolveMs: 8_000, botTimeMs: 75_000 },
+  { key: 'mini6-medium', section: 'minis', label: '6×6 medium', variant: 'classic', gridSize: 6, difficulty: 'medium', minSolveMs: 10_000, botTimeMs: 120_000 },
+  { key: 'mini6-hard', section: 'minis', label: '6×6 hard', variant: 'classic', gridSize: 6, difficulty: 'hard', minSolveMs: 12_000, botTimeMs: 180_000 },
+  { key: 'killer6-easy', section: 'minis', label: 'killer 6×6 easy', variant: 'killer', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 120_000 },
+  { key: 'killer6-medium', section: 'minis', label: 'killer 6×6 medium', variant: 'killer', gridSize: 6, difficulty: 'medium', minSolveMs: 12_000, botTimeMs: 195_000 },
+  { key: 'killer6-hard', section: 'minis', label: 'killer 6×6 hard', variant: 'killer', gridSize: 6, difficulty: 'hard', minSolveMs: 15_000, botTimeMs: 270_000 },
 ] as const satisfies readonly DailyBoard[];
 
 export type DailyBoardKey = (typeof DAILY_BOARDS)[number]['key'];

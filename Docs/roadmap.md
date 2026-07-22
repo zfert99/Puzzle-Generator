@@ -47,12 +47,29 @@ The stateless PDF generator is now one entry on the puzzle hub rather than the w
 | **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (server-timed) | ✅ Shipped |
 | **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
 | **Testing** | Vitest unit suite (124 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
-| **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) | ✅ Shipped |
+| **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) + baseline security headers | ✅ Shipped |
+| **Leaderboards** | "Sudoku Bot" — a transparent, 🤖-badged system account posting a tuned, beatable time on every daily board | ✅ Shipped |
 
 > **Hardening pass (landed):** a full audit against `AGENTS.md` plus remediation —
 > Jest→Vitest migration, an API stack-trace-leak fix, the bitmask/MRV engine rework,
 > broad test coverage, and CI. Details in
 > [agents-compliance-audit.md](agents-compliance-audit.md).
+
+<!-- -->
+
+> **Web security hardening pass (July 2026):** audited the codebase against a new
+> AI/Next.js web-security research doc
+> ([raw doc](research/ai-assisted-nextjs-security-reference.md))
+> covering OWASP Top 10:2025, Next.js/Drizzle/better-auth-specific CVEs, and AI-generated-code
+> security patterns. The existing BOLA/DTO posture (4.3.1/4.4) already held up well against
+> it. Fixed: a **currently-failing CI gate** (`npm audit --audit-level=high` was red on
+> `main` from a `sharp` libvips CVE and a `brace-expansion` DoS — patched both, the `sharp`
+> fix pinned via a package.json `overrides` entry since Next.js bundles its own nested
+> copy), a **Vercel-preview auth gap** (better-auth only auto-trusts the production origin;
+> `trustedOrigins` now also trusts `*.vercel.app` so preview-deployment OAuth/passkey flows
+> work), and **baseline security headers** (`X-Content-Type-Options`, `X-Frame-Options`,
+> `Referrer-Policy`, `Permissions-Policy`) in `next.config.ts`. **Tabled for a dedicated
+> security pass later** — see the backlog entry under "Up Next" below.
 
 ---
 
@@ -338,6 +355,15 @@ CREATE TABLE solve_attempts (
 - Ranked = signed in; anonymous play stays unranked. All writes ownership-scoped (4.3.1).
 - **UI shipped:** auth UI ([AuthPanel](../src/features/auth/components/AuthPanel.tsx) at `/signin`, [AccountBadge](../src/features/auth/components/AccountBadge.tsx)), ranked wiring in the [daily board](../src/features/dailies/components/DailyExperience.tsx), and the [leaderboard page](../src/app/leaderboard/page.tsx). Verified via headless Chromium.
 - **Polish done:** animated rank reveal, all-time personal bests ([`/api/me/bests`](../src/app/api/me/bests/route.ts)), and the `bg-pattern.svg` background asset.
+- **"Sudoku Bot" (July 2026):** a transparent, non-loginable system account
+  ([bot.ts](../src/features/leaderboards/bot.ts)) that posts a hand-tuned, beatable time on
+  every one of the 19 daily boards — a visible "time to beat" while the real player base is
+  small. Seeded idempotently inside the existing `generateDailyPuzzles` pipeline (no new
+  cron); badged with 🤖 + explicit text (not color alone) in
+  [LeaderboardView](../src/features/leaderboards/components/LeaderboardView.tsx). Floated as
+  a future narrative character (Phase 7's course "teacher") and a possible Phase 9 crumbs
+  bonus for beating it — see the notes in that section and
+  [social-progression-economy-plan.md](social-progression-economy-plan.md).
 
 ---
 
@@ -470,6 +496,14 @@ type SolveStep = {
   - Lesson 5: W-Wing (after Phase 1)
   - Lesson 6: Almost Locked Sets (after Phase 1)
 - Each lesson has a "Try It Yourself" mode where the board pauses and lets the user attempt the deduction before revealing the answer
+
+**Narrative idea (not yet designed):** the user floated "Sudoku Bot" — currently just a
+leaderboard "time to beat" ghost account shipped in Phase 4.4 (see
+`features/leaderboards/bot.md`) — as a recurring character who could narrate these lessons,
+Clippy-style, and act as the in-universe "teacher": the framing being that beating the bot's
+leaderboard time for the first time reads as "the student has become the master." Purely a
+flavor idea to revisit if/when Phase 7 gets designed for real; no course-player or narration
+work exists yet.
 
 ---
 
@@ -610,6 +644,26 @@ Port the interactive board and daily puzzles to a native mobile experience.
 ### Community Puzzle Sharing 🔜 Up next (deferred from Phase 4)
 
 User-generated puzzles with a rating system — players can create, share, and rate puzzles.
+
+### Security Hardening, Stage 1+ 🔜 Up next (tabled July 2026)
+
+Deferred during the July 2026 web-security hardening pass (see the callout under "What's
+Built" above) for a dedicated later pass — ideally before Phase 9's economy endpoints
+(crumbs payouts, shop purchases) go live, since those are exactly the kind of
+reward-granting endpoints worth rate-limiting hardest:
+
+- **Upstash-backed rate-limit storage** — better-auth's rate limiter is already on by
+  default in production, but its default storage is in-memory, which doesn't share state
+  across Vercel's separate serverless instances — weaker than it looks under real load.
+  Needs an Upstash Redis account wired up as `secondaryStorage`, plus explicit limits on
+  auth and (once they exist) reward/economy endpoints.
+- **Nonce-based CSP** — the other standard security-header addition, deferred because it
+  needs the two inline pre-paint `<script>` tags in `layout.tsx` (theme + reduced-motion
+  flash prevention) to each carry a matching per-request nonce, which also forces those
+  routes into dynamic rendering — a real, separate change, not a drop-in header.
+- **`drizzle-kit`/`esbuild` moderate dev-only advisory** — low priority; the only fix path
+  downgrades `drizzle-kit` to 0.18.1 (breaking), and the exposure is local-dev-only
+  (`drizzle-kit studio` invoked while an attacker shares your network).
 
 ---
 

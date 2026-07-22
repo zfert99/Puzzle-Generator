@@ -27,3 +27,17 @@ effect [session]    -> if signed in, GET /api/me/streak + /api/me/bests -> setSt
 tab click           -> setLoading(true) + setDifficulty (event handler)
 render              -> tabs · (streak · your rank) · personal bests · table (caller's row highlighted)
 ```
+
+## "Sudoku Bot" badge (July 2026)
+
+**Why not color alone:** Any entry whose `userId` matches `BOT_USER_ID`
+(`features/leaderboards/bot-identity.ts`) gets a 🤖 emoji plus explicit
+`" (bot — beat it!)"` text next to its name — not just a different background or text color.
+Styling-only distinction would fail WCAG 1.4.1 (Use of Color) for anyone who can't perceive
+the color difference; the emoji + text label reads the same for everyone.
+
+**Why the split-out `bot-identity.ts` import:** This component only needs the bot's id to
+compare against — importing it from `bot.ts` directly would pull that file's live Drizzle
+`user` table and `db.insert` calls into the client bundle. `bot-identity.ts` has zero
+imports, so it's safe to reference from client code (see `bot.md`'s bundling note, and
+AGENTS.md's App Router Purity rule).

@@ -33,6 +33,11 @@ const socialProviders =
 
 export const auth = betterAuth({
   baseURL: appUrl,
+  // The production origin (from BETTER_AUTH_URL) is trusted automatically. Vercel preview
+  // deployments get a unique `*.vercel.app` subdomain per branch/PR, so without this
+  // wildcard their OAuth/passkey origin checks fail on every preview — this only widens
+  // trust to Vercel's own preview domains, it can't loosen anything in production.
+  trustedOrigins: ['https://*.vercel.app'],
   database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
   // Public leaderboard handle — settable via updateUser, returned in the session user.
   // Uniqueness is enforced by the DB constraint (a taken handle surfaces as an error).

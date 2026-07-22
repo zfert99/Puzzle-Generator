@@ -23,12 +23,25 @@ appUrl  = BETTER_AUTH_URL (or http://localhost:3000)
 rpID    = hostname of appUrl        (passkey relying-party id)
 
 betterAuth:
-  baseURL:  appUrl
+  baseURL:        appUrl
+  trustedOrigins: ['https://*.vercel.app']   # see below
   database: drizzleAdapter(db, provider "pg", schema = auth tables)
   emailAndPassword: enabled, password hashing overridden to Argon2id (see password.ts)
   socialProviders: google — ONLY if its env creds exist
   plugins: [ passkey(rpID, rpName, origin=appUrl), nextCookies() ]   # nextCookies LAST
 ```
+
+## Why `trustedOrigins` includes a Vercel preview wildcard (July 2026)
+
+**Why:** better-auth always trusts `baseURL`'s own origin automatically, so production (via
+`BETTER_AUTH_URL`) needed no extra config. But Vercel preview deployments each get a unique
+`*.vercel.app` subdomain per branch/PR that `baseURL` doesn't know about ahead of time —
+without an explicit trusted pattern, the Origin/CSRF check (`origin-check` middleware) and
+OAuth/passkey callback validation would reject every preview deployment. better-auth's
+pattern matcher supports wildcards natively (`matchesOriginPattern`), so this only *widens*
+trust to Vercel's own preview domains — it can't loosen anything about the production origin.
+Added while auditing the codebase against a new web-security research doc
+(`Docs/research/ai-assisted-nextjs-security-reference.md`).
 
 ## `username` additional field
 

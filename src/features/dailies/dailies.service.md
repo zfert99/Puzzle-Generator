@@ -22,10 +22,37 @@ exactly what a scheduled job needs. Seed and cron both go through here so they c
 drift apart.
 
 ```text
+Ensure "Sudoku Bot"'s user row exists (idempotent; features/leaderboards/bot.ts).
 For each daily difficulty (easy, medium, hard, expert):
   Generate a puzzle and map it to an insert row for isoDate.
 Insert all rows in one statement; skip any that collide on (date, difficulty).
+Seed Sudoku Bot's solve on every one of today's boards (see below).
 Return { isoDate, requested, inserted } (inserted = how many were actually new).
+```
+
+## Sudoku Bot seeding (July 2026)
+
+**Why:** After the day's boards exist, `generateDailyPuzzles` gives "Sudoku Bot"
+(`features/leaderboards/bot.ts`) a clean, completed solve on each one — a visible "time to
+beat" for a small player base, without any separate cron or infra. It runs as a step inside
+the *existing* idempotent pipeline (already called by both the Vercel cron and the local seed
+script), so no new scheduled job is needed.
+
+**Why a fresh SELECT, not the insert's `.returning()`:** `.returning()` only reflects rows
+*this call* actually inserted — on a day where the puzzles already existed (cron re-run,
+manual re-seed), it would be empty and the bot would never get seeded for that day. Selecting
+all of today's rows by date instead means the bot backfills automatically the next time
+generation runs for that date, including boards that were generated before this feature
+shipped.
+
+```text
+seedBotSolves(db, isoDate):
+  Select every daily_puzzles row for isoDate (id, difficulty/key).
+  For each row whose key has a tuned botTimeMs (DAILY_BOARDS):
+    Build a solve_attempts row: bot's userId, that puzzle's id, botTimeMs,
+      completed = true, mistakes = 0.
+  Insert all such rows in one statement; skip any that collide on (userId, puzzleId) —
+    the same uniqueness a real player's attempt is already constrained by.
 ```
 
 ## `getDailyPuzzle(db, isoDate, difficulty)`

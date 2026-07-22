@@ -70,3 +70,14 @@ floor (`minSolveMs` — single source of truth for `solve-rules`). `toDailyPuzzl
 the key explicitly (the same engine difficulty generates under different keys). The legacy
 `'killer'` key (the pre-ladder single daily) stays readable for archived rows but is never
 generated; `formatDailyKey` prettifies keys for display.
+
+## `botTimeMs` (Sudoku Bot, July 2026)
+
+**Why:** Each board also carries `botTimeMs` — "Sudoku Bot"'s (`features/leaderboards/bot.ts`)
+daily time on that board, a hand-tuned "good, beatable" human time, not a record. Sourced
+from the difficulty research gathered across this project (community classic-Sudoku
+solve-time bands; Killer research noting it runs slower than classic since it starts with no
+givens; minis scale down with the smaller grid). It's deliberately well above `minSolveMs`,
+which marks "impossibly fast" rather than "typical," so the bot's time reads as a genuine
+skilled solve rather than a floor-skimming one. It's flavor, not a derived/anti-cheat value —
+retune freely.
