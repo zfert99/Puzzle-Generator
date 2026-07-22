@@ -117,7 +117,7 @@
 
 .candidates {
   position: absolute;
-  inset: 0;
+  inset: 2%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   /* Explicit row tracks too — without this, rows size to their own content, so a row with
@@ -127,18 +127,38 @@
   grid-template-rows: repeat(3, 1fr);
   align-items: center;
   justify-items: center;
-  padding: 2px;
-  font-size: 0.5em;
+  font-size: 0.42em;
   font-weight: 600;
   color: var(--cell-candidate);
 }
 
-/* Killer: this cell is a cage's anchor (CageOverlay draws its sum in the top-left corner) —
-   nudge the whole 3×3 candidate grid down/right so pencil mark 1 (and 2) never sit under the
-   sum's background pad. Keeps the fixed-position guarantee above; just offsets it. */
-.candidatesCageSum {
-  padding-top: 26%;
-  padding-left: 20%;
+/* A faint 3×3 ruling so the candidate grid reads as an actual grid — not just loosely
+   clustered numbers — even on cells showing only one or two marks. Same visual language as
+   the board's own thin cell borders (`--grid-line`), just fainter, since it's operating at a
+   much smaller scale next to tiny digits. */
+.candidates span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.candidates span:not(:nth-child(3n)) {
+  border-right: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.candidates span:nth-child(-n + 6) {
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+/* Killer: EVERY cell's candidate grid — not just cage-anchor cells — reserves the same
+   top-left margin, driven purely by the board's `data-variant` attribute (no per-cell JS).
+   A cell-by-cell conditional offset (only shifting cage-anchor cells) made candidate
+   positions inconsistent across the board — digit 5 sat in a different spot in an anchor
+   cell than in its non-anchor neighbor. Applying the offset uniformly to the whole killer
+   board keeps every cell's 3×3 layout pixel-identical, at the cost of reserving unused
+   corner space in cells that don't have a cage sum — a deliberate trade for consistency. */
+.board[data-variant='killer'] .candidates {
+  inset: 26% 2% 2% 32%;
 }
 
 /* Killer cage overlay: an SVG in a 0..size viewBox laid over the whole grid. */

@@ -115,13 +115,11 @@ A flat cell-index → cage-id map (−1 where uncaged, `[]` for classic), built 
 as the selection?" in O(1); scanning the cage list per cell per keystroke would blow the INP
 budget (AGENTS.md §3).
 
-## `cageAnchorCell` (cage-sum clearance, July 2026)
-
-A flat cell-index → boolean (`[]` for classic), built and rebuilt alongside `cellToCage` the
-same way. Marks the one cell per cage that's its **anchor** — `Math.min(...cage.cells)`, the
-same rule `computeCageOutline` (`cage-geometry.ts`) uses to place the sum label — so `Cell`
-can answer "do I need to leave the top-left corner clear for a cage sum?" in O(1) instead of
-scanning `cages` per render. See `Cell.md`'s "Cage-sum clearance" section for why this exists.
+> A `cageAnchorCell` field briefly existed here (to let `Cell` reserve top-left space for a
+> cage sum only on its cage's anchor cell) and was removed in the same July 2026 pass — the
+> per-cell offset it drove made candidate positions inconsistent across the board. Cage-sum
+> clearance is now a pure CSS concern, applied uniformly to every cell via the board's
+> `data-variant` attribute. See `Board.md`'s "Candidate grid" section.
 
 `BoardDifficulty` widened to `Difficulty | DailyDifficulty` — dailies store their board key
 (e.g. `killer-expert`); display surfaces prettify via `formatDailyKey`.

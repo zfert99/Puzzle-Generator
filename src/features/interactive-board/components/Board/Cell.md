@@ -16,7 +16,6 @@ Select from the store (shallow):
   isSelected    = the store's selectedCell is this cell,
   isPeer        = selectedCell shares this cell's row/column/box,
   isCagePeer    = selectedCell shares this cell's Killer cage (see below),
-  hasCageSum    = this cell is its cage's anchor (CageOverlay draws a sum into its corner),
   isError       = real-time errors ON and a wrong, non-given value is present,
   isSameNumber  = this cell holds the same non-zero value as the selected cell
                   (highlights every matching number across the board).
@@ -32,8 +31,9 @@ Render <div role="gridcell"> with:
   aria-label synthesized ("Given clue 7, row 2, column 4" / "Candidates 2, 5, 8" / "Empty…"),
   aria-selected, tabIndex (0 if selected else -1),
   onClick -> selectCell.
-  Body: the value if placed, else a mini grid of pencil-mark candidates from the mask
-        (offset via .candidatesCageSum if hasCageSum, so digit 1 doesn't sit under the sum).
+  Body: the value if placed, else a mini grid of pencil-mark candidates from the mask.
+        Cage-sum clearance (Killer) is a pure CSS concern now — see Board.md — not something
+        this component computes per cell.
 ```
 
 ## Cage highlighting (Killer)
@@ -44,12 +44,3 @@ into the row/column/box highlight — they read as related but distinct (July 20
 cage membership was OR'd straight into the generic peer check, so a cage read identically to
 a plain row/box peer). The check is O(1) per cell via the store's precomputed `cellToCage` map
 (empty for classic games, so classic behaviour is untouched).
-
-## Cage-sum clearance (Killer)
-
-`hasCageSum` (from the store's precomputed `cageAnchorCell`, mirroring `computeCageOutline`'s
-anchor rule — `Math.min(...cage.cells)`) marks the one cell per cage where `CageOverlay` draws
-the sum label into the top-left corner. Without accounting for that, a cell's own pencil-mark
-1 (fixed to the top-left of its 3×3 candidate layout) could sit directly under the sum's
-background pad. `.candidatesCageSum` nudges the whole candidate grid down/right just for that
-cell, so nothing is hidden.

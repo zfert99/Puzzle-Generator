@@ -27,7 +27,7 @@ interface CellProps {
 export const Cell = memo(function Cell({ r, c }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, hasCageSum, isWrong, isSameNumber, size, boxWidth, boxHeight, isDaily } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, size, boxWidth, boxHeight, isDaily } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
@@ -58,9 +58,6 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
         isSelected: isSelf,
         isPeer: samePeer,
         isCagePeer: sameCage,
-        // CageOverlay draws this cell's cage sum into its top-left corner — the candidate
-        // grid needs to leave that corner clear (see .candidatesCageSum).
-        hasCageSum: s.cageAnchorCell.length > 0 && s.cageAnchorCell[r * cfg.size + c],
         isWrong: v !== 0 && !s.givens[r][c] && v !== s.solution[r][c],
         isSameNumber: v !== 0 && v === selValue && !isSelf, // another cell holding the selected value
         size: cfg.size,
@@ -120,10 +117,7 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
       {value !== 0 ? (
         value
       ) : candidates.length ? (
-        <div
-          className={hasCageSum ? `${styles.candidates} ${styles.candidatesCageSum}` : styles.candidates}
-          aria-hidden="true"
-        >
+        <div className={styles.candidates} aria-hidden="true">
           {Array.from({ length: size }, (_, i) => (
             <span key={i}>{mask & (1 << i) ? i + 1 : ''}</span>
           ))}

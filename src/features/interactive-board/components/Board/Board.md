@@ -9,6 +9,30 @@ after the cells, drawing the dashed cage borders + sums from the shared `compute
 geometry. The `.board` is `position: relative` so the absolutely-positioned overlay anchors to it.
 See `CageOverlay.md`.
 
+`.board` also carries `data-variant={variant}` — a plain DOM attribute, not a CSS-module class —
+specifically so `Board.module.css` can style descendants (currently just `.candidates`; see
+below) differently for Killer vs. classic with a pure CSS selector, no per-cell JS needed.
+
+## Candidate grid: gridlines + Killer clearance (July 2026)
+
+Two related fixes to the pencil-mark 3×3 layout inside each cell:
+
+- **Faint gridlines.** `.candidates span` gets thin borders (right on columns 1–2, bottom on
+  rows 1–2) at a low-opacity ink tint, so the 3×3 layout reads as an actual grid — previously it
+  was a bare CSS grid with no visible structure, which looked like loosely-scattered numbers
+  rather than a mini-grid, especially with only one or two marks placed. Same visual language
+  as the board's own thin cell borders, just fainter to stay out of the way of small digits.
+- **Killer clearance, applied uniformly.** `.board[data-variant='killer'] .candidates` reserves
+  a top-left margin on the candidate grid, via a plain CSS descendant selector keyed on the
+  board's `data-variant` — **every** cell in a Killer game gets the same offset, not just cells
+  that happen to be a cage's anchor. An earlier version (`.candidatesCageSum`, driven by a
+  per-cell `hasCageSum` flag from the store) only shifted anchor cells, which meant a given
+  digit (e.g. "5") sat at a *different* pixel position in an anchor cell than in its non-anchor
+  neighbor — inconsistent across the board. Applying the offset to the whole Killer board keeps
+  every cell's layout pixel-identical, at the cost of reserved-but-unused corner space in cells
+  without a cage sum — a deliberate trade for consistency, per direct user feedback. Classic
+  games are unaffected (no `data-variant='killer'` match, so no offset, no reserved space).
+
 ## Uniform cell sizing (`Board.module.css`)
 
 The board is a CSS grid with BOTH `grid-template-columns` **and** `grid-template-rows` set to
