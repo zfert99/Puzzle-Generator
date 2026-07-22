@@ -26,6 +26,7 @@ betterAuth:
   baseURL:        appUrl
   trustedOrigins: ['https://*.vercel.app']   # see below
   database: drizzleAdapter(db, provider "pg", schema = auth tables)
+  rateLimit.customStorage — ONLY if Upstash env creds exist (see below)
   emailAndPassword: enabled, password hashing overridden to Argon2id (see password.ts)
   socialProviders: google — ONLY if its env creds exist
   plugins: [ passkey(rpID, rpName, origin=appUrl), nextCookies() ]   # nextCookies LAST
@@ -42,6 +43,34 @@ pattern matcher supports wildcards natively (`matchesOriginPattern`), so this on
 trust to Vercel's own preview domains — it can't loosen anything about the production origin.
 Added while auditing the codebase against a new web-security research doc
 (`Docs/research/ai-assisted-nextjs-security-reference.md`).
+
+## Why rate-limit storage is conditional (July 2026)
+
+**Why:** better-auth's rate limiter is on by default in production, but its default
+storage is in-memory counters — private to one serverless instance, so they don't
+coordinate across Vercel's separately-scaled instances or survive a cold start. That made
+the protection weaker than it looked (roadmap backlog, tabled alongside the July 2026
+security-hardening pass). [`rate-limit-storage.ts`](./rate-limit-storage.md) wires
+`rateLimit.customStorage` to Upstash Redis when `UPSTASH_REDIS_REST_URL`/
+`UPSTASH_REDIS_REST_TOKEN` are set, spread in conditionally (same pattern as
+`socialProviders`) so local dev without Upstash creds is unaffected — it just keeps the
+in-memory default. No new `customRules` were added: better-auth already ships sane
+defaults for the sensitive paths (sign-in/sign-up/change-password: 3 requests/10s;
+password-reset/verification-email: 3/60s) — the gap being closed here is purely the
+storage backend, not the limits themselves.
+
+**Why `rateLimit.customStorage`, not the top-level `secondaryStorage` option:** the obvious
+first attempt — set `secondaryStorage` to an Upstash client and `rateLimit.storage:
+'secondary-storage'` — is a trap. better-auth's own docs state that once `secondaryStorage`
+is set *at all*, session reads are **always** served from it instead of the database
+("Reads are always done from the secondary storage" — `session.storeSessionInDatabase`
+only controls whether a DB copy is *also* kept, not which one is read from). That would
+have silently repointed session validation at Upstash for every authenticated request in
+the app, directly contradicting this project's DB-backed-sessions design (AGENTS.md §6) and
+turning any Upstash hiccup into a full outage of session checks, not just rate limiting.
+`rateLimit.customStorage` is a separate, rate-limit-only interface (`get`/`set`/`consume`)
+that better-auth's router checks first and never touches session storage — the properly
+scoped mechanism for this.
 
 ## `username` additional field
 
