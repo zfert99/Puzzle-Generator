@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/lib/db/connection';
 import { generateDailyPuzzles, getDailyPuzzle } from './dailies.service';
 import { DAILY_BOARDS } from '@/lib/db/daily-row';
@@ -56,25 +56,58 @@ function makeDb(options: {
 }
 
 describe('generateDailyPuzzles', () => {
-  it('generates one row per daily difficulty and upserts idempotently', async () => {
-    const db = makeDb({
-      puzzleReturning: async () => DAILY_BOARDS.map((_, i) => ({ id: `id-${i}` })),
-      selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
+  // `rows` in the service is real puzzle generation for all 19 `DAILY_BOARDS` (killer-extreme
+  // alone runs a ~5.5s real backtracking search) — the DB mock never touches that step, so
+  // every call here pays the full cost regardless of what it's asserting. The two tests below
+  // share ONE such call (identical mock config; they just inspect different parts of its
+  // result), cutting this file's real generation work from three calls to two. That's the fix
+  // for the occasional full-suite timeout: it was never nondeterministic, just CPU contention
+  // from redundantly regenerating the same 19 real boards three times over under load.
+  describe('happy path (fresh day, no conflicts)', () => {
+    let result: Awaited<ReturnType<typeof generateDailyPuzzles>>;
+    let insertMock: ReturnType<typeof vi.fn>;
+    let attemptRows: BotAttemptRow[] = [];
+
+    beforeAll(async () => {
+      const db = makeDb({
+        puzzleReturning: async () => DAILY_BOARDS.map((_, i) => ({ id: `id-${i}` })),
+        selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
+        onAttemptsValues: (rows) => {
+          attemptRows = rows;
+        },
+      });
+      insertMock = db.insert as ReturnType<typeof vi.fn>;
+      result = await generateDailyPuzzles(db, '2026-07-11');
+    }, 60_000);
+
+    it('generates one row per daily difficulty and upserts idempotently', () => {
+      expect(result).toEqual({
+        isoDate: '2026-07-11',
+        requested: DAILY_BOARDS.length,
+        inserted: DAILY_BOARDS.length,
+      });
+
+      // The daily-puzzle insert call is the second dispatched table (bot user is first);
+      // find it by inspecting what was actually passed to insert().
+      const puzzleCall = insertMock.mock.calls.find(([t]) => t === dailyPuzzles);
+      expect(puzzleCall).toBeDefined();
     });
 
-    const result = await generateDailyPuzzles(db, '2026-07-11');
+    it("seeds Sudoku Bot's solve on every board, at each board's tuned time", () => {
+      // The bot user row was upserted.
+      const userCall = insertMock.mock.calls.find(([t]) => t === user);
+      expect(userCall).toBeDefined();
 
-    expect(result).toEqual({
-      isoDate: '2026-07-11',
-      requested: DAILY_BOARDS.length,
-      inserted: DAILY_BOARDS.length,
+      // One clean, completed bot solve per board, at that board's tuned botTimeMs.
+      expect(attemptRows).toHaveLength(DAILY_BOARDS.length);
+      expect(attemptRows.every((r) => r.userId === BOT_USER_ID)).toBe(true);
+      expect(attemptRows.every((r) => r.completed === true && r.mistakes === 0)).toBe(true);
+      const timeByPuzzleId = new Map(attemptRows.map((r) => [r.puzzleId, r.timeMs]));
+      DAILY_BOARDS.forEach((board, i) => {
+        expect(timeByPuzzleId.get(`id-${i}`)).toBe(board.botTimeMs);
+      });
     });
-
-    // The daily-puzzle insert call is the second dispatched table (bot user is first);
-    // find it by inspecting what was actually passed to insert().
-    const puzzleCall = (db.insert as ReturnType<typeof vi.fn>).mock.calls.find(([t]) => t === dailyPuzzles);
-    expect(puzzleCall).toBeDefined();
-  }, 30_000);
+  });
 
   it('reports 0 inserted when today already exists (conflict)', async () => {
     const db = makeDb({
@@ -85,33 +118,7 @@ describe('generateDailyPuzzles', () => {
     const result = await generateDailyPuzzles(db, '2026-07-11');
     expect(result.inserted).toBe(0);
     expect(result.requested).toBe(DAILY_BOARDS.length);
-  }, 30_000);
-
-  it("seeds Sudoku Bot's solve on every board, at each board's tuned time", async () => {
-    let attemptRows: BotAttemptRow[] = [];
-    const db = makeDb({
-      puzzleReturning: async () => DAILY_BOARDS.map((_, i) => ({ id: `id-${i}` })),
-      selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
-      onAttemptsValues: (rows) => {
-        attemptRows = rows;
-      },
-    });
-
-    await generateDailyPuzzles(db, '2026-07-11');
-
-    // The bot user row was upserted.
-    const userCall = (db.insert as ReturnType<typeof vi.fn>).mock.calls.find(([t]) => t === user);
-    expect(userCall).toBeDefined();
-
-    // One clean, completed bot solve per board, at that board's tuned botTimeMs.
-    expect(attemptRows).toHaveLength(DAILY_BOARDS.length);
-    expect(attemptRows.every((r) => r.userId === BOT_USER_ID)).toBe(true);
-    expect(attemptRows.every((r) => r.completed === true && r.mistakes === 0)).toBe(true);
-    const timeByPuzzleId = new Map(attemptRows.map((r) => [r.puzzleId, r.timeMs]));
-    DAILY_BOARDS.forEach((board, i) => {
-      expect(timeByPuzzleId.get(`id-${i}`)).toBe(board.botTimeMs);
-    });
-  }, 30_000);
+  }, 60_000);
 });
 
 describe('getDailyPuzzle', () => {
