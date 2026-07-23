@@ -48,6 +48,11 @@ the class names are kept so existing markup cascades without per-file edits:
 
 `body` is now paper/ink with the Manrope sans; `h1`/`h2` default to the Fredoka display face.
 
+`html, body` also carry `overflow-x: hidden` (July 2026) — a defensive baseline against any
+single component's stray overflow (rotated chaos-layer decoration with negative offsets, a
+mispositioned anchored panel, etc.) turning into page-wide horizontal scroll on mobile. Not
+a fix for one specific component; catches the whole class of bug.
+
 ## 4. Signature utility
 
 **Why:** `.pressable` / `shadow-chunky` encode the core mechanic — a 3px ink border + a hard

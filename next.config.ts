@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
+  // Lets a phone on the same Wi-Fi hit `next dev -H 0.0.0.0` directly (HMR + /_next/*
+  // assets) for real-device mobile testing without deploying — Next 16 blocks cross-origin
+  // dev requests by default (PR #91507). Dev-only allowlist; irrelevant to production.
+  allowedDevOrigins: ['192.168.1.239'],
 };
 
 export default nextConfig;

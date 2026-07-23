@@ -31,3 +31,18 @@ per request (middleware or a dynamic root layout) and threading it onto both scr
 the CSP header, which also forces those routes into fully dynamic rendering. That's real,
 separate work with its own testing burden — flagged for a follow-up pass rather than bundled
 into this baseline-headers change.
+
+## `allowedDevOrigins` (July 2026)
+
+**Why:** Next.js 16 blocks cross-origin requests to dev-only assets/endpoints by default
+(PR #91507, "block disallowed dev origins by default") — a phone on the same Wi-Fi hitting
+`next dev -H 0.0.0.0` at the machine's LAN IP would get HMR/`/_next/*` requests 403'd
+without an explicit allowlist entry. Added to test real mobile bugs (reported via
+screenshots from an actual phone) directly against the dev server — per
+`Docs/research/compass_artifact_wf-5a169f5a-3c9f-5799-9a6f-6060e47bd0ca_text_markdown.md`,
+this "Tier 1" same-network loop is free, keeps hot-reload, and catches the large majority of
+responsive/layout bugs without a deploy; reserve Vercel preview deployments for sharing with
+others, not for iterating on responsiveness solo. Dev-only — has no effect in production.
+Hardcodes this machine's current LAN IP rather than a wildcard/CIDR, since the guard is a
+security boundary and the IP is only needed for the duration of a local testing session; if
+the network's DHCP lease changes, update the entry (`ipconfig getifaddr en0` on macOS).
