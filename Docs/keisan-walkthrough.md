@@ -250,6 +250,50 @@ No-Op mode remain difficulty axes for a later slice.
 
 ---
 
-## K5 — Surfaces
+## K5 — Surfaces 🚧 (core done; daily rotation deferred)
 
-*Not started.*
+Keisan is now **playable, printable, and discoverable** in the app. Shipped across three sub-commits.
+
+### K5a — 3-way variant discriminant + board data path
+
+- **Real discriminant** replacing the duck-typed `'cages' in puzzle`: killer/calc carry an explicit
+  `variant` tag, classic has none, so `'variant' in puzzle ? puzzle.variant : 'classic'`
+  distinguishes all three (the old check couldn't tell killer from calc — both have cages).
+- `PuzzleVariant` += `'calc'`; `BoardPuzzle` union += `CalcPuzzle`.
+- **Cage geometry generalized:** `computeCageOutline` takes `LabeledCage {cells, label}`;
+  `CageSum.value` → `label`. The board normalizes both cage types to `BoardCage {id, cells, label}`
+  at `startNewGame` (Killer label = sum; Keisan = target+operator `12+`/`3÷`, or bare value for a
+  single-cell given). CageOverlay + PDF updated.
+- **Keisan uses a boxless config** even at 4/6 → row/col-only peers, no box borders (K0 gating).
+  Cage-mate pencil stripping stays **Killer-only** (Keisan permits repeats). persist v3 → v4.
+
+### K5b — `/play` board
+
+- `/api/puzzle` Keisan branch (4×4/6×6, easy/medium/hard). PlayExperience: Classic/Killer/Keisan
+  toggle, per-variant size lists (Keisan 4/6), `?variant=calc` deep link, Continue-banner label.
+- **Fix (visual check):** the candidate pencil grid was cut off by the cage label. Extended the
+  Killer cage-label top-clearance CSS (`data-variant`) to cover `'calc'`.
+
+### K5c — PDF export + `/generate`
+
+- Extracted a shared `drawCagedGrid`; added `drawCalcGrid` (boxless, operator labels) +
+  `generateCalcPDF`. `/api/generate` Keisan branch + PuzzleForm Keisan section. Verified end-to-end
+  (a 7-page 4×4 booklet).
+
+### K5d — Hub card
+
+- The "Coming soon" KenKen card is now a live **Keisan** card (`/play?variant=calc`, 🧮) wearing the
+  `new!` sticker (moved off Killer, per the "newest wears new!" convention).
+
+### Deferred — the daily rotation
+
+Keisan is **not yet in the daily rotation**. That follow-up needs: daily registry rows, the
+variant-safe daily discriminant fixes (`toDailyPuzzleRow`, `dailies.service` dispatch, `/api/daily`
+serving still duck-type `'cages'` — *correct today* since only classic/killer are registered),
+a fourth picker section, per-board anti-cheat floors + bot times, and leaderboard tabs. Free-play +
+PDF + hub already deliver the full Keisan experience; the daily is additive.
+
+### Verification (K5)
+
+299 tests green; typecheck / lint / markdownlint / `next build` clean. API + PDF verified via the
+running dev server. Board/generate/hub handed off for a visual check (both themes, 4×4 + 6×6).

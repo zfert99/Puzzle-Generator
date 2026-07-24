@@ -256,7 +256,26 @@ box-optional base instead of each rediscovering the coupling.
   Killer. Measure it as a candidate gate before falling back to the foothold-count proxy.
 - **Gate:** every band ≤ 1 s avg generation, 0 fails in 20, bands disjoint per size.
 
-### K5 — Surfaces
+### K5 — Surfaces 🚧 Core done; daily rotation deferred
+
+> **Shipped** on `feature/kenken`: Keisan is **playable, printable, and discoverable**.
+>
+> - **Board (`/play`):** Classic/Killer/Keisan toggle, per-variant size lists (Keisan 4/6),
+>   easy/medium/hard, `?variant=calc` deep link. Real 3-way `variant` discriminant in
+>   `startNewGame` (replaces `'cages' in puzzle`); cages normalized to `BoardCage {id,cells,label}`
+>   (operator labels `12+`/`3÷`); boxless config (row/col peers, no box borders); pencil-strip stays
+>   Killer-only. `CageOverlay`/`cage-geometry` generalized to `LabeledCage`. Candidate-clearance CSS
+>   extended to `data-variant='calc'`.
+> - **PDF (`/generate`):** shared `drawCagedGrid` + `drawCalcGrid`/`generateCalcPDF` (boxless, operator
+>   labels); `/api/generate` + PuzzleForm Keisan section. Verified end-to-end.
+> - **Hub:** the "Coming soon" KenKen card is now a live **Keisan** card (`/play?variant=calc`) wearing
+>   the `new!` sticker (moved off Killer).
+>
+> **Deferred — the daily rotation** (its own follow-up): Keisan daily registry rows, the variant-safe
+> daily discriminant fixes (`toDailyPuzzleRow`, `dailies.service` dispatch, `/api/daily` serving — all
+> still duck-type `'cages'`, which is *correct today* since only classic/killer are in the registry),
+> a fourth picker section, per-board anti-cheat floors, bot times, and leaderboard tabs. Free-play +
+> PDF already deliver the full Keisan experience; the daily is additive.
 
 - **Real 3-way discriminant first (audit finding).** Before any UI, replace the two
   duck-typed `'cages' in puzzle` checks — `useBoardStore.startNewGame` and
