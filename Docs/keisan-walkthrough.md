@@ -141,6 +141,51 @@ multisets, the two-cell restriction, and memo/freeze behaviour. Full suite **275
 
 ---
 
-## K2 — Exact solver + Latin-square generator
+## K2 — Exact solver + Latin-square generator ✅
+
+The exact solver + the ungraded unique-puzzle generator. New files
+[`calc-solver.ts`](../src/features/engine/calc/calc-solver.ts) and
+[`calc-generator.ts`](../src/features/engine/calc/calc-generator.ts).
+
+### The exact solver — `calc-solver.ts`
+
+- **Bitmask/MRV over rows + columns only** — no box mask (Keisan is Latin-square-only). Node-budgeted
+  `countSolutions(limit, budget)` returning `-1` on exhaustion (safe reject), mirroring the Killer
+  solver's uniqueness API.
+- **The geometric layer is free (key simplification).** K1's two-layer check said the solver must
+  enforce "same-row/col repeats are illegal." But that *is* the Latin-square rule — two cage cells in
+  the same row already can't share a digit via the row/col masks. So the cage layer only enforces
+  **arithmetic**: each cage precompiles its valid multisets (K1) to per-digit count arrays and tracks
+  a `cageMask` of digits that can still extend the placed multiset toward a valid one. A cell's
+  candidates are `rowColFree & cageMask`. Because a placement is only admitted while it keeps the
+  placed multiset a sub-multiset of a valid one, a full cage necessarily equals a valid multiset — no
+  end-of-cage check needed.
+- This cage pruning is **mandatory** (boxless = 2 units/cell, not 3, so the search would balloon
+  without it).
+
+### The generator — `calc-generator.ts`
+
+- **`calcGridConfig(size)`** — always boxless, even at 4/6, so `fillGrid` (K0) yields a pure random
+  Latin square rather than a box-Sudoku solution.
+- **`generateCalcCageShapes`** — region growing with **no no-repeat stop** (repeats are legal), so
+  growth terminates on the drawn target size / boxing-in; `maxSize` cap + the uniqueness gate are the
+  quality backstops. `minSize`/`maxSize`/`maxSizeBias` levers carry over.
+- **`assignCalcCages`** — single-cell cages are givens (`op:'add'`, `target:digit`); multi-cell cages
+  pick a random operator legal for the size, with `div` also requiring an integer quotient. Returns
+  `null` for an un-cluable cage so the loop retries; asserts the K1 legality invariant up front.
+- **`generateUniqueCalc`** — fill → cage → assign → `countSolutions === 1`, else retry. Returns
+  `{ cages, solution, gridSize }` (the full `CalcPuzzle` type + difficulty grading are K3/K4).
+
+### Verification (K2)
+
+12 tests incl. an **independent brute-force uniqueness counter** fuzzed against the solver on 4×4,
+repeat-holding L-cages, node-budget exhaustion, cage-termination (not all `maxSize`), and the
+operator-legality throw. Full suite **287 green**. **Gate met:** 6×6 QuadOp uniqueness-verify
+**avg 0.038 ms** (budget < 50 ms), p95 0.1 ms, 57.7% unique yield — the mandatory cage pruning holds
+up.
+
+---
+
+## K3 — Logical solver + difficulty tiers
 
 *Not started.*

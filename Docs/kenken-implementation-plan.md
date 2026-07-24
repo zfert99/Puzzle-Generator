@@ -152,7 +152,18 @@ box-optional base instead of each rediscovering the coupling.
 - **Gate:** exhaustive spot-tests against published examples (e.g. `6×` 4-cell → {1,1,2,3},
   legal only when the two 1s are non-collinear); table-size/perf budget documented.
 
-### K2 — Exact solver + Latin-square generator
+### K2 — Exact solver + Latin-square generator ✅ Done
+
+> **Shipped** on `feature/kenken`. [`calc-solver.ts`](../src/features/engine/calc/calc-solver.ts)
+> (bitmask/MRV over rows+cols only, per-cage multiset pruning via K1 count-arrays + a node budget)
+> and [`calc-generator.ts`](../src/features/engine/calc/calc-generator.ts) (`calcGridConfig` boxless
+> config, region-growing `generateCalcCageShapes` with no no-repeat stop, `assignCalcCages` operator
+> assignment with the legality-invariant assertion + `div`-integer check, `generateUniqueCalc`
+> fill→cage→assign→uniqueness loop). **Key simplification:** the K1 "geometric placement" layer is
+> free — same-row/col repeats are already forbidden by the Latin-square row/col masks, so the cage
+> layer only enforces arithmetic. **Gate met:** 6×6 QuadOp uniqueness-verify **avg 0.038 ms** (< 50
+> ms), 57.7% unique yield; 12 tests incl. fuzz-vs-independent-brute-force on 4×4. `CalcPuzzle` type +
+> difficulty grading deferred to K3/K4.
 
 - Latin-square fill (trivial vs Sudoku fill — no boxes). `fillGrid` (`grid-utils.ts`) keeps a
   `boxMask` alongside row/col masks; K0's `hasBoxes: false` must make that mask conditional so
