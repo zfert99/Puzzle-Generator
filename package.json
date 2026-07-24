@@ -29,7 +29,7 @@
     "canvas-confetti": "^1.9.4",
     "drizzle-orm": "^0.45.2",
     "motion": "^12.42.2",
-    "next": "16.2.10",
+    "next": "16.2.11",
     "pdfkit": "^0.19.1",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
