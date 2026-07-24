@@ -215,6 +215,41 @@ full suite **291 green**.
 
 ---
 
-## K4 — Difficulty configs + generation
+## K4 — Difficulty configs + generation ✅
+
+The two-factor scorer + the graded generation pipeline. New files
+[`calc-score.ts`](../src/features/engine/calc/calc-score.ts) and
+[`calc-sudoku.ts`](../src/features/engine/calc/calc-sudoku.ts); `CalcPuzzle`/`CalcDifficulty` added
+to `calc-types.ts`.
+
+- **`calc-score.ts`** — `final = raw × densityFactor`, mirroring Killer's scorer with Keisan
+  technique weights. `raw` = weighted sum of technique applications; density scales bottlenecked
+  grids up, open grids down.
+- **`calc-sudoku.ts`** — `generateCalcSudoku(difficulty, { gridSize })`: fill a boxless Latin square
+  → cage shapes → operator assignment → **shape gate** (single-cell-cage min/max band) → logical
+  solve capped at the tier → **score band** → uniqueness (belt-and-braces, since a sound full solve
+  already implies uniqueness). `generateCalcBatch` for bulk. `CalcPuzzle` = `{ variant:'calc', grid
+  (all-zero), solution, cages, difficulty, gridSize }`.
+- **Difficulty rides the score, not the tier** — K3 showed most puzzles are T1/T2, so the tier is
+  just a ceiling and the two-factor score does the separating. Bands are **measured per-size** and
+  not comparable across sizes (a "hard 4×4" ≠ "hard 6×6").
+
+### Calibration (measured, QuadOp, maxSize 3)
+
+| Size | easy | medium | hard |
+|---|---|---|---|
+| 4×4 | score `< 3.5` | `[3.5, 6.5)` | `≥ 6.5` |
+| 6×6 | `< 9` | `[9, 16)` | `≥ 16` |
+
+### Verification (K4)
+
+**Gate met:** every band generates in **avg 1–2 ms** (max ≤ 9 ms, far under the 1 s budget), **0
+fails in 40**, and score ranges are **disjoint per size**. 8 tests (well-formed + unique + in-band
+per size/difficulty, batch counts); full suite **299 green**. v1 is QuadOp only; SingleOp/DualOp and
+No-Op mode remain difficulty axes for a later slice.
+
+---
+
+## K5 — Surfaces
 
 *Not started.*

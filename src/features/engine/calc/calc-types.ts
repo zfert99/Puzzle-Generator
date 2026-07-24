@@ -19,6 +19,8 @@
  * See `calc-types.md` for the "why".
  */
 
+import type { GridSize } from '../sudoku';
+
 /**
  * The four cage operators. Named rather than symbol-keyed (`'add'` not `'+'`) so the code reads
  * without punctuation ambiguity and `'div'` never collides with the `/` operator. No-Op /
@@ -49,6 +51,24 @@ export interface CalcCage {
   target: number;
   /** Flat cell indices (`row * size + col`); length ≥ 1, orthogonally connected. */
   cells: number[];
+}
+
+/** Keisan difficulty tiers (v1: easy/medium/hard; expert may follow, like Killer). */
+export type CalcDifficulty = 'easy' | 'medium' | 'hard';
+
+/**
+ * A generated Keisan puzzle. `grid` is all-zero — Keisan has no pre-filled givens (a single-cell
+ * cage shows its value as a cage label, not a placed digit). The cages are the clue. `variant`
+ * tags it for the board-store union (the display name is "Keisan"; the slug stays `calc`).
+ */
+export interface CalcPuzzle {
+  variant: 'calc';
+  grid: number[][];
+  /** Solved grid. SERVER-ONLY for ranked dailies. */
+  solution: number[][];
+  cages: CalcCage[];
+  difficulty: CalcDifficulty;
+  gridSize: GridSize;
 }
 
 /**

@@ -219,7 +219,18 @@ box-optional base instead of each rediscovering the coupling.
 - Same solve-result instrumentation (counts, passes, openness) feeding the shared scorer.
 - **Gate:** soundness fuzz vs K2 (0 mismatches); gradable share measured per size/op-set.
 
-### K4 — Difficulty configs + generation
+### K4 — Difficulty configs + generation ✅ Done
+
+> **Shipped** on `feature/kenken`. [`calc-score.ts`](../src/features/engine/calc/calc-score.ts)
+> (two-factor `raw × density` scorer, Keisan weights) + `CalcPuzzle`/`CalcDifficulty` types +
+> [`calc-sudoku.ts`](../src/features/engine/calc/calc-sudoku.ts) (`generateCalcSudoku` /
+> `generateCalcBatch`, per-size difficulty configs, fill→cage→assign→shape-gate→logical-solve→
+> score-band→uniqueness pipeline). **v1 = easy/medium/hard at 4×4 + 6×6** (QuadOp; SingleOp/DualOp/
+> No-Op deferred). Difficulty rides the **two-factor score** (K3 showed the tier ceiling barely
+> separates — most puzzles are T1/T2), with a min/max single-cell-cage band as the shape lever.
+> **Bands measured + calibrated disjoint per size** (4×4: `<3.5 / [3.5,6.5) / ≥6.5`; 6×6:
+> `<9 / [9,16) / ≥16`). **Gate met:** every band avg **1–2 ms/gen** (max ≤ 9 ms « 1 s), **0 fails in
+> 40**, score ranges disjoint. 8 tests; full suite 299 green.
 
 - Five-band product ladder built from the research's axes, e.g. easiest = 4×4 SingleOp(+),
   easy = 4×4 DualOp, medium = 6×6 DualOp, hard = 6×6 QuadOp, expert = 6×6/7×7 QuadOp with
