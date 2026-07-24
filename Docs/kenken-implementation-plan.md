@@ -117,7 +117,18 @@ box-optional base instead of each rediscovering the coupling.
   `getGridConfig(5)`/`(7)` returns a valid config; renderers verified to draw no box lines for
   a `hasBoxes: false` grid (unit + a manual visual check per the visual-check-handoff rule).
 
-### K1 — Multiset cage-combination tables + operator model
+### K1 — Multiset cage-combination tables + operator model ✅ Done
+
+> **Shipped** on `feature/kenken`. [`kenken-types.ts`](../src/features/engine/kenken/kenken-types.ts)
+> (operator model: `KenKenOperator`, `computeTarget`, `operatorAllowedForCageSize`,
+> `hasAssignableOperator` legality invariant, `KenKenCage`) +
+> [`kenken-combinations.ts`](../src/features/engine/kenken/kenken-combinations.ts) (per-`(op, size,
+> target, N)` multiset enumerator + union/guaranteed masks, lazy `(N, op, size, target)` memo). The
+> two-layer split is explicit in code and docs: tables give arithmetic validity and
+> over-approximate; masks are priors (union = upper bound, guaranteed = lower bound); the solver
+> enforces geometry (K2). −/÷ two-cell by construction; `1÷` correctly empty (collinear). 27 tests,
+> including the published `6×` 4-cell → `{1,1,1,6}`/`{1,1,2,3}` gate. Neutral product name deferred
+> to K5 (tentatively "MathCage"); engine uses `kenken` descriptively.
 
 - `kenken-combinations.ts`: for each (op, target, cageSize, N) the candidate multisets and
   union/guaranteed masks. −/÷ restricted to size 2 by construction.
