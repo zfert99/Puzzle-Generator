@@ -78,7 +78,18 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 ---
 
-## 4b. Killer Sudoku Drawing
+## 4b. Caged-grid Drawing (Killer + Keisan)
+
+A shared internal `drawCagedGrid(doc, { config, grid, cages, … })` draws any caged board — the base
+grid, digits, dashed cage outlines, and corner labels. The two public wrappers differ only in the
+config and the label:
+
+- **`drawKillerGrid`** — box-tileable `getGridConfig` (thick box borders), label = the bare sum
+  (`"12"`). `generateKillerPDF` builds the booklet.
+- **`drawCalcGrid`** — **boxless** `calcGridConfig` (no interior box borders, only the outer frame),
+  label = target+operator (`"12+"`, `"3÷"`; a single-cell given shows just its value).
+  `generateCalcPDF` builds the Keisan booklet (title "Keisan", one page per puzzle + one answer
+  page each). Both reuse the shared `computeCageOutline` geometry.
 
 ### `drawKillerGrid(puzzle, startX, startY, gridDrawSize, showSolution)`
 

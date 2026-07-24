@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import PDFDocument from 'pdfkit';
-import { SudokuPuzzle, getGridConfig, type GridSize } from '@/features/engine/sudoku';
+import { SudokuPuzzle, getGridConfig, type GridSize, type GridConfig } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
-import { computeCageOutline } from '@/features/engine/killer/cage-geometry';
+import { computeCageOutline, type LabeledCage } from '@/features/engine/killer/cage-geometry';
+import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
+import { OPERATOR_SYMBOL } from '@/features/engine/calc/calc-types';
+import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 
 export function drawTitlePage(doc: any): void {
   doc.addPage();
@@ -54,27 +57,29 @@ export function drawGrid(doc: any, grid: number[][], startX: number, startY: num
 }
 
 /**
- * Draw a Killer Sudoku grid: the base grid + digits (empty for a puzzle, the solution for an
- * answer), plus the two Killer-specific marks — dashed cage outlines (drawn inset on every edge
- * where the neighbouring cell belongs to a different cage) and the cage's sum in the top-left
- * corner of its anchor cell (its lowest-indexed cell). A small white pad behind the sum keeps it
- * legible over the dashed border.
+ * Draw a caged grid (Killer or Keisan): the base grid + digits (empty for a puzzle, the solution
+ * for an answer), plus dashed cage outlines and each cage's corner label. Shared by both variants;
+ * the caller supplies the `GridConfig` (box-tileable for Killer, boxless for Keisan — which drives
+ * whether box borders are drawn) and the pre-formatted `LabeledCage`s (Killer's sum, Keisan's
+ * target+operator). A small white pad behind each label keeps it legible over the dashed border.
  */
-export function drawKillerGrid(
+function drawCagedGrid(
   doc: any,
-  puzzle: KillerPuzzle,
-  startX: number,
-  startY: number,
-  gridDrawSize: number,
-  showSolution = false,
+  opts: {
+    config: GridConfig;
+    grid: number[][];
+    cages: LabeledCage[];
+    startX: number;
+    startY: number;
+    gridDrawSize: number;
+  },
 ): void {
-  const size = puzzle.gridSize;
-  const config = getGridConfig(size);
+  const { config, grid, cages, startX, startY, gridDrawSize } = opts;
+  const size = config.size;
   const cell = gridDrawSize / size;
   const inset = cell * 0.09;
 
-  // Digits (solution on an answer page; nothing on the puzzle page — Killer has no givens).
-  const grid = showSolution ? puzzle.solution : puzzle.grid;
+  // Digits (solution on an answer page; nothing on the puzzle page — neither variant has givens).
   doc.fillColor('black').fontSize(cell * 0.5);
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
@@ -89,9 +94,8 @@ export function drawKillerGrid(
     }
   }
 
-  // Base grid: thin cell lines, thick box lines. Boxless (Latin-square-only) grids — the KenKen
-  // reuse path — have no box borders, so only the outer frame is heavier (K0). KillerPuzzle is
-  // always box-tileable (6/9), so `hasBoxes` is true today; this branch is for the KenKen K5 reuse.
+  // Base grid: thin cell lines, thick box lines. Boxless (Latin-square-only) grids — Keisan — have
+  // no box borders, so only the outer frame is heavier (K0).
   doc.strokeColor('black');
   for (let i = 0; i <= size; i++) {
     const isFrame = i === 0 || i === size;
@@ -101,13 +105,8 @@ export function drawKillerGrid(
     doc.moveTo(startX + i * cell, startY).lineTo(startX + i * cell, startY + gridDrawSize).stroke();
   }
 
-  // Cage outlines + sum positions come from the shared geometry (cell-unit coords → scale to px).
-  // The inner/outer corner logic lives in `computeCageOutline`; here we just stroke the result.
-  const { lines, sums } = computeCageOutline(
-    puzzle.cages.map((cage) => ({ cells: cage.cells, label: String(cage.sum) })),
-    size,
-    inset / cell,
-  );
+  // Cage outlines + label positions come from the shared geometry (cell-unit coords → scale to px).
+  const { lines, sums } = computeCageOutline(cages, size, inset / cell);
 
   doc.lineWidth(1.3).dash(2.4, { space: 1.6 }).strokeColor('black');
   for (const l of lines) {
@@ -115,18 +114,59 @@ export function drawKillerGrid(
   }
   doc.undash();
 
-  // Cage sums, tucked into the anchor cell's top-left corner — small and slightly dimmed so they
-  // read as annotations, not the answer. A tiny white pad keeps them legible over the cage line.
-  const sumFont = cell * 0.2;
-  doc.fontSize(sumFont);
+  // Labels, tucked into the anchor cell's top-left corner — small and slightly dimmed so they read
+  // as annotations, not the answer. A tiny white pad keeps them legible over the cage line.
+  const labelFont = cell * 0.2;
+  doc.fontSize(labelFont);
   for (const s of sums) {
     const str = s.label;
     const x = startX + s.col * cell + 2.2;
     const y = startY + s.row * cell + 1.8;
-    doc.rect(x - 0.6, y, doc.widthOfString(str) + 1.2, sumFont).fill('white');
+    doc.rect(x - 0.6, y, doc.widthOfString(str) + 1.2, labelFont).fill('white');
     doc.fillColor('black').fillOpacity(0.55).text(str, x, y, { lineBreak: false });
     doc.fillOpacity(1);
   }
+}
+
+/** Draw a Killer grid — box-tileable config, cage labels are the bare sum. */
+export function drawKillerGrid(
+  doc: any,
+  puzzle: KillerPuzzle,
+  startX: number,
+  startY: number,
+  gridDrawSize: number,
+  showSolution = false,
+): void {
+  drawCagedGrid(doc, {
+    config: getGridConfig(puzzle.gridSize),
+    grid: showSolution ? puzzle.solution : puzzle.grid,
+    cages: puzzle.cages.map((cage) => ({ cells: cage.cells, label: String(cage.sum) })),
+    startX,
+    startY,
+    gridDrawSize,
+  });
+}
+
+/** Draw a Keisan grid — boxless config (no box borders), cage labels are target+operator (`12+`, `3÷`). */
+export function drawCalcGrid(
+  doc: any,
+  puzzle: CalcPuzzle,
+  startX: number,
+  startY: number,
+  gridDrawSize: number,
+  showSolution = false,
+): void {
+  drawCagedGrid(doc, {
+    config: calcGridConfig(puzzle.gridSize),
+    grid: showSolution ? puzzle.solution : puzzle.grid,
+    cages: puzzle.cages.map((cage) => ({
+      cells: cage.cells,
+      label: cage.cells.length === 1 ? String(cage.target) : `${cage.target}${OPERATOR_SYMBOL[cage.op]}`,
+    })),
+    startX,
+    startY,
+    gridDrawSize,
+  });
 }
 
 /**
@@ -154,6 +194,40 @@ export async function generateKillerPDF(puzzles: KillerPuzzle[]): Promise<Buffer
       doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
       doc.moveDown(1);
       drawKillerGrid(doc, p, (doc.page.width - gridDrawSize) / 2, doc.y, gridDrawSize, answer);
+    };
+
+    puzzles.forEach((p, i) => drawPage(p, i, false));
+    puzzles.forEach((p, i) => drawPage(p, i, true));
+
+    doc.end();
+  });
+}
+
+/**
+ * Render a Keisan (Calcudoku) booklet: a title page, one page per puzzle (empty grid + cages),
+ * then one answer page each (filled solution + cages). Node runtime only (pdfkit).
+ */
+export async function generateCalcPDF(puzzles: CalcPuzzle[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ autoFirstPage: false, bufferPages: true, margin: 50 });
+    const buffers: Buffer[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const gridDrawSize = 400;
+
+    doc.addPage();
+    doc.fontSize(32).text('Keisan', { align: 'center' });
+    doc.moveDown(1);
+    doc.fontSize(14).text('No givens — the cage arithmetic is the only clue.', { align: 'center' });
+
+    const drawPage = (p: CalcPuzzle, i: number, answer: boolean) => {
+      doc.addPage();
+      const title = `Keisan #${i + 1} (${p.gridSize}×${p.gridSize}, ${p.difficulty})${answer ? ' — Answer' : ''}`;
+      doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
+      doc.moveDown(1);
+      drawCalcGrid(doc, p, (doc.page.width - gridDrawSize) / 2, doc.y, gridDrawSize, answer);
     };
 
     puzzles.forEach((p, i) => drawPage(p, i, false));
