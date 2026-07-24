@@ -87,7 +87,11 @@ config and the label:
 - **`drawKillerGrid`** — box-tileable `getGridConfig` (thick box borders), label = the bare sum
   (`"12"`). `generateKillerPDF` builds the booklet.
 - **`drawCalcGrid`** — **boxless** `calcGridConfig` (no interior box borders, only the outer frame),
-  label = target+operator (`"12+"`, `"3÷"`; a single-cell given shows just its value).
+  label = target+operator (`"12+"`, `"3÷"`; a single-cell given shows just its value). Uses a
+  **PDF-safe operator map** (`PDF_OPERATOR_SYMBOL`): PDFKit's Helvetica encodes as WinAnsi, and the
+  math minus sign (`−`, U+2212, used on screen) is not WinAnsi — it would emit a stray `"` — so the
+  PDF uses the ASCII hyphen for subtraction. `×` (0xD7) and `÷` (0xF7) are valid WinAnsi bytes and
+  stay.
   `generateCalcPDF` builds the Keisan booklet (title "Keisan", one page per puzzle + one answer
   page each). Both reuse the shared `computeCageOutline` geometry.
 

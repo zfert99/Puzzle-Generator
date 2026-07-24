@@ -3,9 +3,17 @@ import PDFDocument from 'pdfkit';
 import { SudokuPuzzle, getGridConfig, type GridSize, type GridConfig } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import { computeCageOutline, type LabeledCage } from '@/features/engine/killer/cage-geometry';
-import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
-import { OPERATOR_SYMBOL } from '@/features/engine/calc/calc-types';
+import type { CalcPuzzle, CalcOperator } from '@/features/engine/calc/calc-types';
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
+
+/**
+ * PDF-safe operator glyphs. PDFKit's built-in Helvetica encodes text as **WinAnsi**, and the math
+ * MINUS SIGN (`−`, U+2212 — what `OPERATOR_SYMBOL` uses on screen) is NOT a WinAnsi character: it
+ * gets written as the two-byte sequence `0x22 0x12`, so byte `0x22` renders as a stray `"`
+ * (quotedbl). The ASCII hyphen (`-`, U+002D) is WinAnsi-safe. `×` (0xD7) and `÷` (0xF7) ARE WinAnsi
+ * bytes and render correctly, so they stay. On-screen labels keep the prettier U+2212 minus.
+ */
+const PDF_OPERATOR_SYMBOL: Record<CalcOperator, string> = { add: '+', sub: '-', mul: '×', div: '÷' };
 
 export function drawTitlePage(doc: any): void {
   doc.addPage();
@@ -161,7 +169,7 @@ export function drawCalcGrid(
     grid: showSolution ? puzzle.solution : puzzle.grid,
     cages: puzzle.cages.map((cage) => ({
       cells: cage.cells,
-      label: cage.cells.length === 1 ? String(cage.target) : `${cage.target}${OPERATOR_SYMBOL[cage.op]}`,
+      label: cage.cells.length === 1 ? String(cage.target) : `${cage.target}${PDF_OPERATOR_SYMBOL[cage.op]}`,
     })),
     startX,
     startY,
