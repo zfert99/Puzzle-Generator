@@ -38,20 +38,63 @@ descriptively.
 - **House rule override (same as Killer):** bitmask/MRV backtracking, NOT the research's
   DLX default (AGENTS.md §1). KSudoku proves a shared Killer/KenKen cage engine works; we
   already own most of it.
+- **Boxless grids are a type/engine/API-level change, not a solver detail (codebase audit
+  finding).** `GridSize = 4 | 6 | 9` is a *closed* union, and `getGridConfig` is a hard-coded
+  3-entry record — both baked into ~10 files well outside the engine: the two API-route
+  allowlists (`VALID_GRID_SIZES` in `api/puzzle/route.ts` + `api/solve/route.ts`), the
+  `GridSizeSelector` UI (its own literal `4|6|9` union, independent of the type),
+  `PlayExperience`'s per-variant size clamp, and — critically — the base grid renderer both
+  the board (`Cell.tsx`) and PDF (`pdf.service.ts`) draw onto, which computes thick box
+  borders and "box-peer" highlights straight from `boxWidth`/`boxHeight`. A boxless 5×5/7×7
+  grid makes those fields meaningless, so the renderers draw phantom box lines/highlights
+  unless gated. This is why **K0 exists as its own prerequisite slice** (below): 5 and 7 are
+  KenKen's headline differentiator vs. Killer, and discovering this coupling piecemeal across
+  K2/K3/K5 would mean redoing work.
 
 ## 2. What we already have (reuse map)
 
-| Existing asset | KenKen reuse |
-|---|---|
-| `cage-generator.ts` (region growing) | Directly — drop the no-repeat eligibility check (repeats are legal); keep `minSize`/`maxSize`/`maxSizeBias` levers |
-| `cage-geometry.ts` + `CageOverlay` + PDF `drawKillerGrid` | Directly — the corner label renders `12+` / `3÷` instead of a bare sum |
-| Bitmask exact-solver skeleton (`killer-solver.ts`) | Pattern — new `kenken-solver.ts` with row/col masks only (no box mask) + per-cage multiset-combo pruning |
-| Logical-solver architecture (technique table, tiers, counts, openness, `disable`) | Pattern-copy — classic strategies constrained to rows/cols; KenKen technique rows added |
-| Two-factor scoring + disjoint bands + recalibration protocol | Directly — same `raw × density` scorer, KenKen weights, bands measured fresh per size |
-| Difficulty pipeline (shape gates → capped solve → necessity → band → budgeted verify) | Directly — proven twice now |
-| Daily-board registry, board store variant plumbing, hub card | Registry rows + a `variant: 'kenken'`; the hub's KenKen card goes live |
+| Existing asset | KenKen reuse | Audit verdict |
+|---|---|---|
+| `cage-generator.ts` (region growing) | Drop the no-repeat eligibility check (repeats are legal); keep `minSize`/`maxSize`/`maxSizeBias` levers | Mostly holds — but the no-repeat check is *load-bearing for termination* (it's what lets a cage "box itself in" and stop); removing it needs a different growth stop (target size only) or cages run to `maxSize` every time. Verify in K2. |
+| `cage-geometry.ts` + `CageOverlay` | Directly — geometry is fully box-agnostic (verified: no box assumption in `computeCageOutline`) | **Holds** for outlines. Label is NOT zero-touch: `Cage.sum`/`CageSum.value` are bare `number`; showing `12+`/`3÷` needs an operator-carrying field + a label-width recompute (`CageOverlay` sizes the mask gap off digit-string length). Small, but a real change. |
+| PDF `drawKillerGrid` (`pdf.service.ts`) | Cage-outline half reuses directly; base grid-line half does not | **Claim was overstated.** Only the cage-outline loop is box-agnostic. The base-grid loop hard-codes `i % config.boxHeight === 0 ? thick : thin` — meaningless for boxless KenKen, and `getGridConfig(5\|7)` returns `undefined` today. Needs a variant-gated uniform-line branch (see K0 + K5). |
+| Bitmask exact-solver skeleton (`killer-solver.ts`) | Pattern — new `kenken-solver.ts` with row/col masks only (no box mask) + per-cage multiset-combo pruning | Holds as *pattern-copy* (not direct reuse). `killer-solver` also carries `boxMask`, `boxIndex`, cage *no-repeat* via `candidateMaskExcluding`; KenKen drops the box mask and the exclusion (repeats legal), so the candidate/place/unplace logic is rewritten, not shared. |
+| Logical-solver architecture (technique table, tiers, counts, openness, `disable`) | Pattern-copy — classic strategies constrained to rows/cols; KenKen technique rows added | Holds — but note `HumanSolver` genuinely **cannot** be composed (verified): its constructor infers boxes from `size` with a hardcoded 3×3 else-branch, so at size 5/7 it *silently* applies a bogus box constraint. KenKen needs its own row/col-only technique fns (K0 adds a `HumanSolver` size guard so this fails loud, not silent). |
+| Two-factor scoring + disjoint bands + recalibration protocol | Directly — same `raw × density` scorer, KenKen weights, bands measured fresh per size | Holds. |
+| Difficulty pipeline (shape gates → capped solve → necessity → band → budgeted verify) | Directly — proven twice now | Holds. |
+| Daily-board registry (`daily-row.ts`) | Registry rows + a `variant: 'kenken'` | Registry *shape* holds (flat typed rows). But `variant`/`difficulty` unions are closed, `dailies.service.ts` dispatch is a binary ternary (KenKen falls through to the *classic* generator), and `toDailyPuzzleRow` duck-types `'cages' in puzzle` → misreads KenKen as Killer. Needs a real 3-way discriminant (K5). |
+| Board store variant plumbing + hub card | `variant: 'kenken'`; cage-mate pencil stripping stays off (repeats legal); hub card goes live | Pencil-stripping is already variant-gated (`useBoardStore` line ~229) — correct as claimed. But `startNewGame` duck-types `'cages' in puzzle` → same Killer misclassification; `PuzzleVariant`/`BoardPuzzle` unions need extending (K5). |
 
 ## 3. Slices
+
+### K0 — Boxless-grid foundation (prerequisite; codebase audit finding)
+
+The one slice that is *pure enabling refactor*, added after auditing the reuse claims against
+the live code (§2 audit column). It exists because 5×5/7×7 — KenKen's differentiator — is not a
+KenKen-module-local change: the `4|6|9` closed union and box assumptions leak into API
+validation, UI, and both grid renderers. Doing it first means K2–K5 build on a size-open,
+box-optional base instead of each rediscovering the coupling.
+
+- **Widen `GridSize`** to include `5` and `7` (type + every exhaustive `Record<GridSize, …>`:
+  `getGridConfig`, `diggers.ts` quotas — the latter classic-only, so it just needs the keys to
+  compile, not real values). Decide 9×9 KenKen timing separately (research: optional cap).
+- **Give `GridConfig` a boxless representation** — a `hasBoxes: boolean` (or optional
+  `boxWidth`/`boxHeight`) so consumers can branch instead of computing garbage. For prime N
+  (5, 7) there is no box tiling; `getGridConfig` must return a valid boxless config, not throw.
+- **Gate the two grid renderers off boxes:** `Cell.tsx` (thick box borders + box-peer
+  highlight) and `pdf.service.ts`'s base grid-line loop must skip box logic when
+  `!hasBoxes` — uniform thin lines, row/col peers only. This is the fix the PDF-reuse claim
+  actually needs.
+- **Update the closed allowlists/UI:** `VALID_GRID_SIZES` in both API routes, the
+  `GridSizeSelector` literal union + options, and `PlayExperience`'s per-variant size clamp.
+  Sizes are still gated *per variant* (classic/Killer stay 4/6/9; KenKen gets its own ladder)
+  — widening the type must not silently offer 5×5 *classic* Sudoku (impossible — no box tiling).
+- **Add a `HumanSolver` size guard:** throw on an unsupported size instead of silently
+  assuming 3×3 boxes (the current else-branch) — turns a KenKen prototyping landmine into a
+  loud error. KenKen never calls `HumanSolver`; this just protects the classic path.
+- **Gate:** classic 4/6/9 + Killer 6/9 fully regression-green (no behavior change); a boxless
+  `getGridConfig(5)`/`(7)` returns a valid config; renderers verified to draw no box lines for
+  a `hasBoxes: false` grid (unit + a manual visual check per the visual-check-handoff rule).
 
 ### K1 — Multiset cage-combination tables + operator model
 
@@ -66,12 +109,24 @@ descriptively.
 
 ### K2 — Exact solver + Latin-square generator
 
-- Latin-square fill (trivial vs Sudoku fill — no boxes; keep `fillGrid` config-driven with
-  a boxless config or a 10-line standalone).
-- `kenken-solver.ts`: bitmask/MRV over rows+cols, cage pruning via K1 masks + a
-  placement-time repeat check (same-row/col duplicate legality). Node budget from day one.
+- Latin-square fill (trivial vs Sudoku fill — no boxes). `fillGrid` (`grid-utils.ts`) keeps a
+  `boxMask` alongside row/col masks; K0's `hasBoxes: false` must make that mask conditional so
+  it produces a pure Latin square. A ~10-line standalone is the fallback if that proves awkward.
+- **Cage generator termination:** the Killer generator relies on the *no-repeat eligibility*
+  check to stop growth (a cage "boxes itself in" when every neighbor's digit is already used).
+  KenKen has no such stop (repeats legal), so growth must terminate on target size alone —
+  confirm cages don't all run to `maxSize`, and keep the `minSize`/`maxSizeBias` levers working.
+- `kenken-solver.ts`: bitmask/MRV over rows+cols only (no box mask), with cage pruning via K1
+  masks plus a placement-time repeat check (same-row/col duplicate legality). Node budget from
+  day one.
 - Operator/target assignment on the solved grid (KSudoku's `setCageTarget` pattern):
   operator chosen per cage from the active operator SET (difficulty axis), target computed.
+  **Legality invariant:** every cage size present must have ≥1 assignable operator in the
+  active set. −/÷ are 2-cell-only, so any cage ≥3 cells needs + or × available — a "− only" or
+  "÷ only" set is unsatisfiable for big cages. The K4 ladder avoids this (easiest is SingleOp
+  addition, which covers all sizes), but the assigner must assert it rather than assume it, or a
+  future operator-set config silently wedges generation. Operator choice per cage is itself part
+  of what the generate-and-test loop varies to hit uniqueness and the difficulty band.
 - **Gate:** uniqueness verify < 50 ms avg at 6×6 QuadOp shapes; fuzz vs brute force on 4×4.
 
 ### K3 — Logical solver + difficulty tiers
@@ -92,19 +147,35 @@ descriptively.
 - Shape gates (singles budget, two-cell-cage share, operator mix) + score bands placed on
   measured distributions per the recalibration protocol; stage-rate sweeps before
   end-to-end benchmarks (the Killer discipline, verbatim).
+- **Re-evaluate `maxCombos` (per-cage combination cap) for KenKen.** The Killer plan *tried and
+  dropped* this lever (no-op at maxSize 3, fatal at 4). But the research flags it as KSudoku's
+  primary difficulty knob, and KenKen's difficulty currency IS multiset-combo ambiguity — the
+  Killer rejection was size-specific, so it may be the natural lever here where it wasn't for
+  Killer. Measure it as a candidate gate before falling back to the foothold-count proxy.
 - **Gate:** every band ≤ 1 s avg generation, 0 fails in 20, bands disjoint per size.
 
 ### K5 — Surfaces
 
+- **Real 3-way discriminant first (audit finding).** Before any UI, replace the two
+  duck-typed `'cages' in puzzle` checks — `useBoardStore.startNewGame` and
+  `daily-row.toDailyPuzzleRow` — with an explicit `variant` tag, and widen
+  `dailies.service.ts`'s binary `variant === 'killer' ? … : …` dispatch to a real switch.
+  Otherwise a KenKen puzzle (which also carries `cages`) is silently misclassified as Killer
+  (store/registry) or generated by the *classic* engine (dispatch fall-through). Extend
+  `PuzzleVariant` + `BoardPuzzle` + `DailyBoard.variant`/`.difficulty` unions.
 - `/play`: third variant toggle (Classic / Killer / KenKen), size + difficulty pickers;
   cage overlay labels show `target op`. Board store: `variant: 'kenken'`, cage-mate pencil
-  stripping DISABLED for KenKen (repeats are legal!) — flag on the variant, not new logic.
-- PDF: operator-aware corner labels; `/generate` section; sample booklet.
+  stripping DISABLED for KenKen (repeats are legal!) — already variant-gated, so this is "don't
+  add a `kenken` branch," not new logic. Label change per §2 (operator-carrying cage field).
+- PDF: operator-aware corner labels; `/generate` section; sample booklet. Uses K0's boxless
+  base-grid branch (no box lines for KenKen).
 - Dailies: registry rows (`kenken4-easy` … `kenken6-expert` — exact set decided at K4) in
   a fourth picker section; per-board anti-cheat floors.
 - Hub: the KenKen card goes live (deep link `/play?variant=kenken`); sticker moves per the
   established "newest thing wears new!" convention.
-- **Gate:** full battery + in-browser verification, both themes, both sizes.
+- **Gate:** full battery + in-browser verification, both themes, both sizes (visual check
+  handed to the user per the visual-check-handoff rule — including a boxless 5/7 board if that
+  ladder shipped).
 
 ## 4. Risks
 
@@ -114,10 +185,19 @@ descriptively.
 | 2 | Repeat-legality bugs (the research's #1 bug source) | Enforced at ONE place (solver placement check); fuzz 4×4 exhaustively vs brute force |
 | 3 | Trademark ("KenKen") | Neutral product name decided at K1; research doc keeps the descriptive term |
 | 4 | Difficulty bands compress at 4×4 (like 6×6 Killer) | Expected; measured cuts, honesty over ladder-padding |
-| 5 | Cage-mate pencil stripping wrongly applied to KenKen | Variant-gated in `inputDigit`; regression test |
+| 5 | Cage-mate pencil stripping wrongly applied to KenKen | Already variant-gated in `inputDigit`; add `kenken` to the union WITHOUT a stripping branch; regression test |
+| 6 | `GridSize` widening silently offers impossible 5×5/7×7 *classic* Sudoku | Sizes gated per-variant in the pickers, not by the type alone (K0); classic/Killer stay 4/6/9 |
+| 7 | Duck-typed `'cages' in puzzle` misclassifies KenKen as Killer (store, registry, dispatch) | Real `variant` discriminant + 3-way generation switch, landed at the top of K5 before UI |
+| 8 | Boxless renderers draw phantom box lines/peer highlights | K0 gates `Cell.tsx` + PDF base-grid loop on `hasBoxes`; manual visual check on a 5/7 board |
+| 9 | Cage-generator never terminates growth without the no-repeat stop | Terminate on target size alone; K2 gate confirms cages don't all hit `maxSize` |
+| 10 | Boxless = 2 units/cell not 3 → Latin-square deduction is *weaker* than Sudoku (research §3), so cages must carry more constraint; uniqueness-reject rate may run higher than Killer at the same cage density | Expected per research; measure yield at K2 and let K4's shape gates (denser/tighter cages) absorb it — don't assume Killer's cage-density tuning transfers |
+| 11 | Save/resume must round-trip KenKen (cages + operators); numpad/maxNum for 5/7 | Numpad already config-driven (`config.size`) — free once K0 widens config; `useSavedGame` persists `variant`, so extend its serialized puzzle shape with the operator-carrying cage field |
 
 ## 5. Definition of done (v1)
 
 4×4 + 6×6 KenKen: unique, difficulty-banded (measured cuts), operator-set-aware, playable
 on `/play` with cage overlay + operator labels, printable, in the daily registry, full test
-battery green, mirrored docs synced, roadmap flipped.
+battery green, mirrored docs synced, roadmap flipped. K0's boxless foundation landed with
+classic/Killer fully regression-green (no behavior change). If the 5/7 ladder shipped in v1,
+boxless boards verified visually; otherwise K0 still lands (it's the enabler) but the 5/7
+picker options stay behind the follow-up slice.
