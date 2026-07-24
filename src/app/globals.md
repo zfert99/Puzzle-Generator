@@ -21,6 +21,18 @@ bakes values at build time. The solution:
 @theme inline            -> --color-*/--radius-*/--shadow-chunky/--font-* = var(--token)
 ```
 
+**Why light-theme `--cherry` is `#BB2822`, not the more vibrant `#D8453F` it started as
+(July 2026):** `text-cherry` is the app-wide error-text color (auth errors, form errors,
+"no daily puzzle" messages, etc. — every `text-cherry` usage across the app reads this same
+token). The original light-theme value measured 3.93:1 against `--paper` and 3.54:1 against
+`--paper-2`, both below WCAG AA's 4.5:1 minimum for normal text — a real, live violation
+that stayed undetected because the axe e2e suite (`e2e/a11y.spec.ts`) only ever exercised
+pages in states that don't render an error message, until a genuinely-empty "no daily
+puzzle for {date} yet" state surfaced it. `#BB2822` is the same hue, darkened just enough to
+clear 4.5:1 against both light-theme backgrounds with margin (4.99:1 / 5.53:1) — the
+dark-theme cherry (`#F06B65`, 6.04:1 against dark `--paper`) already passed and is
+untouched.
+
 The **sticker tokens** (`--sticker-pink/lime/sky`) are also defined but **quarantined —
 decoration only** (the 5.5 chaos layer: stickers, tape, pins, marginalia), never text/
 buttons/functional UI, and they do **not** flip by theme. The chaos layer also adds
