@@ -1,4 +1,4 @@
-# KenKen — Implementation Plan
+# Keisan (Calcudoku) — Implementation Plan
 
 > **Status:** 📋 Planned (do not start without a fresh branch — Killer's branch is retired)
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
@@ -8,12 +8,15 @@
 > **Pattern source:** the Killer plans — this plan reuses their slice/gate discipline and,
 > deliberately, large parts of their code.
 
-Calcudoku (this plan's older drafts call it "KenKen"; same puzzle): fill an N×N **Latin square**
-(1..N once per row and column — **no boxes**) partitioned into cages, each showing a target and an
-operator (+, −, ×, ÷). **Naming decided:** the product is **Calcudoku**, shown in menus as
-**"Calc"** (alongside "Classic" = Sudoku and "Killer" = Killer Sudoku); the engine module and
-board `variant` slug are `calc`. The **"KenKen" trademark** is held by KenKen Puzzle LLC (first
-filed 2007 by Nextoy, LLC — Robert Fuhrer's company, NOT the inventor Tetsuya Miyamoto personally);
+Keisan (this plan's older drafts call it "KenKen" / "Calcudoku"; same puzzle): fill an N×N **Latin
+square** (1..N once per row and column — **no boxes**) partitioned into cages, each showing a target
+and an operator (+, −, ×, ÷). **Naming decided:** the puzzle is displayed as **Keisan** (Japanese
+計算, "calculation"), shown in menus as "Keisan" alongside "Classic" (Sudoku) and "Killer" (Killer
+Sudoku), with a hub-card subtitle explaining it (e.g. *"calculation-cage puzzles — Latin squares
+where the math is the clue"*). The engine module, symbols, and board `variant` slug stay the
+descriptive **`calc`** — a deliberate slug-vs-display split kept to avoid churn; only the display
+name is "Keisan". The **"KenKen" trademark** is held by KenKen Puzzle LLC (first filed 2007 by
+Nextoy, LLC — Robert Fuhrer's company, NOT the inventor Tetsuya Miyamoto personally);
 "Calcudoku"/"Mathdoku" are the established generic names, so "KenKen" is avoided in shipping
 code/UI — sound risk avoidance, not legal advice.
 
@@ -84,7 +87,7 @@ code/UI — sound risk avoidance, not legal advice.
 
 ### K0 — Boxless-grid foundation (prerequisite; codebase audit finding) ✅ Done
 
-> **Shipped** on `feature/kenken`. Full write-up: [calcudoku-walkthrough.md](calcudoku-walkthrough.md).
+> **Shipped** on `feature/kenken`. Full write-up: [keisan-walkthrough.md](keisan-walkthrough.md).
 > `GridSize` widened to `4|5|6|7|9`, `GridConfig` gained `hasBoxes` (row-strip sentinel for the
 > boxless dims), `isValid`/`fillGrid` produce Latin squares at 5/7, both grid renderers gate box
 > lines/peers on `hasBoxes`, `HumanSolver` throws on non-4/6/9, quota map made `Partial`, board
@@ -129,8 +132,8 @@ box-optional base instead of each rediscovering the coupling.
 > two-layer split is explicit in code and docs: tables give arithmetic validity and
 > over-approximate; masks are priors (union = upper bound, guaranteed = lower bound); the solver
 > enforces geometry (K2). −/÷ two-cell by construction; `1÷` correctly empty (collinear). 27 tests,
-> including the published `6×` 4-cell → `{1,1,1,6}`/`{1,1,2,3}` gate. Product named **Calcudoku**
-> (menu "Calc"); engine module/variant slug `calc`.
+> including the published `6×` 4-cell → `{1,1,1,6}`/`{1,1,2,3}` gate. Displayed as **Keisan**;
+> engine module/symbols/variant slug stay the descriptive `calc`.
 
 - `kenken-combinations.ts`: for each (op, target, cageSize, N) the candidate multisets and
   union/guaranteed masks. −/÷ restricted to size 2 by construction.

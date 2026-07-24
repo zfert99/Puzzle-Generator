@@ -71,7 +71,14 @@ is the shape the solver, generator, and renderers (K2–K5) consume.
 
 ## Naming / trademark
 
-The product is **Calcudoku**, shown in menus as **"Calc"** — alongside **"Classic"** (Sudoku) and
-**"Killer"** (Killer Sudoku). The engine module directory and the board `variant` slug are both
-`calc`. "KenKen" is a trademark of KenKen Puzzle LLC and is avoided in shipping code/UI; "Calcudoku"
-and "Mathdoku" are the established generic names.
+The puzzle is displayed as **Keisan** (Japanese 計算, "calculation") — shown in menus as **"Keisan"**
+alongside **"Classic"** (Sudoku) and **"Killer"** (Killer Sudoku), with a hub-card subtitle
+explaining what it is (e.g. *"calculation-cage puzzles — Latin squares where the math is the
+clue"*).
+
+**Slug vs. display is a deliberate split:** the engine module directory, all symbols (`Calc*`,
+`calc*`), and the board `variant` slug stay the descriptive **`calc`**. Only the *display name* is
+"Keisan". This mismatch is intentional (kept to avoid a churny rename) — do not "fix" it.
+
+"KenKen" is a trademark of KenKen Puzzle LLC and is avoided in shipping code/UI; "Calcudoku" and
+"Mathdoku" are the established generic names the puzzle is also known by.

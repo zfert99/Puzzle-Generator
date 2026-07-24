@@ -9,8 +9,12 @@
  * This module owns the operator vocabulary and the two invariants the operator model turns on:
  * subtraction/division are two-cell-only, and single-cell cages are givens (no operator).
  *
- * **Naming:** the product is **Calcudoku**, shown in menus as **"Calc"** (alongside "Classic" =
- * Sudoku and "Killer" = Killer Sudoku). The engine module + variant slug are `calc`.
+ * **Naming:** the puzzle is displayed as **Keisan** (Japanese 計算, "calculation") — shown in
+ * menus as "Keisan" alongside "Classic" (Sudoku) and "Killer" (Killer Sudoku), with a hub-card
+ * subtitle explaining it. The engine module, symbols, and board `variant` slug stay the
+ * descriptive **`calc`** — a deliberate slug-vs-display split kept to avoid churn; do NOT "fix"
+ * the mismatch. ("KenKen" is trademarked and avoided; "Calcudoku"/"Mathdoku" are the generic
+ * names the puzzle is also known by.)
  *
  * See `calc-types.md` for the "why".
  */

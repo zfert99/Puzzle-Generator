@@ -520,11 +520,11 @@ work exists yet.
 
 ---
 
-## Phase 8 — KenKen 🔢
+## Phase 8 — Keisan (Calcudoku) 🔢
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/kenken`) — the Killer branch is retired
-> **Status:** 🚧 In Progress — **K0 (boxless-grid foundation) + K1 (multiset tables + operator model) done** ([walkthrough](calcudoku-walkthrough.md)); K2–K5 next. Product named **Calcudoku** (menu "Calc"). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (codebase reuse audit + [external plan review](research/kenken-plan-review.md), verdict GREEN)
+> **Status:** 🚧 In Progress — **K0 (boxless-grid foundation) + K1 (multiset tables + operator model) done** ([walkthrough](keisan-walkthrough.md)); K2–K5 next. Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (codebase reuse audit + [external plan review](research/kenken-plan-review.md), verdict GREEN)
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) · [kenken-plan-review.md](research/kenken-plan-review.md)
 > **Estimated effort:** Medium-Large (the Killer machinery halves it)
 > **Prerequisite:** Phase 6 (shared cage engine, scoring, daily registry)
@@ -534,7 +534,7 @@ difficulty). Sizes 4×4 + 6×6 first (5/7 later, 9 optional). Slices K0–K5: **
 foundation (done)** → multiset combination tables → exact solver/generator → logical tiers →
 measured difficulty bands → surfaces (play/PDF/dailies/hub — the "soon" card goes live). Reuses
 the cage overlay, the two-factor scorer, the generate-and-grade pipeline, and the daily-board
-registry. Ships under a neutral name (KenKen is trademarked).
+registry. Displayed as **Keisan** (internal slug `calc`); "KenKen" is trademarked and avoided.
 
 ## Phase 9 — Social, Progression & Economy 🍪
 
@@ -574,7 +574,7 @@ gantt
 
     section 🧮 Engine (cont.)
     Phase 6 - Killer Sudoku             :p6, after p5, 21d
-    Phase 8 - KenKen                    :p8, after p6, 14d
+    Phase 8 - Keisan                    :p8, after p6, 14d
 
     section 🗄️ Infrastructure (cont.)
     Phase 9 - Social & Economy          :p9, after p8, 21d
