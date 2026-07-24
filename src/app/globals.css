@@ -79,6 +79,13 @@
   --font-caveat: var(--font-caveat), ui-rounded, cursive;
 }
 
+html, body {
+  /* Safety net against any single component's stray overflow (rotated chaos-layer
+     decoration with negative offsets, an anchored panel, etc.) turning into page-wide
+     horizontal scroll on mobile — standard practice, not a fix for one specific bug. */
+  overflow-x: hidden;
+}
+
 body {
   color: var(--ink);
   background: var(--paper);
@@ -132,7 +139,19 @@ h1, h2, .font-display {
 
 /* Old-portal scrolling ticker — the track is duplicated so it loops seamlessly. */
 @keyframes marquee-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.marquee { overflow: hidden; }
+/* `contain: paint` (not just `overflow: hidden`) — the duplicated `.marquee-track` below is
+   `white-space: nowrap`, so its unwrapped natural width (~1000px+) is far wider than any
+   mobile viewport. `overflow: hidden` alone clips it visually but real mobile Chrome/Safari
+   can still use that wide unclamped descendant to size the page's LAYOUT viewport itself —
+   `window.innerWidth` on a real Android device measured ~2.8x too wide on /daily (the only
+   page with this ticker), with the whole page correspondingly scaled down to fit, producing
+   real horizontal scroll and a hugely inflated scrollHeight. Not reproducible in desktop
+   Chromium (incl. Playwright's mobile-viewport emulation) — this is a real-device-only
+   quirk (July 2026). `contain: paint` explicitly isolates the box: nothing inside can affect
+   layout/paint outside its bounds, which `overflow: hidden` alone doesn't guarantee.
+   Docs/research/testing-mobile-responsiveness-locally.md's own emulation-vs-real-device
+   caveat is exactly why this took a live LAN test on a real phone to catch. */
+.marquee { overflow: hidden; contain: paint; }
 .marquee-track { display: inline-flex; white-space: nowrap; animation: marquee-scroll 22s linear infinite; }
 .marquee:hover .marquee-track { animation-play-state: paused; }
 
@@ -268,6 +287,14 @@ h1, h2, .font-display {
   /* Pre-soft radial gradients — no filter:blur, which is expensive at this size. */
   background: radial-gradient(circle, var(--aurora-color) 0%, transparent 62%);
   animation: aurora-drift ease-in-out infinite alternate;
+  /* Promotes each blob to its own compositor layer. Without it, some mobile browsers
+     recomposite the whole `.site-backdrop` (position: fixed, full-viewport) on every scroll
+     frame instead of just handling it independently of scroll, causing visible stutter —
+     reported on the hub, but this backdrop renders on every page. Justified as a permanent
+     hint (not the usual "toggle on, then remove" caveat from Docs/research/nextjs-
+     performance.md) because these blobs animate continuously for the component's entire
+     mounted lifetime, never returning to a non-animating state. */
+  will-change: transform;
 }
 
 .aurora-a {
@@ -313,6 +340,7 @@ h1, h2, .font-display {
   animation-iteration-count: infinite;
   animation-direction: alternate;
   user-select: none;
+  will-change: transform; /* same compositor-layer reasoning as .aurora, above */
 }
 
 @keyframes glyph-drift {

@@ -65,7 +65,7 @@ export function SettingsMenu() {
   };
 
   return (
-    <div className="relative">
+    <>
       <button
         ref={gearRef}
         type="button"
@@ -80,15 +80,21 @@ export function SettingsMenu() {
       </button>
 
       {open && (
-        <>
-          {/* Scrim — click-outside closes. */}
-          <div className="fixed inset-0 z-40" onClick={close} aria-hidden="true" />
+        // Fixed + viewport-centered (not anchored to the gear button via `absolute right-0`):
+        // that anchoring broke on mobile, where the gear sits mid-header rather than at the
+        // screen's right edge, so a fixed-width panel opening "left from the anchor" ran off
+        // the left edge of the viewport. Matches ConfirmModal's centered-overlay pattern.
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={close}
+        >
           <div
             ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-label="Settings"
-            className="absolute right-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-1rem)] rounded-xl border-[3px] border-ink bg-paper text-ink shadow-chunky p-4 space-y-4"
+            className="w-72 max-w-full rounded-xl border-[3px] border-ink bg-paper text-ink shadow-chunky p-4 space-y-4"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg">Settings</h2>
@@ -126,9 +132,9 @@ export function SettingsMenu() {
               onChange={(v) => setSetting('errorHighlight', v)}
             />
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

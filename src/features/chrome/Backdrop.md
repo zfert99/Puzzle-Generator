@@ -11,7 +11,16 @@ balance point between "clean" and "visually interesting" the design asked for.
   wash, dark gets deep glows from the same rules (plus small per-theme intensity nudges).
 - **Cheap** — transform-only animations (GPU-composited); pre-soft radial gradients instead of
   `filter: blur` (expensive at 70vmax); `pointer-events: none`; `aria-hidden` (decorative).
-  INP untouched — nothing here runs on interaction.
+  INP untouched — nothing here runs on interaction. The blobs and glyphs also carry
+  `will-change: transform` (July 2026) — without it, some mobile browsers were recompositing
+  the whole fixed `.site-backdrop` layer on every scroll frame instead of treating these
+  always-animating children as independent compositor layers, causing visible scroll
+  stutter (reported on the hub; this backdrop mounts once in the root layout and renders
+  behind every page, so the fix applies everywhere). A permanent `will-change` hint is
+  deliberate here, not the usual toggle-on/toggle-off pattern
+  (`Docs/research/nextjs-performance.md`'s "sparingly... removed after" guidance) — these
+  elements animate continuously for their entire mounted lifetime and never return to a
+  non-animating state, so there's no "after" to remove it at.
 - **Motion-safe** — `prefers-reduced-motion` freezes all drift (globals.css).
 - **Deterministic** — glyph positions are a fixed table, not RNG: this is a Server Component
   and must render identically on server and client (AGENTS.md §1 hydration rule).
