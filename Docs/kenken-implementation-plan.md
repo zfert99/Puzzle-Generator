@@ -2,35 +2,48 @@
 
 > **Status:** 📋 Planned (do not start without a fresh branch — Killer's branch is retired)
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
-> [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md)
+> [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
+> [kenken-plan-review.md](research/kenken-plan-review.md) (external review of THIS plan —
+> verdict: GREEN, ready to start; the refinements it raised are folded in below)
 > **Pattern source:** the Killer plans — this plan reuses their slice/gate discipline and,
 > deliberately, large parts of their code.
 
 KenKen (Calcudoku/Mathdoku): fill an N×N **Latin square** (1..N once per row and column —
 **no boxes**) partitioned into cages, each showing a target and an operator (+, −, ×, ÷).
-The KenKen inventor's company trademarked the name — the UI should ship under a neutral name
-(**"MathCage"?** decide at K1; "Calcudoku" is the community generic) with KenKen used only
-descriptively.
+The **"KenKen" trademark** is held by KenKen Puzzle LLC (first filed 2007 by Nextoy, LLC —
+Robert Fuhrer's company, NOT the inventor Tetsuya Miyamoto personally); "Calcudoku"/"Mathdoku"
+are the established generic names. The UI ships under a neutral name (**"MathCage"?** decide at
+K1) with "KenKen" used only descriptively/nominatively — sound risk avoidance, not legal advice.
 
 ## 1. What the research locks in (before any code)
 
 - **Sizes: 4×4 (entry), 5×5, 6×6 (standard), 7×7 — 9×9 optional later.** Latin-square-only
   means ANY N ≥ 3 works, including primes — that's the structural difference from box
-  Sudoku and it unlocks 5 and 7. NYT ships 4×4/6×6 daily; grid-size research recommends
-  exactly this ladder and warns off 16×16+ ("long but shallow"). Start with **4 and 6**
-  (mirrors our mini infrastructure), add 5/7 in a follow-up slice, hold 9.
+  Sudoku and it unlocks 5 and 7. NYT/Shortz's *canonical* product is 4×4/6×6 daily; the prime
+  sizes 5/7 are an **ecosystem-wide** convention (calcudoku.org, KrazyDad "Inkies", Tatham's
+  Keen, puzzle books), NOT specifically NYT's. Grid-size research recommends exactly this ladder
+  and warns off 16×16+ ("long but shallow"). Start with **4 and 6** (mirrors our mini
+  infrastructure), add 5/7 in a follow-up slice, hold 9.
 - **The duplicate-in-cage rule changes the math.** Digits MAY repeat in a cage if not
   sharing a row/column — so cage-combination tables are **multisets**, not the Killer
   digit-set tables. This is the single most common source of solver bugs (research's
   words) and the reason K1 exists as its own gated slice.
-- **Operator difficulty ordering is ÷ < − < × < + (counterintuitive, measured by candidate
-  count).** Two-cell ÷ and − cages have tiny candidate sets; big + cages are the ambiguous
-  ones. Difficulty configs lean on this ordering, not "arithmetic complexity".
+- **Operator difficulty ordering ÷ < − < × < + is a DEFAULT PRIOR, not a strict total order.**
+  The endpoints hold (2-cell ÷/− cages have tiny candidate sets; big + cages are the ambiguous
+  ones), but candidate count depends jointly on (operator, target, cage size, N) — a `1−` on 6×6
+  has five pairs, a `5−` has one, so − isn't uniformly easier than ×. Use the ordering to seed
+  operator-mix tuning, but let **measured per-(op, target, size, N) combination counts** (exactly
+  what K1's multiset tables compute) drive actual grading. Multiset-combo ambiguity is the real
+  difficulty currency, not "arithmetic complexity".
 - **Operator set is a first-class difficulty axis**: SingleOp (+ only) → DualOp (+− or ×÷)
   → QuadOp (all four) → **No-Op/Mystery** (operator hidden — uniqueness must hold across
   every operator interpretation; true hard mode, deferred to the last slice).
-- **Subtraction/division are two-cell cages only** (NYT/Shortz convention). Single-cell
-  cages are free givens — same difficulty lever we tuned for Killer.
+- **Subtraction/division are two-cell cages only** — a Shortz/NYT + KSudoku + Tatham's-Keen
+  convention and a **safe design choice**, NOT a universal rule (calcudoku.org allows larger
+  −/÷ cages under a "largest-first" convention). Enforcing 2-cell "by construction" sidesteps
+  the non-associativity trap (`6−(4−1)=3` vs `(6−4)−1=1`) entirely. Single-cell cages are free
+  givens — same difficulty lever we tuned for Killer, and one needing an explicit min/max band
+  (below).
 - **Techniques**: classic singles/pairs/X-wing carry over but on rows+columns only; the
   KenKen-specific tiers are prime factorization (×), line invariants (each line sums to
   N(N+1)/2 and multiplies to N! — the "Rule of 21 / Rule of 720" on 6×6), and cage-combo
@@ -99,26 +112,46 @@ box-optional base instead of each rediscovering the coupling.
 ### K1 — Multiset cage-combination tables + operator model
 
 - `kenken-combinations.ts`: for each (op, target, cageSize, N) the candidate multisets and
-  union/guaranteed masks. Multiset enumeration with per-shape repeat legality handled at
-  the SOLVER (a combo is only placeable if repeats land in distinct rows/cols) — tables
-  over-approximate, solver enforces. −/÷ restricted to size 2 by construction.
-- Table sizes are bounded (N ≤ 9, targets ≤ 9! for ×) — precompute per N like the Killer
-  tables; memoized excluding-variants included from day one (E1's lesson: memo or lose).
-- **Gate:** exhaustive spot-tests against published examples (e.g. `6×` 4-cell → {1,1,2,3});
-  table-size/perf budget documented.
+  union/guaranteed masks. −/÷ restricted to size 2 by construction.
+- **Two-layer check, made explicit (review recommendation).** The table answers *arithmetic
+  multiset validity*; *geometric placement legality* (can the repeats actually land in distinct
+  rows/cols given THIS cage's shape?) is a second, separate layer enforced at the solver's
+  placement check. A straight domino/line cage cannot hold ANY repeat; only L/T/blocky shapes
+  can. So the tables deliberately **over-approximate** (they don't know cage geometry) and the
+  solver prunes — but this means the union/guaranteed masks are only valid *as priors*: for a
+  line-shaped cage the mask over-counts (includes repeat-only multisets that geometry forbids).
+  Document this so a future optimization doesn't trust the mask as exact for line cages.
+- Table sizes are bounded (N ≤ 9, targets ≤ 9! = 362 880 for ×) — precompute per N like the
+  Killer tables; memoized excluding-variants from day one (E1's lesson: memo or lose). Confirm
+  the memo key (op, target, size, N) and integer types carry the largest × products cleanly, and
+  document the lazy per-N build's worst-case time (a perf, not correctness, budget).
+- **Gate:** exhaustive spot-tests against published examples (e.g. `6×` 4-cell → {1,1,2,3},
+  legal only when the two 1s are non-collinear); table-size/perf budget documented.
 
 ### K2 — Exact solver + Latin-square generator
 
 - Latin-square fill (trivial vs Sudoku fill — no boxes). `fillGrid` (`grid-utils.ts`) keeps a
   `boxMask` alongside row/col masks; K0's `hasBoxes: false` must make that mask conditional so
   it produces a pure Latin square. A ~10-line standalone is the fallback if that proves awkward.
-- **Cage generator termination:** the Killer generator relies on the *no-repeat eligibility*
-  check to stop growth (a cage "boxes itself in" when every neighbor's digit is already used).
-  KenKen has no such stop (repeats legal), so growth must terminate on target size alone —
-  confirm cages don't all run to `maxSize`, and keep the `minSize`/`maxSizeBias` levers working.
+- **Cage generator termination (don't lean on target size alone — review recommendation).** The
+  Killer generator relies on the *no-repeat eligibility* check to stop growth (a cage "boxes
+  itself in" when every neighbor's digit is already used). KenKen has no such stop (repeats
+  legal), so a random target size in `[minSize, maxSize]` becomes the growth bound — but that is
+  *weaker* than the reference generators this plan cites. KSudoku layers a hard `maxSize` cap +
+  a `maxCombos` ambiguity-reject + explicit `mMinSingles`/`mMaxSingles` bands, all wrapped in a
+  DLX-uniqueness retry loop; Tatham's Keen uses a hard `MAXBLK = 6` cap plus whole-grid
+  regeneration. Match that shape: **(1)** keep the hard `maxSize` cap (already in
+  `cage-generator`), **(2)** add the single-cell-cage proportion band (K4), **(3)** re-test
+  `maxCombos` as an ambiguity gate (K4), and **(4)** treat the K2 uniqueness verifier as the
+  real termination backstop — regenerate the layout (or the whole grid) on non-unique. Confirm
+  cages don't all run to `maxSize`; keep the `minSize`/`maxSizeBias` levers working.
 - `kenken-solver.ts`: bitmask/MRV over rows+cols only (no box mask), with cage pruning via K1
   masks plus a placement-time repeat check (same-row/col duplicate legality). Node budget from
-  day one.
+  day one. **The cage-multiset pruning intersected with the row/col masks is MANDATORY, not
+  optional:** boxless = 2 constraining units/cell instead of 3, so naked/hidden-single cascades
+  fire less and the search leans on cage pruning to avoid ballooning on 6×6+ QuadOp. The < 50 ms
+  gate below is the tripwire — if it trips, strengthen candidate intersection before adding
+  search heuristics.
 - Operator/target assignment on the solved grid (KSudoku's `setCageTarget` pattern):
   operator chosen per cage from the active operator SET (difficulty axis), target computed.
   **Legality invariant:** every cage size present must have ≥1 assignable operator in the
@@ -147,6 +180,16 @@ box-optional base instead of each rediscovering the coupling.
 - Shape gates (singles budget, two-cell-cage share, operator mix) + score bands placed on
   measured distributions per the recalibration protocol; stage-rate sweeps before
   end-to-end benchmarks (the Killer discipline, verbatim).
+- **Explicit single-cell-cage proportion band — min AND max (review recommendation).** Too many
+  single-cell "given" cages is a *documented KenKen generation failure mode* (trivial puzzles;
+  CanCan rejects above a max proportion, KSudoku uses `mMinSingles`/`mMaxSingles`). Killer only
+  ever needed a `maxSingles` cap; KenKen wants both bounds as a first-class difficulty lever, not
+  an implicit side effect of cage growth. A *min* also keeps easy tiers from becoming givens-free
+  and unexpectedly hard.
+- **Re-fit bands per size, don't merely rescale (review recommendation).** Weaker 2-unit
+  propagation means the *same* technique tier yields *fewer* forced moves at a given size, so
+  band cuts must be measured fresh per (size, op-set), not derived by scaling 9×9/Killer cuts.
+  4×4 band compression is expected (like 6×6 Killer).
 - **Re-evaluate `maxCombos` (per-cage combination cap) for KenKen.** The Killer plan *tried and
   dropped* this lever (no-op at maxSize 3, fatal at 4). But the research flags it as KSudoku's
   primary difficulty knob, and KenKen's difficulty currency IS multiset-combo ambiguity — the
@@ -189,9 +232,13 @@ box-optional base instead of each rediscovering the coupling.
 | 6 | `GridSize` widening silently offers impossible 5×5/7×7 *classic* Sudoku | Sizes gated per-variant in the pickers, not by the type alone (K0); classic/Killer stay 4/6/9 |
 | 7 | Duck-typed `'cages' in puzzle` misclassifies KenKen as Killer (store, registry, dispatch) | Real `variant` discriminant + 3-way generation switch, landed at the top of K5 before UI |
 | 8 | Boxless renderers draw phantom box lines/peer highlights | K0 gates `Cell.tsx` + PDF base-grid loop on `hasBoxes`; manual visual check on a 5/7 board |
-| 9 | Cage-generator never terminates growth without the no-repeat stop | Terminate on target size alone; K2 gate confirms cages don't all hit `maxSize` |
-| 10 | Boxless = 2 units/cell not 3 → Latin-square deduction is *weaker* than Sudoku (research §3), so cages must carry more constraint; uniqueness-reject rate may run higher than Killer at the same cage density | Expected per research; measure yield at K2 and let K4's shape gates (denser/tighter cages) absorb it — don't assume Killer's cage-density tuning transfers |
+| 9 | Cage-generator loses the no-repeat growth stop | maxSize cap (kept) + single-cell band (K4) + `maxCombos` ambiguity gate (K4) + uniqueness-driven regeneration as the backstop (K2) — the KSudoku/Keen pattern, not target size alone |
+| 10 | Boxless = 2 units/cell not 3 → Latin-square deduction is *weaker* than Sudoku (research §3), so cages must carry more constraint; uniqueness-reject rate may run higher than Killer at the same cage density | Expected per research; cage-multiset pruning is mandatory (K2); measure yield at K2 and let K4's shape gates (denser/tighter cages) absorb it — don't assume Killer's cage-density tuning transfers |
 | 11 | Save/resume must round-trip KenKen (cages + operators); numpad/maxNum for 5/7 | Numpad already config-driven (`config.size`) — free once K0 widens config; `useSavedGame` persists `variant`, so extend its serialized puzzle shape with the operator-carrying cage field |
+| 12 | Too many single-cell "given" cages → trivial puzzles (documented KenKen failure mode) | Explicit min/max single-cell proportion band in K4, both as a correctness guard and a difficulty lever (CanCan/KSudoku pattern) |
+| 13 | Geometric feasibility ≠ arithmetic validity: masks over-count for line-shaped cages (a line cage can't hold repeats at all) | Two-layer check (K1): arithmetic multiset table → placement-time geometric legality; masks documented as priors, never trusted as exact for line cages |
+| 14 | Users expect difficulty labels comparable ACROSS sizes; a "hard 5×5" may not sit between hard 4×4 and hard 6×6 | Bands re-fit (not rescaled) per size (K4); set the user-facing expectation that labels are per-size, not a cross-size ranking |
+| 15 | No-Op/Mystery mode (deferred) multiplies uniqueness cost — must verify across EVERY operator interpretation per cage | Correctly deferred to its own slice; roadmap carries the future cost so it isn't rediscovered as "just another operator set" |
 
 ## 5. Definition of done (v1)
 
