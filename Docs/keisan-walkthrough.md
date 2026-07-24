@@ -186,6 +186,35 @@ up.
 
 ---
 
-## K3 — Logical solver + difficulty tiers
+## K3 — Logical solver + difficulty tiers ✅
+
+The human-style solver that grades a puzzle by hardest-required technique. New file
+[`calc-logical-solver.ts`](../src/features/engine/calc/calc-logical-solver.ts).
+
+- **Its own candidate grid + techniques** — it does NOT compose `HumanSolver` (box-Sudoku-only;
+  throws on 5/7 per the K0 guard). Every technique scans rows and columns only, no box units.
+- **Tier ladder:** T1 = cage arithmetic + naked/hidden singles (single-cell cages placed as givens
+  at construction); T2 = naked/hidden pairs + **cage-combo restriction** (enumerate valid multisets,
+  try to fully place each into the empty cells via candidates respecting no-collinear-repeat, keep
+  only digits some placement supports); T3 = line-sum invariant (Rule of 21 — a line with one empty
+  cell is forced); T4 = X-Wing on rows/columns.
+- **Solve loop** applies the cheapest technique that progresses and restarts from the cheapest, so
+  `hardestTier` is the minimum ceiling the puzzle demands. `solve({ maxTier })` caps it and returns
+  `{ solved, hardestTier, techniqueCounts, passes, avgOpenSingles }` — the inputs for K4's two-factor
+  score.
+- **Soundness is load-bearing:** every technique only makes deductions true in all solutions, so a
+  full logical solve equals the unique exact solution.
+
+### Verification (K3)
+
+**Gate met.** Soundness fuzzed against the K2 exact solver: no logically-placed digit ever disagrees
+with the unique solution (solved or not) across 4×4/6×6. Gradable share measured **89–100%** across
+{QuadOp, +−, ×÷, add-only} — the hardest-tier distribution concentrates at T1/T2, so (like Killer)
+played difficulty will ride the two-factor score within a tier, not the tier ceiling alone. 4 tests;
+full suite **291 green**.
+
+---
+
+## K4 — Difficulty configs + generation
 
 *Not started.*

@@ -197,7 +197,20 @@ box-optional base instead of each rediscovering the coupling.
   of what the generate-and-test loop varies to hit uniqueness and the difficulty band.
 - **Gate:** uniqueness verify < 50 ms avg at 6×6 QuadOp shapes; fuzz vs brute force on 4×4.
 
-### K3 — Logical solver + difficulty tiers
+### K3 — Logical solver + difficulty tiers ✅ Done
+
+> **Shipped** on `feature/kenken`.
+> [`calc-logical-solver.ts`](../src/features/engine/calc/calc-logical-solver.ts) — its OWN candidate
+> grid + row/col-only techniques (cannot compose `HumanSolver`: box-Sudoku-only, throws on 5/7).
+> Tier ladder: **T1** cage arithmetic + naked/hidden singles (single-cell cages placed as givens);
+> **T2** naked/hidden pairs + cage-combo restriction (multiset→cell matching with no-collinear-
+> repeat); **T3** line-sum invariant (Rule of 21); **T4** X-Wing on rows/cols. `solve({ maxTier })`
+> caps the ladder and reports `{ solved, hardestTier, techniqueCounts, passes, avgOpenSingles }` for
+> the K4 scorer. **Gate met:** soundness fuzzed vs the K2 exact solver (no logically-placed digit
+> ever disagrees with the unique solution, solved or not); gradable share **89–100%** across
+> 4×4/6×6 × {QuadOp, +−, ×÷, add-only}. Hardest-tier distribution concentrates at T1/T2, so — like
+> Killer — played difficulty will ride the two-factor score within a tier (K4). 4 tests + full suite
+> 291 green.
 
 - Tier ladder (provisional, measured before locking): T1 givens/singles + two-cell ÷ and −
   cage resolution; T2 pairs + × prime-factorization cages; T3 line invariants (sum/product
