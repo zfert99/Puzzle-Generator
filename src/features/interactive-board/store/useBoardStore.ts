@@ -308,7 +308,11 @@ export const useBoardStore = create<BoardState>()(
         // Actions are dropped by JSON serialization and re-supplied by the creator;
         // peers are recomputed on rehydration rather than stored.
         name: 'sudoku-board',
-        version: 2, // bumped: added `mode`; discards pre-mode persisted games on update
+        // v3 (K0): `GridConfig` gained `hasBoxes`. A persisted pre-K0 `config` lacks it, which
+        // would rehydrate as `undefined` → falsy → phantom boxless rendering (no thick borders)
+        // on a 4/6/9 board. Saved games are ephemeral, so discard the stale shape rather than
+        // migrate it — the initial config (with `hasBoxes`) takes over.
+        version: 3,
         // A saved game is ephemeral, so old persisted shapes aren't worth migrating — but a
         // version mismatch with NO migrate makes zustand log a console.error (surfaced as the
         // Next.js error overlay). Discard cleanly instead: drop the stale game and land the

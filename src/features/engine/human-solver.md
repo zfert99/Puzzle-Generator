@@ -21,7 +21,12 @@ The solver's state is deliberately split into two mutable structures that evolve
 together — `grid` (what is placed) and `candidates` (what remains possible) — plus
 a set of immutable geometry fields derived once from the grid's length. Deriving
 `size`/`boxWidth`/`boxHeight` from the grid rather than hard-coding 9 is what lets
-the exact same engine solve 4x4, 6x6, and 9x9 boards without branching. The
+the exact same engine solve 4x4, 6x6, and 9x9 boards without branching. **Size guard
+(K0):** the constructor accepts ONLY the box-Sudoku sizes 4/6/9 and throws otherwise.
+The old catch-all `else` silently assumed 3×3 boxes for any other size, which would
+quietly mis-solve a boxless 5×5/7×7 KenKen grid. HumanSolver is a box-Sudoku solver;
+KenKen writes its own row/col technique functions and must never route through it, so
+an unsupported size is a programming error, not a grid to guess at. The
 `filledCount` counter exists purely so `isSolved()` is O(1) instead of rescanning
 the whole grid on every deduction loop — a hot path run thousands of times per
 generated puzzle. The `usedAdvanced`/`usedExtreme` flags are how a solve run
@@ -32,7 +37,7 @@ signal the generator uses to rate difficulty.
 grid[][]           : NxN array of numbers (0 = empty)
 candidates[][]     : NxN array of bitmasks — bit (n-1) set means digit n is still possible
                      (accessed via candidateCount / hasCandidate / removeCandidate / candidateList)
-size               : grid dimension (4, 6, or 9) — inferred from grid length
+size               : grid dimension (4, 6, or 9) — inferred from grid length; anything else throws (K0)
 boxWidth           : columns per box (2, 3, or 3)
 boxHeight          : rows per box (2, 2, or 3)
 numBoxes           : total boxes = size

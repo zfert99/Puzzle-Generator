@@ -80,7 +80,15 @@ K1) with "KenKen" used only descriptively/nominatively — sound risk avoidance,
 
 ## 3. Slices
 
-### K0 — Boxless-grid foundation (prerequisite; codebase audit finding)
+### K0 — Boxless-grid foundation (prerequisite; codebase audit finding) ✅ Done
+
+> **Shipped** on `feature/kenken`. Full write-up: [kenken-k0-walkthrough.md](kenken-k0-walkthrough.md).
+> `GridSize` widened to `4|5|6|7|9`, `GridConfig` gained `hasBoxes` (row-strip sentinel for the
+> boxless dims), `isValid`/`fillGrid` produce Latin squares at 5/7, both grid renderers gate box
+> lines/peers on `hasBoxes`, `HumanSolver` throws on non-4/6/9, quota map made `Partial`, board
+> store `persist` bumped 2→3. 248 tests green (9 new); Basic/Advanced benchmarks at historical
+> best. The `4|6|9` UI/API pickers were deliberately left narrow — 5/7 is representable, not yet
+> offered (that's K5).
 
 The one slice that is *pure enabling refactor*, added after auditing the reuse claims against
 the live code (§2 audit column). It exists because 5×5/7×7 — KenKen's differentiator — is not a

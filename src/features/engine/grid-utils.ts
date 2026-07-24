@@ -36,25 +36,29 @@ export function copyGrid(grid: number[][]): number[][] {
  * conflict with any existing numbers in its row, column, or subgrid.
  */
 export function isValid(grid: number[][], row: number, col: number, num: number, config: GridConfig): boolean {
-  const { size, boxWidth, boxHeight } = config;
+  const { size, boxWidth, boxHeight, hasBoxes } = config;
 
   // Check row and column simultaneously for repetition of the number
   for (let x = 0; x < size; x++) {
     if (grid[row][x] === num) return false;
     if (grid[x][col] === num) return false;
   }
-  
+
+  // Boxless (Latin-square-only) sizes have no box constraint — rows + columns are the whole
+  // rule (KenKen at 5/7). Skip the subgrid scan entirely rather than trust the box sentinel.
+  if (!hasBoxes) return true;
+
   // Calculate the top-left corner of the subgrid that this cell belongs to
   const startRow = Math.floor(row / boxHeight) * boxHeight;
   const startCol = Math.floor(col / boxWidth) * boxWidth;
-  
+
   // Check the subgrid for repetition of the number
   for (let i = 0; i < boxHeight; i++) {
     for (let j = 0; j < boxWidth; j++) {
       if (grid[startRow + i][startCol + j] === num) return false;
     }
   }
-  
+
   // If no conflicts were found, it's a valid placement
   return true;
 }
@@ -89,6 +93,11 @@ export function fillGrid(grid: number[][], config: GridConfig): boolean {
   const { size, boxWidth, boxHeight, maxNum } = config;
   const fullMask = (1 << maxNum) - 1;
   const boxesPerRow = size / boxWidth;
+  // Boxless (Latin-square-only) sizes carry a row-strip box sentinel (boxWidth = size,
+  // boxHeight = 1), so `boxOf(r, c)` collapses to `r` and `boxMask[r]` simply mirrors
+  // `rowMask[r]` — the box term becomes a redundant no-op and the result is a pure Latin
+  // square, with NO branch added to this hot loop (AGENTS.md §3). The K0 Latin-square test at
+  // 5×5/7×7 guards this: if the sentinel ever changes, that test fails.
   const boxOf = (r: number, c: number) =>
     Math.floor(r / boxHeight) * boxesPerRow + Math.floor(c / boxWidth);
 

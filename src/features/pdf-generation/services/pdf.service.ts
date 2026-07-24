@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import PDFDocument from 'pdfkit';
-import { SudokuPuzzle, getGridConfig } from '@/features/engine/sudoku';
+import { SudokuPuzzle, getGridConfig, type GridSize } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import { computeCageOutline } from '@/features/engine/killer/cage-geometry';
 
@@ -13,7 +13,7 @@ export function drawTitlePage(doc: any): void {
 
 export function drawGrid(doc: any, grid: number[][], startX: number, startY: number, gridDrawSize: number): void {
   const puzzleSize = grid.length;
-  const config = getGridConfig(puzzleSize as 4 | 6 | 9);
+  const config = getGridConfig(puzzleSize as GridSize);
   const cellSize = gridDrawSize / puzzleSize;
 
   doc.lineWidth(1);
@@ -34,9 +34,12 @@ export function drawGrid(doc: any, grid: number[][], startX: number, startY: num
     }
   }
 
+  // Boxless (Latin-square-only) grids have no box borders — every interior line is thin, only
+  // the outer frame is heavier. Box-tileable grids get thick lines at box boundaries.
   for (let i = 0; i <= puzzleSize; i++) {
-    const isThickRow = i % config.boxHeight === 0;
-    const isThickCol = i % config.boxWidth === 0;
+    const isFrame = i === 0 || i === puzzleSize;
+    const isThickRow = config.hasBoxes ? i % config.boxHeight === 0 : isFrame;
+    const isThickCol = config.hasBoxes ? i % config.boxWidth === 0 : isFrame;
 
     doc.lineWidth(isThickRow ? 3 : 1);
     doc.moveTo(startX, startY + i * cellSize)
@@ -86,12 +89,15 @@ export function drawKillerGrid(
     }
   }
 
-  // Base grid: thin cell lines, thick box lines.
+  // Base grid: thin cell lines, thick box lines. Boxless (Latin-square-only) grids — the KenKen
+  // reuse path — have no box borders, so only the outer frame is heavier (K0). KillerPuzzle is
+  // always box-tileable (6/9), so `hasBoxes` is true today; this branch is for the KenKen K5 reuse.
   doc.strokeColor('black');
   for (let i = 0; i <= size; i++) {
-    doc.lineWidth(i % config.boxHeight === 0 ? 2 : 0.5);
+    const isFrame = i === 0 || i === size;
+    doc.lineWidth((config.hasBoxes ? i % config.boxHeight === 0 : isFrame) ? 2 : 0.5);
     doc.moveTo(startX, startY + i * cell).lineTo(startX + gridDrawSize, startY + i * cell).stroke();
-    doc.lineWidth(i % config.boxWidth === 0 ? 2 : 0.5);
+    doc.lineWidth((config.hasBoxes ? i % config.boxWidth === 0 : isFrame) ? 2 : 0.5);
     doc.moveTo(startX + i * cell, startY).lineTo(startX + i * cell, startY + gridDrawSize).stroke();
   }
 

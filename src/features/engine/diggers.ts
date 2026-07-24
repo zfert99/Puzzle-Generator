@@ -135,14 +135,17 @@ export function applyExhaustiveDigger(grid: number[][], config: GridConfig): voi
  *   9x9: Easy=41(removes 40), Medium=31(removes 50), Hard=26(removes 55)
  */
 export function applyQuotaDigger(grid: number[][], difficulty: Difficulty, config: GridConfig): void {
-  const quotas: Record<GridSize, Record<string, number>> = {
+  // Only the box-tileable classic sizes exist here — 5/7 are boxless KenKen sizes with no
+  // classic digger (Partial, not an exhaustive Record, so we don't invent quotas for puzzles
+  // that can't exist). The `?.` + `?? 40` fallback keeps a boxless size from throwing.
+  const quotas: Partial<Record<GridSize, Record<string, number>>> = {
     4: { easy: 7, medium: 10, hard: 12 },
     6: { easy: 16, medium: 20, hard: 26 },
     9: { easy: 40, medium: 50, hard: 55 },
   };
 
   // How many clues to REMOVE
-  let cluesToRemove = quotas[config.size][difficulty] ?? 40;
+  let cluesToRemove = quotas[config.size]?.[difficulty] ?? 40;
 
   // Fail-safe to prevent infinite loops if we get a grid layout where it's 
   // mathematically difficult to reach the target quota while maintaining uniqueness

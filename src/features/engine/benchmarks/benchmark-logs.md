@@ -92,3 +92,6 @@
 | 2026-07-10T19:34:08.011Z | `7ac26ec` | HumanSolver Basic (5000x) | 0.11 ms | 9184 solves/sec |
 | 2026-07-10T19:34:08.011Z | `7ac26ec` | HumanSolver Advanced (5000x) | 0.13 ms | 7489 solves/sec |
 | 2026-07-10T19:34:08.011Z | `7ac26ec` | HumanSolver Extreme (1000x) | 10.00 ms | 100 solves/sec |
+| 2026-07-24T01:20:43.568Z | `570cabb` | HumanSolver Basic (5000x) | 0.11 ms | 9464 solves/sec |
+| 2026-07-24T01:20:43.568Z | `570cabb` | HumanSolver Advanced (5000x) | 0.18 ms | 5668 solves/sec |
+| 2026-07-24T01:20:43.568Z | `570cabb` | HumanSolver Extreme (1000x) | 12.45 ms | 80 solves/sec |

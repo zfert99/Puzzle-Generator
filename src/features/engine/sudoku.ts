@@ -7,17 +7,32 @@ import { applyExtremeDigger, applyExhaustiveDigger, applyQuotaDigger } from './d
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 
 /**
- * Supported grid sizes for puzzle generation
+ * Supported grid sizes.
+ *
+ * 4/6/9 are the box-tileable Sudoku/Killer sizes; 5/7 are **boxless** (Latin-square-only)
+ * sizes that only KenKen can use — a prime N has no rectangular box tiling, which is exactly
+ * why box-Sudoku can't offer them and KenKen can (see `Docs/kenken-implementation-plan.md` K0
+ * and the grid-size research). Widening this union does NOT auto-enable 5/7 anywhere: classic
+ * and Killer surfaces keep their own narrower `4 | 6 | 9` pickers, so this only makes 5/7
+ * *representable* for the KenKen work that follows.
  */
-export type GridSize = 4 | 6 | 9;
+export type GridSize = 4 | 5 | 6 | 7 | 9;
 
 /**
- * Configuration derived from a grid size — box dimensions and total cells
+ * Configuration derived from a grid size — box dimensions and total cells.
+ *
+ * `hasBoxes` is the boxless flag: `false` for prime sizes (5, 7) that have no box constraint,
+ * only rows and columns. Every consumer that draws or reasons about boxes (grid renderers,
+ * `isValid`/`fillGrid`'s box mask) MUST branch on it — for a boxless grid `boxWidth`/`boxHeight`
+ * are set to a harmless row-strip sentinel (`size × 1`, so an ungated reader degenerates the box
+ * constraint to the row constraint it already enforces) rather than a value that would corrupt a
+ * Latin square. Prefer `hasBoxes` over inspecting the sentinel.
  */
 export interface GridConfig {
   size: GridSize;
-  boxWidth: number;   // How many columns per box
-  boxHeight: number;  // How many rows per box
+  hasBoxes: boolean;  // false for boxless (Latin-square-only) sizes: 5, 7
+  boxWidth: number;   // How many columns per box (row-strip sentinel = size when boxless)
+  boxHeight: number;  // How many rows per box (row-strip sentinel = 1 when boxless)
   totalCells: number; // size * size
   maxNum: number;     // Digits range from 1..maxNum (same as size)
 }
@@ -28,15 +43,18 @@ export interface GridConfig {
  *   4x4 → 2 cols × 2 rows
  *   6x6 → 3 cols × 2 rows
  *   9x9 → 3 cols × 3 rows
- * 
- * @param size The grid size to get configuration for (4, 6, or 9)
+ *   5x5, 7x7 → boxless (Latin-square-only; `hasBoxes: false`)
+ *
+ * @param size The grid size to get configuration for (4, 5, 6, 7, or 9)
  * @returns The generated GridConfig
  */
 export function getGridConfig(size: GridSize): GridConfig {
   const configs: Record<GridSize, GridConfig> = {
-    4: { size: 4, boxWidth: 2, boxHeight: 2, totalCells: 16, maxNum: 4 },
-    6: { size: 6, boxWidth: 3, boxHeight: 2, totalCells: 36, maxNum: 6 },
-    9: { size: 9, boxWidth: 3, boxHeight: 3, totalCells: 81, maxNum: 9 },
+    4: { size: 4, hasBoxes: true, boxWidth: 2, boxHeight: 2, totalCells: 16, maxNum: 4 },
+    5: { size: 5, hasBoxes: false, boxWidth: 5, boxHeight: 1, totalCells: 25, maxNum: 5 },
+    6: { size: 6, hasBoxes: true, boxWidth: 3, boxHeight: 2, totalCells: 36, maxNum: 6 },
+    7: { size: 7, hasBoxes: false, boxWidth: 7, boxHeight: 1, totalCells: 49, maxNum: 7 },
+    9: { size: 9, hasBoxes: true, boxWidth: 3, boxHeight: 3, totalCells: 81, maxNum: 9 },
   };
   return configs[size];
 }

@@ -10,13 +10,26 @@ This document explains the core logic behind our `sudoku.ts` puzzle engine. It b
 We define exactly five allowed difficulty levels: 'easy', 'medium', 'hard', 'expert', or 'extreme'.
 
 **Grid Size:**
-We support three grid sizes: 4, 6, or 9. Each maps to a `GridConfig`:
+We support five grid sizes: 4, 5, 6, 7, or 9. Each maps to a `GridConfig`. Sizes 4/6/9 are
+*box-tileable* (classic Sudoku + Killer); sizes 5/7 are prime, so they have **no box tiling** —
+they are *boxless* (Latin-square-only) and exist for KenKen. Widening the union does **not**
+auto-enable 5/7 anywhere: classic/Killer surfaces keep their own narrower `4 | 6 | 9` pickers, so
+this only makes 5/7 representable for the KenKen work (see `Docs/kenken-implementation-plan.md` K0).
 
-| Size | Box Width | Box Height | Total Cells | Digits |
-| :---: | :---: | :---: | :---: | :---: |
-| 4 | 2 | 2 | 16 | 1-4 |
-| 6 | 3 | 2 | 36 | 1-6 |
-| 9 | 3 | 3 | 81 | 1-9 |
+| Size | Has Boxes | Box Width | Box Height | Total Cells | Digits |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| 4 | yes | 2 | 2 | 16 | 1-4 |
+| 5 | **no** | 5 (sentinel) | 1 (sentinel) | 25 | 1-5 |
+| 6 | yes | 3 | 2 | 36 | 1-6 |
+| 7 | **no** | 7 (sentinel) | 1 (sentinel) | 49 | 1-7 |
+| 9 | yes | 3 | 3 | 81 | 1-9 |
+
+**Why `hasBoxes` + a box sentinel:** a boxless grid still needs *some* value in `boxWidth`/
+`boxHeight` (they're required fields). We use a **row-strip sentinel** (`size × 1`) so that any
+code that reads the box dims *without* checking `hasBoxes` degenerates the box constraint to the
+row constraint it already enforces — harmless, never corrupting a Latin square. Consumers that
+draw or reason about boxes (grid renderers, `isValid`, `fillGrid`) branch on `hasBoxes` and skip
+box logic entirely when it's `false`.
 
 **Sudoku Puzzle Object:**
 When the engine finishes, it hands back a package containing:
@@ -24,7 +37,7 @@ When the engine finishes, it hands back a package containing:
 - `grid`: The playable NxN board (with holes dug, represented by 0s).
 - `solution`: The completed NxN board (the answer key).
 - `difficulty`: The requested difficulty level.
-- `gridSize`: The size of the grid (4, 6, or 9).
+- `gridSize`: The size of the grid (4, 5, 6, 7, or 9 — though classic Sudoku only ever produces 4/6/9).
 
 ---
 
@@ -32,7 +45,7 @@ When the engine finishes, it hands back a package containing:
 
 ### `getGridConfig(size)`
 
-**Goal:** Return the configuration (boxWidth, boxHeight, totalCells, maxNum) for a given grid size.
+**Goal:** Return the configuration (`hasBoxes`, boxWidth, boxHeight, totalCells, maxNum) for a given grid size.
 
 ### `isValid(grid, row, col, number, config)`
 
@@ -42,10 +55,12 @@ When the engine finishes, it hands back a package containing:
 1. Loop `size` times (index `i` from 0 to size-1).
 2. **Row Check:** If the `grid` at `[row][i]` equals the `number`, return FALSE.
 3. **Column Check:** If the `grid` at `[i][col]` equals the `number`, return FALSE.
-4. **Subgrid Check:**
+4. **Boxless short-circuit:** if `config.hasBoxes` is FALSE (a 5×5/7×7 Latin-square grid), rows and
+   columns are the whole rule — return TRUE now, skipping the subgrid scan entirely.
+5. **Subgrid Check:**
    - Calculate the starting corner using `boxHeight` and `boxWidth`.
    - Loop through all cells in the box. If any equals the `number`, return FALSE.
-5. If no rules are broken, return TRUE.
+6. If no rules are broken, return TRUE.
 
 ### `shuffle(array)`
 
@@ -64,6 +79,12 @@ When the engine finishes, it hands back a package containing:
 ### `fillGrid(grid, config)`
 
 **Goal:** Fill a completely blank NxN grid with valid, random numbers (Recursive Backtracking).
+
+**Boxless note:** on a 5×5/7×7 Latin-square grid the row-strip box sentinel makes `boxOf(r, c)`
+collapse to `r`, so the box mask simply mirrors the row mask — the box term is a redundant no-op
+and the result is a pure Latin square, with **no** branch added to the hot loop. The K0
+Latin-square test at 5/7 guards this (if the sentinel ever changes, that test fails).
+
 **Steps:**
 
 1. Loop through all `totalCells` cells.
@@ -126,7 +147,8 @@ When the engine finishes, it hands back a package containing:
 ### `applyQuotaDigger(grid, difficulty, config)`
 
 **Goal:** Remove a specific quota of clues based on grid size and difficulty.
-**Clue Removal Quotas:**
+**Clue Removal Quotas** (a `Partial` map — only the box-tileable classic sizes; boxless 5/7 have
+no classic digger and fall back to a safe default, since classic puzzles can't exist at those sizes):
 
 | Size | Easy | Medium | Hard |
 | :---: | :---: | :---: | :---: |

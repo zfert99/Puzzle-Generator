@@ -64,8 +64,12 @@ localStorage) so a refresh resumes the in-progress game. `partialize` saves the 
 data (grid, candidates, givens, solution, difficulty, status, timer, mistakes, …) but
 not `peers`, which are recomputed from `config` in `onRehydrateStorage`. `mode` is
 persisted too, so a refresh keeps a daily contained to `/daily`. The store `version` is
-`2` — bumped when `mode` was added, which discards any pre-`mode` persisted game on
-update (a clean reset rather than a half-migrated board). Actions are dropped by JSON
+`3` — bumped at K0 when `GridConfig` gained `hasBoxes`: a persisted pre-K0 `config` lacks
+it and would rehydrate as `undefined` → falsy → phantom boxless rendering (no thick
+borders) on a 4/6/9 board, so the stale shape is discarded rather than migrated (the
+initial config, which has `hasBoxes`, takes over). It was `2` when `mode` was added.
+Each bump discards any pre-bump persisted game on update (a clean reset rather than a
+half-migrated board). Actions are dropped by JSON
 serialization and re-supplied by the store creator. `persist` sits
 *inside* `temporal`, so undo/redo still works and `useBoardStore.temporal` is intact.
 Because the persisted state only exists on the client, `PlayExperience` gates its

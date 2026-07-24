@@ -3,6 +3,16 @@ import { describe, it, expect } from 'vitest';
 import { popcount, createEmptyGrid, copyGrid, isValid, shuffle, fillGrid } from './grid-utils';
 import { getGridConfig, GridSize } from './sudoku';
 
+/** Rows and columns only — the boxless (Latin-square) invariant for KenKen sizes 5/7. */
+function assertLatinSquare(grid: number[][], size: GridSize) {
+  const expected = Array.from({ length: size }, (_, i) => i + 1).join(',');
+  const sorted = (nums: number[]) => [...nums].sort((a, b) => a - b).join(',');
+  for (let i = 0; i < size; i++) {
+    expect(sorted(grid[i])).toBe(expected);
+    expect(sorted(grid.map((row) => row[i]))).toBe(expected);
+  }
+}
+
 function assertCompleteValidSolution(grid: number[][], size: GridSize) {
   const { boxWidth, boxHeight } = getGridConfig(size);
   const expected = Array.from({ length: size }, (_, i) => i + 1).join(',');
@@ -82,5 +92,29 @@ describe('fillGrid', () => {
     const grid = createEmptyGrid(size);
     expect(fillGrid(grid, config)).toBe(true);
     assertCompleteValidSolution(grid, size);
+  });
+
+  // K0: on a boxless (Latin-square-only) size, the row-strip box sentinel makes the box mask
+  // mirror the row mask, so fillGrid needs no special-casing yet still produces a pure Latin
+  // square. This test is the guard that keeps the sentinel honest (grid-utils.ts fillGrid comment).
+  it.each([5, 7] as GridSize[])('fills a boxless %ix%i grid into a valid Latin square', (size) => {
+    const config = getGridConfig(size);
+    expect(config.hasBoxes).toBe(false);
+    const grid = createEmptyGrid(size);
+    expect(fillGrid(grid, config)).toBe(true);
+    assertLatinSquare(grid, size);
+  });
+});
+
+describe('isValid (boxless)', () => {
+  // On a boxless grid, only row/column conflicts matter — two cells sharing a "box sentinel"
+  // strip but not a row/column must NOT conflict.
+  const config = getGridConfig(5);
+  it('rejects row/column duplicates but ignores the box constraint', () => {
+    const grid = createEmptyGrid(5);
+    grid[0][0] = 3;
+    expect(isValid(grid, 0, 4, 3, config)).toBe(false); // same row
+    expect(isValid(grid, 4, 0, 3, config)).toBe(false); // same column
+    expect(isValid(grid, 2, 3, 3, config)).toBe(true); // different row AND column → legal
   });
 });

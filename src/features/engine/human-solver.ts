@@ -51,12 +51,22 @@ export class HumanSolver {
     this.grid = initialGrid.map(row => [...row]);
 
     this.size = initialGrid.length;
+    // Explicit per-size box dimensions. The old catch-all `else` silently assumed 3×3 boxes for
+    // ANY non-4/6 size, which would quietly mis-solve a boxless 5×5/7×7 KenKen grid (bogus box
+    // constraint) instead of failing loudly. HumanSolver is a box-Sudoku solver only — KenKen
+    // writes its own row/col technique functions — so anything outside 4/6/9 is a programming
+    // error, not a grid to guess at. (K0, `Docs/kenken-implementation-plan.md`.)
     if (this.size === 4) {
       this.boxWidth = 2; this.boxHeight = 2;
     } else if (this.size === 6) {
       this.boxWidth = 3; this.boxHeight = 2;
-    } else {
+    } else if (this.size === 9) {
       this.boxWidth = 3; this.boxHeight = 3;
+    } else {
+      throw new Error(
+        `HumanSolver supports only box-Sudoku sizes 4, 6, 9 — got ${this.size}. ` +
+          `Boxless sizes (5, 7) are KenKen-only and must not use HumanSolver.`,
+      );
     }
     this.numBoxes = this.size;
     this.numHouses = this.size * 3;

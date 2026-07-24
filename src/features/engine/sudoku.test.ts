@@ -34,10 +34,17 @@ function assertValidSolution(grid: number[][], size: GridSize) {
 }
 
 describe('getGridConfig', () => {
-  it('returns the correct box geometry for each supported size', () => {
-    expect(getGridConfig(4)).toMatchObject({ boxWidth: 2, boxHeight: 2, totalCells: 16, maxNum: 4 });
-    expect(getGridConfig(6)).toMatchObject({ boxWidth: 3, boxHeight: 2, totalCells: 36, maxNum: 6 });
-    expect(getGridConfig(9)).toMatchObject({ boxWidth: 3, boxHeight: 3, totalCells: 81, maxNum: 9 });
+  it('returns the correct box geometry for each box-tileable size', () => {
+    expect(getGridConfig(4)).toMatchObject({ hasBoxes: true, boxWidth: 2, boxHeight: 2, totalCells: 16, maxNum: 4 });
+    expect(getGridConfig(6)).toMatchObject({ hasBoxes: true, boxWidth: 3, boxHeight: 2, totalCells: 36, maxNum: 6 });
+    expect(getGridConfig(9)).toMatchObject({ hasBoxes: true, boxWidth: 3, boxHeight: 3, totalCells: 81, maxNum: 9 });
+  });
+
+  // K0: boxless (Latin-square-only) sizes for KenKen. `hasBoxes` is false and the box dims are a
+  // harmless row-strip sentinel (size × 1) so ungated box math degenerates to the row constraint.
+  it('returns a valid boxless config for the prime KenKen sizes 5 and 7', () => {
+    expect(getGridConfig(5)).toMatchObject({ hasBoxes: false, boxWidth: 5, boxHeight: 1, totalCells: 25, maxNum: 5 });
+    expect(getGridConfig(7)).toMatchObject({ hasBoxes: false, boxWidth: 7, boxHeight: 1, totalCells: 49, maxNum: 7 });
   });
 });
 
