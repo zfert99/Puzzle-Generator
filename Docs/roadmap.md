@@ -665,11 +665,16 @@ Built" above) for a dedicated later pass — ideally before Phase 9's economy en
 (crumbs payouts, shop purchases) go live, since those are exactly the kind of
 reward-granting endpoints worth rate-limiting hardest:
 
-- **Upstash-backed rate-limit storage** — better-auth's rate limiter is already on by
-  default in production, but its default storage is in-memory, which doesn't share state
-  across Vercel's separate serverless instances — weaker than it looks under real load.
-  Needs an Upstash Redis account wired up as `secondaryStorage`, plus explicit limits on
-  auth and (once they exist) reward/economy endpoints.
+> [!NOTE]
+> **Upstash-backed rate-limit storage** ✅ Shipped (`feature/upstash-rate-limiting`, PR #16)
+> — better-auth's rate limiter now reads/writes through a `rateLimit.customStorage` Redis
+> implementation (not `secondaryStorage`, which would've made Upstash a hard dependency for
+> session reads too — see [rate-limit-storage.md](../src/features/auth/rate-limit-storage.md)
+> for why), with an atomic `INCR`+`EXPIRE` `consume` path and fail-open behavior on Redis
+> errors. Falls back to better-auth's in-memory default when `UPSTASH_REDIS_REST_URL`/
+> `_TOKEN` (or Vercel's `KV_REST_API_URL`/`_TOKEN`) aren't set. Explicit limits on
+> reward/economy endpoints are still a Phase 9 prerequisite once those endpoints exist.
+
 - **Nonce-based CSP** — the other standard security-header addition, deferred because it
   needs the two inline pre-paint `<script>` tags in `layout.tsx` (theme + reduced-motion
   flash prevention) to each carry a matching per-request nonce, which also forces those
