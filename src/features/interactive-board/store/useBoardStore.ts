@@ -292,6 +292,10 @@ export const useBoardStore = create<BoardState>()(
           status: solved ? 'solved' : 'playing',
           mistakes: mistakes + mistakeIncrement,
         });
+        // A completed grid is view-only — freeze it. Clearing the undo/redo history disables both
+        // the Numpad buttons (empty history → not enabled) and the Cmd/Ctrl+Z shortcut (no-op on
+        // empty history), so the finished grid can't be mutated back out of its solved state.
+        if (solved) useBoardStore.temporal.getState().clear();
       },
 
       clearCell: () => {
@@ -336,6 +340,8 @@ export const useBoardStore = create<BoardState>()(
         }
         const solved = nextGrid.every((row, rr) => row.every((v, cc) => v === solution[rr][cc]));
         set({ grid: nextGrid, candidates: nextCandidates, selectedCell: target, status: solved ? 'solved' : 'playing' });
+        // Freeze a completed grid (view-only) — see the note in `inputDigit`.
+        if (solved) useBoardStore.temporal.getState().clear();
       },
 
       togglePencilMode: () => set(state => ({ pencilMode: !state.pencilMode })),

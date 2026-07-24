@@ -114,7 +114,12 @@ inputDigit(digit):
     matches the grayed-out numpad button) — clear its pencil marks, and strip the
     digit from every peer's candidates. A placement that doesn't match the solution
     increments `mistakes`. Then, if the grid equals the solution, status = solved
-    (which locks the board — the play actions all require status === 'playing').
+    (which locks the board — the play actions all require status === 'playing'),
+    AND the undo/redo history is cleared so a completed grid is truly view-only:
+    the play actions already block edits, but undo/redo call `temporal` directly
+    (Numpad buttons + Cmd/Ctrl+Z), so clearing the history is the single chokepoint
+    that stops either from mutating a finished grid back out of its solved state.
+    `hint()` does the same on completion.
 
 clearCell(): empty the selected non-given cell (value + candidates).
 

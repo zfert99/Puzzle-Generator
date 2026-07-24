@@ -189,6 +189,25 @@ describe('undo/redo (zundo)', () => {
     expect(s.grid[0][0]).toBe(0);   // move reverted
     expect(s.elapsedTime).toBe(2);  // clock NOT rewound
   });
+
+  it('freezes a completed grid — undo cannot un-solve it', () => {
+    const store = useBoardStore.getState();
+    // Solve the two remaining holes: (0,0)=1, (0,1)=2.
+    store.selectCell(0, 0);
+    store.inputDigit(1);
+    store.selectCell(0, 1);
+    store.inputDigit(2);
+    expect(useBoardStore.getState().status).toBe('solved');
+
+    // The undo/redo history is cleared on completion, so an undo (button OR Cmd/Ctrl+Z) no-ops.
+    expect(useBoardStore.temporal.getState().pastStates).toHaveLength(0);
+    useBoardStore.temporal.getState().undo();
+
+    const s = useBoardStore.getState();
+    expect(s.grid[0][0]).toBe(1); // still solved — not reverted
+    expect(s.grid[0][1]).toBe(2);
+    expect(s.status).toBe('solved');
+  });
 });
 
 describe('timer', () => {
