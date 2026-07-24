@@ -1,9 +1,9 @@
 /**
- * Cage-combination enumeration — the arithmetic core of KenKen.
+ * Cage-combination enumeration — the arithmetic core of Calcudoku.
  *
- * A KenKen cage of `size` cells, operator `op`, and target `target` on an N×N grid can hold any
+ * A Calcudoku cage of `size` cells, operator `op`, and target `target` on an N×N grid can hold any
  * **multiset** of `size` digits from 1..N that produces `target` under `op`. Multisets — NOT
- * distinct-digit sets like Killer — because KenKen permits a digit to repeat within a cage (as
+ * distinct-digit sets like Killer — because Calcudoku permits a digit to repeat within a cage (as
  * long as the repeats don't share a row/column). This is the single most common source of solver
  * bugs when porting from Killer, and the reason this is its own gated slice (K1).
  *
@@ -15,11 +15,11 @@
  * span 2+ rows and columns can. Geometric placement legality is a separate second layer enforced
  * at the SOLVER's placement check (K2). Consequences for the masks below:
  *
- * - `kenkenUnionMask` **over-approximates** (upper bound): geometry only ever *removes* multisets,
+ * - `calcUnionMask` **over-approximates** (upper bound): geometry only ever *removes* multisets,
  *   so the true set of usable digits is a subset. Safe for candidate pruning — it never wrongly
  *   excludes a digit — but for a line-shaped cage it over-counts (includes digits reachable only
  *   through repeat-only multisets that geometry forbids).
- * - `kenkenGuaranteedMask` **under-approximates** (lower bound): removing multisets can only make
+ * - `calcGuaranteedMask` **under-approximates** (lower bound): removing multisets can only make
  *   a digit *more* guaranteed, never less, so a digit guaranteed over ALL multisets stays
  *   guaranteed over the geometrically-valid subset. Safe for elimination.
  *
@@ -35,10 +35,10 @@
  * non-decreasing walk (bounded by cage size, which the generator caps small), so first-touch cost
  * is negligible and every later read is a `Map` hit.
  *
- * See `kenken-combinations.md` for the "why".
+ * See `calc-combinations.md` for the "why".
  */
 
-import type { KenKenOperator } from './kenken-types';
+import type { CalcOperator } from './calc-types';
 
 /** An ascending MULTISET of digits, e.g. `[1, 1, 2, 3]` (repeats allowed). Frozen — never mutate. */
 export type Multiset = readonly number[];
@@ -152,7 +152,7 @@ function enumerateDiv(target: number, maxDigit: number): number[][] {
  * `sub`/`div` by construction (any other size returns empty). Single-cell `add`/`mul` naturally
  * yield `[[target]]` when `target ≤ N`, which is exactly a given.
  */
-function enumerate(op: KenKenOperator, size: number, target: number, maxDigit: number): number[][] {
+function enumerate(op: CalcOperator, size: number, target: number, maxDigit: number): number[][] {
   switch (op) {
     case 'add':
       return enumerateAdd(size, target, maxDigit);
@@ -173,7 +173,7 @@ const EMPTY_ENTRY: ComboEntry = Object.freeze({
   guaranteedMask: 0,
 });
 
-function entryFor(op: KenKenOperator, size: number, target: number, maxDigit: number): ComboEntry {
+function entryFor(op: CalcOperator, size: number, target: number, maxDigit: number): ComboEntry {
   if (size < 1 || size > maxDigit * maxDigit || target < 0 || maxDigit < 1) return EMPTY_ENTRY;
   const key = `${maxDigit}:${op}:${size}:${target}`;
   const cached = MEMO.get(key);
@@ -203,12 +203,12 @@ function entryFor(op: KenKenOperator, size: number, target: number, maxDigit: nu
  * hold the repeat-bearing entries — the solver enforces that (see the two-layer note at the top).
  *
  * @example
- * kenkenCombosFor('mul', 4, 6, 6)  // [[1,1,1,6],[1,1,2,3]]  — the classic `6×` 4-cell case
- * kenkenCombosFor('sub', 2, 3, 4)  // [[1,4]]                 — `3−` on 4×4
- * kenkenCombosFor('div', 2, 3, 4)  // [[1,3]]                 — `3÷` on 4×4
+ * calcCombosFor('mul', 4, 6, 6)  // [[1,1,1,6],[1,1,2,3]]  — the classic `6×` 4-cell case
+ * calcCombosFor('sub', 2, 3, 4)  // [[1,4]]                 — `3−` on 4×4
+ * calcCombosFor('div', 2, 3, 4)  // [[1,3]]                 — `3÷` on 4×4
  */
-export function kenkenCombosFor(
-  op: KenKenOperator,
+export function calcCombosFor(
+  op: CalcOperator,
   size: number,
   target: number,
   maxDigit: number,
@@ -222,8 +222,8 @@ export function kenkenCombosFor(
  * can only shrink the true set, so this never wrongly excludes a digit but over-counts for
  * line-shaped cages. `0` means the clue is impossible.
  */
-export function kenkenUnionMask(
-  op: KenKenOperator,
+export function calcUnionMask(
+  op: CalcOperator,
   size: number,
   target: number,
   maxDigit: number,
@@ -237,10 +237,10 @@ export function kenkenUnionMask(
  * eliminate a guaranteed digit from the cage's peers. `0` means nothing is forced.
  *
  * @example
- * kenkenGuaranteedMask('mul', 4, 6, 6)  // {1}  — both {1,1,1,6} and {1,1,2,3} contain a 1
+ * calcGuaranteedMask('mul', 4, 6, 6)  // {1}  — both {1,1,1,6} and {1,1,2,3} contain a 1
  */
-export function kenkenGuaranteedMask(
-  op: KenKenOperator,
+export function calcGuaranteedMask(
+  op: CalcOperator,
   size: number,
   target: number,
   maxDigit: number,
@@ -249,6 +249,6 @@ export function kenkenGuaranteedMask(
 }
 
 /** Test/diagnostic hook: clear the memo so a test can measure cold-build behaviour. */
-export function _clearKenKenComboMemo(): void {
+export function _clearCalcComboMemo(): void {
   MEMO.clear();
 }

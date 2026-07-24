@@ -524,7 +524,7 @@ work exists yet.
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/kenken`) — the Killer branch is retired
-> **Status:** 🚧 In Progress — **K0 (boxless-grid foundation) done** ([walkthrough](kenken-k0-walkthrough.md)); K1–K5 next. Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (codebase reuse audit + [external plan review](research/kenken-plan-review.md), verdict GREEN)
+> **Status:** 🚧 In Progress — **K0 (boxless-grid foundation) + K1 (multiset tables + operator model) done** ([walkthrough](calcudoku-walkthrough.md)); K2–K5 next. Product named **Calcudoku** (menu "Calc"). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (codebase reuse audit + [external plan review](research/kenken-plan-review.md), verdict GREEN)
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) · [kenken-plan-review.md](research/kenken-plan-review.md)
 > **Estimated effort:** Medium-Large (the Killer machinery halves it)
 > **Prerequisite:** Phase 6 (shared cage engine, scoring, daily registry)

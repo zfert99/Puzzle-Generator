@@ -5,8 +5,8 @@ import {
   operatorAllowedForCageSize,
   hasAssignableOperator,
   OPERATOR_SYMBOL,
-  type KenKenOperator,
-} from './kenken-types';
+  type CalcOperator,
+} from './calc-types';
 
 describe('computeTarget', () => {
   it('add is the sum, mul is the product (any cage size)', () => {
@@ -30,7 +30,7 @@ describe('computeTarget', () => {
 
 describe('operatorAllowedForCageSize', () => {
   it('single-cell cages are givens — no operator is allowed', () => {
-    for (const op of ['add', 'sub', 'mul', 'div'] as KenKenOperator[]) {
+    for (const op of ['add', 'sub', 'mul', 'div'] as CalcOperator[]) {
       expect(operatorAllowedForCageSize(op, 1)).toBe(false);
     }
   });

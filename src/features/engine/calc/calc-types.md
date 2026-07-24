@@ -1,11 +1,11 @@
-# KenKen Types & Operator Model (`kenken-types.ts`)
+# Calcudoku Types & Operator Model (`calc-types.ts`)
 
-The vocabulary layer for KenKen (Calcudoku / Mathdoku): the operator type, the cage shape, and
+The vocabulary layer for Calcudoku (generically also "Mathdoku"): the operator type, the cage shape, and
 the two invariants the operator model enforces. Everything arithmetic (which multisets hit a
-target) lives in [`kenken-combinations.ts`](./kenken-combinations.md); this file is the shared
-type surface the rest of the KenKen engine builds on.
+target) lives in [`calc-combinations.ts`](./calc-combinations.md); this file is the shared
+type surface the rest of the Calcudoku engine builds on.
 
-## What KenKen is (and how it differs from Killer)
+## What Calcudoku is (and how it differs from Killer)
 
 An N×N **Latin square** — 1..N once per row and column, **no boxes** — partitioned into cages,
 each showing a target and an operator (`+ − × ÷`). The defining divergence from Killer Sudoku: a
@@ -15,7 +15,7 @@ slice.
 
 ## The operator model
 
-### `KenKenOperator = 'add' | 'sub' | 'mul' | 'div'`
+### `CalcOperator = 'add' | 'sub' | 'mul' | 'div'`
 
 **Why named, not symbol-keyed:** `'add'` reads unambiguously and `'div'` never visually collides
 with the `/` operator in code. Display glyphs (`+ − × ÷`) live in `OPERATOR_SYMBOL` and are a K5
@@ -63,7 +63,7 @@ silently wedges — a "sub only" or "div only" set is unsatisfiable for any cage
 need `add` or `mul`). This helper is the assertion that guards against that. Single-cell givens
 need no operator, so they always pass.
 
-## `KenKenCage`
+## `CalcCage`
 
 `{ id, op, target, cells }` — cells are FLAT indices (`row * size + col`), the same convention as
 Killer's `Cage`. A single-cell cage is a given (its `target` is the digit, `op` irrelevant). This
@@ -71,6 +71,7 @@ is the shape the solver, generator, and renderers (K2–K5) consume.
 
 ## Naming / trademark
 
-"KenKen" is a trademark of KenKen Puzzle LLC, so it is used only *descriptively* in code and docs.
-The user-facing product name (tentatively "MathCage") is a K5 surfacing decision; the engine
-modules use the generic descriptive term `kenken` internally.
+The product is **Calcudoku**, shown in menus as **"Calc"** — alongside **"Classic"** (Sudoku) and
+**"Killer"** (Killer Sudoku). The engine module directory and the board `variant` slug are both
+`calc`. "KenKen" is a trademark of KenKen Puzzle LLC and is avoided in shipping code/UI; "Calcudoku"
+and "Mathdoku" are the established generic names.
