@@ -9,7 +9,12 @@
  * See `cage-geometry.md` for the corner cases.
  */
 
-import type { Cage } from './killer-types';
+/** A cage as this geometry needs it: its cells plus the pre-formatted corner label. */
+export interface LabeledCage {
+  cells: number[];
+  /** Corner text — Killer's sum (`"12"`), Keisan's target+operator (`"12+"`, `"3÷"`). */
+  label: string;
+}
 
 export interface CageLine {
   x1: number;
@@ -22,7 +27,8 @@ export interface CageSum {
   /** Anchor cell column/row (the cage's lowest-indexed, top-left-most cell). */
   col: number;
   row: number;
-  value: number;
+  /** The corner label text (Killer sum / Keisan target+operator). */
+  label: string;
 }
 
 export interface CageOutline {
@@ -42,7 +48,7 @@ export interface CageOutline {
  *  - **reflex / inner** corner (in-line neighbour same cage, diagonal *inside*) → run PAST the edge
  *    by `inset` so this line meets the perpendicular border turning the corner (closes L-shapes).
  */
-export function computeCageOutline(cages: Cage[], size: number, inset = 0.09): CageOutline {
+export function computeCageOutline(cages: readonly LabeledCage[], size: number, inset = 0.09): CageOutline {
   const cellCage = new Array<number>(size * size).fill(-1);
   cages.forEach((cage, index) => {
     for (const cell of cage.cells) cellCage[cell] = index;
@@ -87,7 +93,7 @@ export function computeCageOutline(cages: Cage[], size: number, inset = 0.09): C
 
   const sums: CageSum[] = cages.map((cage) => {
     const anchor = Math.min(...cage.cells);
-    return { col: anchor % size, row: Math.floor(anchor / size), value: cage.sum };
+    return { col: anchor % size, row: Math.floor(anchor / size), label: cage.label };
   });
 
   return { lines, sums };

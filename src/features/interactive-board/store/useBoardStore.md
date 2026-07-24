@@ -34,11 +34,17 @@ free play's `errorHighlight` setting would. It's per-game session state (persist
 
 ### Why `variant` + `cages`
 
-`startNewGame` accepts a classic `SudokuPuzzle` *or* a `KillerPuzzle` (detected by `'cages' in
-puzzle`) and records `variant: 'classic' | 'killer'` plus the `cages`. The board reads these to
-render the cage overlay; `inputDigit` additionally strips a placed digit from its **cage-mates'**
-pencil marks (a cage can't repeat a digit — the solution already encodes this, so a repeat still
-counts as a mistake; this just keeps candidates honest). Both are persisted so a Killer resumes.
+`startNewGame` accepts a classic `SudokuPuzzle`, a `KillerPuzzle`, or a `CalcPuzzle` (Keisan) and
+records `variant: 'classic' | 'killer' | 'calc'` plus normalized `cages`. **The variant is a real
+discriminant, not duck-typing:** killer/calc carry an explicit `variant` tag (classic has none), so
+`'variant' in puzzle ? puzzle.variant : 'classic'` distinguishes all three — the old
+`'cages' in puzzle` couldn't tell killer from calc (both have cages). Cages are normalized to
+`BoardCage = { id, cells, label }` at game start (Killer label = sum `"12"`; Keisan label =
+target+operator `"12+"`/`"3÷"`, or bare value for a single-cell given), so the overlay, `cellToCage`,
+and pencil-stripping are variant-agnostic. **Keisan uses a boxless `config`** (`calcGridConfig`,
+`hasBoxes: false`) even at 4/6, so peers are row/col-only and Cell.tsx draws no box borders (K0).
+`inputDigit`'s cage-mate pencil stripping stays **Killer-only** (Keisan permits repeats), gated on
+`variant === 'killer'`.
 
 ### Why `dailyDate`
 
@@ -130,11 +136,15 @@ store.
 
 ## BoardDifficulty and BoardPuzzle (Killer dailies)
 
-The store's `difficulty` is a `BoardDifficulty = Difficulty | 'killer'` — the literal
-`'killer'` is the daily Killer's key (free-play Killer games carry their engine difficulty
-like classic). `startNewGame` accepts `BoardPuzzle`, which widens the engine puzzle types'
-difficulty to `BoardDifficulty` so a daily row keyed `'killer'` starts directly. The
-killer-vs-classic branch is unchanged: presence of `cages` on the puzzle object.
+The store's `difficulty` is a `BoardDifficulty = Difficulty | DailyDifficulty` (daily keys like
+`'killer'`, `mini6-hard`). `startNewGame` accepts `BoardPuzzle` (classic / Killer / Calc unions),
+which widens each engine puzzle type's difficulty to `BoardDifficulty` so a daily row key starts
+directly. Variant selection is the explicit `variant`-tag discriminant described above, not a
+`'cages'`-presence check.
+
+The `persist` version was bumped to **4** for Keisan: `cages` changed from Killer's `{id, sum,
+cells}` to the normalized `BoardCage`, and `variant` gained `'calc'`, so a persisted v3 game (old
+cage shape, no `label`) is discarded rather than migrated.
 
 ## `cellToCage` (cage highlighting)
 

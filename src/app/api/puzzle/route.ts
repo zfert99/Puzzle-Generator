@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateSinglePuzzle } from '@/features/engine/services/generation.service';
 import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
+import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
+import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 
 const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
+const CALC_DIFFICULTIES: CalcDifficulty[] = ['easy', 'medium', 'hard'];
 
 // The engine is pure TypeScript, but keep this on the Node.js runtime for
 // consistency with the rest of the API and to leave room for future Node-only work.
@@ -57,6 +60,22 @@ export async function POST(req: NextRequest) {
       logger.info(
         { event: 'puzzle_success', variant: 'killer', difficulty, durationMs: Math.round(performance.now() - startTime) },
         'Generated interactive Killer puzzle',
+      );
+      return NextResponse.json(puzzle, { status: 200 });
+    }
+
+    // ---- Keisan branch (Calcudoku; 4×4 or 6×6, easy/medium/hard) ----
+    if (variant === 'calc') {
+      if (!CALC_DIFFICULTIES.includes(difficulty)) {
+        return NextResponse.json({ error: 'Keisan difficulty must be easy, medium, or hard' }, { status: 400 });
+      }
+      if (gridSize !== 4 && gridSize !== 6) {
+        return NextResponse.json({ error: 'Keisan grid size must be 4 or 6' }, { status: 400 });
+      }
+      const puzzle = generateCalcSudoku(difficulty as CalcDifficulty, { gridSize });
+      logger.info(
+        { event: 'puzzle_success', variant: 'calc', difficulty, gridSize, durationMs: Math.round(performance.now() - startTime) },
+        'Generated interactive Keisan puzzle',
       );
       return NextResponse.json(puzzle, { status: 200 });
     }

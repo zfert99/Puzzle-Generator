@@ -103,7 +103,11 @@ export function drawKillerGrid(
 
   // Cage outlines + sum positions come from the shared geometry (cell-unit coords → scale to px).
   // The inner/outer corner logic lives in `computeCageOutline`; here we just stroke the result.
-  const { lines, sums } = computeCageOutline(puzzle.cages, size, inset / cell);
+  const { lines, sums } = computeCageOutline(
+    puzzle.cages.map((cage) => ({ cells: cage.cells, label: String(cage.sum) })),
+    size,
+    inset / cell,
+  );
 
   doc.lineWidth(1.3).dash(2.4, { space: 1.6 }).strokeColor('black');
   for (const l of lines) {
@@ -116,7 +120,7 @@ export function drawKillerGrid(
   const sumFont = cell * 0.2;
   doc.fontSize(sumFont);
   for (const s of sums) {
-    const str = String(s.value);
+    const str = s.label;
     const x = startX + s.col * cell + 2.2;
     const y = startY + s.row * cell + 1.8;
     doc.rect(x - 0.6, y, doc.widthOfString(str) + 1.2, sumFont).fill('white');

@@ -3,11 +3,26 @@ import { temporal } from 'zundo';
 import { persist } from 'zustand/middleware';
 import type { SudokuPuzzle, GridSize, GridConfig, Difficulty } from '@/features/engine/sudoku';
 import { getGridConfig } from '@/features/engine/sudoku';
-import type { Cage, KillerPuzzle } from '@/features/engine/killer/killer-types';
+import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
+import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
+import { OPERATOR_SYMBOL } from '@/features/engine/calc/calc-types';
+import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import { computePeers, toggleBit } from '../board-utils';
 
-/** Sudoku or Killer — the board renders and plays either. */
-export type PuzzleVariant = 'classic' | 'killer';
+/** Classic Sudoku, Killer, or Keisan (display name; slug `calc`) — the board renders and plays all three. */
+export type PuzzleVariant = 'classic' | 'killer' | 'calc';
+
+/**
+ * A cage normalized for the board — cells plus a pre-formatted corner label (Killer's sum `"12"`,
+ * Keisan's target+operator `"12+"`/`"3÷"`). The board never touches cage arithmetic; both variants
+ * collapse to this shape at `startNewGame`, so cage rendering, `cellToCage`, and pencil-stripping
+ * are variant-agnostic (the one exception — Killer-only pencil stripping — is gated on `variant`).
+ */
+export interface BoardCage {
+  id: number;
+  cells: number[];
+  label: string;
+}
 
 import type { DailyDifficulty } from '@/lib/db/daily-row';
 
@@ -21,7 +36,8 @@ export type BoardDifficulty = Difficulty | DailyDifficulty;
 /** A puzzle the board can start — engine-generated or a daily row (whose key may be 'killer'). */
 export type BoardPuzzle =
   | (Omit<SudokuPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
-  | (Omit<KillerPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
+  | (Omit<KillerPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
+  | (Omit<CalcPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
 
 export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
 
@@ -42,10 +58,10 @@ export interface BoardState {
   solution: number[][];
   peers: number[][];       // flat peer indices per cell
 
-  /** 'classic' or 'killer'. Killer adds cage constraints + rendering. */
+  /** 'classic', 'killer', or 'calc' (Keisan). Killer/Keisan add cage constraints + rendering. */
   variant: PuzzleVariant;
-  /** Killer cages (empty for classic) — drives cage rendering and cage-mate pencil-mark stripping. */
-  cages: Cage[];
+  /** Normalized cages (empty for classic) — drives cage rendering and (Killer only) pencil stripping. */
+  cages: BoardCage[];
   /**
    * Flat cell index → cage id (−1 = no cage / classic). Precomputed at game start so each
    * cell's highlight selector answers "same cage as the selection?" in O(1) — scanning
@@ -107,13 +123,32 @@ const resolvePeers = (peers: number[][], config: GridConfig): number[][] =>
   peers.length === config.size * config.size ? peers : computePeers(config);
 
 /** Flat cell index → cage id map (−1 where uncaged); [] for classic games. */
-const buildCellToCage = (cages: Cage[], size: number): number[] => {
+const buildCellToCage = (cages: BoardCage[], size: number): number[] => {
   if (cages.length === 0) return [];
   const map = new Array<number>(size * size).fill(-1);
   for (const cage of cages) {
     for (const cell of cage.cells) map[cell] = cage.id;
   }
   return map;
+};
+
+/**
+ * Normalize a puzzle's cages to the board's label-carrying shape. Killer labels are the bare sum
+ * (`"12"`); Keisan labels are the target followed by its operator glyph (`"12+"`, `"3÷"`) — a
+ * single-cell Keisan cage is a given, so it shows just the value (no operator).
+ */
+const toBoardCages = (puzzle: BoardPuzzle, variant: PuzzleVariant): BoardCage[] => {
+  if (variant === 'killer') {
+    return (puzzle as KillerPuzzle).cages.map((cage) => ({ id: cage.id, cells: cage.cells, label: String(cage.sum) }));
+  }
+  if (variant === 'calc') {
+    return (puzzle as CalcPuzzle).cages.map((cage) => ({
+      id: cage.id,
+      cells: cage.cells,
+      label: cage.cells.length === 1 ? String(cage.target) : `${cage.target}${OPERATOR_SYMBOL[cage.op]}`,
+    }));
+  }
+  return [];
 };
 
 const initialConfig = getGridConfig(9);
@@ -157,8 +192,15 @@ export const useBoardStore = create<BoardState>()(
 
       startNewGame: (puzzle: BoardPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
         const size = puzzle.gridSize as GridSize;
-        const config = getGridConfig(size);
-        const isKiller = 'cages' in puzzle;
+        // Real discriminant: killer/calc carry an explicit `variant` tag; classic (SudokuPuzzle)
+        // has none. This replaces the old `'cages' in puzzle` duck-typing, which couldn't tell
+        // killer from calc (both carry cages).
+        const variant: PuzzleVariant = 'variant' in puzzle ? puzzle.variant : 'classic';
+        // Keisan is Latin-square-only, so it uses a BOXLESS config even at 4/6 — that makes peers
+        // row/col-only (the box sentinel degenerates to the row) and turns off Cell.tsx's box
+        // borders (K0's `hasBoxes` gate).
+        const config = variant === 'calc' ? calcGridConfig(size) : getGridConfig(size);
+        const cages = toBoardCages(puzzle, variant);
         set({
           gridSize: size,
           config,
@@ -167,9 +209,9 @@ export const useBoardStore = create<BoardState>()(
           givens: puzzle.grid.map(row => row.map(v => v !== 0)),
           solution: puzzle.solution.map(row => [...row]),
           peers: computePeers(config),
-          variant: isKiller ? 'killer' : 'classic',
-          cages: isKiller ? puzzle.cages : [],
-          cellToCage: isKiller ? buildCellToCage(puzzle.cages, size) : [],
+          variant,
+          cages,
+          cellToCage: buildCellToCage(cages, size),
           difficulty: puzzle.difficulty,
           selectedCell: null,
           pencilMode: false,
@@ -308,11 +350,12 @@ export const useBoardStore = create<BoardState>()(
         // Actions are dropped by JSON serialization and re-supplied by the creator;
         // peers are recomputed on rehydration rather than stored.
         name: 'sudoku-board',
-        // v3 (K0): `GridConfig` gained `hasBoxes`. A persisted pre-K0 `config` lacks it, which
-        // would rehydrate as `undefined` → falsy → phantom boxless rendering (no thick borders)
-        // on a 4/6/9 board. Saved games are ephemeral, so discard the stale shape rather than
-        // migrate it — the initial config (with `hasBoxes`) takes over.
-        version: 3,
+        // v4 (Keisan K5): `cages` changed from Killer's `{id, sum, cells}` to the normalized
+        // `BoardCage` `{id, cells, label}`, and `variant` gained `'calc'`. A persisted v3 game has
+        // the old cage shape (no `label`), so its cage overlay would render blank labels. Saved
+        // games are ephemeral — discard rather than migrate (the `migrate` below resets to the
+        // config screen). v3 (K0) added `hasBoxes` to `config`; v2 added `mode`.
+        version: 4,
         // A saved game is ephemeral, so old persisted shapes aren't worth migrating — but a
         // version mismatch with NO migrate makes zustand log a console.error (surfaced as the
         // Next.js error overlay). Discard cleanly instead: drop the stale game and land the

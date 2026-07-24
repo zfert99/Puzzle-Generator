@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react';
 import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
+import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 
-type AnyPuzzle = SudokuPuzzle | KillerPuzzle;
+type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle;
 
 interface PuzzleRequest {
   difficulty: Difficulty;
   gridSize?: GridSize;
-  variant?: 'classic' | 'killer';
+  variant?: 'classic' | 'killer' | 'calc';
 }
 
 /**
