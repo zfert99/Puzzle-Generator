@@ -23,48 +23,43 @@ The uniqueness check is **belt-and-braces**: the logical solver is sound (only t
 puzzle it fully solves already has a unique solution. The exact-solver check stays as a guard against
 a technique bug, off the hot path.
 
-## Difficulty rides the score, not the tier
+## Difficulty rides SHAPE first, then the score (rebalanced)
 
-K3 measured that most small-cage Keisan puzzles solve at tiers 1–2, so the tier ceiling barely
-separates difficulties. The **two-factor score** (`calc-score.ts`) is the primary differentiator;
-`solveCap` is just a ceiling (4 for all v1 tiers). Bands are cut from **measured per-size
-distributions** and are **not comparable across sizes** — a "hard 4×4" is not a "hard 6×6" (both the
-plan and the external review call this out; 4×4 is compressed like 6×6 Killer).
+The v1 first cut leaned almost entirely on the score band, which left even "hard" givens-heavy and
+capped at 3-cell cages. Per `kenken-difficulty-calibration.md` (single-cell givens are "the single
+strongest lever"; cage size and combo-count are the next), difficulty now rides **shape** — givens,
+cage size, and gift-cage count — with the two-factor score refining *within* a shape. Bands are cut
+from **measured per-size distributions** and are **not comparable across sizes** (a "hard 4×4" ≠ a
+"hard 6×6").
 
-### Difficulty rides BOTH cage shape and score (rebalanced)
+### Shape levers per tier
 
-The first cut used `maxSize: 3` for every tier with generous single-cell-cage budgets, which made
-even "hard" feel small-caged and givens-heavy (6×6 hard averaged ~7 single-cell cages/puzzle and
-never produced a size-4 cage) — the same problem the Killer generator once had. The rebalance:
+| Lever | Easy | Medium | Hard |
+|---|---|---|---|
+| Operator palette | `+ − ÷` (no ×) | all four | all four |
+| Max cage size | 4×4: 2 · 6×6: 3 | 3 | 4×4: 3 · **6×6: 4** |
+| `minSize` (intentional singles) | 1 | 4×4: 1 · 6×6: 2 | 2 |
+| Single-cell givens (`min/maxSingles`) | 4×4: 2–4 · 6×6: 3–6 | ≤ 4×4: 2 · 6×6: 3 | **≤ 1** |
+| Gift-cage cap (`maxFootholds`) | — | — | 4×4: 2 · 6×6: 3 |
 
-- **Easy** keeps `minSize 1, maxSize 3` and generous givens — small cages + anchors for beginners.
-- **Medium/Hard** set `minSize 2` (no *intentional* single-cell givens — they now average ~0.7–1.1)
-  and raise `maxSize` to **4**, with `maxSizeBias` skewing harder tiers toward the big cages: 6×6
-  medium ~34% size-4, 6×6 hard ~50%. On the 16-cell **4×4** a size-4 cage is a quarter of the board,
-  so 4×4 medium stays `≤3` and only 4×4 hard gets size-4 (else medium/hard don't separate).
-- `maxSize: 4` was verified viable: uniqueness-verify stays well under the 50 ms budget (max ~36 ms
-  at heavy bias; Killer's maxSize-4 thrashing does not occur here — multiset pruning + node budget).
+- **`maxFootholds`** caps "gift" cages — a 2+-cell cage with exactly ONE valid multiset (`3−`={1,4}),
+  a free anchor. Fewer on hard so the solver must earn its progress (the `maxCombos` lever as a count).
+- **`maxCombosPerCage`** (available, unused in v1) is the ceiling form — caps any cage's ambiguity to
+  keep it solvable within `solveCap`.
 
-Measured bands (QuadOp), cut disjoint from the new per-size distributions:
+### Measured bands (post-rebalance)
 
-| Size | easy (p50) | medium (p50) | hard (p50) | Bands |
+| Size | Tier shape (score p5/p50/p95) | easy | medium | hard |
 |---|---|---|---|---|
-| 4×4 | 4.8 | 8.4 | 11.0 | easy `< 6` · medium `[6, 11)` · hard `≥ 11` |
-| 6×6 | 12.6 | 30.5 | 34.3 | easy `< 20` · medium `[20, 34)` · hard `≥ 34` |
+| 4×4 | easy 2.8/4.2/9.5 · med 3.6/7.5/13.7 · hard 5.9/10.8/21.7 | `< 5` | `[5, 9)` | `≥ 9` |
+| 6×6 | easy 11.6/20.6/35.7 · med 12.7/25.5/47.2 · hard 19.9/34.0/55.1 | `< 19` | `[19, 31)` | `≥ 31` |
 
-Bands are disjoint by construction. Recalibrate whenever the technique weights or shape gates change.
-
-## Shape gates: single-cell band + cage size
-
-- `minSingles`/`maxSingles` bound single-cell "given" cages. `max` (tight on medium/hard, ~1–2)
-  prevents givens-heavy trivial puzzles; `min` (easy only) keeps beginner boards from being
-  anchor-free. Combined with `minSize 2` on medium/hard, this is what killed the old givens flood.
-- `minSize`/`maxSize`/`maxSizeBias` shape the cage-size mix — the rebalance lever (above) that gives
-  hard its chunky size-4 cages.
+Disjoint by construction. Recalibrate whenever the technique weights or shape gates change.
 
 ## Gate (met, post-rebalance)
 
-Every band generates far under the 1 s budget (4×4 ~1–2 ms; 6×6 easy ~1 ms, medium ~15 ms, hard
-~29 ms avg / 166 ms max — the rare big-cage tail), **0 fails in 30**, and score ranges are
-**disjoint per size**. QuadOp is the only operator set in v1; SingleOp / DualOp / No-Op remain
-difficulty axes for a later slice.
+Every band generates **avg 1–16 ms** (max 66 ms — far under the 1 s budget), **0 fails in 20**, score
+ranges **disjoint per size**. The structural target holds: 6×6 hard averages **~0.7 single-cell givens
+and ~3.4 four-cell cages** per puzzle (was up to 7 givens, no size-4 cages). `maxSize: 4` verifies in
+~0.2 ms avg on 6×6 — no Killer-style thrash, thanks to the multiset pruning. No-Op / Mystery and
+Expert/Extreme (9×9) remain later slices.

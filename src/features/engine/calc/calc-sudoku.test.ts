@@ -60,6 +60,26 @@ describe('generateCalcSudoku', () => {
     });
   }
 
+  it('easy tiers use the +/−/÷ palette (no × — factor reasoning is a difficulty step)', () => {
+    for (const gridSize of [4, 6] as const) {
+      const p = generateCalcSudoku('easy', { gridSize });
+      expect(p.cages.every((c) => c.op !== 'mul')).toBe(true);
+    }
+  });
+
+  it('hard is structurally chunky: ~1 given and bigger cages (the rebalance)', () => {
+    // 6×6 hard should carry few single-cell givens and reach size-4 cages.
+    let totalSingles = 0;
+    let sawFourCell = false;
+    for (let i = 0; i < 6; i++) {
+      const p = generateCalcSudoku('hard', { gridSize: 6 });
+      totalSingles += p.cages.filter((c) => c.cells.length === 1).length;
+      if (p.cages.some((c) => c.cells.length === 4)) sawFourCell = true;
+    }
+    expect(totalSingles / 6).toBeLessThanOrEqual(1); // maxSingles: 1 on 6×6 hard
+    expect(sawFourCell).toBe(true); // maxSize: 4 on 6×6 hard
+  });
+
   it('bands are disjoint per size: easy < medium < hard by score (6×6)', () => {
     const scoreOf = (difficulty: CalcDifficulty) => {
       const p = generateCalcSudoku(difficulty, { gridSize: 6 });

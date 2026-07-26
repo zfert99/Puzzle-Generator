@@ -1,10 +1,13 @@
 # Keisan (Calcudoku) — Implementation Plan
 
-> **Status:** 📋 Planned (do not start without a fresh branch — Killer's branch is retired)
+> **Status:** 🚧 In Progress — engine K0–K4 + core surfaces K5 shipped + a measured difficulty
+> rebalance; next up **K6 (No-Op / Mystery)**, then **K7 (9×9 + 5-tier)**, plus the K5 daily-rotation
+> tail. Build log: [calcudoku/keisan walkthrough](keisan-walkthrough.md).
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
 > [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
 > [kenken-plan-review.md](research/kenken-plan-review.md) (external review of THIS plan —
-> verdict: GREEN, ready to start; the refinements it raised are folded in below)
+> verdict: GREEN) · [kenken-difficulty-calibration.md](research/kenken-difficulty-calibration.md)
+> (keen.c/KSudoku/billabob difficulty levers — drove the difficulty rebalance and the K6/K7 plan)
 > **Pattern source:** the Killer plans — this plan reuses their slice/gate discipline and,
 > deliberately, large parts of their code.
 
@@ -297,6 +300,37 @@ box-optional base instead of each rediscovering the coupling.
 - **Gate:** full battery + in-browser verification, both themes, both sizes (visual check
   handed to the user per the visual-check-handoff rule — including a boxless 5/7 board if that
   ladder shipped).
+
+### Difficulty rebalance ✅ Done (post-K5)
+
+> Playtesting found even "hard" was givens-heavy and small-caged. Per
+> [kenken-difficulty-calibration.md](research/kenken-difficulty-calibration.md), difficulty now
+> rides **shape first** (givens → **hard ~1**; cage size → **6×6 hard `maxSize: 4`**; easy drops `×`)
+> with the score band refining. New `maxFootholds`/`maxCombosPerCage` lever (the research's
+> "quantitative core," which Killer had dropped — it earns its keep here because Keisan's multiset
+> cages carry the ambiguity). Measured: `maxSize: 4` verifies ~0.2 ms avg on 6×6 (no Killer thrash);
+> 6×6 hard now ~0.7 givens + ~3.4 four-cell cages/puzzle; bands re-cut disjoint; gate met. See the
+> walkthrough's "Difficulty rebalance" section.
+
+### K6 — No-Op / Mystery mode 📋 Next
+
+An orthogonal **"Mystery" toggle** (selectable at any size/difficulty), NOT a 5th tier — matches the
+research + kenkenpuzzle.com/calcudoku.org practice ("surface it as its own labeled mode"). The cage
+shows only a target; the solver must deduce the operator too (3+ cells ⇒ + or ×). Real engine work,
+not a flag: (1) exact-solver cage pruning that **unions candidate multisets across every operator a
+target admits**, plus **uniqueness across all operator interpretations**; (2) a new logical-solver
+**operator-deduction technique** so no-op puzzles stay gradable/human-solvable; (3) generation that
+rejects operator-ambiguous puzzles. Rendering is trivial (the cage label is already a string — just
+omit the operator). Its own uniqueness + gradability gates.
+
+### K7 — 9×9 + the full 5-tier ladder 📋 After K6
+
+The natural home for **Expert/Extreme**. The difficulty-calibration research is **per-size
+normalized** ("Extreme = the hardest techniques *for that size*"), so a 9×9 ladder gets the top
+tiers; no-op can be part of what makes 9×9 Extreme brutal. 5×5/7×7 are already representable from K0,
+so a 4→5→6→7→9 ladder is open. Likely needs T5 solver techniques (chains/multi-cage) for the top
+tiers, and a fresh per-size band calibration. Small grids keep easy/med/hard (consistent with
+classic/Killer); the extra tiers live on the big grid.
 
 ## 4. Risks
 

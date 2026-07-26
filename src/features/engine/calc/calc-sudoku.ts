@@ -26,33 +26,53 @@ import {
 import { CalcSolver } from './calc-solver';
 import { CalcLogicalSolver, type CalcTier } from './calc-logical-solver';
 import { scoreCalcSolve } from './calc-score';
+import { calcCombosFor } from './calc-combinations';
 import type { CalcCage, CalcDifficulty, CalcOperator, CalcPuzzle } from './calc-types';
 
 const QUAD_OP: readonly CalcOperator[] = ['add', 'sub', 'mul', 'div'];
+const TRI_OP: readonly CalcOperator[] = ['add', 'sub', 'div']; // easy tiers: no × (factor reasoning is a difficulty step)
+
+// Score-band cuts (two-factor `final` score), placed on MEASURED distributions of each tier's SHAPE
+// config so the bands are disjoint per size. Recalibrate whenever weights or shape gates change.
+const SCORE_CUT_4_EASY_MED = 5;
+const SCORE_CUT_4_MED_HARD = 9;
+const SCORE_CUT_6_EASY_MED = 19;
+const SCORE_CUT_6_MED_HARD = 31;
 
 interface CalcDifficultyConfig {
-  /** Operators the generator may assign (a difficulty axis; QuadOp for all v1 tiers). */
+  /**
+   * Operators the generator may assign — a difficulty axis (the operator palette widens with
+   * difficulty). Easy = `+ − ÷` (× forces prime-factorization reasoning, a difficulty step, so it's
+   * gated to medium+); medium/hard = all four. See `kenken-difficulty-calibration.md`.
+   */
   activeOps: readonly CalcOperator[];
   minSize: number;
   maxSize: number;
-  /**
-   * Probability the cage generator draws `maxSize` instead of a uniform pick from
-   * `[minSize, maxSize]` — the lever that skews harder tiers toward big (size-4) cages. Higher =
-   * chunkier board. See the rebalance note in `calc-sudoku.md`.
-   */
-  maxSizeBias?: number;
   /** Logical-solver tier ceiling the puzzle must be solvable within. */
   solveCap: CalcTier;
   /**
-   * Single-cell-cage (given) count band — the review's min/max lever. `max` prevents degenerate
-   * givens-heavy puzzles; `min` (easy tiers) keeps beginner boards from being anchor-free.
+   * Single-cell-cage (given) count band — **the single strongest difficulty lever** (a given
+   * collapses candidates with no deduction). Hard uses ~1; easy allows several. `min` (easy) keeps
+   * beginner boards from being anchor-free.
    */
   minSingles?: number;
   maxSingles: number;
   /**
-   * Two-factor score band (`calc-score.ts`) the accepted puzzle must land in — the primary
-   * differentiator. DISJOINT per size, cut from measured distributions (recalibrate whenever the
-   * weights or shape gates change).
+   * "Foothold" (gift-cage) cap — a foothold is a 2+-cell cage with exactly ONE valid multiset
+   * (e.g. `3−` = {1,4}), a strong free anchor. The `maxCombos` lever from the research applied as a
+   * COUNT: harder tiers permit fewer gift cages so the solver must earn its progress. `undefined` =
+   * no cap.
+   */
+  maxFootholds?: number;
+  /**
+   * Ceiling on how many valid multisets ANY single cage may admit (the `maxCombos` lever as a
+   * ceiling). Bounds per-cage ambiguity so the puzzle stays solvable within `solveCap` (no
+   * bifurcation/T5) and generation yield stays healthy. `undefined` = no ceiling.
+   */
+  maxCombosPerCage?: number;
+  /**
+   * Two-factor score band (`calc-score.ts`) — the within-shape refinement. DISJOINT per size, cut
+   * from measured distributions (recalibrate whenever the weights or shape gates change).
    */
   scoreBand?: { min?: number; max?: number };
   /** Node budget for the belt-and-braces uniqueness check. */
@@ -60,30 +80,31 @@ interface CalcDifficultyConfig {
 }
 
 /**
- * 4×4 Keisan configs (rebalanced — see `calc-sudoku.md`). Difficulty rides BOTH cage shape and the
- * two-factor score: easy keeps small cages + givens (min1/max3); medium sheds intentional givens
- * (min2) with chunkier ≤3-cell cages; hard introduces **size-4 cages** (maxSize 4, biased) and near-
- * zero givens. On a 16-cell board a size-4 cage is a quarter of the grid, so medium stays ≤3 (else
- * medium/hard don't separate). Bands cut disjoint from the measured distributions (easy p50 4.8 /
- * medium p50 8.4 / hard p50 11.0).
+ * 4×4 Keisan (16 cells) — rebalanced per `kenken-difficulty-calibration.md`. Difficulty rides
+ * SHAPE first (givens, cage size, gift-cage count), then the score band refines. A size-4 cage is a
+ * quarter of a 4×4 board, so 4×4 stays ≤3 cells even on hard (size-4 waits for a future expert/9×9).
+ * Measured shape distributions (score p5/p50/p95): easy 2.8/4.2/9.5 (3.6 givens, all ≤2-cell),
+ * medium 3.6/7.5/13.7 (1.6 givens), hard 5.9/10.8/21.7 (0.6 givens). Cuts 5 / 9 → disjoint accepted
+ * ranges easy 2.4–4.6, medium 5.0–8.9, hard 9.1–30.5.
  */
 const DIFFICULTY_CONFIG_4: Record<CalcDifficulty, CalcDifficultyConfig> = {
-  easy: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 1, maxSingles: 5, scoreBand: { max: 6 } },
-  medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 2, scoreBand: { min: 6, max: 11 } },
-  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, maxSizeBias: 0.35, solveCap: 4, maxSingles: 1, scoreBand: { min: 11 }, verifyNodeBudget: 200_000 },
+  easy: { activeOps: TRI_OP, minSize: 1, maxSize: 2, solveCap: 4, minSingles: 2, maxSingles: 4, scoreBand: { max: SCORE_CUT_4_EASY_MED } },
+  medium: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, maxSingles: 2, scoreBand: { min: SCORE_CUT_4_EASY_MED, max: SCORE_CUT_4_MED_HARD } },
+  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 1, maxFootholds: 2, scoreBand: { min: SCORE_CUT_4_MED_HARD } },
 };
 
 /**
- * 6×6 Keisan configs (rebalanced). Both medium AND hard now carry **size-4 cages** — medium some
- * (~34%, bias 0.20), hard more (~50%, bias 0.50) — with min2 shedding the old givens flood (hard was
- * ~7 single-cell cages/puzzle, now ~0.7). Easy keeps min1/max3 + generous givens for beginners.
- * Bands disjoint from the measured distributions (easy p50 12.6 / medium p50 30.5 / hard p50 34.3);
- * cuts are per-size, never reused from 4×4.
+ * 6×6 Keisan (36 cells) — rebalanced. Hard gets **size-4 cages** (the de-risk showed maxSize-4
+ * verifies in ~0.2 ms avg — no Killer-style thrash — and yields ~26% four-cell cages) and ~1 given.
+ * Easy keeps small cages + several givens; `×` (factor reasoning) only from medium up. Measured
+ * shape distributions (score p5/p50/p95): easy 11.6/20.6/35.7 (5 givens), medium 12.7/25.5/47.2
+ * (1.3 givens), hard 19.9/34.0/55.1 (0.7 givens, ~26% four-cell). Cuts 19 / 31 → disjoint accepted
+ * ranges easy 8.1–18.9, medium 19.6–30.8, hard 32.0–77.8.
  */
 const DIFFICULTY_CONFIG_6: Record<CalcDifficulty, CalcDifficultyConfig> = {
-  easy: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 2, maxSingles: 10, scoreBand: { max: 20 } },
-  medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, maxSizeBias: 0.20, solveCap: 4, maxSingles: 2, scoreBand: { min: 20, max: 34 }, verifyNodeBudget: 200_000 },
-  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, maxSizeBias: 0.50, solveCap: 4, maxSingles: 1, scoreBand: { min: 34 }, verifyNodeBudget: 200_000 },
+  easy: { activeOps: TRI_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 3, maxSingles: 6, scoreBand: { max: SCORE_CUT_6_EASY_MED } },
+  medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 3, scoreBand: { min: SCORE_CUT_6_EASY_MED, max: SCORE_CUT_6_MED_HARD } },
+  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, solveCap: 4, maxSingles: 1, maxFootholds: 3, scoreBand: { min: SCORE_CUT_6_MED_HARD } },
 };
 
 const DIFFICULTY_CONFIGS: Record<4 | 6, Record<CalcDifficulty, CalcDifficultyConfig>> = {
@@ -91,12 +112,23 @@ const DIFFICULTY_CONFIGS: Record<4 | 6, Record<CalcDifficulty, CalcDifficultyCon
   6: DIFFICULTY_CONFIG_6,
 };
 
-/** Reject a cage set whose single-cell-cage count is out of the difficulty's band. */
-function shapeOk(cages: CalcCage[], config: CalcDifficultyConfig): boolean {
+/** Reject a cage set whose shape is wrong for the tier: given count, gift-cage count, or combo ceiling. */
+function shapeOk(cages: CalcCage[], config: CalcDifficultyConfig, gridSize: number): boolean {
   let singles = 0;
-  for (const cage of cages) if (cage.cells.length === 1) singles += 1;
+  let footholds = 0;
+  for (const cage of cages) {
+    const size = cage.cells.length;
+    if (size === 1) {
+      singles += 1;
+      continue;
+    }
+    const combos = calcCombosFor(cage.op, size, cage.target, gridSize).length;
+    if (combos === 1) footholds += 1;
+    if (config.maxCombosPerCage !== undefined && combos > config.maxCombosPerCage) return false;
+  }
   if (singles > config.maxSingles) return false;
   if (config.minSingles !== undefined && singles < config.minSingles) return false;
+  if (config.maxFootholds !== undefined && footholds > config.maxFootholds) return false;
   return true;
 }
 
@@ -137,15 +169,10 @@ export function generateCalcSudoku(
       fillGrid(solution, latinConfig);
     }
 
-    const shapes = generateCalcCageShapes(gridSize, {
-      minSize: config.minSize,
-      maxSize: config.maxSize,
-      maxSizeBias: config.maxSizeBias,
-      rng,
-    });
+    const shapes = generateCalcCageShapes(gridSize, { minSize: config.minSize, maxSize: config.maxSize, rng });
     const cages = assignCalcCages(shapes, solution, { activeOps: config.activeOps, rng });
     if (!cages) continue;
-    if (!shapeOk(cages, config)) continue;
+    if (!shapeOk(cages, config, gridSize)) continue;
 
     const result = new CalcLogicalSolver(cages, gridSize as GridSize).solve({ maxTier: config.solveCap });
     if (!result.solved) continue;

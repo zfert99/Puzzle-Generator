@@ -5,7 +5,9 @@
 > [implementation plan](kenken-implementation-plan.md); this doc records *what was actually built*
 > and the judgment calls made along the way. Append a new section as each slice (K2…) ships.
 >
-> **Status:** 🚧 In Progress — K0 ✅ · K1 ✅ · K2–K5 next · **Branch:** `feature/kenken`
+> **Status:** 🚧 In Progress — engine K0–K4 ✅ · surfaces K5 core ✅ (play/PDF/hub) · difficulty
+> rebalance ✅ · **next:** No-Op / Mystery mode (K6), then 9×9 + 5-tier (K7), plus the K5 daily-rotation
+> tail · **Branch:** `feature/kenken`
 
 ## Naming
 
@@ -248,24 +250,6 @@ fails in 40**, and score ranges are **disjoint per size**. 8 tests (well-formed 
 per size/difficulty, batch counts); full suite **299 green**. v1 is QuadOp only; SingleOp/DualOp and
 No-Op mode remain difficulty axes for a later slice.
 
-### K4b — Difficulty rebalance (bigger cages, fewer givens)
-
-The first K4 cut used `maxSize 3` for every tier with loose single-cell-cage budgets, so even hard
-felt small-caged and givens-heavy — 6×6 hard averaged **~7 single-cell cages/puzzle and never a
-size-4 cage** (the same issue Killer once had). Rebalanced after a measured sweep:
-
-- **Easy** unchanged in spirit — `minSize 1, maxSize 3`, generous givens (anchors for beginners).
-- **Medium/Hard** set `minSize 2` (no intentional givens → ~0.7–1.1/puzzle) and `maxSize 4`, with
-  `maxSizeBias` skewing harder: **6×6 medium ~34% size-4, hard ~50%**. On the 16-cell 4×4 a size-4
-  cage is a quarter of the board, so 4×4 medium stays ≤3 and only 4×4 hard (~39% size-4) gets them —
-  otherwise the two tiers don't separate.
-- `maxSize 4` was verified viable (uniqueness-verify max ~36 ms « 50 ms budget — no Killer-style
-  thrashing, thanks to multiset pruning + the node budget). Bands re-cut disjoint on the new
-  distributions (4×4 `<6 / [6,11) / ≥11`; 6×6 `<20 / [20,34) / ≥34`).
-
-**Gate:** 0 fails in 30; gen far under 1 s (6×6 hard avg 29 ms / max 166 ms); bands disjoint. Full
-suite green.
-
 ---
 
 ## K5 — Surfaces 🚧 (core done; daily rotation deferred)
@@ -315,3 +299,49 @@ PDF + hub already deliver the full Keisan experience; the daily is additive.
 
 299 tests green; typecheck / lint / markdownlint / `next build` clean. API + PDF verified via the
 running dev server. Board/generate/hub handed off for a visual check (both themes, 4×4 + 6×6).
+
+---
+
+## Difficulty rebalance ✅
+
+Playtesting flagged that even "hard" was givens-heavy and small-caged (the exact problem we hit with
+Killer). A new research doc ([kenken-difficulty-calibration.md](research/kenken-difficulty-calibration.md),
+`keen.c` + KSudoku + billabob) confirmed it and quantified the fix: single-cell givens are "the
+single strongest lever," cage size and combo-count next. K4's first cut leaned almost entirely on the
+score band, so the shapes never changed across tiers.
+
+### What changed
+
+- **Shape now leads, score refines.** Per-tier shape configs (`calc-sudoku.ts`):
+  givens taper (easy several → **hard ~1**), cage size climbs (**6×6 hard → `maxSize: 4`**; 4×4 stays
+  ≤3 — a size-4 cage is a quarter of the board), and easy drops `×` (`+ − ÷` — factor reasoning is a
+  difficulty step, gated to medium+).
+- **New `maxCombos`/foothold lever.** `maxFootholds` caps "gift" cages (2+-cell cages with exactly one
+  valid multiset, e.g. `3−`={1,4}) so hard can't lean on free anchors; `maxCombosPerCage` is the
+  ceiling form (available, unused in v1). This is the research's "quantitative core" lever, which
+  Killer had dropped as a no-op — it earns its keep here because Keisan's *multiset* cages are where
+  the ambiguity lives.
+- **Score bands re-cut** on the new measured distributions (4×4: `<5 / [5,9) / ≥9`; 6×6: `<19 /
+  [19,31) / ≥31`).
+
+### De-risk + result
+
+The one real risk was `maxSize: 4` verify-time (Killer's maxSize-4 thrashed at 6–160 **s**). Measured
+first: Keisan's multiset pruning verifies maxSize-4 6×6 in **~0.2 ms avg** — no thrash. Post-rebalance
+gate: every band **avg 1–16 ms** gen (max 66 ms), **0 fails in 20**, disjoint bands, and **6×6 hard
+now averages ~0.7 single-cell givens and ~3.4 four-cell cages** (was up to 7 givens, zero size-4).
+51 calc tests (added: easy-uses-no-`×`, hard-is-chunky).
+
+### Deliberately deferred (endorsed sequencing)
+
+- **K6 — No-Op / Mystery mode:** an orthogonal toggle (any size/difficulty), not a 5th tier. Needs
+  solver support for operator-union cage pruning, uniqueness-across-interpretations, and a new
+  operator-deduction grading technique — its own slice.
+- **K7 — 9×9 + the full 5-tier ladder:** where Expert/Extreme naturally live (per-size-normalized, per
+  the research). 5×5/7×7 are already representable from K0.
+
+---
+
+## K5 tail — daily rotation
+
+*Not started (see the K5 "Deferred" note above).*
