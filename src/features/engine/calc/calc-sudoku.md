@@ -32,34 +32,53 @@ cage size, and gift-cage count — with the two-factor score refining *within* a
 from **measured per-size distributions** and are **not comparable across sizes** (a "hard 4×4" ≠ a
 "hard 6×6").
 
-### Shape levers per tier
+### Shape levers per tier (full `keisan-difficulty-levers.md` spec)
 
 | Lever | Easy | Medium | Hard |
 |---|---|---|---|
-| Operator palette | `+ − ÷` (no ×) | all four | all four |
-| Max cage size | 4×4: 2 · 6×6: 3 | 3 | 4×4: 3 · **6×6: 4** |
-| `minSize` (intentional singles) | 1 | 4×4: 1 · 6×6: 2 | 2 |
-| Single-cell givens (`min/maxSingles`) | 4×4: 2–4 · 6×6: 3–6 | ≤ 4×4: 2 · 6×6: 3 | **≤ 1** |
-| Gift-cage cap (`maxFootholds`) | — | — | 4×4: 2 · 6×6: 3 |
+| Operator palette (`activeOps`) | `+ − ÷` (no ×) | all four | all four |
+| Operator mix (`operatorWeights`) | +-heavy (5/3/2) | even | **×-weighted (~55%)** |
+| Max cage size (`maxSize`) | 4×4: 2 · 6×6: 3 | 3 | 4×4: 4 · 6×6: 4 |
+| Single-cell givens (`min/maxSingles`) | 4×4: 2–4 · 6×6: 3–6 | ≤2 / ≤3 | **0** |
+| Gift-cage cap (`maxFootholds` × `giftBanLevel`) | `combos1`, uncapped | `twoCell` | `mulLowFactor`, ≤2/3 |
+| Per-cage combo ceiling (`maxCombosPerCage`) | 4×4: 3 · 6×6: 6 | 5 / 10 | 8 / 15 |
+| Technique floor (`techniqueFloor`) | — | — | `> T1` |
 
-- **`maxFootholds`** caps "gift" cages — a 2+-cell cage with exactly ONE valid multiset (`3−`={1,4}),
-  a free anchor. Fewer on hard so the solver must earn its progress (the `maxCombos` lever as a count).
-- **`maxCombosPerCage`** (available, unused in v1) is the ceiling form — caps any cage's ambiguity to
-  keep it solvable within `solveCap`.
+- **`giftBanLevel`** broadens what counts as a gift (near-freebie) cage with tier — `combos1`
+  (fully-determined) → `twoCell` (keen.c's degenerate 2-cell patterns) → `mulLowFactor` (× that
+  factors into ≤2 sets) — and `maxFootholds` caps the count. Harder tiers use both a broader
+  definition and a tighter cap, so freebies get scarce.
+- **`maxCombosPerCage`** bounds any single cage's ambiguity (keeps it solvable within `solveCap`).
+- **`minBentRatio`** (available, unused) — a bent cage (spans ≥2 rows AND columns) permits repeats →
+  more combinations → harder. Not gated on any tier: `maxSize: 4` already yields ~61% bent naturally,
+  so forcing a floor only halved the generation yield for no structural gain. Kept as a lever.
+- **`techniqueFloor`** is Tatham's tier gate: a fresh solve capped one tier down must FAIL, so the
+  tier is the *minimum* sufficient difficulty. Applied lightly (hard, `> T1`) because our solver's
+  tier ladder is coarse — see below.
 
-### Measured bands (post-rebalance)
+### Score band is the primary tier gate (coarse solver tiers)
 
-| Size | Tier shape (score p5/p50/p95) | easy | medium | hard |
-|---|---|---|---|---|
-| 4×4 | easy 2.8/4.2/9.5 · med 3.6/7.5/13.7 · hard 5.9/10.8/21.7 | `< 5` | `[5, 9)` | `≥ 9` |
-| 6×6 | easy 11.6/20.6/35.7 · med 12.7/25.5/47.2 · hard 19.9/34.0/55.1 | `< 19` | `[19, 31)` | `≥ 31` |
+Measured: our logical solver's `hardestTier` concentrates at **T1/T2** — medium and hard are both
+mostly T2; they differ by *how much* T2 work, which is the **score**, not the tier. So the two-factor
+score band is the primary separator (a HoDoKu weighted-sum model), with the hard `techniqueFloor: 1`
+as a light backstop. A stronger Tatham-style technique gate would need a richer solver (more distinct
+techniques, e.g. cage-line reduction as a separate tier) — a future K3 expansion.
+
+| Size | easy | medium | hard |
+|---|---|---|---|
+| 4×4 | `< 5` | `[5, 9)` | `≥ 9` |
+| 6×6 | `< 19` | `[19, 31)` | `≥ 31` |
 
 Disjoint by construction. Recalibrate whenever the technique weights or shape gates change.
 
-## Gate (met, post-rebalance)
+## Gate (met, full-spec)
 
-Every band generates **avg 1–16 ms** (max 66 ms — far under the 1 s budget), **0 fails in 20**, score
-ranges **disjoint per size**. The structural target holds: 6×6 hard averages **~0.7 single-cell givens
-and ~3.4 four-cell cages** per puzzle (was up to 7 givens, no size-4 cages). `maxSize: 4` verifies in
-~0.2 ms avg on 6×6 — no Killer-style thrash, thanks to the multiset pruning. No-Op / Mystery and
-Expert/Extreme (9×9) remain later slices.
+Every band generates **avg ≤ 78 ms** (6×6 hard the slowest, max ~245 ms — under the 1 s budget),
+**0 fails in 40**, score ranges **disjoint per size**. Structure: **6×6 hard carries 0 single-cell
+givens and ~4.7 four-cell cages, ~61% bent, ~55% `×`** (was up to 7 givens, no size-4 cages, uniform
+ops). `maxSize: 4` verifies ~0.2 ms avg — no Killer-style thrash, thanks to the multiset pruning.
+
+**Yield note:** 6×6 hard's accept rate is ~0.1% (the tightest tier — stacked shape + score + floor
+gates), but attempts are cheap (~0.07 ms; most are shape-rejected before the logical solve), so
+wall-clock stays ~78 ms avg. `maxAttempts` defaults to **40 000** so exhaustion is astronomically
+unlikely. No-Op / Mystery (K6) and 9×9 + 5-tier (K7) remain later slices; 5×5/7×7 deferred.

@@ -76,8 +76,28 @@ describe('generateCalcSudoku', () => {
       totalSingles += p.cages.filter((c) => c.cells.length === 1).length;
       if (p.cages.some((c) => c.cells.length === 4)) sawFourCell = true;
     }
-    expect(totalSingles / 6).toBeLessThanOrEqual(1); // maxSingles: 1 on 6×6 hard
+    expect(totalSingles / 6).toBeLessThanOrEqual(1); // maxSingles: 0 on 6×6 hard (allow slack)
     expect(sawFourCell).toBe(true); // maxSize: 4 on 6×6 hard
+  });
+
+  it('hard leans on × (operator-mix weighting) and bent cages', () => {
+    let mul = 0;
+    let multi = 0;
+    let bent = 0;
+    for (let i = 0; i < 6; i++) {
+      const p = generateCalcSudoku('hard', { gridSize: 6 });
+      for (const c of p.cages) {
+        if (c.op === 'mul') mul += 1;
+        if (c.cells.length >= 2) {
+          multi += 1;
+          const rows = new Set(c.cells.map((cell) => Math.floor(cell / 6)));
+          const cols = new Set(c.cells.map((cell) => cell % 6));
+          if (rows.size >= 2 && cols.size >= 2) bent += 1;
+        }
+      }
+    }
+    expect(mul / multi).toBeGreaterThan(0.3); // ×-weighted (doc: ≥30% on hard)
+    expect(bent / multi).toBeGreaterThan(0.4); // naturally bent-heavy from maxSize-4 (not gated)
   });
 
   it('bands are disjoint per size: easy < medium < hard by score (6×6)', () => {

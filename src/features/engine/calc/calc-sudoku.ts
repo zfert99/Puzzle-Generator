@@ -65,11 +65,34 @@ interface CalcDifficultyConfig {
    */
   maxFootholds?: number;
   /**
+   * Which clue patterns count toward the `maxFootholds` gift cap (the definition broadens with
+   * tier). Default `combos1`. See `GiftBanLevel`.
+   */
+  giftBanLevel?: GiftBanLevel;
+  /**
+   * Minimum fraction of MULTI-cell cages that must be "bent" (span ≥2 rows and columns). Bent cages
+   * permit repeats → more combinations → harder, so hard tiers demand a floor. `undefined` = no floor.
+   */
+  minBentRatio?: number;
+  /**
+   * Technique FLOOR (Tatham's tier gate): the puzzle must NOT be solvable using only techniques ≤
+   * this tier — i.e. it must genuinely require something harder than the tier below. This is what
+   * keeps tiers from bleeding into each other (a "hard" that a "medium" solver cracks isn't hard).
+   * `undefined` = no floor (easy).
+   */
+  techniqueFloor?: CalcTier;
+  /**
    * Ceiling on how many valid multisets ANY single cage may admit (the `maxCombos` lever as a
    * ceiling). Bounds per-cage ambiguity so the puzzle stays solvable within `solveCap` (no
    * bifurcation/T5) and generation yield stays healthy. `undefined` = no ceiling.
    */
   maxCombosPerCage?: number;
+  /**
+   * Operator-MIX weights (the difficulty-calibration doc's target distribution): easy leans on
+   * `+ − ÷` (~50/30/20), medium is even, hard is `×`-weighted (× ≥ ~30% forces factor reasoning).
+   * A soft bias applied per cage, not a hard constraint. `undefined` = uniform.
+   */
+  operatorWeights?: Partial<Record<CalcOperator, number>>;
   /**
    * Two-factor score band (`calc-score.ts`) — the within-shape refinement. DISJOINT per size, cut
    * from measured distributions (recalibrate whenever the weights or shape gates change).
@@ -79,32 +102,74 @@ interface CalcDifficultyConfig {
   verifyNodeBudget?: number;
 }
 
+// Operator-mix weight presets (see `operatorWeights`): easy 5/3/2 over +/−/÷; hard pushes ×.
+const EASY_OP_WEIGHTS: Partial<Record<CalcOperator, number>> = { add: 5, sub: 3, div: 2 };
+const HARD_OP_WEIGHTS: Partial<Record<CalcOperator, number>> = { mul: 4, add: 2, sub: 1, div: 1 };
+
 /**
- * 4×4 Keisan (16 cells) — rebalanced per `kenken-difficulty-calibration.md`. Difficulty rides
- * SHAPE first (givens, cage size, gift-cage count), then the score band refines. A size-4 cage is a
- * quarter of a 4×4 board, so 4×4 stays ≤3 cells even on hard (size-4 waits for a future expert/9×9).
- * Measured shape distributions (score p5/p50/p95): easy 2.8/4.2/9.5 (3.6 givens, all ≤2-cell),
- * medium 3.6/7.5/13.7 (1.6 givens), hard 5.9/10.8/21.7 (0.6 givens). Cuts 5 / 9 → disjoint accepted
- * ranges easy 2.4–4.6, medium 5.0–8.9, hard 9.1–30.5.
+ * Gift-clue ban level — which clue patterns count as a "gift" (near-freebie). The definition
+ * broadens with tier (cumulative): `combos1` = only fully-determined sets; `twoCell` adds keen.c's
+ * degenerate 2-cell patterns; `mulLowFactor` adds `×` clues that factor into ≤ 2 sets. Harder tiers
+ * use a broader definition AND a tighter `maxFootholds` count, so freebies get scarce.
+ */
+type GiftBanLevel = 'combos1' | 'twoCell' | 'mulLowFactor';
+
+/** Is a multi-cell cage a "gift" clue at the given ban level? (keen.c patterns; see the doc.) */
+function isGiftCage(cage: CalcCage, gridSize: number, level: GiftBanLevel): boolean {
+  const size = cage.cells.length;
+  if (size < 2) return false; // single-cell givens are handled by the singles band
+  const N = gridSize;
+  const combos = calcCombosFor(cage.op, size, cage.target, N).length;
+  if (combos <= 1) return true; // fully-determined multiset — banned at every level
+  if (level === 'combos1') return false;
+  if (size === 2) {
+    // keen.c 2-cell freebies: + with tiny/huge sums, − with the max difference, ÷ with a big quotient.
+    if (cage.op === 'add' && (cage.target <= 4 || cage.target >= 2 * N - 2)) return true;
+    if (cage.op === 'sub' && cage.target === N - 1) return true;
+    if (cage.op === 'div' && cage.target > N / 2) return true;
+  }
+  if (level === 'twoCell') return false;
+  if (cage.op === 'mul' && combos <= 2) return true; // × that factors into ≤2 sets ≈ a given
+  return false;
+}
+
+/**
+ * Is a cage "bent" — does it span ≥2 rows AND ≥2 columns? A straight (single-row/column) cage
+ * can't hold repeats (Latin rule), so its combinations are all distinct-digit sets → fewer, easier;
+ * a bent cage permits repeats → more combinations → harder. Harder tiers want a higher bent ratio.
+ */
+function isBentCage(cells: number[], gridSize: number): boolean {
+  const rows = new Set(cells.map((c) => Math.floor(c / gridSize)));
+  const cols = new Set(cells.map((c) => c % gridSize));
+  return rows.size >= 2 && cols.size >= 2;
+}
+
+/**
+ * 4×4 Keisan (16 cells) — full lever spec (`Docs/research/keisan-difficulty-levers.md`, see also
+ * `calc-sudoku.md`). Difficulty rides SHAPE first (givens → hard 0; cage size; gift-cage cap; combo
+ * ceiling; operator palette + mix), score band refines. Cuts 5 / 9 (measured, disjoint). 4×4 hard
+ * takes `maxSize: 4` per the doc (a size-4 cage is a quarter of the board — the doc flags 4×4 hard as
+ * the tier most likely to need adjustment; kept per playtest OK).
  */
 const DIFFICULTY_CONFIG_4: Record<CalcDifficulty, CalcDifficultyConfig> = {
-  easy: { activeOps: TRI_OP, minSize: 1, maxSize: 2, solveCap: 4, minSingles: 2, maxSingles: 4, scoreBand: { max: SCORE_CUT_4_EASY_MED } },
-  medium: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, maxSingles: 2, scoreBand: { min: SCORE_CUT_4_EASY_MED, max: SCORE_CUT_4_MED_HARD } },
-  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 1, maxFootholds: 2, scoreBand: { min: SCORE_CUT_4_MED_HARD } },
+  easy: { activeOps: TRI_OP, minSize: 1, maxSize: 2, solveCap: 4, minSingles: 2, maxSingles: 4, maxCombosPerCage: 3, operatorWeights: EASY_OP_WEIGHTS, giftBanLevel: 'combos1', scoreBand: { max: SCORE_CUT_4_EASY_MED } },
+  medium: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, maxSingles: 2, maxCombosPerCage: 5, giftBanLevel: 'twoCell', scoreBand: { min: SCORE_CUT_4_EASY_MED, max: SCORE_CUT_4_MED_HARD } },
+  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, solveCap: 4, maxSingles: 0, maxFootholds: 2, maxCombosPerCage: 8, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 1, scoreBand: { min: SCORE_CUT_4_MED_HARD } },
 };
 
 /**
- * 6×6 Keisan (36 cells) — rebalanced. Hard gets **size-4 cages** (the de-risk showed maxSize-4
- * verifies in ~0.2 ms avg — no Killer-style thrash — and yields ~26% four-cell cages) and ~1 given.
- * Easy keeps small cages + several givens; `×` (factor reasoning) only from medium up. Measured
- * shape distributions (score p5/p50/p95): easy 11.6/20.6/35.7 (5 givens), medium 12.7/25.5/47.2
- * (1.3 givens), hard 19.9/34.0/55.1 (0.7 givens, ~26% four-cell). Cuts 19 / 31 → disjoint accepted
- * ranges easy 8.1–18.9, medium 19.6–30.8, hard 32.0–77.8.
+ * 6×6 Keisan (36 cells) — full lever spec (the flagship size; calibrate here first). Hard: **0
+ * givens, `maxSize: 4`** (~4.7 four-cell cages/puzzle, verifies ~0.2 ms avg — no Killer thrash),
+ * ×-weighted, ~61% bent, `maxCombos ≤ 15`, gift cap 3, `techniqueFloor > T1`. Easy keeps small cages
+ * + several givens, `+ − ÷` only. Cuts 19 / 31 (measured, disjoint). Gen ≤ ~104 ms avg on hard.
  */
 const DIFFICULTY_CONFIG_6: Record<CalcDifficulty, CalcDifficultyConfig> = {
-  easy: { activeOps: TRI_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 3, maxSingles: 6, scoreBand: { max: SCORE_CUT_6_EASY_MED } },
-  medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 3, scoreBand: { min: SCORE_CUT_6_EASY_MED, max: SCORE_CUT_6_MED_HARD } },
-  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, solveCap: 4, maxSingles: 1, maxFootholds: 3, scoreBand: { min: SCORE_CUT_6_MED_HARD } },
+  easy: { activeOps: TRI_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 3, maxSingles: 6, maxCombosPerCage: 6, operatorWeights: EASY_OP_WEIGHTS, giftBanLevel: 'combos1', scoreBand: { max: SCORE_CUT_6_EASY_MED } },
+  medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 3, maxCombosPerCage: 10, giftBanLevel: 'twoCell', scoreBand: { min: SCORE_CUT_6_EASY_MED, max: SCORE_CUT_6_MED_HARD } },
+  // No `minBentRatio` gate: maxSize-4 already yields ~61% bent naturally, so forcing a floor only
+  // crushed generation yield (dropped the accept rate ~2×) for no structural gain. The bent lever
+  // stays available in the config for tiers that need it.
+  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, solveCap: 4, maxSingles: 0, maxFootholds: 3, maxCombosPerCage: 15, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 1, scoreBand: { min: SCORE_CUT_6_MED_HARD } },
 };
 
 const DIFFICULTY_CONFIGS: Record<4 | 6, Record<CalcDifficulty, CalcDifficultyConfig>> = {
@@ -112,23 +177,32 @@ const DIFFICULTY_CONFIGS: Record<4 | 6, Record<CalcDifficulty, CalcDifficultyCon
   6: DIFFICULTY_CONFIG_6,
 };
 
-/** Reject a cage set whose shape is wrong for the tier: given count, gift-cage count, or combo ceiling. */
+/** Reject a cage set whose shape is wrong for the tier: givens, gift cages, combo ceiling, or bent ratio. */
 function shapeOk(cages: CalcCage[], config: CalcDifficultyConfig, gridSize: number): boolean {
+  const giftLevel = config.giftBanLevel ?? 'combos1';
+  const checkBent = config.minBentRatio !== undefined;
   let singles = 0;
   let footholds = 0;
+  let multiCell = 0;
+  let bent = 0;
   for (const cage of cages) {
     const size = cage.cells.length;
     if (size === 1) {
       singles += 1;
       continue;
     }
-    const combos = calcCombosFor(cage.op, size, cage.target, gridSize).length;
-    if (combos === 1) footholds += 1;
-    if (config.maxCombosPerCage !== undefined && combos > config.maxCombosPerCage) return false;
+    multiCell += 1;
+    if (checkBent && isBentCage(cage.cells, gridSize)) bent += 1;
+    if (isGiftCage(cage, gridSize, giftLevel)) footholds += 1;
+    if (config.maxCombosPerCage !== undefined) {
+      const combos = calcCombosFor(cage.op, size, cage.target, gridSize).length;
+      if (combos > config.maxCombosPerCage) return false;
+    }
   }
   if (singles > config.maxSingles) return false;
   if (config.minSingles !== undefined && singles < config.minSingles) return false;
   if (config.maxFootholds !== undefined && footholds > config.maxFootholds) return false;
+  if (checkBent && multiCell > 0 && bent / multiCell < config.minBentRatio!) return false;
   return true;
 }
 
@@ -157,7 +231,11 @@ export function generateCalcSudoku(
     throw new Error(`Keisan difficulty '${difficulty}' is not available at ${gridSize}×${gridSize}`);
   }
   const rng = options.rng ?? Math.random;
-  const maxAttempts = options.maxAttempts ?? 4000;
+  // Attempts are cheap (~0.07 ms — most are rejected by the shape gate before the logical solve),
+  // so a high cap makes exhaustion astronomically unlikely even for the tightest tier (6×6 hard's
+  // accept rate is ~0.1%, ~1k attempts avg → ~100 ms). 40k keeps the worst case bounded while
+  // never realistically throwing.
+  const maxAttempts = options.maxAttempts ?? 40000;
   const latinConfig = calcGridConfig(gridSize as GridSize);
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -170,12 +248,22 @@ export function generateCalcSudoku(
     }
 
     const shapes = generateCalcCageShapes(gridSize, { minSize: config.minSize, maxSize: config.maxSize, rng });
-    const cages = assignCalcCages(shapes, solution, { activeOps: config.activeOps, rng });
+    const cages = assignCalcCages(shapes, solution, { activeOps: config.activeOps, operatorWeights: config.operatorWeights, rng });
     if (!cages) continue;
     if (!shapeOk(cages, config, gridSize)) continue;
 
     const result = new CalcLogicalSolver(cages, gridSize as GridSize).solve({ maxTier: config.solveCap });
     if (!result.solved) continue;
+
+    // Technique floor (Tatham's tier gate): reject a puzzle a lower-tier solver could already crack,
+    // so the tier is the MINIMUM sufficient difficulty and tiers don't bleed. A fresh solve capped at
+    // the floor must fail.
+    if (
+      config.techniqueFloor !== undefined &&
+      new CalcLogicalSolver(cages, gridSize as GridSize).solve({ maxTier: config.techniqueFloor }).solved
+    ) {
+      continue;
+    }
 
     if (config.scoreBand) {
       const { final } = scoreCalcSolve(result);

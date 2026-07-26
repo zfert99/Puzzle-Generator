@@ -327,10 +327,35 @@ score band, so the shapes never changed across tiers.
 ### De-risk + result
 
 The one real risk was `maxSize: 4` verify-time (Killer's maxSize-4 thrashed at 6–160 **s**). Measured
-first: Keisan's multiset pruning verifies maxSize-4 6×6 in **~0.2 ms avg** — no thrash. Post-rebalance
-gate: every band **avg 1–16 ms** gen (max 66 ms), **0 fails in 20**, disjoint bands, and **6×6 hard
-now averages ~0.7 single-cell givens and ~3.4 four-cell cages** (was up to 7 givens, zero size-4).
-51 calc tests (added: easy-uses-no-`×`, hard-is-chunky).
+first: Keisan's multiset pruning verifies maxSize-4 6×6 in **~0.2 ms avg** — no thrash.
+
+### Full lever spec (second pass)
+
+A companion doc ([keisan-difficulty-levers.md](research/keisan-difficulty-levers.md)) gave the
+implementable per-(size × tier) tables, so the rebalance was extended to the full lever set (4×4 +
+6×6; 5×5/7×7 deferred by choice):
+
+- **`maxCombosPerCage` caps** (per-cage ambiguity ceiling), **hard = 0 givens**, **4×4 hard `maxSize:
+  4`** (playtest-OK).
+- **Operator-mix weighting** — easy `+`-heavy, hard **×-weighted (~55%)** — via `operatorWeights` in
+  `assignCalcCages`.
+- **Gift-clue bans** (`giftBanLevel`: `combos1` → `twoCell` → `mulLowFactor`, keen.c patterns) capped
+  by `maxFootholds`.
+- **Bent-cage lever** built (`minBentRatio` + `isBentCage`) but **left ungated**: `maxSize: 4` already
+  yields ~61% bent naturally, and forcing a floor halved the generation yield for no structural gain.
+- **Technique floor** (`techniqueFloor: 1` on hard — Tatham's gate). Applied *lightly*: measurement
+  showed our solver's `hardestTier` concentrates at T1/T2 (medium vs hard differ by score, not tier),
+  so the **score band is the primary tier gate** (HoDoKu weighted-sum style); a stronger Tatham gate
+  awaits a richer solver (a future K3 expansion).
+
+**Yield lesson (found via a flaky test):** 6×6 hard's stacked gates drop the accept rate to ~0.1%, so
+the old default `maxAttempts: 4000` occasionally *exhausted*. Attempts are cheap (~0.07 ms — most are
+shape-rejected before the logical solve), so wall-clock stays ~78 ms avg; the fix was dropping the
+low-value bent floor (~2× the yield) and raising `maxAttempts` to 40 000.
+
+**Gate (full-spec):** gen **avg ≤ 78 ms** (max ~245 ms on 6×6 hard), **0 fails in 40**, disjoint
+bands, flaky test now stable across repeated runs. Structure: **6×6 hard = 0 givens, ~4.7 four-cell
+cages, ~61% bent, ~55% `×`**. Calc tests added: easy-no-`×`, hard-is-chunky, hard-×-weighted-and-bent.
 
 ### Deliberately deferred (endorsed sequencing)
 

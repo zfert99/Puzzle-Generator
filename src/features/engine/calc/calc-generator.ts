@@ -117,6 +117,13 @@ function assignableOperators(
 export interface CalcAssignOptions {
   /** Operators the generator may assign (a difficulty axis in K4). Default: all four (QuadOp). */
   activeOps?: readonly CalcOperator[];
+  /**
+   * Relative selection weights per operator — the operator-MIX lever (a target, not a hard
+   * constraint). Among a cage's *assignable* operators, one is drawn proportional to these weights,
+   * so the generator biases toward a mix (e.g. `× `-weighted on hard) without over-constraining.
+   * Default: uniform. See `kenken-difficulty-calibration.md`.
+   */
+  operatorWeights?: Partial<Record<CalcOperator, number>>;
   rng?: () => number;
 }
 
@@ -125,11 +132,9 @@ export interface CalcAssignOptions {
  * and computing its target from the solution digits.
  *
  * - **Single-cell cages are givens:** `op = 'add'`, `target = the digit` (operator is irrelevant).
- * - **Multi-cell cages** pick a random operator among those legal for the size AND (for `div`)
- *   yielding an integer target. Returns `null` if any cage has no assignable operator — the K1
- *   legality invariant should prevent this (an active set with `add`/`mul` always covers big
- *   cages), but a two-cell cage under a `÷`-only set with non-divisible digits genuinely can't be
- *   clued, so the caller regenerates rather than emit a malformed puzzle.
+ * - **Multi-cell cages** pick an operator among those legal for the size AND (for `div`) yielding an
+ *   integer target — weighted by `operatorWeights` if given (else uniform). Returns `null` if any
+ *   cage has no assignable operator (an `add`/`mul`-free set can't clue a big cage).
  */
 export function assignCalcCages(
   shapes: number[][],
@@ -138,8 +143,20 @@ export function assignCalcCages(
 ): CalcCage[] | null {
   const size = solution.length;
   const activeOps = options.activeOps ?? (['add', 'sub', 'mul', 'div'] as const);
+  const weights = options.operatorWeights;
   const rng = options.rng ?? Math.random;
   const digitAt = (cell: number) => solution[Math.floor(cell / size)][cell % size];
+
+  const pickOp = (choices: CalcOperator[]): CalcOperator => {
+    if (!weights) return choices[Math.floor(rng() * choices.length)];
+    const total = choices.reduce((sum, op) => sum + (weights[op] ?? 1), 0);
+    let r = rng() * total;
+    for (const op of choices) {
+      r -= weights[op] ?? 1;
+      if (r < 0) return op;
+    }
+    return choices[choices.length - 1];
+  };
 
   const cages: CalcCage[] = [];
   let id = 0;
@@ -151,7 +168,7 @@ export function assignCalcCages(
     }
     const choices = assignableOperators(digits, activeOps);
     if (choices.length === 0) return null; // e.g. ÷-only set, non-divisible pair — regenerate
-    const op = choices[Math.floor(rng() * choices.length)];
+    const op = pickOp(choices);
     cages.push({ id: id++, op, target: computeTarget(op, digits), cells });
   }
   return cages;
