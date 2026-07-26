@@ -3,6 +3,7 @@
 Companion to `kenken-difficulty-calibration.md`. This is the implementable version: every lever, every size, every tier, with a recommended value.
 
 Scope matches the agreed plan:
+
 - **Stage 1 (now):** 3 tiers — Easy / Medium / Hard — at 4×4, 5×5, 6×6, 7×7. Standard mode only (operators shown).
 - **Stage 2 (later):** Mystery (no-op) as an orthogonal toggle, available at every size.
 - **Stage 3 (later):** 9×9 Keisan with a true 5-tier ladder including Extreme.
