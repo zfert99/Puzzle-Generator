@@ -31,23 +31,40 @@ separates difficulties. The **two-factor score** (`calc-score.ts`) is the primar
 distributions** and are **not comparable across sizes** — a "hard 4×4" is not a "hard 6×6" (both the
 plan and the external review call this out; 4×4 is compressed like 6×6 Killer).
 
-### Measured bands (QuadOp, maxSize 3)
+### Difficulty rides BOTH cage shape and score (rebalanced)
 
-| Size | Distribution (min/p25/p50/p75/p90) | easy | medium | hard |
+The first cut used `maxSize: 3` for every tier with generous single-cell-cage budgets, which made
+even "hard" feel small-caged and givens-heavy (6×6 hard averaged ~7 single-cell cages/puzzle and
+never produced a size-4 cage) — the same problem the Killer generator once had. The rebalance:
+
+- **Easy** keeps `minSize 1, maxSize 3` and generous givens — small cages + anchors for beginners.
+- **Medium/Hard** set `minSize 2` (no *intentional* single-cell givens — they now average ~0.7–1.1)
+  and raise `maxSize` to **4**, with `maxSizeBias` skewing harder tiers toward the big cages: 6×6
+  medium ~34% size-4, 6×6 hard ~50%. On the 16-cell **4×4** a size-4 cage is a quarter of the board,
+  so 4×4 medium stays `≤3` and only 4×4 hard gets size-4 (else medium/hard don't separate).
+- `maxSize: 4` was verified viable: uniqueness-verify stays well under the 50 ms budget (max ~36 ms
+  at heavy bias; Killer's maxSize-4 thrashing does not occur here — multiset pruning + node budget).
+
+Measured bands (QuadOp), cut disjoint from the new per-size distributions:
+
+| Size | easy (p50) | medium (p50) | hard (p50) | Bands |
 |---|---|---|---|---|
-| 4×4 | 1.0 / 3.0 / 4.2 / 5.9 / 9.3 | score `< 3.5` | `[3.5, 6.5)` | `≥ 6.5` |
-| 6×6 | 2.9 / 8.9 / 11.6 / 16.2 / 21.4 | `< 9` | `[9, 16)` | `≥ 16` |
+| 4×4 | 4.8 | 8.4 | 11.0 | easy `< 6` · medium `[6, 11)` · hard `≥ 11` |
+| 6×6 | 12.6 | 30.5 | 34.3 | easy `< 20` · medium `[20, 34)` · hard `≥ 34` |
 
 Bands are disjoint by construction. Recalibrate whenever the technique weights or shape gates change.
 
-## Single-cell-cage band (the review's min/max lever)
+## Shape gates: single-cell band + cage size
 
-`minSingles`/`maxSingles` bound the number of single-cell "given" cages. `max` prevents degenerate
-givens-heavy (trivial) puzzles — a documented Calcudoku failure mode; `min` (on easy tiers) keeps
-beginner boards from being anchor-free. This is the one shape gate v1 uses beyond the score band.
+- `minSingles`/`maxSingles` bound single-cell "given" cages. `max` (tight on medium/hard, ~1–2)
+  prevents givens-heavy trivial puzzles; `min` (easy only) keeps beginner boards from being
+  anchor-free. Combined with `minSize 2` on medium/hard, this is what killed the old givens flood.
+- `minSize`/`maxSize`/`maxSizeBias` shape the cage-size mix — the rebalance lever (above) that gives
+  hard its chunky size-4 cages.
 
-## Gate (met)
+## Gate (met, post-rebalance)
 
-Every band generates in **avg 1–2 ms** (max ≤ 9 ms — far under the 1 s budget), **0 fails in 40**,
-and the score ranges are **disjoint per size**. QuadOp is the only operator set in v1; SingleOp /
-DualOp / No-Op remain difficulty axes for a later slice.
+Every band generates far under the 1 s budget (4×4 ~1–2 ms; 6×6 easy ~1 ms, medium ~15 ms, hard
+~29 ms avg / 166 ms max — the rare big-cage tail), **0 fails in 30**, and score ranges are
+**disjoint per size**. QuadOp is the only operator set in v1; SingleOp / DualOp / No-Op remain
+difficulty axes for a later slice.

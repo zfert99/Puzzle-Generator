@@ -35,6 +35,12 @@ interface CalcDifficultyConfig {
   activeOps: readonly CalcOperator[];
   minSize: number;
   maxSize: number;
+  /**
+   * Probability the cage generator draws `maxSize` instead of a uniform pick from
+   * `[minSize, maxSize]` — the lever that skews harder tiers toward big (size-4) cages. Higher =
+   * chunkier board. See the rebalance note in `calc-sudoku.md`.
+   */
+  maxSizeBias?: number;
   /** Logical-solver tier ceiling the puzzle must be solvable within. */
   solveCap: CalcTier;
   /**
@@ -54,23 +60,30 @@ interface CalcDifficultyConfig {
 }
 
 /**
- * 4×4 Keisan bands — cut from a measured QuadOp/maxSize-3 distribution (min 1.0, p25 3.0, p50 4.2,
- * p75 5.9, p90 9.3). Compressed, as expected for a small grid; disjoint by construction.
+ * 4×4 Keisan configs (rebalanced — see `calc-sudoku.md`). Difficulty rides BOTH cage shape and the
+ * two-factor score: easy keeps small cages + givens (min1/max3); medium sheds intentional givens
+ * (min2) with chunkier ≤3-cell cages; hard introduces **size-4 cages** (maxSize 4, biased) and near-
+ * zero givens. On a 16-cell board a size-4 cage is a quarter of the grid, so medium stays ≤3 (else
+ * medium/hard don't separate). Bands cut disjoint from the measured distributions (easy p50 4.8 /
+ * medium p50 8.4 / hard p50 11.0).
  */
 const DIFFICULTY_CONFIG_4: Record<CalcDifficulty, CalcDifficultyConfig> = {
-  easy: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 1, maxSingles: 6, scoreBand: { max: 3.5 } },
-  medium: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, maxSingles: 4, scoreBand: { min: 3.5, max: 6.5 } },
-  hard: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, maxSingles: 3, scoreBand: { min: 6.5 } },
+  easy: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 1, maxSingles: 5, scoreBand: { max: 6 } },
+  medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 2, scoreBand: { min: 6, max: 11 } },
+  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, maxSizeBias: 0.35, solveCap: 4, maxSingles: 1, scoreBand: { min: 11 }, verifyNodeBudget: 200_000 },
 };
 
 /**
- * 6×6 Keisan bands — measured QuadOp/maxSize-3 distribution (min 2.9, p25 8.9, p50 11.6, p75 16.2,
- * p90 21.4). Wider spread than 4×4; disjoint. Cuts are per-size, never reused from 4×4.
+ * 6×6 Keisan configs (rebalanced). Both medium AND hard now carry **size-4 cages** — medium some
+ * (~34%, bias 0.20), hard more (~50%, bias 0.50) — with min2 shedding the old givens flood (hard was
+ * ~7 single-cell cages/puzzle, now ~0.7). Easy keeps min1/max3 + generous givens for beginners.
+ * Bands disjoint from the measured distributions (easy p50 12.6 / medium p50 30.5 / hard p50 34.3);
+ * cuts are per-size, never reused from 4×4.
  */
 const DIFFICULTY_CONFIG_6: Record<CalcDifficulty, CalcDifficultyConfig> = {
-  easy: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 2, maxSingles: 12, scoreBand: { max: 9 } },
-  medium: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, maxSingles: 9, scoreBand: { min: 9, max: 16 } },
-  hard: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, maxSingles: 7, scoreBand: { min: 16 } },
+  easy: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 2, maxSingles: 10, scoreBand: { max: 20 } },
+  medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, maxSizeBias: 0.20, solveCap: 4, maxSingles: 2, scoreBand: { min: 20, max: 34 }, verifyNodeBudget: 200_000 },
+  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, maxSizeBias: 0.50, solveCap: 4, maxSingles: 1, scoreBand: { min: 34 }, verifyNodeBudget: 200_000 },
 };
 
 const DIFFICULTY_CONFIGS: Record<4 | 6, Record<CalcDifficulty, CalcDifficultyConfig>> = {
@@ -124,7 +137,12 @@ export function generateCalcSudoku(
       fillGrid(solution, latinConfig);
     }
 
-    const shapes = generateCalcCageShapes(gridSize, { minSize: config.minSize, maxSize: config.maxSize, rng });
+    const shapes = generateCalcCageShapes(gridSize, {
+      minSize: config.minSize,
+      maxSize: config.maxSize,
+      maxSizeBias: config.maxSizeBias,
+      rng,
+    });
     const cages = assignCalcCages(shapes, solution, { activeOps: config.activeOps, rng });
     if (!cages) continue;
     if (!shapeOk(cages, config)) continue;

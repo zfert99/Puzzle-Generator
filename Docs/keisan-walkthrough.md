@@ -248,6 +248,24 @@ fails in 40**, and score ranges are **disjoint per size**. 8 tests (well-formed 
 per size/difficulty, batch counts); full suite **299 green**. v1 is QuadOp only; SingleOp/DualOp and
 No-Op mode remain difficulty axes for a later slice.
 
+### K4b — Difficulty rebalance (bigger cages, fewer givens)
+
+The first K4 cut used `maxSize 3` for every tier with loose single-cell-cage budgets, so even hard
+felt small-caged and givens-heavy — 6×6 hard averaged **~7 single-cell cages/puzzle and never a
+size-4 cage** (the same issue Killer once had). Rebalanced after a measured sweep:
+
+- **Easy** unchanged in spirit — `minSize 1, maxSize 3`, generous givens (anchors for beginners).
+- **Medium/Hard** set `minSize 2` (no intentional givens → ~0.7–1.1/puzzle) and `maxSize 4`, with
+  `maxSizeBias` skewing harder: **6×6 medium ~34% size-4, hard ~50%**. On the 16-cell 4×4 a size-4
+  cage is a quarter of the board, so 4×4 medium stays ≤3 and only 4×4 hard (~39% size-4) gets them —
+  otherwise the two tiers don't separate.
+- `maxSize 4` was verified viable (uniqueness-verify max ~36 ms « 50 ms budget — no Killer-style
+  thrashing, thanks to multiset pruning + the node budget). Bands re-cut disjoint on the new
+  distributions (4×4 `<6 / [6,11) / ≥11`; 6×6 `<20 / [20,34) / ≥34`).
+
+**Gate:** 0 fails in 30; gen far under 1 s (6×6 hard avg 29 ms / max 166 ms); bands disjoint. Full
+suite green.
+
 ---
 
 ## K5 — Surfaces 🚧 (core done; daily rotation deferred)
