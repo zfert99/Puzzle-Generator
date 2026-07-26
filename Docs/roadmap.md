@@ -524,7 +524,7 @@ work exists yet.
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/kenken`) — the Killer branch is retired
-> **Status:** 🚧 In Progress — **engine K0–K4 + core surfaces K5 (play/PDF/hub) + a measured difficulty rebalance** all shipped; playable, printable, discoverable ([walkthrough](keisan-walkthrough.md)). **Next:** K6 No-Op / Mystery mode, then K7 9×9 + 5-tier ladder; plus the K5 daily-rotation tail. Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (reuse audit + [external plan review](research/kenken-plan-review.md), GREEN) + a [difficulty-calibration](research/kenken-difficulty-calibration.md) pass
+> **Status:** 🚧 In Progress — **engine K0–K4 + all K5 surfaces (play/PDF/hub/daily) + a measured difficulty rebalance (full lever spec)** shipped; Keisan is playable, printable, discoverable, and in the daily rotation ([walkthrough](keisan-walkthrough.md)). **Next:** K6 No-Op / Mystery mode, then K7 9×9 + 5-tier ladder. Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (reuse audit + [external plan review](research/kenken-plan-review.md), GREEN) + a [difficulty-calibration](research/kenken-difficulty-calibration.md) pass
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) · [kenken-plan-review.md](research/kenken-plan-review.md)
 > **Estimated effort:** Medium-Large (the Killer machinery halves it)
 > **Prerequisite:** Phase 6 (shared cage engine, scoring, daily registry)

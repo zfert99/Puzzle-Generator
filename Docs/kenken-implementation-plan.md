@@ -259,9 +259,10 @@ box-optional base instead of each rediscovering the coupling.
   Killer. Measure it as a candidate gate before falling back to the foothold-count proxy.
 - **Gate:** every band ≤ 1 s avg generation, 0 fails in 20, bands disjoint per size.
 
-### K5 — Surfaces 🚧 Core done; daily rotation deferred
+### K5 — Surfaces ✅ Done (play + PDF + hub + daily rotation)
 
-> **Shipped** on `feature/kenken`: Keisan is **playable, printable, and discoverable**.
+> **Shipped** on `feature/kenken`: Keisan is **playable, printable, discoverable, and in the daily
+> rotation**.
 >
 > - **Board (`/play`):** Classic/Killer/Keisan toggle, per-variant size lists (Keisan 4/6),
 >   easy/medium/hard, `?variant=calc` deep link. Real 3-way `variant` discriminant in
@@ -274,11 +275,13 @@ box-optional base instead of each rediscovering the coupling.
 > - **Hub:** the "Coming soon" KenKen card is now a live **Keisan** card (`/play?variant=calc`) wearing
 >   the `new!` sticker (moved off Killer).
 >
-> **Deferred — the daily rotation** (its own follow-up): Keisan daily registry rows, the variant-safe
-> daily discriminant fixes (`toDailyPuzzleRow`, `dailies.service` dispatch, `/api/daily` serving — all
-> still duck-type `'cages'`, which is *correct today* since only classic/killer are in the registry),
-> a fourth picker section, per-board anti-cheat floors, bot times, and leaderboard tabs. Free-play +
-> PDF already deliver the full Keisan experience; the daily is additive.
+> - **Daily rotation ✅:** a `calc` section in `DAILY_BOARDS` (`calc4-*` + `calc6-*`, 6 boards → 25
+>   total) with per-board anti-cheat floors + tuned bot times; the daily path made **variant-safe**
+>   (the duck-typed `'cages'` checks in `toDailyPuzzleRow`, `dailies.service` dispatch, and
+>   `/api/daily` serving now key off the explicit `variant` / registry key); `StoredCage` widened to a
+>   Killer|Calc union (no DB migration — jsonb); `useDaily` + the `/daily` picker + leaderboard tabs
+>   gained a Keisan section; anti-cheat is variant-agnostic (`gridsMatch`). Boundary-unit-tested;
+>   live DB round-trip runs via the daily cron / `db:seed`. See the walkthrough's "K5 tail" section.
 
 - **Real 3-way discriminant first (audit finding).** Before any UI, replace the two
   duck-typed `'cages' in puzzle` checks — `useBoardStore.startNewGame` and

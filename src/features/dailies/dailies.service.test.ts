@@ -56,13 +56,13 @@ function makeDb(options: {
 }
 
 describe('generateDailyPuzzles', () => {
-  // `rows` in the service is real puzzle generation for all 19 `DAILY_BOARDS` (killer-extreme
+  // `rows` in the service is real puzzle generation for all 25 `DAILY_BOARDS` (killer-extreme
   // alone runs a ~5.5s real backtracking search) — the DB mock never touches that step, so
   // every call here pays the full cost regardless of what it's asserting. The two tests below
   // share ONE such call (identical mock config; they just inspect different parts of its
   // result), cutting this file's real generation work from three calls to two. That's the fix
   // for the occasional full-suite timeout: it was never nondeterministic, just CPU contention
-  // from redundantly regenerating the same 19 real boards three times over under load.
+  // from redundantly regenerating the same 25 real boards three times over under load.
   describe('happy path (fresh day, no conflicts)', () => {
     let result: Awaited<ReturnType<typeof generateDailyPuzzles>>;
     let insertMock: ReturnType<typeof vi.fn>;

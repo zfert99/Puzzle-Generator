@@ -82,7 +82,6 @@ describe('generateCalcSudoku', () => {
 
   it('hard leans on × (operator-mix weighting), keeps −/÷ variety, and is bent-heavy', () => {
     let mul = 0;
-    let subDiv = 0;
     let multi = 0;
     let bent = 0;
     let puzzlesWithSubDiv = 0;
@@ -93,7 +92,7 @@ describe('generateCalcSudoku', () => {
       for (const c of p.cages) {
         if (c.cells.length < 2) continue;
         if (c.op === 'mul') mul += 1;
-        if (c.op === 'sub' || c.op === 'div') { subDiv += 1; sd = true; }
+        if (c.op === 'sub' || c.op === 'div') { sd = true; }
         multi += 1;
         const rows = new Set(c.cells.map((cell) => Math.floor(cell / 6)));
         const cols = new Set(c.cells.map((cell) => cell % 6));

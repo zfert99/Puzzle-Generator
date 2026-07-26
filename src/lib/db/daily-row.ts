@@ -1,6 +1,7 @@
 import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
+import type { CalcPuzzle, CalcDifficulty } from '@/features/engine/calc/calc-types';
 import type { Grid, NewDailyPuzzle } from './schema';
 
 /**
@@ -27,13 +28,13 @@ import type { Grid, NewDailyPuzzle } from './schema';
  */
 export interface DailyBoard {
   key: string;
-  section: 'classic' | 'killer' | 'minis';
+  section: 'classic' | 'killer' | 'minis' | 'calc';
   /** Short chip label for pickers/leaderboards. */
   label: string;
-  variant: 'classic' | 'killer';
+  variant: 'classic' | 'killer' | 'calc';
   gridSize: GridSize;
   /** The engine difficulty used to generate this board. */
-  difficulty: Difficulty | KillerDifficulty;
+  difficulty: Difficulty | KillerDifficulty | CalcDifficulty;
   minSolveMs: number;
   botTimeMs: number;
 }
@@ -61,6 +62,14 @@ export const DAILY_BOARDS = [
   { key: 'killer6-easy', section: 'minis', label: 'killer 6×6 easy', variant: 'killer', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 120_000 },
   { key: 'killer6-medium', section: 'minis', label: 'killer 6×6 medium', variant: 'killer', gridSize: 6, difficulty: 'medium', minSolveMs: 12_000, botTimeMs: 195_000 },
   { key: 'killer6-hard', section: 'minis', label: 'killer 6×6 hard', variant: 'killer', gridSize: 6, difficulty: 'hard', minSolveMs: 15_000, botTimeMs: 270_000 },
+  // ---- Keisan (Calcudoku): 4×4 + 6×6, easy/medium/hard. Boxless, arithmetic cages; slower to
+  // solve than classic of the same size, so bot times run a touch higher. clue_count = cage count.
+  { key: 'calc4-easy', section: 'calc', label: '4×4 easy', variant: 'calc', gridSize: 4, difficulty: 'easy', minSolveMs: 4_000, botTimeMs: 55_000 },
+  { key: 'calc4-medium', section: 'calc', label: '4×4 medium', variant: 'calc', gridSize: 4, difficulty: 'medium', minSolveMs: 5_000, botTimeMs: 85_000 },
+  { key: 'calc4-hard', section: 'calc', label: '4×4 hard', variant: 'calc', gridSize: 4, difficulty: 'hard', minSolveMs: 6_000, botTimeMs: 130_000 },
+  { key: 'calc6-easy', section: 'calc', label: '6×6 easy', variant: 'calc', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 150_000 },
+  { key: 'calc6-medium', section: 'calc', label: '6×6 medium', variant: 'calc', gridSize: 6, difficulty: 'medium', minSolveMs: 14_000, botTimeMs: 240_000 },
+  { key: 'calc6-hard', section: 'calc', label: '6×6 hard', variant: 'calc', gridSize: 6, difficulty: 'hard', minSolveMs: 20_000, botTimeMs: 390_000 },
 ] as const satisfies readonly DailyBoard[];
 
 export type DailyBoardKey = (typeof DAILY_BOARDS)[number]['key'];
@@ -90,6 +99,7 @@ export function formatDailyKey(key: string): string {
   if (!board) return key;
   if (board.section === 'classic') return board.label;
   if (board.section === 'killer') return `killer ${board.label}`;
+  if (board.section === 'calc') return `keisan ${board.label}`;
   return board.label;
 }
 
@@ -114,18 +124,20 @@ export function countClues(grid: Grid): number {
  * cage count is the analogous display stat).
  */
 export function toDailyPuzzleRow(
-  puzzle: SudokuPuzzle | KillerPuzzle,
+  puzzle: SudokuPuzzle | KillerPuzzle | CalcPuzzle,
   isoDate: string,
   key: DailyDifficulty,
 ): NewDailyPuzzle {
-  const isKiller = 'cages' in puzzle;
+  // Real discriminant, not `'cages' in puzzle`: Killer AND Keisan both carry cages, so the old
+  // duck-type couldn't tell them apart. Killer/Keisan carry an explicit `variant`; classic doesn't.
+  const hasCages = 'variant' in puzzle; // killer or calc — both store cages (sum vs op+target)
   return {
     date: isoDate,
     difficulty: key,
     grid: puzzle.grid,
     solution: puzzle.solution,
-    clueCount: isKiller ? puzzle.cages.length : countClues(puzzle.grid),
-    cages: isKiller ? puzzle.cages : null,
+    clueCount: hasCages ? puzzle.cages.length : countClues(puzzle.grid),
+    cages: hasCages ? puzzle.cages : null,
   };
 }
 

@@ -135,6 +135,7 @@ export function LeaderboardView({
             ['classic', 'Classic'],
             ['killer', 'Killer'],
             ['minis', 'Minis'],
+            ['calc', 'Keisan'],
           ] as const
         ).map(([section, heading]) => (
           <div key={section} className="flex flex-wrap items-center justify-center gap-2">

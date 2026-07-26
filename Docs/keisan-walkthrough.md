@@ -374,6 +374,33 @@ hard-×-weighted-with-`−`/`÷`-variety.
 
 ---
 
-## K5 tail — daily rotation
+## K5 tail — daily rotation ✅
 
-*Not started (see the K5 "Deferred" note above).*
+Keisan is now in the daily rotation, and the daily path was made **variant-safe** in the process
+(the audit-flagged duck-typing).
+
+- **Registry:** a fourth `calc` section in `DAILY_BOARDS` — `calc4-{easy,medium,hard}` +
+  `calc6-{easy,medium,hard}` (6 boards → 25 total), each with a `minSolveMs` anti-cheat floor and a
+  tuned "Sudoku Bot" `botTimeMs` (Keisan solves slower than classic of the same size, so a touch
+  higher).
+- **Variant-safe discriminants** (replacing `'cages' in puzzle`, which couldn't tell Killer from
+  Keisan — both carry cages):
+  - `toDailyPuzzleRow` now keys off the explicit `variant` tag.
+  - `dailies.service` generation dispatch is a real 3-way (`killer`/`calc`/classic).
+  - `/api/daily` serving derives the variant from the board's **registry key** (`getDailyBoard`), not
+    from cages presence, and returns `variant: 'calc'` + the operator+target cages.
+- **Storage:** `StoredCage` is now `StoredKillerCage | StoredCalcCage` — the jsonb column already
+  accepted either shape, so **no DB migration** was needed.
+- **Board + UI:** `useDaily`'s response union gains a `calc` arm; the served daily flows straight
+  through `startNewGame` (same `variant` branch as free play). A **Keisan** section was added to both
+  the `/daily` picker and the leaderboard tabs.
+- **Anti-cheat unchanged:** the solve check is `gridsMatch(submitted, solution)` — variant-agnostic —
+  so ranked Keisan solves validate through the existing `/api/solve` path.
+
+### Verification (daily tail)
+
+Unit-tested end to end at the boundaries: registry shape + `formatDailyKey('calc6-hard')` →
+"keisan 6×6 hard"; `toDailyPuzzleRow` maps a Keisan puzzle variant-safely with op+target cages;
+`generateDailyPuzzles` generates all **25** boards (incl. the 6 calc) for real + seeds the bot solve
+on each (DB mocked at the boundary). Typecheck / lint / `next build` clean. The live DB round-trip
+(seed → fetch → solve → rank) runs via the daily cron (or a manual `db:seed`).

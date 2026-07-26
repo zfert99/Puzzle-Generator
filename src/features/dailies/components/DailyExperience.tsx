@@ -292,6 +292,7 @@ export default function DailyExperience() {
               ['classic', 'Classic 9×9'],
               ['killer', 'Killer 9×9'],
               ['minis', 'Minis'],
+              ['calc', 'Keisan'],
             ] as const
           ).map(([section, heading]) => (
             <div key={section} className="mb-4">
