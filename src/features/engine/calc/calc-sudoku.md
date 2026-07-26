@@ -37,7 +37,7 @@ from **measured per-size distributions** and are **not comparable across sizes**
 | Lever | Easy | Medium | Hard |
 |---|---|---|---|
 | Operator palette (`activeOps`) | `+ − ÷` (no ×) | all four | all four |
-| Operator mix (`operatorWeights`) | +-heavy (5/3/2) | even | **×-weighted (~55%)** |
+| Operator mix (`operatorWeights`) | +-heavy (5/3/2) | even | **×-weighted (~39%), −/÷ retained** |
 | Max cage size (`maxSize`) | 4×4: 2 · 6×6: 3 | 3 | 4×4: 4 · 6×6: 4 |
 | Single-cell givens (`min/maxSingles`) | 4×4: 2–4 · 6×6: 3–6 | ≤2 / ≤3 | **0** |
 | Gift-cage cap (`maxFootholds` × `giftBanLevel`) | `combos1`, uncapped | `twoCell` | `mulLowFactor`, ≤2/3 |
@@ -75,8 +75,11 @@ Disjoint by construction. Recalibrate whenever the technique weights or shape ga
 
 Every band generates **avg ≤ 78 ms** (6×6 hard the slowest, max ~245 ms — under the 1 s budget),
 **0 fails in 40**, score ranges **disjoint per size**. Structure: **6×6 hard carries 0 single-cell
-givens and ~4.7 four-cell cages, ~61% bent, ~55% `×`** (was up to 7 givens, no size-4 cages, uniform
-ops). `maxSize: 4` verifies ~0.2 ms avg — no Killer-style thrash, thanks to the multiset pruning.
+givens and ~4.7 four-cell cages, ~61% bent, ~39% `×`, and −/÷ in ~96% of boards** (was up to 7
+givens, no size-4 cages, uniform ops). The `×` weight is deliberately *not* maximal: an early
+`{mul:4}`-heavy cut left subtraction/division nearly absent (they're 2-cell-only, and hard's big
+cages can only be `+`/`×`), so hard uses equal `mul/sub/div` weights — `×` still wins ~60% of the
+`+`/`×`-only big cages (≥ the doc's 30%) while every board keeps some `−`/`÷`. `maxSize: 4` verifies ~0.2 ms avg — no Killer-style thrash, thanks to the multiset pruning.
 
 **Yield note:** 6×6 hard's accept rate is ~0.1% (the tightest tier — stacked shape + score + floor
 gates), but attempts are cheap (~0.07 ms; most are shape-rejected before the logical solve), so

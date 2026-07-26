@@ -353,9 +353,16 @@ the old default `maxAttempts: 4000` occasionally *exhausted*. Attempts are cheap
 shape-rejected before the logical solve), so wall-clock stays ~78 ms avg; the fix was dropping the
 low-value bent floor (~2× the yield) and raising `maxAttempts` to 40 000.
 
+**Operator-mix follow-up (playtest):** an early `{mul:4}`-heavy hard weight left **subtraction and
+division nearly absent** — they're 2-cell-only, and hard's big cages can only be `+`/`×`, so `×`
+crowded them out. Fixed with equal `mul/sub/div` weights: `×` still wins ~60% of the `+`/`×`-only big
+cages (~39% overall, ≥ the doc's 30%) while **~96% of 6×6 hard boards now keep some `−`/`÷`**. Div
+stays naturally lower (needs divisible pairs).
+
 **Gate (full-spec):** gen **avg ≤ 78 ms** (max ~245 ms on 6×6 hard), **0 fails in 40**, disjoint
-bands, flaky test now stable across repeated runs. Structure: **6×6 hard = 0 givens, ~4.7 four-cell
-cages, ~61% bent, ~55% `×`**. Calc tests added: easy-no-`×`, hard-is-chunky, hard-×-weighted-and-bent.
+bands, flaky tests stable across repeated runs. Structure: **6×6 hard = 0 givens, ~4.7 four-cell
+cages, ~61% bent, ~39% `×`, −/÷ in ~96% of boards**. Calc tests added: easy-no-`×`, hard-is-chunky,
+hard-×-weighted-with-`−`/`÷`-variety.
 
 ### Deliberately deferred (endorsed sequencing)
 

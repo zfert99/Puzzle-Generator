@@ -80,23 +80,30 @@ describe('generateCalcSudoku', () => {
     expect(sawFourCell).toBe(true); // maxSize: 4 on 6×6 hard
   });
 
-  it('hard leans on × (operator-mix weighting) and bent cages', () => {
+  it('hard leans on × (operator-mix weighting), keeps −/÷ variety, and is bent-heavy', () => {
     let mul = 0;
+    let subDiv = 0;
     let multi = 0;
     let bent = 0;
-    for (let i = 0; i < 6; i++) {
+    let puzzlesWithSubDiv = 0;
+    const N = 14; // enough samples that the aggregate ratios are stable
+    for (let i = 0; i < N; i++) {
       const p = generateCalcSudoku('hard', { gridSize: 6 });
+      let sd = false;
       for (const c of p.cages) {
+        if (c.cells.length < 2) continue;
         if (c.op === 'mul') mul += 1;
-        if (c.cells.length >= 2) {
-          multi += 1;
-          const rows = new Set(c.cells.map((cell) => Math.floor(cell / 6)));
-          const cols = new Set(c.cells.map((cell) => cell % 6));
-          if (rows.size >= 2 && cols.size >= 2) bent += 1;
-        }
+        if (c.op === 'sub' || c.op === 'div') { subDiv += 1; sd = true; }
+        multi += 1;
+        const rows = new Set(c.cells.map((cell) => Math.floor(cell / 6)));
+        const cols = new Set(c.cells.map((cell) => cell % 6));
+        if (rows.size >= 2 && cols.size >= 2) bent += 1;
       }
+      if (sd) puzzlesWithSubDiv += 1;
     }
-    expect(mul / multi).toBeGreaterThan(0.3); // ×-weighted (doc: ≥30% on hard)
+    // −/÷ variety: the over-× first cut left them nearly absent; most hard boards should now have some.
+    expect(puzzlesWithSubDiv / N).toBeGreaterThan(0.6);
+    expect(mul / multi).toBeGreaterThan(0.25); // still ×-weighted (mean ~0.39; doc: ≥30%)
     expect(bent / multi).toBeGreaterThan(0.4); // naturally bent-heavy from maxSize-4 (not gated)
   });
 
