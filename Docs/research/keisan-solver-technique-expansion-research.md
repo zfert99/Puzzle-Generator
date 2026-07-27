@@ -1,5 +1,15 @@
 # Keisan Solver Technique Expansion — Research Brief (K7c option 4)
 
+> **🏁 OUTCOME (K7d, resolved — this technique expansion was NOT built).** Slice 0 instrumentation
+> settled it before any technique work: the bounded-recursion **guess-step count** turned out to be a
+> clean, monotone difficulty axis (1→23 steps, ~28× solve-time spread), so the 9×9 **Extreme** tier
+> rides "needs many Nishio steps" (`minGuessSteps: 6`) — the research's revived **Option 2**, with
+> **zero solver expansion**. The techniques surveyed below (cage-line intersection, pairwise
+> multi-cage elimination, region-parity/bounds-based region-sum) were **deferred, not built**. This
+> brief is retained as the durable record + a ready starting point if a future need (e.g. a 6th tier,
+> or richer grading) revives them. See the K7d section in
+> [keisan-walkthrough.md](../keisan-walkthrough.md) and the plan.
+
 **Purpose.** A research brief, not a plan. K7b established that bounded-recursion guess-*depth* gives
 only one new tier (depth-1 Nishio; depth-2 never fires), so it can't separate Expert from Extreme on
 9×9. Option 4 of the [K7c fork](keisan-9x9-feasibility-findings.md#6b-k7b-result--bounded-recursion-works-but-is-a-single-step-the-k7c-fork)

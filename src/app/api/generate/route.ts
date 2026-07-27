@@ -82,19 +82,19 @@ export async function POST(req: NextRequest) {
       return pdfResponse(pdfBuffer, 'Killer_Sudoku.pdf');
     }
 
-    // ---- Keisan (Calcudoku) branch (4×4 / 6×6 easy/medium/hard; 9×9 adds expert) ----
+    // ---- Keisan (Calcudoku) branch (4×4 / 6×6 easy/medium/hard; 9×9 adds expert + extreme) ----
     if (body?.variant === 'calc') {
-      const { easy = 0, medium = 0, hard = 0, expert = 0, gridSize: calcSize = 6 } = body || {};
+      const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0, gridSize: calcSize = 6 } = body || {};
       if (calcSize !== 4 && calcSize !== 6 && calcSize !== 9) {
         return NextResponse.json({ error: 'Keisan grid size must be 4, 6, or 9' }, { status: 400 });
       }
-      if (![easy, medium, hard, expert].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
-        return NextResponse.json({ error: 'Keisan counts (easy, medium, hard, expert) must be non-negative integers' }, { status: 400 });
+      if (![easy, medium, hard, expert, extreme].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
+        return NextResponse.json({ error: 'Keisan counts (easy, medium, hard, expert, extreme) must be non-negative integers' }, { status: 400 });
       }
-      if (expert > 0 && calcSize !== 9) {
-        return NextResponse.json({ error: 'Expert Keisan is only available at 9×9' }, { status: 400 });
+      if ((expert > 0 || extreme > 0) && calcSize !== 9) {
+        return NextResponse.json({ error: 'Expert and Extreme Keisan are only available at 9×9' }, { status: 400 });
       }
-      const total = easy + medium + hard + expert;
+      const total = easy + medium + hard + expert + extreme;
       if (total === 0) {
         return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
       }
@@ -102,10 +102,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
       }
 
-      const puzzles = generateCalcBatch({ easy, medium, hard, expert }, { gridSize: calcSize });
+      const puzzles = generateCalcBatch({ easy, medium, hard, expert, extreme }, { gridSize: calcSize });
       const pdfBuffer = await generateCalcPDF(puzzles);
       logger.info(
-        { event: 'generation_success', variant: 'calc', counts: { easy, medium, hard, expert }, gridSize: calcSize, durationMs: Math.round(performance.now() - startTime) },
+        { event: 'generation_success', variant: 'calc', counts: { easy, medium, hard, expert, extreme }, gridSize: calcSize, durationMs: Math.round(performance.now() - startTime) },
         'Successfully generated Keisan puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Keisan.pdf');

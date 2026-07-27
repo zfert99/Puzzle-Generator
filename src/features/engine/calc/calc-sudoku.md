@@ -1,8 +1,8 @@
 # Keisan Generation Pipeline (`calc-sudoku.ts`)
 
 Assembles K1–K3 into `generateCalcSudoku(difficulty)`, which emits a **uniquely-solvable,
-difficulty-graded** Keisan puzzle. Offers easy/medium/hard at 4×4/6×6, and **easy/medium/hard/expert
-at 9×9** (K7a tiers + the K7c Expert tier).
+difficulty-graded** Keisan puzzle. Offers easy/medium/hard at 4×4/6×6, and the full
+**easy/medium/hard/expert/extreme** ladder at 9×9 (K7a tiers + K7c Expert + K7d Extreme).
 
 ## Pipeline (cheapest gate first)
 
@@ -103,10 +103,20 @@ Measured gate (100 boards/tier): gen **p95 ≤ 38 ms** (easy 22 / medium 19 / ha
 solveCap: 5, maxSingles: 1, techniqueFloor: 4`. `solveCap: 5` admits the K7b bounded-recursion tier;
 `techniqueFloor: 4` rejects anything T1–T4 already cracks — so an Expert board's **hardest required
 step is a depth-1 Nishio guess** (`hardestTier === 5`), disjoint from Hard (caps at T4) *by
-construction*, no score band needed (score ~99 vs Hard's ~61). **No Extreme** — K7b showed depth-2
-never fires; a fifth tier is the open K7d work. Generates ~240 ms avg / ~800 ms p95 (offline-pool
-friendly; interactive-tolerable, like Killer extreme); `verifyNodeBudget: 300000` caps the low-givens
-uniqueness proof.
+construction*, no score band needed (score ~99 vs Hard's ~61). `maxGuessSteps: 5` caps Expert to a
+*few* hypothesis steps, ceding the many-step tail to Extreme. Generates ~240 ms avg / ~800 ms p95
+(offline-pool friendly; interactive-tolerable, like Killer extreme); `verifyNodeBudget: 300000` caps
+the low-givens uniqueness proof.
+
+**Extreme (K7d) — the 5th tier, on the guess-STEP count.** K7b proved guess *depth* never exceeds 1,
+but K7d Slice-0 instrumentation found the guess-step *count* (`result.guessSteps`) spreads 1→23 and is
+strongly monotone with difficulty (median solve time climbs ~28× across the range). So Extreme =
+`minGuessSteps: 6` — a board needing **many** Nishio steps — an honest fifth tier with **no solver
+expansion** (the research's revived "count hard steps is signal"). Disjoint from Expert (≤5 steps) by
+the step band; same 0-given shape + `solveCap 5` + `techniqueFloor 4`. Rare + slow: ~1.1% accept,
+~2.3 s/board — an offline-cron-pool / slow-interactive tier (like Killer extreme). The Slice-1/2
+technique expansion (cage-line intersection, pairwise multi-cage elimination) was **not needed** — the
+step-count axis gave a cleaner, cheaper tier; those remain deferred (see the K7d research brief).
 
 ## Gate (met, full-spec)
 

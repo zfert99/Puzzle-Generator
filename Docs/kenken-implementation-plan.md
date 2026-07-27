@@ -4,10 +4,10 @@
 > rebalance + Keisan minis in the daily rotation. Next up **K7 (9×9)**, then **K6 (No-Op / Mystery)**
 > — order swapped so No-Op lands on top of the finished 9×9 tiers. K7 is itself **re-sliced** after
 > a 9×9 de-risk measurement (see K7 below): **K7a ✅** (3-tier 9×9) → **K7b ✅** (bounded-recursion
-> "T5"; measured that depth-2 never fires, so depth is one step, not a ladder) → **K7c 📋** (4-tier
-> 9×9 — add Expert = needs a Nishio guess; option-4 research says ship this now, don't block on a
-> fifth tier) → **K7d 📋** (a real Extreme, instrumented + gated — pairwise multi-cage elimination the
-> decisive test; may not land, with No-Op/Nishio-step-count as honest fallbacks). Build log:
+> "T5"; measured that depth-2 never fires, so depth is one step, not a ladder) → **K7c ✅** (4-tier
+> 9×9 — Expert = needs a Nishio guess) → **K7d ✅** (Extreme = needs *many* Nishio steps; Slice-0
+> instrumentation found the guess-step count is a monotone difficulty axis, so Option 2 won with no
+> solver expansion — the full 5-tier 9×9 ladder is in). **Next: K6** No-Op / Mystery. Build log:
 > [calcudoku/keisan walkthrough](keisan-walkthrough.md).
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
 > [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
@@ -374,19 +374,20 @@ Three sub-slices, each independently shippable and gated:
   Nishio guess (`hardestTier === 5`), generated into the offline cron pool + a `calc9-expert` daily
   board, with copy stating the honest "logic plus one hypothesis step" guarantee. Constructive
   generation may be needed if naive gating craters yield (measure first).
-- **K7d — the fifth tier (Extreme), instrumented + gated 📋 After K7c (may not land).** A separate
-  slice that *tries* to earn a real Extreme, following the research's staged, re-ranked path (region-
-  sum is contraindicated — `keen.c` omits it, billabob's "Region Products" is unbuilt):
-  **Slice 0** instrument per-technique "hardest required step?" + Nishio-step count on the 0-given
-  corpus → **Slice 1** cage-line intersection (pointing/claiming — a coverage win, rated *low*, not
-  the anchor) → **Slice 2** *pairwise* multi-cage combination elimination (the real Expert-separator
-  candidate; **decisive gate**: does it convert residual-Nishio boards and sit between T2 and Nishio?)
-  → **Slice 3** region-parity + *bounds-based* region-sum only if Slice 2 under-delivers → **Slice 4**
-  constructive generation for whatever technique anchors a tier. **Fallbacks if the gates fail** (both
-  honest, no big solver expansion): **Nishio-step-count banding** (Option 2 — revived; Pelánek says
-  count-of-hard-steps is signal) and/or the **No-Op / "Mystery" axis (K6)** as Extreme (calcudoku.org's
-  hardest mode; needs no new technique). If none separates a clean fifth tier, 9×9 stays 4 tiers —
-  which is an acceptable, honest outcome.
+- **K7d — the fifth tier (Extreme) ✅ Done — Option 2 won, no solver expansion needed.** The
+  instrumented attempt at a real Extreme. **Slice 0** (instrument `guessSteps` + baseline the 0-given
+  corpus) answered it outright, so the planned technique slices were skipped: the corpus showed the
+  named ladder gaps straight from **T2 (71%) → Nishio (22%)** with ~0% at T3, **but the Nishio
+  guess-STEP count spreads 1→23 and is strongly monotone with difficulty** (median solve time 8.6 →
+  239 ms across step buckets — a ~28× spread). That's the research's revived **Option 2** (Pelánek:
+  count-of-hard-steps is signal) — a clean, honest fifth-tier axis with zero new technique. **Extreme
+  = `minGuessSteps: 6`** (needs many hypothesis steps); **Expert gains `maxGuessSteps: 5`** so the two
+  are disjoint by the step band. Rare + slow to generate (~1.1% accept, ~2.3 s/board) → offline-pool /
+  slow-interactive, like Killer extreme. **Slices 1-2 (cage-line intersection, pairwise multi-cage
+  elimination) were NOT needed** — deferred, still written up in the
+  [technique-expansion brief](research/keisan-solver-technique-expansion-research.md) for any future
+  need. The 9×9 ladder is now the full **5 tiers** (easy/medium/hard/expert/extreme), at parity with
+  Classic/Killer.
 
 **Deferred as optional perf work, not blockers** (from the research's Slices 1–2): GAC `alldifferent`
 (Régin 1994) to speed uniqueness proving, and constructive **"dig-out"** generation (start gradable,

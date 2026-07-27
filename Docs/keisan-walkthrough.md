@@ -7,8 +7,8 @@
 >
 > **Status:** 🚧 In Progress — engine K0–K4 ✅ · surfaces K5 core ✅ (play/PDF/hub) · difficulty
 > rebalance ✅ · daily rotation ✅ · **K7a (9×9, 3 tiers) ✅** · **K7b (bounded-recursion "T5") ✅** ·
-> **K7c (9×9 Expert = needs a Nishio guess) ✅** · **next:** K7d (a real Extreme — instrumented +
-> gated, may not land), then K6 No-Op / Mystery · **Branch:** `feature/kenken`
+> **K7c (9×9 Expert = needs a Nishio guess) ✅** · **K7d (9×9 Extreme = needs *many* Nishio steps) ✅**
+> — the full 5-tier 9×9 ladder is in · **next:** K6 No-Op / Mystery · **Branch:** `feature/kenken`
 
 ## Naming
 
@@ -544,3 +544,53 @@ New tests: Expert is 0-given, unique, T4-can't-finish, T5-solves with `hardestTi
 `maxGuessDepth === 1`, and throws at 4×4/6×6. Daily registry asserts the `calc` section is
 `[easy, medium, hard, expert]` and `formatDailyKey('calc9-expert') === 'keisan expert'`. Full battery
 green; tsc / lint / markdownlint clean.
+
+## K7d — 9×9 Extreme (the 5th tier), and how Option 2 won ✅
+
+The instrumented attempt at a genuine fifth tier. Chosen path was the research's staged plan
+(Slice 0 instrument → Slice 1 cage-line intersection → Slice 2 pairwise multi-cage elimination), but
+**Slice 0 answered the question outright and the technique slices weren't needed.**
+
+### Slice 0 — instrumentation + the finding
+
+Added `guessSteps` to `CalcSolveResult` (the *count* of bounded-recursion eliminations, distinct from
+`maxGuessDepth`). Baselined the 0-given corpus:
+
+- **Hardest-required-step distribution** (400 unique boards): **71% top out at T2** (naked pair), ~4%
+  at T4 (X-Wing), **~0% at T3** (lineSum-as-hardest never fires — confirming it's single-line-only),
+  and **22% jump straight to Nishio**. A big gap between T2 and the guess tier — what Slices 1-2 would
+  have tried to fill.
+- **But the guess-STEP count is the prize.** Among Nishio boards it spreads **1 → 23** (p50 2, p90 6),
+  and it is **strongly monotone with difficulty**: median solve time climbs **8.6 → 15 → 36 → 75 →
+  239 ms** across the 1 / 2-3 / 4-5 / 6-8 / 9+ step buckets — a ~28× spread. Score and passes rise
+  monotonically too.
+
+That's a clean, honest fifth-tier axis with **zero solver expansion** — the research's revived
+"Option 2" (Pelánek: *count of hard steps* is signal). So Slices 1-2 (cage-line intersection, pairwise
+multi-cage elimination) were **deferred** — the step-count gave a cheaper, cleaner tier. They remain
+written up in the [technique-expansion brief](research/keisan-solver-technique-expansion-research.md)
+if a future need arises.
+
+### Extreme = many Nishio steps
+
+New config lever `minGuessSteps` / `maxGuessSteps` on the guess-step count. **Extreme = `minGuessSteps:
+6`** (needs ≥6 hypothesis steps); **Expert gains `maxGuessSteps: 5`** so the two are disjoint by the
+step band (both still require the Nishio tier via `techniqueFloor: 4`). The cut at 6 gives the
+cleanest difficulty gap (Expert 1-5 steps ~8-36 ms solve, Extreme 6+ ~75-239 ms). Honest framing:
+Expert = "logic + a few hypothesis steps", Extreme = "logic + *many*".
+
+### De-risk + surfaces
+
+Extreme generation: **~1.1% accept, ~2.3 s/board** (rare + slow because every candidate pays a T5
+grade) — an offline-cron-pool / slow-interactive tier, like Killer extreme (both routes already carry
+`maxDuration = 60`). Threaded through `/play` (Extreme in the Keisan list, gated to 9×9; a "can take a
+few seconds" hint; the variant-switch clamp simplified to the now-uniform "expert/extreme need 9×9"
+rule), `/generate` (Extreme count only at calc 9×9), both API routes, and a `calc9-extreme` daily
+board.
+
+### Verification (K7d)
+
+New test: Extreme is unique, T5-solves with `hardestTier === 5` and **`guessSteps ≥ 6`** (disjoint
+from Expert's ≤5), and throws at 4×4/6×6. Daily registry asserts the `calc` section is now
+`[easy, medium, hard, expert, extreme]` and `formatDailyKey('calc9-extreme') === 'keisan extreme'`.
+312 tests green; tsc / lint / markdownlint clean; 4×4/6×6 untouched.

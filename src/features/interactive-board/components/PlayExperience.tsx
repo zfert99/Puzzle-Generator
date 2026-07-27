@@ -34,7 +34,7 @@ function useHasMounted(): boolean {
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
 const KILLER_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
-const CALC_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert']; // expert is 9×9-only (gated below)
+const CALC_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme']; // expert/extreme are 9×9-only (gated below)
 
 type PlayVariant = 'classic' | 'killer' | 'calc';
 
@@ -97,12 +97,9 @@ export default function PlayExperience() {
   const handleVariantChange = (v: PlayVariant) => {
     setVariant(v);
     if (v === 'killer' && gridSize === 4) setGridSize(9); // Killer comes in 6×6 and 9×9
-    // Keisan comes in 4×4 / 6×6 / 9×9 — every size is valid, so no size clamp on switch.
-    // Keisan has Expert only at 9×9 and no Extreme at all; 6×6 (any variant) has no expert/extreme.
-    if (v === 'calc' && difficulty === 'extreme') setDifficulty('hard');
-    else if ((v === 'calc' && gridSize !== 9) || gridSize === 6) {
-      if (difficulty === 'expert' || difficulty === 'extreme') setDifficulty('hard');
-    }
+    // Keisan comes in 4×4 / 6×6 / 9×9 — every size is valid, so no size clamp on switch. Expert and
+    // Extreme are 9×9-only for EVERY variant, so the guard is uniform: clamp them off any non-9 grid.
+    if (gridSize !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const startFresh = async () => {
@@ -213,12 +210,13 @@ export default function PlayExperience() {
             })}
           </div>
           {miniGrid && (
-            <p className="text-xs text-ink-soft text-center mt-2">
-              {isCalc ? 'Expert is only available for 9×9 grids.' : 'Expert and Extreme are only available for 9×9 grids.'}
-            </p>
+            <p className="text-xs text-ink-soft text-center mt-2">Expert and Extreme are only available for 9×9 grids.</p>
           )}
           {isKiller && difficulty === 'extreme' && (
             <p className="text-xs text-ink-soft text-center mt-2">Extreme Killers are rare finds — generating one can take ~10 seconds.</p>
+          )}
+          {isCalc && difficulty === 'extreme' && (
+            <p className="text-xs text-ink-soft text-center mt-2">Extreme Keisan needs many hypothesis steps — generating one can take a few seconds.</p>
           )}
         </div>
 

@@ -62,15 +62,16 @@ describe('toDailyPuzzleRow', () => {
       .toEqual(['easy', 'medium', 'hard', 'expert', 'extreme']);
     expect(DAILY_BOARDS.filter((b) => b.section === 'killer')).toHaveLength(5);
     // Keisan 4×4/6×6 live in MINIS (with the classic/killer minis) — 9 + 6 = 15. The top-level
-    // `calc` section is the 9×9 Keisan ladder (K7a easy/medium/hard + K7c expert), mirroring Classic/
-    // Killer 9×9. Expert is 9×9-only, so it appears in `calc` but never in the minis.
+    // `calc` section is the full 9×9 Keisan ladder (K7a easy/medium/hard + K7c expert + K7d extreme),
+    // mirroring Classic/Killer 9×9. Expert/Extreme are 9×9-only, so they never appear in the minis.
     expect(DAILY_BOARDS.filter((b) => b.section === 'minis')).toHaveLength(15);
     expect(DAILY_BOARDS.filter((b) => b.section === 'calc').map((b) => b.key))
-      .toEqual(['calc9-easy', 'calc9-medium', 'calc9-hard', 'calc9-expert']);
+      .toEqual(['calc9-easy', 'calc9-medium', 'calc9-hard', 'calc9-expert', 'calc9-extreme']);
     expect(DAILY_BOARDS.filter((b) => b.section === 'calc').every((b) => b.gridSize === 9)).toBe(true);
-    expect(DAILY_BOARDS.filter((b) => b.variant === 'calc' && b.difficulty === 'expert').map((b) => b.key)).toEqual(['calc9-expert']);
+    expect(DAILY_BOARDS.filter((b) => b.variant === 'calc' && (b.difficulty === 'expert' || b.difficulty === 'extreme')).map((b) => b.key))
+      .toEqual(['calc9-expert', 'calc9-extreme']);
     expect(DAILY_BOARDS.filter((b) => b.variant === 'calc').map((b) => b.key))
-      .toEqual(['calc4-easy', 'calc4-medium', 'calc4-hard', 'calc6-easy', 'calc6-medium', 'calc6-hard', 'calc9-easy', 'calc9-medium', 'calc9-hard', 'calc9-expert']);
+      .toEqual(['calc4-easy', 'calc4-medium', 'calc4-hard', 'calc6-easy', 'calc6-medium', 'calc6-hard', 'calc9-easy', 'calc9-medium', 'calc9-hard', 'calc9-expert', 'calc9-extreme']);
     // Keys are unique — they are the UNIQUE(date, difficulty) idempotency handle.
     expect(new Set(DAILY_BOARDS.map((b) => b.key)).size).toBe(DAILY_BOARDS.length);
     // The legacy single-killer key stays readable (archived rows) but is not generated.
@@ -81,6 +82,7 @@ describe('toDailyPuzzleRow', () => {
     expect(formatDailyKey('calc6-hard')).toBe('keisan 6×6 hard');
     expect(formatDailyKey('calc9-hard')).toBe('keisan hard'); // 9×9 Keisan section: label is the bare tier
     expect(formatDailyKey('calc9-expert')).toBe('keisan expert');
+    expect(formatDailyKey('calc9-extreme')).toBe('keisan extreme');
   });
 
   it('maps a Killer puzzle to its board key, carrying cages and cage count', () => {

@@ -70,6 +70,13 @@ export interface CalcSolveResult {
    * `hardestTier = 4 + maxGuessDepth` whenever a guess was needed.
    */
   maxGuessDepth: number;
+  /**
+   * How many bounded-recursion guess-eliminations the solve made (successful `nishioRound` calls) —
+   * the *count* of hard hypothesis steps, distinct from their max depth. K7d Slice 0 instrumentation:
+   * the research (Pelánek) says count-of-hard-steps is a real difficulty signal, so this is the
+   * candidate axis for an honest fifth tier without a solver expansion.
+   */
+  guessSteps: number;
 }
 
 function popcount(mask: number): number {
@@ -633,6 +640,7 @@ export class CalcLogicalSolver {
     let passes = 0;
     let openSinglesSum = 0;
     let maxGuessDepth = 0;
+    let guessSteps = 0;
 
     while (this.empties > 0) {
       openSinglesSum += this.countOpenSingles();
@@ -654,6 +662,7 @@ export class CalcLogicalSolver {
         for (let depth = 1; depth <= guessDepthAllowed; depth++) {
           if (this.nishioRound(ladder, depth)) {
             maxGuessDepth = Math.max(maxGuessDepth, depth);
+            guessSteps += 1;
             const tier = (4 + depth) as CalcTier;
             if (tier > this.hardestTier) this.hardestTier = tier;
             progressed = true;
@@ -672,6 +681,7 @@ export class CalcLogicalSolver {
       passes,
       avgOpenSingles: passes > 0 ? openSinglesSum / passes : 0,
       maxGuessDepth,
+      guessSteps,
     };
   }
 }

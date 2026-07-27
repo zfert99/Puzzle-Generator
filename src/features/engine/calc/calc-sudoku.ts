@@ -102,6 +102,15 @@ interface CalcDifficultyConfig {
    * from measured distributions (recalibrate whenever the weights or shape gates change).
    */
   scoreBand?: { min?: number; max?: number };
+  /**
+   * Bounded-recursion **guess-step count** band (K7d) — the honest fifth-tier axis. A board's
+   * `guessSteps` is how many depth-1 Nishio eliminations the solve needed; it is *monotone* with
+   * difficulty (measured: solve time climbs ~28× from 1 → many steps). Requires `solveCap ≥ 5`.
+   * Expert uses `maxGuessSteps` (a few steps), Extreme uses `minGuessSteps` (many) — disjoint by
+   * construction. `undefined` = no bound.
+   */
+  minGuessSteps?: number;
+  maxGuessSteps?: number;
   /** Node budget for the belt-and-braces uniqueness check. */
   verifyNodeBudget?: number;
 }
@@ -209,14 +218,21 @@ const DIFFICULTY_CONFIG_9: Partial<Record<CalcDifficulty, CalcDifficultyConfig>>
   easy: { activeOps: TRI_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 12, maxSingles: 26, operatorWeights: EASY_OP_WEIGHTS, giftBanLevel: 'combos1' },
   medium: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 6, maxSingles: 11, giftBanLevel: 'twoCell' },
   hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 3, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 1 },
-  // Expert (K7c): the honest top of the 4-tier 9×9 ladder — a near-0-given board whose hardest
-  // required step is a **depth-1 Nishio guess** (the K7b bounded-recursion tier). `solveCap: 5` admits
-  // the guess tier; `techniqueFloor: 4` REJECTS anything the named T1–T4 ladder already cracks, so
-  // Expert genuinely needs a hypothesis step — disjoint from Hard (which caps at T4) by construction,
-  // no score band required. Score runs far higher than Hard anyway (~99 vs ~61). Depth-2 never occurs
-  // (K7b), so there is no Extreme here — see K7d. `verifyNodeBudget` caps the low-givens uniqueness
-  // proof. Generates ~240 ms avg / ~800 ms p95 (offline-cron-pool friendly; interactive-tolerable).
-  expert: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 5, maxSingles: 1, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 4, verifyNodeBudget: 300000 },
+  // Expert (K7c): a near-0-given board whose hardest required step is a **depth-1 Nishio guess** (the
+  // K7b bounded-recursion tier). `solveCap: 5` admits the guess tier; `techniqueFloor: 4` REJECTS
+  // anything T1–T4 already cracks, so Expert genuinely needs ≥1 hypothesis step — disjoint from Hard
+  // (caps at T4) by construction, no score band needed (score ~99 vs Hard's ~61). `maxGuessSteps: 5`
+  // keeps Expert to a *few* hypothesis steps, ceding the many-step tail to Extreme (K7d). Generates
+  // ~240 ms avg / ~800 ms p95 — offline-pool friendly, interactive-tolerable.
+  expert: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 5, maxSingles: 1, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 4, maxGuessSteps: 5, verifyNodeBudget: 300000 },
+  // Extreme (K7d): the honest fifth tier — a board needing **many** depth-1 Nishio steps
+  // (`minGuessSteps: 6`). K7b showed guess *depth* never exceeds 1, but K7d Slice-0 instrumentation
+  // found the guess-step *count* spreads 1→23 and is strongly monotone with difficulty (solve time
+  // climbs ~28× across the range), so "needs a lot of guess-and-check" is a real, honest axis with no
+  // solver expansion (the research's revived Option 2). Disjoint from Expert (≤5 steps) by the step
+  // band. Rare + slow to generate (~1.1% accept, ~2.3 s/board) — offline-cron-pool tier, like Killer
+  // extreme. `verifyNodeBudget` caps the uniqueness proof.
+  extreme: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 5, maxSingles: 1, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 4, minGuessSteps: 6, verifyNodeBudget: 300000 },
 };
 
 const DIFFICULTY_CONFIGS: Record<4 | 6 | 9, Partial<Record<CalcDifficulty, CalcDifficultyConfig>>> = {
@@ -313,6 +329,12 @@ export function generateCalcSudoku(
       continue;
     }
 
+    // Guess-step band (K7d): the fifth-tier axis. `result.guessSteps` comes from the solveCap grade
+    // above (needs solveCap ≥ 5). Expert caps it low (a few hypothesis steps); Extreme floors it high
+    // (many) — so the two are disjoint even though both require the Nishio tier.
+    if (config.minGuessSteps !== undefined && result.guessSteps < config.minGuessSteps) continue;
+    if (config.maxGuessSteps !== undefined && result.guessSteps > config.maxGuessSteps) continue;
+
     if (config.scoreBand) {
       const { final } = scoreCalcSolve(result);
       if (config.scoreBand.min !== undefined && final < config.scoreBand.min) continue;
@@ -332,15 +354,15 @@ export function generateCalcSudoku(
   throw new Error(`Could not generate a ${difficulty} Keisan (${gridSize}×${gridSize}) in ${maxAttempts} attempts`);
 }
 
-/** Generate a batch of graded Keisan puzzles — `counts[difficulty]` of each, easy→expert order. */
+/** Generate a batch of graded Keisan puzzles — `counts[difficulty]` of each, easy→extreme order. */
 export function generateCalcBatch(
   counts: Partial<Record<CalcDifficulty, number>>,
   options: { gridSize?: 4 | 6 | 9 } = {},
 ): CalcPuzzle[] {
   const puzzles: CalcPuzzle[] = [];
-  // `expert` is 9×9-only; callers pass 0 for it at 4×4/6×6 (the UI/route gate it), so the n===0 guard
-  // below skips it and generateCalcSudoku is never asked for an unsupported (size, difficulty) pair.
-  for (const difficulty of ['easy', 'medium', 'hard', 'expert'] as const) {
+  // `expert`/`extreme` are 9×9-only; callers pass 0 for them at 4×4/6×6 (the UI/route gate it), so the
+  // n===0 guard below skips them and generateCalcSudoku is never asked for an unsupported pair.
+  for (const difficulty of ['easy', 'medium', 'hard', 'expert', 'extreme'] as const) {
     const n = counts[difficulty] ?? 0;
     for (let i = 0; i < n; i++) puzzles.push(generateCalcSudoku(difficulty, options));
   }

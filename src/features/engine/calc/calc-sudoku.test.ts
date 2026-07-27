@@ -88,6 +88,20 @@ describe('generateCalcSudoku', () => {
     expect(() => generateCalcSudoku('expert', { gridSize: 6 })).toThrow();
   });
 
+  it('9×9 Extreme (K7d) needs MANY Nishio steps (≥6) — disjoint from Expert (≤5), 9×9-only', async () => {
+    // Extreme is the honest fifth tier: the guess-step COUNT (not depth) is the axis. Generation is
+    // slow (rare, ~1% accept, each candidate pays a T5 grade), hence the generous timeout.
+    const p = generateCalcSudoku('extreme', { gridSize: 9 });
+    expect(p.difficulty).toBe('extreme');
+    expect(new CalcSolver(p.cages, 9).countSolutions(2)).toBe(1);
+    const r = new CalcLogicalSolver(p.cages, 9).solve({ maxTier: 5 });
+    expect(r.solved).toBe(true);
+    expect(r.hardestTier).toBe(5); // still the Nishio tier — depth never exceeds 1 (K7b)
+    expect(r.guessSteps).toBeGreaterThanOrEqual(6); // MANY steps — the Extreme band (Expert caps at 5)
+    expect(() => generateCalcSudoku('extreme', { gridSize: 4 })).toThrow();
+    expect(() => generateCalcSudoku('extreme', { gridSize: 6 })).toThrow();
+  }, 30000);
+
   it('9×9 tiers separate on a disjoint givens gradient (easy ≥12 > medium 6–11 > hard ≤3)', () => {
     // K7a: the tiers are defined by single-cell-cage (given) count, not a score band. The ranges are
     // disjoint by construction, so the tier ordering holds sample-to-sample.

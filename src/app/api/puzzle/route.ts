@@ -7,7 +7,7 @@ import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 
 const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
-const CALC_DIFFICULTIES: CalcDifficulty[] = ['easy', 'medium', 'hard', 'expert'];
+const CALC_DIFFICULTIES: CalcDifficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
 // The engine is pure TypeScript, but keep this on the Node.js runtime for
 // consistency with the rest of the API and to leave room for future Node-only work.
@@ -67,13 +67,13 @@ export async function POST(req: NextRequest) {
     // ---- Keisan branch (Calcudoku; 4×4/6×6 easy/medium/hard, 9×9 adds expert) ----
     if (variant === 'calc') {
       if (!CALC_DIFFICULTIES.includes(difficulty)) {
-        return NextResponse.json({ error: 'Keisan difficulty must be easy, medium, hard, or expert' }, { status: 400 });
+        return NextResponse.json({ error: 'Keisan difficulty must be easy, medium, hard, expert, or extreme' }, { status: 400 });
       }
       if (gridSize !== 4 && gridSize !== 6 && gridSize !== 9) {
         return NextResponse.json({ error: 'Keisan grid size must be 4, 6, or 9' }, { status: 400 });
       }
-      if (difficulty === 'expert' && gridSize !== 9) {
-        return NextResponse.json({ error: 'Expert Keisan is only available at 9×9' }, { status: 400 });
+      if ((difficulty === 'expert' || difficulty === 'extreme') && gridSize !== 9) {
+        return NextResponse.json({ error: 'Expert and Extreme Keisan are only available at 9×9' }, { status: 400 });
       }
       const puzzle = generateCalcSudoku(difficulty as CalcDifficulty, { gridSize });
       logger.info(

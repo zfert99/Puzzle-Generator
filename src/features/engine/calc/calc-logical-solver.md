@@ -52,11 +52,17 @@ valid logical solution path — a `-1`-style "gave up" never yields a wrong grid
 ## Instrumentation for scoring (K4)
 
 `CalcSolveResult` carries `{ solved, hardestTier, techniqueCounts, passes, avgOpenSingles,
-maxGuessDepth }`. `avgOpenSingles` is the mean number of naked singles available per pass — the
-opportunity-density signal (high = open/easy). K4's two-factor score is `weightedTechniqueSum ×
-densityFactor`. `maxGuessDepth` (0/1/2) is the deepest bounded-recursion guess the solve needed
-(only populated when `maxTier ≥ 5`); the guess tiers deliberately do **not** feed the score — they
-are a separate axis (`hardestTier`), not weighted technique work.
+maxGuessDepth, guessSteps }`. `avgOpenSingles` is the mean number of naked singles available per
+pass — the opportunity-density signal (high = open/easy). K4's two-factor score is
+`weightedTechniqueSum × densityFactor`. `maxGuessDepth` (0/1/2) is the deepest bounded-recursion
+guess the solve needed (only populated when `maxTier ≥ 5`); the guess tiers deliberately do **not**
+feed the score — they are a separate axis (`hardestTier`), not weighted technique work.
+
+`guessSteps` (K7d instrumentation) is the **count** of bounded-recursion eliminations the solve made
+— distinct from their max depth. Depth never exceeds 1 (K7b), but the *count* spreads 1→23 and is
+strongly monotone with difficulty (measured: median solve time climbs ~28× from 1 step to many). It's
+the axis the 9×9 **Extreme** tier rides — "needs many hypothesis steps" — an honest fifth tier with no
+solver expansion (the research's revived "count hard steps" signal, Pelánek).
 
 ## Measured behaviour (K3 gate + K7b bounded-recursion)
 
