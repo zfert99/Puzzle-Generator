@@ -169,8 +169,15 @@ export function drawCalcGrid(
     grid: showSolution ? puzzle.solution : puzzle.grid,
     cages: puzzle.cages.map((cage) => ({
       cells: cage.cells,
-      // Mystery (no-op) cages hide their operator — show only the target.
-      label: cage.cells.length === 1 || cage.noOp ? String(cage.target) : `${cage.target}${PDF_OPERATOR_SYMBOL[cage.op]}`,
+      // Single-cell cages are givens (bare value). Mystery (no-op) cages hide their operator on the
+      // PUZZLE page — but the ANSWER page reveals it (`showSolution`), so a printed key shows the
+      // operation you had to deduce.
+      label:
+        cage.cells.length === 1
+          ? String(cage.target)
+          : cage.noOp && !showSolution
+            ? String(cage.target)
+            : `${cage.target}${PDF_OPERATOR_SYMBOL[cage.op]}`,
     })),
     startX,
     startY,
