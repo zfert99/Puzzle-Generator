@@ -1,7 +1,8 @@
 # Keisan Generation Pipeline (`calc-sudoku.ts`)
 
 Assembles K1–K3 into `generateCalcSudoku(difficulty)`, which emits a **uniquely-solvable,
-difficulty-graded** Keisan puzzle. Offers easy/medium/hard at 4×4, 6×6, and **9×9 (K7a)**.
+difficulty-graded** Keisan puzzle. Offers easy/medium/hard at 4×4/6×6, and **easy/medium/hard/expert
+at 9×9** (K7a tiers + the K7c Expert tier).
 
 ## Pipeline (cheapest gate first)
 
@@ -97,6 +98,15 @@ Disjoint by construction. Recalibrate whenever the technique weights or shape ga
 Measured gate (100 boards/tier): gen **p95 ≤ 38 ms** (easy 22 / medium 19 / hard 38), **max 136 ms**;
 **100% gradable** every tier; givens **13–23 / 7–11 / 0–3** (disjoint, monotonic); Hard carries −/÷ in
 **100%** of boards. Well inside the interactive budget.
+
+**Expert (K7c) — the 9×9 ladder's 4th tier.** `activeOps: QUAD_OP, minSize: 2, maxSize: 3,
+solveCap: 5, maxSingles: 1, techniqueFloor: 4`. `solveCap: 5` admits the K7b bounded-recursion tier;
+`techniqueFloor: 4` rejects anything T1–T4 already cracks — so an Expert board's **hardest required
+step is a depth-1 Nishio guess** (`hardestTier === 5`), disjoint from Hard (caps at T4) *by
+construction*, no score band needed (score ~99 vs Hard's ~61). **No Extreme** — K7b showed depth-2
+never fires; a fifth tier is the open K7d work. Generates ~240 ms avg / ~800 ms p95 (offline-pool
+friendly; interactive-tolerable, like Killer extreme); `verifyNodeBudget: 300000` caps the low-givens
+uniqueness proof.
 
 ## Gate (met, full-spec)
 

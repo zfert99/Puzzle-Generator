@@ -7,8 +7,8 @@
 >
 > **Status:** 🚧 In Progress — engine K0–K4 ✅ · surfaces K5 core ✅ (play/PDF/hub) · difficulty
 > rebalance ✅ · daily rotation ✅ · **K7a (9×9, 3 tiers) ✅** · **K7b (bounded-recursion "T5") ✅** ·
-> **next:** K7c Expert/Extreme ladder — ⏸ blocked on a tier-shape decision (depth-2 never fires), then
-> K6 No-Op / Mystery · **Branch:** `feature/kenken`
+> **K7c (9×9 Expert = needs a Nishio guess) ✅** · **next:** K7d (a real Extreme — instrumented +
+> gated, may not land), then K6 No-Op / Mystery · **Branch:** `feature/kenken`
 
 ## Naming
 
@@ -503,3 +503,44 @@ New solver tests: a T4-stuck 9×9 solves at T5 with the grid matching the exact 
 `maxGuessDepth === 1`; a T4-solvable board reports `maxGuessDepth === 0`. Existing soundness fuzz
 still green. tsc / lint / markdownlint clean; no generator changes yet (the T5 solver is capability
 only — Expert/Extreme configs land in K7c once the tier shape is decided).
+
+## K7c — 9×9 Expert (4-tier ladder) ✅
+
+The tier-shape decision resolved via an external research pass (chosen: research option 4). The
+verdict — [full doc](research/compass_artifact_wf-bb40e383-544c-5bfa-a4d0-a3b6202da609_text_markdown.md),
+folded into the [technique-expansion brief](research/keisan-solver-technique-expansion-research.md#-research-verdict-external-pass-complete-2026-07-27)
+— was blunt: **ship the 4-tier ladder now; don't block on a fifth tier** (uneven tier counts across
+variants are normal and low-confusion; a *dishonest* Extreme is worse than none). The would-be
+Extreme (a real technique-separated tier) became **K7d** — instrumented and gated, may not land, with
+No-Op/Mystery (K6) and Nishio-step-count as honest fallbacks.
+
+### What Expert is
+
+A **near-0-given 9×9 board whose hardest required step is a depth-1 Nishio guess** — i.e. the K7b
+bounded-recursion tier is genuinely needed. Config: `solveCap: 5` (admits the guess tier) +
+`techniqueFloor: 4` (rejects anything T1–T4 already cracks). That makes Expert **disjoint from Hard by
+construction** (Hard caps at T4; Expert *requires* T5), so no score band is needed — and the score
+runs far higher anyway (~99 vs Hard's ~61). Honest player-facing framing: "solvable with logic plus
+one hypothesis step."
+
+### De-risk
+
+Measured before wiring: Expert generation accepts 50/50, **gen avg 239 ms / p95 792 ms / max 1.8 s**,
+givens ~1. That's offline-cron-pool-friendly and interactive-tolerable (Killer extreme is ~5 s and
+ships interactive), so Expert is offered everywhere the other tiers are.
+
+### Surfaces
+
+`CalcDifficulty` widened to include `expert` (9×9-only; the config map is now `Partial` per size so
+4×4/6×6 legitimately omit it and `generateCalcSudoku` throws for an unsupported pair). Threaded
+through `/play` (Expert appears in the Keisan difficulty list, disabled at 4/6 by the existing
+mini-grid guard; the variant-switch clamp fixed so calc 9×9 keeps Expert), `/generate` (Expert count
+shown only at calc 9×9; PDF already size-generic), and both API routes (with an "Expert is 9×9-only"
+guard). A `calc9-expert` daily board joins the `calc` section (bot time above Hard).
+
+### Verification (K7c)
+
+New tests: Expert is 0-given, unique, T4-can't-finish, T5-solves with `hardestTier === 5` /
+`maxGuessDepth === 1`, and throws at 4×4/6×6. Daily registry asserts the `calc` section is
+`[easy, medium, hard, expert]` and `formatDailyKey('calc9-expert') === 'keisan expert'`. Full battery
+green; tsc / lint / markdownlint clean.

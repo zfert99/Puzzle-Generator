@@ -54,7 +54,9 @@ export interface CalcCage {
 }
 
 /** Keisan difficulty tiers (v1: easy/medium/hard; expert may follow, like Killer). */
-export type CalcDifficulty = 'easy' | 'medium' | 'hard';
+// 'expert' is 9×9-only (K7c): a 0-given board whose hardest required step is a depth-1 Nishio guess
+// (`hardestTier === 5`). 4×4/6×6 offer only easy/medium/hard — the config map + route guards enforce it.
+export type CalcDifficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
 /**
  * A generated Keisan puzzle. `grid` is all-zero — Keisan has no pre-filled givens (a single-cell

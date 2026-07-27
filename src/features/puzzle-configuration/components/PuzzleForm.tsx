@@ -6,7 +6,7 @@ import { GridSizeSelector } from './GridSizeSelector';
 import { DifficultyConfigurator } from './DifficultyConfigurator';
 
 const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
-const CALC_DIFFICULTIES = ['easy', 'medium', 'hard'];
+const CALC_DIFFICULTIES = ['easy', 'medium', 'hard']; // 9×9 adds 'expert' (see the calc size branch)
 
 export default function PuzzleForm() {
   const [variant, setVariant] = useState<'classic' | 'killer' | 'calc'>('classic');
@@ -37,7 +37,7 @@ export default function PuzzleForm() {
     if (isKiller) {
       await generate({ variant: 'killer', gridSize: killerSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: killerSize === 9 ? counts.expert : 0, extreme: killerSize === 9 ? counts.extreme : 0 });
     } else if (isCalc) {
-      await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard });
+      await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: calcSize === 9 ? counts.expert : 0 });
     } else {
       await generate({ ...counts, gridSize });
     }
@@ -114,7 +114,7 @@ export default function PuzzleForm() {
         gridSize={gridSize}
         counts={counts}
         onChange={handleDifficultyChange}
-        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? CALC_DIFFICULTIES : undefined}
+        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert'] : CALC_DIFFICULTIES) : undefined}
       />
 
       {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}

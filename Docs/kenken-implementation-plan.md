@@ -4,8 +4,10 @@
 > rebalance + Keisan minis in the daily rotation. Next up **K7 (9×9)**, then **K6 (No-Op / Mystery)**
 > — order swapped so No-Op lands on top of the finished 9×9 tiers. K7 is itself **re-sliced** after
 > a 9×9 de-risk measurement (see K7 below): **K7a ✅** (3-tier 9×9) → **K7b ✅** (bounded-recursion
-> "T5" — built; measured that depth-2 never fires, so depth is one step, not a ladder) → **K7c ⏸**
-> (Expert/Extreme ladder — blocked on a tier-shape decision, see K7c). Build log:
+> "T5"; measured that depth-2 never fires, so depth is one step, not a ladder) → **K7c 📋** (4-tier
+> 9×9 — add Expert = needs a Nishio guess; option-4 research says ship this now, don't block on a
+> fifth tier) → **K7d 📋** (a real Extreme, instrumented + gated — pairwise multi-cage elimination the
+> decisive test; may not land, with No-Op/Nishio-step-count as honest fallbacks). Build log:
 > [calcudoku/keisan walkthrough](keisan-walkthrough.md).
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
 > [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
@@ -362,21 +364,29 @@ Three sub-slices, each independently shippable and gated:
   **single step** (needs-a-guess vs not), exactly the contingency this slice flagged ("if depth-2
   isn't there, cap at depth-1"). The mechanism is committed and dormant-capable of depth-2 (for later
   sizes / No-Op), but 9×9 uses depth-1 only. **This opens the K7c fork below.**
-- **K7c — the Expert/Extreme ladder ⏸ Blocked on a decision (K7b finding).** The plan was to split
-  Expert/Extreme by guess-depth, but K7b measured that **depth-2 never occurs** — depth gives only one
-  guess-gated tier, not two. So K7c can't be built as specified. The fork (documented with options in
-  [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) §6b): (1) ship a
-  **4-tier** 9×9 (Expert = needs depth-1 Nishio, no Extreme) — the honest, simple option; (2) count
-  Nishio *steps* as an Extreme axis (needs monotonicity evidence); (3) score-band-split the T5
-  population (weak — score barely discriminates at 9×9); (4) add a real intermediate technique
-  (cage-region intersection / multi-line region-sum — a K3 solver expansion) so the pre-guess ladder
-  widens. Whichever tier shape is chosen, Expert (+ Extreme if any) still generate **offline into the
-  daily-cron pool** and carry the honest "solvable with logic plus at most one hypothesis step"
-  guarantee. **Chosen direction: research option 4** — brief at
-  [keisan-solver-technique-expansion-research.md](research/keisan-solver-technique-expansion-research.md)
-  (widen the named ladder via pointing/claiming + multi-line region-sum; validate firing rate +
-  monotonicity before building; fall back to option 1's 4 tiers if it doesn't pan out). **K7c build
-  paused pending that research.**
+- **K7c — 4-tier 9×9 (Expert = needs depth-1 Nishio) 📋 Next.** K7b found depth-2 never fires, so
+  guess-depth gives one new tier, not two. The option-4 research
+  ([verdict](research/keisan-solver-technique-expansion-research.md#-research-verdict-external-pass-complete-2026-07-27),
+  [full doc](research/compass_artifact_wf-bb40e383-544c-5bfa-a4d0-a3b6202da609_text_markdown.md))
+  landed on: **ship the 4-tier ladder now, don't block on a fifth tier** (uneven tier counts across
+  variants are normal; a *dishonest* Extreme is worse than none). So K7c adds **Expert** to the 9×9
+  ladder using the K7b solver — Expert = a 0-given board whose hardest required step is a depth-1
+  Nishio guess (`hardestTier === 5`), generated into the offline cron pool + a `calc9-expert` daily
+  board, with copy stating the honest "logic plus one hypothesis step" guarantee. Constructive
+  generation may be needed if naive gating craters yield (measure first).
+- **K7d — the fifth tier (Extreme), instrumented + gated 📋 After K7c (may not land).** A separate
+  slice that *tries* to earn a real Extreme, following the research's staged, re-ranked path (region-
+  sum is contraindicated — `keen.c` omits it, billabob's "Region Products" is unbuilt):
+  **Slice 0** instrument per-technique "hardest required step?" + Nishio-step count on the 0-given
+  corpus → **Slice 1** cage-line intersection (pointing/claiming — a coverage win, rated *low*, not
+  the anchor) → **Slice 2** *pairwise* multi-cage combination elimination (the real Expert-separator
+  candidate; **decisive gate**: does it convert residual-Nishio boards and sit between T2 and Nishio?)
+  → **Slice 3** region-parity + *bounds-based* region-sum only if Slice 2 under-delivers → **Slice 4**
+  constructive generation for whatever technique anchors a tier. **Fallbacks if the gates fail** (both
+  honest, no big solver expansion): **Nishio-step-count banding** (Option 2 — revived; Pelánek says
+  count-of-hard-steps is signal) and/or the **No-Op / "Mystery" axis (K6)** as Extreme (calcudoku.org's
+  hardest mode; needs no new technique). If none separates a clean fifth tier, 9×9 stays 4 tiers —
+  which is an acceptable, honest outcome.
 
 **Deferred as optional perf work, not blockers** (from the research's Slices 1–2): GAC `alldifferent`
 (Régin 1994) to speed uniqueness proving, and constructive **"dig-out"** generation (start gradable,

@@ -71,6 +71,23 @@ describe('generateCalcSudoku', () => {
     }
   });
 
+  it('9×9 Expert (K7c) is 0-given, needs a depth-1 Nishio guess, and is 9×9-only', () => {
+    // Expert = the honest top of the ladder: unique, T4 can't finish it, T5 (Nishio) can.
+    const p = generateCalcSudoku('expert', { gridSize: 9 });
+    expect(p.difficulty).toBe('expert');
+    expect(p.gridSize).toBe(9);
+    expect(p.cages.filter((c) => c.cells.length === 1).length).toBeLessThanOrEqual(1); // near-0 givens
+    expect(new CalcSolver(p.cages, 9).countSolutions(2)).toBe(1); // unique
+    expect(new CalcLogicalSolver(p.cages, 9).solve({ maxTier: 4 }).solved).toBe(false); // needs > T4
+    const r5 = new CalcLogicalSolver(p.cages, 9).solve({ maxTier: 5 });
+    expect(r5.solved).toBe(true);
+    expect(r5.hardestTier).toBe(5);
+    expect(r5.maxGuessDepth).toBe(1);
+    // Expert exists only at 9×9 — 4×4/6×6 have no such config and must throw.
+    expect(() => generateCalcSudoku('expert', { gridSize: 4 })).toThrow();
+    expect(() => generateCalcSudoku('expert', { gridSize: 6 })).toThrow();
+  });
+
   it('9×9 tiers separate on a disjoint givens gradient (easy ≥12 > medium 6–11 > hard ≤3)', () => {
     // K7a: the tiers are defined by single-cell-cage (given) count, not a score band. The ranges are
     // disjoint by construction, so the tier ordering holds sample-to-sample.

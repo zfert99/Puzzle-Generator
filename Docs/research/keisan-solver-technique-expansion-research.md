@@ -14,6 +14,69 @@ specific empirical questions that decide whether option 4 is worth the K3-scale 
 
 ---
 
+## ✅ Research verdict (external pass complete, 2026-07-27)
+
+Full doc: [Widening the Calcudoku Ladder — validating Option 4](compass_artifact_wf-bb40e383-544c-5bfa-a4d0-a3b6202da609_text_markdown.md).
+It **re-orders this brief's plan** — read it over §3–§5 below, which are now superseded on ranking:
+
+- **Ship Option 1 (4 tiers) now; treat Option 4 as a *gated, instrumented* upgrade, not a foregone
+  build.** Uneven tier counts across variants are normal and low-confusion; a *dishonest* Extreme is
+  worse than none. Do not block on the fifth tier.
+- **My §3 ranking was inverted by the evidence.** **Exact region-sum is contraindicated** — `keen.c`
+  implements region-sum *nowhere* (all per-cage combination enumeration), and billabob's "Region
+  Products" is an unbuilt TODO; multiplicative cages break sum-pinning exactly as the caveat
+  predicted. Re-ranked:
+  - **Cage-line intersection (pointing/claiming)** — build *first*, but it's rated **LOW** (billabob
+    1.5, below hidden-pair/X-Wing). It's a **coverage + instrumentation** win (shrinks the ~23%
+    Nishio fraction), **not** the Expert anchor.
+  - **Pairwise multi-cage combination elimination** — the real **Expert-separator candidate**
+    (Calcudoku-native, billabob-rated 4.0+, bounded if kept pairwise-only, stops short of Nishio).
+  - **Region-parity + *bounds-based* (min/max) region-sum** — secondary, only if multi-cage
+    under-delivers. Exact/product region-sum: do not build.
+  - **AIC/chains** — lowest priority (sparse strong links on a boxless grid), though Calcudoku
+    "equivalence" links (e.g. a 2-cell `2÷` cage: contains 3 ⟺ contains 6) are more available than a
+    naive Sudoku port.
+- **Option 2 (count Nishio *steps*) was rejected too hastily.** Pelánek (1700+ puzzles, r=0.95):
+  difficulty has two sources — step complexity *and* dependency structure — and HoDoKu's step-sum
+  tracks solve *time* better than SE's hardest-step. **Count of *hard* steps is signal.** Instrument
+  Nishio-step count — nearly free, and it might yield a fifth honest tier with *zero* solver
+  expansion (a hybrid of Options 2+4).
+- **No-op / "Mystery" cages (our planned K6) are the cheap, honest fifth axis** for Extreme if the
+  solver work doesn't separate a tier — calcudoku.org treats no-op as among its hardest, needs *no*
+  new technique (just union each cage's combinations across operators).
+- **Yield craters under naive technique-gating** (confirmed vs our `maxFootholds`/6×6 experience) →
+  **constructive generation** is the dominant cost of Option 4, not the solver expansion.
+
+**Staged path the research endorses (supersedes §5):** Slice 0 instrumentation (per-technique
+"hardest required step?" + Nishio-step count) → Slice 1 cage-line intersection (coverage) → Slice 2
+pairwise multi-cage elimination (the Expert-separator test; **the decisive gate**) → Slice 3
+region-parity + bounds-based region-sum only if Slice 2 under-delivers → Slice 4 constructive
+generation. Fallback if the gates fail: no-op/Mystery axis and/or Nishio-step-count banding.
+
+**Decision:** ship **Option 1 (4-tier 9×9)** as K7c now; pursue the solver-widening as a separate
+instrumented slice (Slice 0 first) that *may* promote the ladder to 5 tiers later — with no-op/Mystery
+(K6) as the honest fallback Extreme. The sections below are retained as the original brief; where they
+rank region-sum first, defer to this verdict.
+
+---
+
+## 0. The four ways forward (the K7c fork)
+
+Once K7b showed guess-depth is a single step, there were four ways to shape the 9×9 Expert/Extreme
+tiers. This brief pursues **option 4** (the chosen research direction), with **option 1** as the
+fallback if the research says the ladder won't widen enough. Full context in
+[keisan-9x9-feasibility-findings.md §6b](keisan-9x9-feasibility-findings.md#6b-k7b-result--bounded-recursion-works-but-is-a-single-step-the-k7c-fork).
+
+| # | Approach | Honest? | Cost | Verdict |
+|---|---|---|---|---|
+| **1** | **4 tiers** — Easy/Medium/Hard/**Expert = needs a depth-1 Nishio guess**; drop Extreme at 9×9. | ✅ fully | trivial (no new engine) | **Fallback** — the plan's stated contingency; breaks 5-tier parity with Classic/Killer. |
+| 2 | **Count Nishio *steps*** — Expert = solvable with 1–k depth-1 guesses, Extreme = needs many. | ⚠️ only if step-count tracks real difficulty | small (+ measurement) | Rejected leaning — dresses up an axis the data may not support (step-count could be noise). |
+| 3 | **Score-band-split the T5 population** — Expert = T5 + lower two-factor score, Extreme = T5 + higher. | ❌ weak | small | Rejected leaning — §2 of the findings showed the score barely discriminates at 9×9. |
+| 4 | **Add a real intermediate technique** (cage-region intersection / multi-line region-sum) so the *named* ladder widens and Expert/Extreme separate on technique *before* the Nishio backstop. | ✅ most | large (K3-scale solver expansion) | **Chosen** — this brief. Most honest path to true 5-tier parity; validate before building. |
+
+The rest of this document develops option 4 and specifies the go/no-go it must pass (§4) before any
+build; if it fails, we fall back to option 1 (§6).
+
 ## 1. The problem, precisely
 
 On 9×9 our logical solver's hardest-required tier concentrates at **~T2**, then jumps straight to

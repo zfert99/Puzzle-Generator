@@ -14,8 +14,9 @@ import type { Grid, NewDailyPuzzle } from './schema';
  * - **killer** — the full 9×9 Killer ladder. (Replaces the single legacy `'killer'` key, which
  *   was one engine-medium puzzle per day; old rows remain readable via the legacy guard.)
  * - **minis** — the small boards: 4×4 and 6×6 classic, 6×6 Killer, and 4×4/6×6 Keisan.
- * - **calc** — the top-level **Keisan** section: 9×9 Keisan (K7a, easy/medium/hard). Mirrors the
- *   "Classic 9×9" / "Killer 9×9" sections; auto-hidden by the pickers while it holds no boards.
+ * - **calc** — the top-level **Keisan** section: 9×9 Keisan (K7a easy/medium/hard + K7c expert).
+ *   Mirrors the "Classic 9×9" / "Killer 9×9" sections; auto-hidden by the pickers while it holds no
+ *   boards. Expert is 9×9-only (a board needing a depth-1 Nishio guess); there is no Extreme (K7b).
  *
  * `minSolveMs` is the anti-cheat plausibility floor (see `solve-rules.md`) — conservative
  * lower bounds per board, not records to police fast solvers.
@@ -81,6 +82,9 @@ export const DAILY_BOARDS = [
   { key: 'calc9-easy', section: 'calc', label: 'easy', variant: 'calc', gridSize: 9, difficulty: 'easy', minSolveMs: 25_000, botTimeMs: 420_000 },
   { key: 'calc9-medium', section: 'calc', label: 'medium', variant: 'calc', gridSize: 9, difficulty: 'medium', minSolveMs: 35_000, botTimeMs: 660_000 },
   { key: 'calc9-hard', section: 'calc', label: 'hard', variant: 'calc', gridSize: 9, difficulty: 'hard', minSolveMs: 50_000, botTimeMs: 1_080_000 },
+  // Expert (K7c): 0-given 9×9 whose hardest step is a depth-1 Nishio guess — the honest top of the
+  // ladder (no Extreme; K7b showed depth-2 never fires). Slowest daily to solve; bot time above hard.
+  { key: 'calc9-expert', section: 'calc', label: 'expert', variant: 'calc', gridSize: 9, difficulty: 'expert', minSolveMs: 70_000, botTimeMs: 1_500_000 },
 ] as const satisfies readonly DailyBoard[];
 
 export type DailyBoardKey = (typeof DAILY_BOARDS)[number]['key'];
