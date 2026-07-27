@@ -1,6 +1,7 @@
 # Widening the Calcudoku Ladder: Validating Option 4 for a 9×9 Keisan Engine
 
 ## TL;DR
+
 - **Option 4 is worth pursuing, but only in a specific, de-risked order: build cage–line intersection (pointing/claiming) first as a cheap coverage/instrumentation win, and build *bounds-based* multi-line region-sum (or, better, pairwise multi-cage combination) as the genuine new hard tier — do NOT lead with exact region-sum.** The single most relevant primary artifact, Simon Tatham's `keen.c`, implements *no* region-sum deduction whatsoever, and billabob's KenKen solver — the only known rater that scores "Region Sum" — still lists "Region Products" as an unimplemented TODO. That is strong evidence the exact-sum technique is hard to make fire on multiplicative cages, exactly as your load-bearing caveat predicted.
 - **The biggest threat to Option 4's thesis is real and confirmed by the ratings literature: cage–line intersection is rated LOW (billabob "1.5: Cage-region intersection (pointing/claiming)", below "2: Hidden pair" and "2: X-Wing") and region-sum only moderate (3.0–3.9), so these techniques may land as *Medium*, not *Expert*, failing to separate a fifth tier from T2.** Meanwhile "hardest technique required" is a documented-imperfect predictor of human difficulty (Pelánek's step-complexity + dependency findings; the HoDoKu-vs-SE debate), which means your Option 2 (count guesses/steps) was likely rejected too hastily.
 - **Recommendation: treat Option 1 (four honest tiers) as the shipping default and Option 4 as an *upgrade path gated on measured firing rates*, not a foregone conclusion.** Uneven tier counts across variants are normal in commercial products and cause little player confusion; a K3-scale solver expansion is only justified if instrumentation shows the new techniques fire as the hardest required step on a non-trivial fraction of otherwise-Nishio boards. If that fraction is small, spend the effort on a cheaper fifth axis (no-op "Mystery" cages / operator restriction / density) instead.
@@ -25,7 +26,7 @@
 
 **Why Calcudoku breaks it.** A ×, ÷, or − cage's target is not a sum. Its *sum contribution* is only known once its candidate multiset is pinned. On 0-given 9×9 boards, many cages are multiplicative and un-pinned early — so exact region-sum will fire late or never. This is your load-bearing caveat, and the primary-source evidence strongly confirms it:
 
-- **`keen.c` (primary source, read in full):** implements region-sum *nowhere*. All cage arithmetic is per-cage combination enumeration (`solver_clue_candidate`, `dscratch`/`iscratch` scratch arrays; SUB/DIV by direct 2-cell pairing, ADD/MUL by in-place combinatorial enumeration with a running `total`). The Hard tier's only cross-box deduction is (verbatim comment) "numbers which occur in a given row or column in all candidate layouts, and rule them out of all squares in that row or column that _aren't_ part of this clue box." Extreme/Unreasonable have `NULL` keen-specific solvers and are handled by generic Latin-square set/forcing deductions + recursive backtracking. A widely respected real-world Calcudoku engine deliberately does *not* combine cage targets arithmetically.
+- **`keen.c` (primary source, read in full):** implements region-sum *nowhere*. All cage arithmetic is per-cage combination enumeration (`solver_clue_candidate`, `dscratch`/`iscratch` scratch arrays; SUB/DIV by direct 2-cell pairing, ADD/MUL by in-place combinatorial enumeration with a running `total`). The Hard tier's only cross-box deduction is (verbatim comment) "numbers which occur in a given row or column in all candidate layouts, and rule them out of all squares in that row or column that *aren't* part of this clue box." Extreme/Unreasonable have `NULL` keen-specific solvers and are handled by generic Latin-square set/forcing deductions + recursive backtracking. A widely respected real-world Calcudoku engine deliberately does *not* combine cage targets arithmetically.
 - **billabob (primary source):** the *only* KenKen rater that scores Region Sum (3.0), Region Parity (3.0), and multi-region/multi-unknown-cage variants (3.1–3.9). Its TODO explicitly lists "Region Products" as unimplemented and "Check for valid assignments in region total solver" — i.e., its region-total machinery is still additive-only and a work in progress.
 
 **Assessment of the four workarounds:**
@@ -40,6 +41,7 @@
 ### Q2 — Cage–region intersection (pointing/claiming) on a boxless Latin square
 
 **Algorithmic spec.**
+
 - **(i) Cage wholly inside one line (claiming).** If all cells of a cage lie in a single row (or column), the cage's digits are claimed into that line: any digit present in every surviving combination of the cage can be eliminated from the other cells of that line; and the line's remaining cells cannot use digits the cage monopolizes.
 - **(ii) Digit confined within a cage to one line (pointing).** For a cage spanning multiple lines, if a digit's possible positions *within that cage* all fall in one row/column, that digit can be eliminated from the rest of that row/column outside the cage.
 - **(iii) Reverse claiming.** If within a line a digit can only appear in cells belonging to one cage, that cage must supply the digit, constraining the cage's combinations.
@@ -79,6 +81,7 @@ Compute all three cheaply from the per-cage candidate-combination table the solv
 **Is 5-tier parity worth a K3-scale expansion?** Largely no, on the evidence. Commercial puzzle products routinely ship *uneven* tier counts per variant: classic Sudoku commonly spans Easy→Evil/Extreme (five or six levels) while Killer/variant modes ship three or four ("Difficulty: Intermediate to Expert"), and no source surfaced player complaints about a variant having fewer tiers than classic. Difficulty labels are widely acknowledged as arbitrary and app-specific (sudoku.coach; SudokuPulse). **Player confusion from "Keisan has 4 tiers, Classic has 5" is minimal; the trust damage from a *dishonest* fifth tier (an "Extreme" that is really just "Expert plus noise") is worse.** This favors Option 1 as the honest default.
 
 **Other axes for a fifth tier that need no solver expansion** (evaluate each):
+
 - **Operator restriction / no-op "Mystery" cages.** calcudoku.org's "no-op" (Mystery Calcudoku) hides the operator, forcing the solver to deduce operation *and* digits — a large, honest difficulty jump with *zero* solver-technique expansion (the grader already enumerates combinations; you just widen each cage's combination set across all operators). calcudoku.org treats no-op as among its hardest, and notes its own hardest-ever puzzle (a 9×9, 2013-04-02) was solved by only 9.6% of regular players. **Highest-value alternative fifth axis: honest, cheap, genuinely harder, and Calcudoku-native.**
 - **Cage density / size distribution.** Fewer, larger cages (more multiplicative, larger combination spaces) raise difficulty and solve time; cheap to vary, but grading must confirm it doesn't just crater yield.
 - **Grid size within the variant** (e.g., reserve an 11×11/12×12 for Extreme — calcudoku.org runs up to 15×15). Honest and trivial, but changes the play footprint.
@@ -125,6 +128,7 @@ Compute all three cheaply from the per-cage candidate-combination table the solv
 ## Caveats
 
 **Sourced fact:**
+
 - billabob's technique-rating table ("1.5: Cage-region intersection (pointing/claiming)"; "3: Region Sum"; "3.2: Region sum (2 unknown cages in 1 region) … 3.5: Region sum (3 unknown cages in >1 regions); A sum with N unknown cages will give rating 3+(N-1)/5, capped at 3.9"; "4: Combination of 2 cages / 4.2 / 4.4; Combination of N cages will give rating 4+(N-2)/5 with no maximum limit"; "3: Region Parity / 3.1: Multi-region Parity") and its TODO listing "Region Products" as unimplemented — its own documentation, read in full. Its ratings are explicitly labelled "impermanent" and may shift.
 - `keen.c`'s tier structure (DIFFLIST macro; Extreme/Unreasonable = NULL solvers), per-cage combination enumeration, and Hard-tier cage→line elimination — source read in full; verbatim comment blocks quoted.
 - Killer-Sudoku innies/outies and the rule-of-45 multi-region extension (SudokuWiki, Sudopedia, djape).
@@ -134,14 +138,16 @@ Compute all three cheaply from the per-cage candidate-combination table the solv
 - HoDoKu's ability to generate puzzles containing a specific technique (HoDoKu manual Ch. 4).
 
 **Reasoned inference (not directly sourced) — flagged:**
+
 - That bounds-based region-sum (Q1a) is implementable and fires earlier than exact region-sum: sound but *not* found implemented for Calcudoku anywhere; adapted from the Killer innie-outie *difference* method.
 - That cage–line intersection fires at high rate on 0-given boxless 9×9: structural argument; **no firing-rate instrumentation found** for this exact regime.
 - That pairwise multi-cage elimination sits cleanly between T2 and Nishio in human difficulty: plausible from billabob's ratings but unmeasured against human times for Calcudoku.
 - All constructive-generation specifics for Calcudoku: adapted from Sudoku tutorial-generation practice; no Calcudoku-specific implementation found.
 
 **Could not verify:**
+
 - Exact internal function names/ordering inside Tatham's shared `latin.c` (robots-blocked); the conclusion that keen contributes no arithmetic technique above Hard is certain from keen.c itself, but the precise `latin_solver_*` set/forcing/recursion boundaries are inferred from the call site.
 - No published cross-tabulation of *technique required vs human solve rate* specifically for Calcudoku was found; calcudoku.org rates by empirical solve rate but does not publish a technique breakdown.
 - The exact "1.2 pointing / 1.5 claiming" split appeared in the live page fetched during research but a combined "1.5" appears in cached snippets; the ordering conclusion (LOW, below hidden pair/X-Wing) holds under both.
 
-*(Note: I was unable to write to /mnt/user-data/outputs/ — no filesystem tool was available in this environment; the complete report is delivered here in full.)*
+Note: the source tool could not write to its output directory in that environment; the complete report is reproduced here in full.
