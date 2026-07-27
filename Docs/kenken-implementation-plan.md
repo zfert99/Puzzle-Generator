@@ -372,7 +372,11 @@ Three sub-slices, each independently shippable and gated:
   (cage-region intersection / multi-line region-sum — a K3 solver expansion) so the pre-guess ladder
   widens. Whichever tier shape is chosen, Expert (+ Extreme if any) still generate **offline into the
   daily-cron pool** and carry the honest "solvable with logic plus at most one hypothesis step"
-  guarantee. **Awaiting a direction before building.**
+  guarantee. **Chosen direction: research option 4** — brief at
+  [keisan-solver-technique-expansion-research.md](research/keisan-solver-technique-expansion-research.md)
+  (widen the named ladder via pointing/claiming + multi-line region-sum; validate firing rate +
+  monotonicity before building; fall back to option 1's 4 tiers if it doesn't pan out). **K7c build
+  paused pending that research.**
 
 **Deferred as optional perf work, not blockers** (from the research's Slices 1–2): GAC `alldifferent`
 (Régin 1994) to speed uniqueness proving, and constructive **"dig-out"** generation (start gradable,
