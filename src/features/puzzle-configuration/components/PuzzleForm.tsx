@@ -6,10 +6,13 @@ import { GridSizeSelector } from './GridSizeSelector';
 import { DifficultyConfigurator } from './DifficultyConfigurator';
 
 const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
+const CALC_DIFFICULTIES = ['easy', 'medium', 'hard']; // 9×9 adds 'expert' (see the calc size branch)
 
 export default function PuzzleForm() {
-  const [variant, setVariant] = useState<'classic' | 'killer'>('classic');
+  const [variant, setVariant] = useState<'classic' | 'killer' | 'calc'>('classic');
   const [killerSize, setKillerSize] = useState<6 | 9>(9);
+  const [calcSize, setCalcSize] = useState<4 | 6 | 9>(6);
+  const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
     easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0
@@ -17,6 +20,8 @@ export default function PuzzleForm() {
 
   const { loading, error, generate } = usePuzzleGeneration();
   const isKiller = variant === 'killer';
+  const isCalc = variant === 'calc';
+  const title = isKiller ? 'Killer Sudoku' : isCalc ? 'Keisan' : 'Sudoku';
 
   const handleGridSizeChange = (size: 4 | 6 | 9) => {
     setGridSize(size);
@@ -32,6 +37,8 @@ export default function PuzzleForm() {
   const handleGenerate = async () => {
     if (isKiller) {
       await generate({ variant: 'killer', gridSize: killerSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: killerSize === 9 ? counts.expert : 0, extreme: killerSize === 9 ? counts.extreme : 0 });
+    } else if (isCalc) {
+      await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: calcSize === 9 ? counts.expert : 0, extreme: calcSize === 9 ? counts.extreme : 0, noOp: mystery });
     } else {
       await generate({ ...counts, gridSize });
     }
@@ -40,12 +47,12 @@ export default function PuzzleForm() {
   return (
     <div className="glass-panel p-8 max-w-md w-full mx-auto">
       <h2 className="text-2xl font-semibold mb-6 text-center">
-        {isKiller ? 'Killer Sudoku' : 'Sudoku'} Configuration
+        {title} Configuration
       </h2>
 
       {/* Puzzle type toggle */}
       <div className="flex gap-2 mb-6">
-        {(['classic', 'killer'] as const).map((v) => (
+        {(['classic', 'killer', 'calc'] as const).map((v) => (
           <button
             key={v}
             type="button"
@@ -54,7 +61,7 @@ export default function PuzzleForm() {
               variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
             }`}
           >
-            {v === 'classic' ? 'Sudoku' : 'Killer'}
+            {v === 'classic' ? 'Sudoku' : v === 'killer' ? 'Killer' : 'Keisan'}
           </button>
         ))}
       </div>
@@ -80,6 +87,40 @@ export default function PuzzleForm() {
             {killerSize === 6 && ' 6×6 is the beginner size: digits 1–6, easy/medium/hard.'}
           </p>
         </>
+      ) : isCalc ? (
+        <>
+          <div className="flex gap-2 mb-3 justify-center">
+            {([4, 6, 9] as const).map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setCalcSize(size)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
+                  calcSize === size ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+                }`}
+              >
+                {size}×{size}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-ink-soft text-center mb-3">
+            Calcudoku — a Latin square with arithmetic cages (+ − × ÷); no givens, the math is the clue.
+          </p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={mystery}
+            onClick={() => setMystery((m) => !m)}
+            className={`w-full flex items-center justify-between px-3 py-2 mb-6 rounded-lg border-2 border-ink transition-all ${
+              mystery ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+            }`}
+          >
+            <span className="text-sm font-medium">🔮 Mystery mode — hide operators</span>
+            <span className={`text-xs px-2 py-0.5 rounded ${mystery ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-soft'}`}>
+              {mystery ? 'ON' : 'OFF'}
+            </span>
+          </button>
+        </>
       ) : (
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
       )}
@@ -88,7 +129,9 @@ export default function PuzzleForm() {
         gridSize={gridSize}
         counts={counts}
         onChange={handleDifficultyChange}
-        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : undefined}
+        variant={variant}
+        mystery={isCalc && mystery}
+        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : undefined}
       />
 
       {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}

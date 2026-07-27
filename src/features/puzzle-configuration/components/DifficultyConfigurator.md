@@ -35,8 +35,16 @@ grid size. When omitted, availability falls back to the grid-size lookup (classi
      reporting edits via `onChange`.
 3. Show a helper line noting the 1-50 total-per-request limit.
 4. When the grid is not 9x9, show a note that Expert/Extreme are 9x9-only.
-5. When any Extreme puzzles are requested, show a red warning that Extreme puzzles
-   use elite-tier strategies and can take several seconds each to generate.
+5. When a slow tier is requested, show a red **slow-generation warning tailored to the variant +
+   selected tiers + Mystery mode** (`slowGenerationWarning`). The time ranges come from measured 9×9
+   generation:
+   - **Classic** — Extreme only (elite-tier strategies W-Wing/ALS/AICs, ~5 s each). Expert is fast, no
+     warning.
+   - **Killer** — Expert/Extreme use advanced strategies, several seconds each (Extreme up to ~10 s).
+   - **Keisan** — Expert needs a hypothesis (Nishio) step (~1–4 s); Extreme needs many (~2–5 s).
+   - **Keisan + Mystery** — hiding the operators makes unique boards rare (the union table is ~4×
+     bigger), so it's much slower: Expert ~5–15 s, **Extreme ~15–30 s and occasionally up to a
+     minute**. This is the case the warning most needs to set expectations for.
 
 ## Note
 

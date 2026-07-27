@@ -55,9 +55,11 @@ This document explains the core logic behind our `generator.ts` PDF generation e
    - Draw the text in the center of the cell with a small vertical offset (10% of text height) to visually center it.
 5. **Draw the Grid Lines:**
    - Loop `puzzleSize + 1` times to draw the dividing lines.
-   - For horizontal lines, draw thick (line width 3) at every `boxHeight` interval (e.g. 0, 2, 4 for a 6x6 with boxHeight=2).
-   - For vertical lines, draw thick at every `boxWidth` interval (e.g. 0, 3, 6 for a 6x6 with boxWidth=3).
-   - All other lines are drawn thin (line width 1).
+   - **Box-tileable grids (4/6/9):** horizontal lines are thick (width 3) at every `boxHeight`
+     interval, vertical lines thick at every `boxWidth` interval; all others thin (width 1).
+   - **Boxless grids (5/7, `hasBoxes === false`) — K0:** there are no box borders, so only the
+     outer frame (i = 0 and i = puzzleSize) is thick and every interior line is thin. This is the
+     branch the KenKen K5 PDF reuse relies on.
 
 ### `drawPuzzles(isAnswers)`
 
@@ -76,7 +78,24 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 ---
 
-## 4b. Killer Sudoku Drawing
+## 4b. Caged-grid Drawing (Killer + Keisan)
+
+A shared internal `drawCagedGrid(doc, { config, grid, cages, … })` draws any caged board — the base
+grid, digits, dashed cage outlines, and corner labels. The two public wrappers differ only in the
+config and the label:
+
+- **`drawKillerGrid`** — box-tileable `getGridConfig` (thick box borders), label = the bare sum
+  (`"12"`). `generateKillerPDF` builds the booklet.
+- **`drawCalcGrid`** — **boxless** `calcGridConfig` (no interior box borders, only the outer frame),
+  label = target+operator (`"12+"`, `"3÷"`; a single-cell given shows just its value). A **Mystery /
+  no-op cage** (`cage.noOp`) hides its operator on the *puzzle* page (label = bare target) but the
+  *answer* page reveals it (`showSolution` re-adds the operator glyph), so a printed key shows the
+  operation you had to deduce. Uses a **PDF-safe operator map** (`PDF_OPERATOR_SYMBOL`): PDFKit's
+  Helvetica encodes as WinAnsi, and the math minus sign (`−`, U+2212, used on screen) is not WinAnsi —
+  it would emit a stray `"` — so the PDF uses the ASCII hyphen for subtraction. `×` (0xD7) and `÷`
+  (0xF7) are valid WinAnsi bytes and stay.
+  `generateCalcPDF` builds the Keisan booklet (title "Keisan", one page per puzzle + one answer
+  page each). Both reuse the shared `computeCageOutline` geometry.
 
 ### `drawKillerGrid(puzzle, startX, startY, gridDrawSize, showSolution)`
 
@@ -87,7 +106,9 @@ cage outlines and the cage sums.
 1. Build a `cell → cage index` lookup from the puzzle's cages.
 2. **Digits:** draw the solution on an answer page; draw nothing on the puzzle page (Killer has
    no givens — the cages are the only clue).
-3. **Base grid:** thin cell lines, thick box lines (same as `drawGrid`).
+3. **Base grid:** thin cell lines, thick box lines (same as `drawGrid`) — or, for a boxless grid
+   (`hasBoxes === false`), only the outer frame is heavier and interior lines are thin. Killer
+   puzzles are always box-tileable (6/9), so this boxless branch exists for the KenKen K5 reuse (K0).
 4. **Cage outlines:** dashed lines inset into each cage, forming one continuous border. For every
    cell edge whose neighbour is a *different* cage (or off-grid), draw an inset segment; each
    endpoint is resolved from the in-line neighbour and the diagonal cell into one of three cases:

@@ -1,13 +1,15 @@
 import { useState } from 'react';
 
 interface GenerationConfig {
-  variant?: 'classic' | 'killer';
+  variant?: 'classic' | 'killer' | 'calc';
   gridSize?: number;
   easy: number;
   medium: number;
   hard: number;
   expert?: number;
   extreme?: number;
+  /** Keisan Mystery / No-Op mode — hide the cage operators (calc only). */
+  noOp?: boolean;
 }
 
 export function usePuzzleGeneration() {
@@ -44,7 +46,8 @@ export function usePuzzleGeneration() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = config.variant === 'killer' ? 'Killer_Sudoku.pdf' : 'Sudoku_Puzzles.pdf';
+      a.download =
+        config.variant === 'killer' ? 'Killer_Sudoku.pdf' : config.variant === 'calc' ? 'Keisan.pdf' : 'Sudoku_Puzzles.pdf';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

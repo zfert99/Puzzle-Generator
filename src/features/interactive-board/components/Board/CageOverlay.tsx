@@ -1,17 +1,17 @@
 'use client';
 
 import { useId, useMemo } from 'react';
-import { computeCageOutline } from '@/features/engine/killer/cage-geometry';
-import type { Cage } from '@/features/engine/killer/killer-types';
+import { computeCageOutline, type LabeledCage } from '@/features/engine/killer/cage-geometry';
 import styles from './Board.module.css';
 
 /**
- * Killer cage layer — an SVG overlaid exactly on the board grid, drawing the dashed cage outlines
- * and corner sum labels from the shared `computeCageOutline` geometry (same as the PDF). Uses a
- * `0..size` viewBox so cell-unit coordinates map straight in; `pointer-events: none` so cell
- * clicks pass through. Decorative → `aria-hidden` (the numeric sums are exposed on the cells).
+ * Cage layer — an SVG overlaid exactly on the board grid, drawing the dashed cage outlines and
+ * corner labels from the shared `computeCageOutline` geometry (same as the PDF). Variant-agnostic:
+ * it takes pre-labeled cages (Killer's sum `"12"`, Keisan's target+operator `"12+"`/`"3÷"`), so it
+ * serves both. Uses a `0..size` viewBox so cell-unit coordinates map straight in; `pointer-events:
+ * none` so cell clicks pass through. Decorative → `aria-hidden`.
  */
-export function CageOverlay({ cages, size }: { cages: Cage[]; size: number }) {
+export function CageOverlay({ cages, size }: { cages: readonly LabeledCage[]; size: number }) {
   const { lines, sums } = useMemo(() => computeCageOutline(cages, size), [cages, size]);
   // Unique per instance so two boards on the same page (unlikely today, but cheap insurance)
   // never share an <svg id>, which SVG `mask`/`url()` references resolve globally in the DOM.
@@ -39,7 +39,7 @@ export function CageOverlay({ cages, size }: { cages: Cage[]; size: number }) {
               key={`gap${i}`}
               x={s.col + 0.025}
               y={s.row + 0.025}
-              width={0.13 * String(s.value).length + 0.04}
+              width={0.13 * s.label.length + 0.04}
               height={0.21}
               fill="black"
             />
@@ -55,7 +55,7 @@ export function CageOverlay({ cages, size }: { cages: Cage[]; size: number }) {
           as the mask gap above — no background rect needed here anymore. */}
       {sums.map((s, i) => (
         <text key={`s${i}`} x={s.col + 0.045} y={s.row + 0.21} fontSize={0.2} className={styles.cageSum}>
-          {s.value}
+          {s.label}
         </text>
       ))}
     </svg>

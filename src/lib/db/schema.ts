@@ -11,6 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth-schema';
+import type { CalcOperator } from '@/features/engine/calc/calc-types';
 
 /**
  * Phase 4 — app persistence schema (Drizzle / Postgres).
@@ -32,12 +33,30 @@ import { user } from './auth-schema';
 export type Grid = number[][];
 
 /** A Killer cage as stored in `daily_puzzles.cages` — mirrors the engine's `Cage` shape. */
-export interface StoredCage {
+export interface StoredKillerCage {
   id: number;
   sum: number;
-  /** Flat cell indices (row * 9 + col) covered by this cage. */
+  /** Flat cell indices (row * size + col) covered by this cage. */
   cells: number[];
 }
+
+/** A Keisan (Calcudoku) cage — mirrors the engine's `CalcCage` (operator + target instead of sum). */
+export interface StoredCalcCage {
+  id: number;
+  op: CalcOperator;
+  target: number;
+  cells: number[];
+  /** Mystery / No-Op (K6): operator hidden from the player. Omitted for normal cages. jsonb, no migration. */
+  noOp?: boolean;
+}
+
+/**
+ * A cage as stored in `daily_puzzles.cages` (jsonb). Killer rows carry `sum`, Keisan rows carry
+ * `op` + `target` — the row's registry KEY (`daily-row.ts`) says which variant, so the serving
+ * route picks the right interpretation. The column shape is untyped jsonb, so no migration was
+ * needed to add the Keisan variant.
+ */
+export type StoredCage = StoredKillerCage | StoredCalcCage;
 
 /**
  * One shared puzzle per difficulty per calendar day (UTC). The `UNIQUE(date,

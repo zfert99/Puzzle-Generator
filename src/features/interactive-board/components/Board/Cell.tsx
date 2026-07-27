@@ -27,7 +27,7 @@ interface CellProps {
 export const Cell = memo(function Cell({ r, c }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, boxWidth, boxHeight, isDaily, errorsRevealed } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
@@ -42,12 +42,16 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
         s.cellToCage.length > 0 &&
         s.cellToCage[sel.r * cfg.size + sel.c] !== -1 &&
         s.cellToCage[sel.r * cfg.size + sel.c] === s.cellToCage[r * cfg.size + c];
+      // Boxless (Latin-square-only) grids — KenKen at 5/7 — have no box, so a cell peers only
+      // through its shared row/column; the box clause is gated off so it doesn't highlight
+      // phantom box-mates.
       const samePeer =
         sel != null &&
         !isSelf &&
         (sel.r === r ||
           sel.c === c ||
-          (Math.floor(sel.r / cfg.boxHeight) === Math.floor(r / cfg.boxHeight) &&
+          (cfg.hasBoxes &&
+            Math.floor(sel.r / cfg.boxHeight) === Math.floor(r / cfg.boxHeight) &&
             Math.floor(sel.c / cfg.boxWidth) === Math.floor(c / cfg.boxWidth)));
       const v = s.grid[r][c];
       const selValue = sel != null ? s.grid[sel.r][sel.c] : 0;
@@ -66,6 +70,7 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
         size: cfg.size,
         boxWidth: cfg.boxWidth,
         boxHeight: cfg.boxHeight,
+        hasBoxes: cfg.hasBoxes,
         isDaily: s.mode === 'daily',
         errorsRevealed: s.errorsRevealed,
       };
@@ -74,8 +79,9 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
 
   const selectCell = useBoardStore((s) => s.selectCell);
 
-  const thickRight = (c + 1) % boxWidth === 0 && c + 1 !== size;
-  const thickBottom = (r + 1) % boxHeight === 0 && r + 1 !== size;
+  // Boxless (Latin-square-only) grids draw no interior thick box borders (KenKen at 5/7).
+  const thickRight = hasBoxes && (c + 1) % boxWidth === 0 && c + 1 !== size;
+  const thickBottom = hasBoxes && (r + 1) % boxHeight === 0 && r + 1 !== size;
 
   // Dailies never highlight wrong cells during play by default (no hand-holding on the ranked
   // board) — unless the player opted into a reveal from the "Not quite!" review modal

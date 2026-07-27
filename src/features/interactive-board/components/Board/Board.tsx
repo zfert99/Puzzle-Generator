@@ -128,7 +128,7 @@ export function Board() {
         {Array.from({ length: size }, (_, r) =>
           Array.from({ length: size }, (_, c) => <Cell key={`${r}-${c}`} r={r} c={c} />)
         )}
-        {variant === 'killer' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
+        {variant !== 'classic' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
       </div>
       <BoardAnnouncer />
     </>

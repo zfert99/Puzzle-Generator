@@ -29,8 +29,11 @@ Because reflex segments both extend to the same meeting point, an inner corner i
 
 ## Sums
 
-Each cage's sum is anchored at its **lowest-indexed cell** (the top-left-most), returned as
-`{ col, row, value }`; the renderer tucks it into that cell's corner.
+Each cage's **label** is anchored at its **lowest-indexed cell** (the top-left-most), returned as
+`{ col, row, label }`; the renderer tucks it into that cell's corner. The util is variant-agnostic:
+it takes pre-labeled cages (`LabeledCage = { cells, label }`), so Killer passes its sum (`"12"`)
+and Keisan passes its target+operator (`"12+"`, `"3÷"`) — the geometry never touches cage
+arithmetic. (Kept in the `killer/` module for now since that's where it originated.)
 
 The tests pin down a 1-cell cage (4 inset lines, all convex), the L-shape reflex meeting point,
 and the anchor-cell sum position.

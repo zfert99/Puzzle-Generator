@@ -21,6 +21,26 @@ Whenever a roadmap phase is started, completed, or its scope changes:
 - Update the simplified roadmap table in `README.md` (change the Status column: 📋 Planned → 🚧 In Progress → ✅ Done).
 <!-- END:roadmap-rules -->
 
+<!-- BEGIN:roadblock-research-rules -->
+## Roadblock & Research Rules
+
+When implementation diverges from the plan — a measurement contradicts an assumption, a slice hits a
+roadblock, generation/yield/performance doesn't behave as designed, or a chosen approach turns out to
+be infeasible — **stop building and write a research document** rather than improvising a workaround
+or silently narrowing scope.
+
+- Put the document in `Docs/research/` (`lowercase-kebab-case.md`). Capture: what we planned, what we
+  actually measured/observed (with numbers), why it doesn't work, the options considered, and the
+  **open questions** to research before proceeding.
+- Surface it to the user with a concise summary and a recommendation. Let the user run research (or
+  approve a direction) before resuming — don't answer plan-invalidating questions by guessing.
+- When the answer comes back, **fold it into the plan/levers/roadmap docs first**, then resume the
+  build. The `Docs/research/` doc stays as the durable record of *why* the approach changed.
+- This is the K7 pattern: the 9×9 de-risk contradicted the levers doc, so we stopped, wrote
+  `keisan-9x9-feasibility-findings.md`, took in external research, re-sliced the plan, and only then
+  built. Repeat that loop for any similar divergence.
+<!-- END:roadblock-research-rules -->
+
 <!-- BEGIN:markdown-linting-rules -->
 ## Markdown Linting Rules
 

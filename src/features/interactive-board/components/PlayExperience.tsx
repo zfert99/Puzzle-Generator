@@ -34,24 +34,29 @@ function useHasMounted(): boolean {
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
 const KILLER_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
+const CALC_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme']; // expert/extreme are 9×9-only (gated below)
+
+type PlayVariant = 'classic' | 'killer' | 'calc';
 
 export default function PlayExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mounted = useHasMounted();
-  // Deep link from the hub's Killer card (`/play?variant=killer`): preselect the variant as the
-  // initial state (not via a setState-in-effect). Killer is 9×9, difficulty 'easy' is valid for
-  // both, so no clamping is needed on mount.
-  const [variant, setVariant] = useState<'classic' | 'killer'>(
-    searchParams.get('variant') === 'killer' ? 'killer' : 'classic',
-  );
-  const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
+  // Deep link from a hub card (`/play?variant=killer|calc`): preselect the variant as the initial
+  // state (not via a setState-in-effect). Keisan (`calc`) comes in 4/6/9; it seeds 6 (the friendly
+  // mid size) rather than the classic default of 9.
+  const initialVariant: PlayVariant =
+    searchParams.get('variant') === 'killer' ? 'killer' : searchParams.get('variant') === 'calc' ? 'calc' : 'classic';
+  const [variant, setVariant] = useState<PlayVariant>(initialVariant);
+  const [gridSize, setGridSize] = useState<4 | 6 | 9>(initialVariant === 'calc' ? 6 : 9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle — hide operators
   const [view, setView] = useState<'config' | 'playing'>('config');
   const [viewingSolved, setViewingSolved] = useState(false);
   const [warnOpen, setWarnOpen] = useState(false);
   const [resumeHandled, setResumeHandled] = useState(false);
   const isKiller = variant === 'killer';
+  const isCalc = variant === 'calc';
   const wantsResume = searchParams.get('resume') === '1';
 
   const { loading, error, fetchPuzzle } = usePuzzle();
@@ -90,16 +95,16 @@ export default function PlayExperience() {
     if (size !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
-  const handleVariantChange = (v: 'classic' | 'killer') => {
+  const handleVariantChange = (v: PlayVariant) => {
     setVariant(v);
     if (v === 'killer' && gridSize === 4) setGridSize(9); // Killer comes in 6×6 and 9×9
-    if (v === 'killer' && gridSize === 6 && (difficulty === 'expert' || difficulty === 'extreme')) {
-      setDifficulty('hard'); // 6×6 has no expert/extreme (either variant)
-    }
+    // Keisan comes in 4×4 / 6×6 / 9×9 — every size is valid, so no size clamp on switch. Expert and
+    // Extreme are 9×9-only for EVERY variant, so the guard is uniform: clamp them off any non-9 grid.
+    if (gridSize !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const startFresh = async () => {
-    const puzzle = await fetchPuzzle({ difficulty, gridSize, variant });
+    const puzzle = await fetchPuzzle({ difficulty, gridSize, variant, noOp: isCalc && mystery });
     if (puzzle) {
       setViewingSolved(false);
       startNewGame(puzzle); // mode defaults to 'play'; variant/cages come from the puzzle
@@ -150,7 +155,12 @@ export default function PlayExperience() {
               onClick={handleContinue}
               className="btn-primary w-full text-lg flex justify-center items-center"
             >
-              Continue {saved.variant === 'killer' ? 'Killer' : `${saved.gridSize}×${saved.gridSize}`}{' '}
+              Continue{' '}
+              {saved.variant === 'killer'
+                ? 'Killer'
+                : saved.variant === 'calc'
+                  ? 'Keisan'
+                  : `${saved.gridSize}×${saved.gridSize}`}{' '}
               {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
             </button>
             <p className="text-xs text-ink-soft text-center mt-3">— or start a new game —</p>
@@ -159,7 +169,7 @@ export default function PlayExperience() {
 
         {/* Puzzle type toggle */}
         <div className="flex gap-2 mb-6">
-          {(['classic', 'killer'] as const).map((v) => (
+          {(['classic', 'killer', 'calc'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -168,22 +178,22 @@ export default function PlayExperience() {
                 variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
               }`}
             >
-              {v === 'classic' ? 'Sudoku' : 'Killer'}
+              {v === 'classic' ? 'Sudoku' : v === 'killer' ? 'Killer' : 'Keisan'}
             </button>
           ))}
         </div>
 
-        {/* Same selector for both variants (Killer just has no 4×4) — consistent layout. */}
+        {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6/9. */}
         <GridSizeSelector
           value={gridSize}
           onChange={handleGridSizeChange}
-          sizes={isKiller ? [6, 9] : undefined}
+          sizes={isKiller ? [6, 9] : isCalc ? [4, 6, 9] : undefined}
         />
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Difficulty</label>
           <div className="flex flex-wrap justify-center gap-2">
-            {(isKiller ? KILLER_DIFFICULTIES : ALL_DIFFICULTIES).map((d) => {
+            {(isCalc ? CALC_DIFFICULTIES : isKiller ? KILLER_DIFFICULTIES : ALL_DIFFICULTIES).map((d) => {
               const disabled = miniGrid && (d === 'expert' || d === 'extreme');
               return (
                 <button
@@ -206,7 +216,34 @@ export default function PlayExperience() {
           {isKiller && difficulty === 'extreme' && (
             <p className="text-xs text-ink-soft text-center mt-2">Extreme Killers are rare finds — generating one can take ~10 seconds.</p>
           )}
+          {isCalc && difficulty === 'extreme' && (
+            <p className="text-xs text-ink-soft text-center mt-2">Extreme Keisan needs many hypothesis steps — generating one can take a few seconds.</p>
+          )}
         </div>
+
+        {/* Mystery / No-Op toggle — Keisan only. Hides the cage operators; an orthogonal modifier over
+            any size/difficulty (the operator becomes part of the puzzle). */}
+        {isCalc && (
+          <div className="mb-6">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={mystery}
+              onClick={() => setMystery((m) => !m)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border-2 border-ink transition-all ${
+                mystery ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+              }`}
+            >
+              <span className="text-sm font-medium">🔮 Mystery mode</span>
+              <span className={`text-xs px-2 py-0.5 rounded ${mystery ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-soft'}`}>
+                {mystery ? 'ON' : 'OFF'}
+              </span>
+            </button>
+            <p className="text-xs text-ink-soft text-center mt-2">
+              Operators are hidden — deduce whether each cage is + − × ÷ as well as its digits.
+            </p>
+          </div>
+        )}
 
         {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 

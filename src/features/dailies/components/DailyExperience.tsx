@@ -292,8 +292,11 @@ export default function DailyExperience() {
               ['classic', 'Classic 9×9'],
               ['killer', 'Killer 9×9'],
               ['minis', 'Minis'],
+              ['calc', 'Keisan'], // 9×9 Keisan (K7); auto-hidden while empty
             ] as const
-          ).map(([section, heading]) => (
+          )
+            .filter(([section]) => DAILY_BOARDS.some((b) => b.section === section))
+            .map(([section, heading]) => (
             <div key={section} className="mb-4">
               <label className="block text-sm font-medium text-ink-soft mb-2 text-center">{heading}</label>
               <div className="flex flex-wrap justify-center gap-2">

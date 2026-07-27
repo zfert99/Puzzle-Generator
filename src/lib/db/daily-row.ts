@@ -1,6 +1,7 @@
 import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
+import type { CalcPuzzle, CalcDifficulty } from '@/features/engine/calc/calc-types';
 import type { Grid, NewDailyPuzzle } from './schema';
 
 /**
@@ -12,7 +13,11 @@ import type { Grid, NewDailyPuzzle } from './schema';
  *   verbatim so every historical row stays valid (no migration).
  * - **killer** — the full 9×9 Killer ladder. (Replaces the single legacy `'killer'` key, which
  *   was one engine-medium puzzle per day; old rows remain readable via the legacy guard.)
- * - **minis** — the small boards: 4×4 and 6×6 classic, and 6×6 Killer (its full ladder).
+ * - **minis** — the small boards: 4×4 and 6×6 classic, 6×6 Killer, and 4×4/6×6 Keisan.
+ * - **calc** — the top-level **Keisan** section: the full 9×9 Keisan ladder (K7a easy/medium/hard +
+ *   K7c expert + K7d extreme). Mirrors the "Classic 9×9" / "Killer 9×9" sections; auto-hidden by the
+ *   pickers while it holds no boards. Expert/Extreme are 9×9-only — both need a Nishio guess; they
+ *   split on the guess-step count (Expert a few, Extreme many).
  *
  * `minSolveMs` is the anti-cheat plausibility floor (see `solve-rules.md`) — conservative
  * lower bounds per board, not records to police fast solvers.
@@ -27,13 +32,13 @@ import type { Grid, NewDailyPuzzle } from './schema';
  */
 export interface DailyBoard {
   key: string;
-  section: 'classic' | 'killer' | 'minis';
+  section: 'classic' | 'killer' | 'minis' | 'calc';
   /** Short chip label for pickers/leaderboards. */
   label: string;
-  variant: 'classic' | 'killer';
+  variant: 'classic' | 'killer' | 'calc';
   gridSize: GridSize;
   /** The engine difficulty used to generate this board. */
-  difficulty: Difficulty | KillerDifficulty;
+  difficulty: Difficulty | KillerDifficulty | CalcDifficulty;
   minSolveMs: number;
   botTimeMs: number;
 }
@@ -61,6 +66,28 @@ export const DAILY_BOARDS = [
   { key: 'killer6-easy', section: 'minis', label: 'killer 6×6 easy', variant: 'killer', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 120_000 },
   { key: 'killer6-medium', section: 'minis', label: 'killer 6×6 medium', variant: 'killer', gridSize: 6, difficulty: 'medium', minSolveMs: 12_000, botTimeMs: 195_000 },
   { key: 'killer6-hard', section: 'minis', label: 'killer 6×6 hard', variant: 'killer', gridSize: 6, difficulty: 'hard', minSolveMs: 15_000, botTimeMs: 270_000 },
+  // ---- Keisan (Calcudoku) minis: 4×4 + 6×6. These live in the MINIS section alongside the other
+  // small boards (matching classic/killer minis); the top-level `calc` section is reserved for 9×9
+  // Keisan (K7 — "Keisan" mirrors "Classic 9×9" / "Killer 9×9"). Boxless arithmetic cages solve
+  // slower than classic of the same size, so bot times run a touch higher. clue_count = cage count.
+  { key: 'calc4-easy', section: 'minis', label: 'keisan 4×4 easy', variant: 'calc', gridSize: 4, difficulty: 'easy', minSolveMs: 4_000, botTimeMs: 55_000 },
+  { key: 'calc4-medium', section: 'minis', label: 'keisan 4×4 medium', variant: 'calc', gridSize: 4, difficulty: 'medium', minSolveMs: 5_000, botTimeMs: 85_000 },
+  { key: 'calc4-hard', section: 'minis', label: 'keisan 4×4 hard', variant: 'calc', gridSize: 4, difficulty: 'hard', minSolveMs: 6_000, botTimeMs: 130_000 },
+  { key: 'calc6-easy', section: 'minis', label: 'keisan 6×6 easy', variant: 'calc', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 150_000 },
+  { key: 'calc6-medium', section: 'minis', label: 'keisan 6×6 medium', variant: 'calc', gridSize: 6, difficulty: 'medium', minSolveMs: 14_000, botTimeMs: 240_000 },
+  { key: 'calc6-hard', section: 'minis', label: 'keisan 6×6 hard', variant: 'calc', gridSize: 6, difficulty: 'hard', minSolveMs: 20_000, botTimeMs: 390_000 },
+  // ---- Keisan 9×9 (K7a: 3 tiers). The top-level `calc`/Keisan section — mirrors "Classic 9×9" /
+  // "Killer 9×9". Tiers separate on givens (~17 → ~10 → ~2) + operators; boxless arithmetic on a full
+  // 81-cell grid runs slower than Killer 9×9, so bot times sit a notch above the Killer ladder.
+  // Expert/Extreme arrive with K7b/K7c (bounded-recursion "T5" + offline pool).
+  { key: 'calc9-easy', section: 'calc', label: 'easy', variant: 'calc', gridSize: 9, difficulty: 'easy', minSolveMs: 25_000, botTimeMs: 420_000 },
+  { key: 'calc9-medium', section: 'calc', label: 'medium', variant: 'calc', gridSize: 9, difficulty: 'medium', minSolveMs: 35_000, botTimeMs: 660_000 },
+  { key: 'calc9-hard', section: 'calc', label: 'hard', variant: 'calc', gridSize: 9, difficulty: 'hard', minSolveMs: 50_000, botTimeMs: 1_080_000 },
+  // Expert (K7c): 0-given 9×9 needing a depth-1 Nishio guess (≤5 hypothesis steps). Extreme (K7d):
+  // needs MANY (≥6) — the guess-step count is a measured, monotone difficulty axis. Both are the
+  // slowest dailies; bot times climb past hard.
+  { key: 'calc9-expert', section: 'calc', label: 'expert', variant: 'calc', gridSize: 9, difficulty: 'expert', minSolveMs: 70_000, botTimeMs: 1_500_000 },
+  { key: 'calc9-extreme', section: 'calc', label: 'extreme', variant: 'calc', gridSize: 9, difficulty: 'extreme', minSolveMs: 90_000, botTimeMs: 1_920_000 },
 ] as const satisfies readonly DailyBoard[];
 
 export type DailyBoardKey = (typeof DAILY_BOARDS)[number]['key'];
@@ -90,6 +117,7 @@ export function formatDailyKey(key: string): string {
   if (!board) return key;
   if (board.section === 'classic') return board.label;
   if (board.section === 'killer') return `killer ${board.label}`;
+  if (board.section === 'calc') return `keisan ${board.label}`;
   return board.label;
 }
 
@@ -114,18 +142,20 @@ export function countClues(grid: Grid): number {
  * cage count is the analogous display stat).
  */
 export function toDailyPuzzleRow(
-  puzzle: SudokuPuzzle | KillerPuzzle,
+  puzzle: SudokuPuzzle | KillerPuzzle | CalcPuzzle,
   isoDate: string,
   key: DailyDifficulty,
 ): NewDailyPuzzle {
-  const isKiller = 'cages' in puzzle;
+  // Real discriminant, not `'cages' in puzzle`: Killer AND Keisan both carry cages, so the old
+  // duck-type couldn't tell them apart. Killer/Keisan carry an explicit `variant`; classic doesn't.
+  const hasCages = 'variant' in puzzle; // killer or calc — both store cages (sum vs op+target)
   return {
     date: isoDate,
     difficulty: key,
     grid: puzzle.grid,
     solution: puzzle.solution,
-    clueCount: isKiller ? puzzle.cages.length : countClues(puzzle.grid),
-    cages: isKiller ? puzzle.cages : null,
+    clueCount: hasCages ? puzzle.cages.length : countClues(puzzle.grid),
+    cages: hasCages ? puzzle.cages : null,
   };
 }
 

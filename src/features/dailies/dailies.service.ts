@@ -8,6 +8,8 @@ import {
 } from '@/lib/db/daily-row';
 import { generateSudoku, type Difficulty } from '@/features/engine/sudoku';
 import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
+import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
+import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import { BOT_USER_ID, ensureBotUser } from '@/features/leaderboards/bot';
 
 /**
@@ -42,15 +44,16 @@ export async function generateDailyPuzzles(
   // One row per registry board: three sections (classic 9×9, the full Killer ladder, minis).
   // The heavy hitters are classic extreme (digger) and killer-extreme (~5.5 s tier-5 search);
   // everything else is milliseconds — the cron route carries maxDuration headroom for the sum.
-  const rows = DAILY_BOARDS.map((board) =>
-    toDailyPuzzleRow(
+  const rows = DAILY_BOARDS.map((board) => {
+    // 3-way dispatch by the registry's explicit variant (never duck-typed on `cages`).
+    const puzzle =
       board.variant === 'killer'
         ? generateKillerSudoku(board.difficulty as KillerDifficulty, { gridSize: board.gridSize as 6 | 9 })
-        : generateSudoku(board.difficulty as Difficulty, board.gridSize),
-      isoDate,
-      board.key,
-    ),
-  );
+        : board.variant === 'calc'
+          ? generateCalcSudoku(board.difficulty as CalcDifficulty, { gridSize: board.gridSize as 4 | 6 | 9 })
+          : generateSudoku(board.difficulty as Difficulty, board.gridSize);
+    return toDailyPuzzleRow(puzzle, isoDate, board.key);
+  });
 
   const inserted = await db
     .insert(dailyPuzzles)

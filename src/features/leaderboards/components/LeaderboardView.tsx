@@ -135,8 +135,11 @@ export function LeaderboardView({
             ['classic', 'Classic'],
             ['killer', 'Killer'],
             ['minis', 'Minis'],
+            ['calc', 'Keisan'], // 9×9 Keisan (K7); auto-hidden while empty
           ] as const
-        ).map(([section, heading]) => (
+        )
+          .filter(([section]) => DAILY_BOARDS.some((b) => b.section === section))
+          .map(([section, heading]) => (
           <div key={section} className="flex flex-wrap items-center justify-center gap-2">
             <span className="text-[11px] uppercase tracking-wide text-ink-soft w-14 text-right">{heading}</span>
             {DAILY_BOARDS.filter((b) => b.section === section).map((b) => (

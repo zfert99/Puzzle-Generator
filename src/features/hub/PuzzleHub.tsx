@@ -4,10 +4,10 @@ import { Sticker } from '@/features/chaos/Sticker';
 
 /**
  * The puzzle hub (5.4) — the app's front door. A **compact, aligned** bento grid of puzzle
- * types (`minmax(150px, 1fr)`). The Killer card went live with Phase 6: it deep-links to
- * `/play?variant=killer` (the play menu preselects the variant). Chaos decoration
- * (stickers, tilt) sits on top of the orderly grid — never scattering it; the single
- * "new!" sticker follows whatever actually shipped last.
+ * types (`minmax(150px, 1fr)`). Killer went live in Phase 6; **Keisan** (Calcudoku) is the
+ * newest, deep-linking to `/play?variant=calc` (the play menu preselects the variant). Chaos
+ * decoration (stickers, tilt) sits on top of the orderly grid — never scattering it; the single
+ * "new!" sticker follows whatever actually shipped last (now Keisan).
  *
  * A Server Component: it's just links + presentational cards.
  */
@@ -32,20 +32,16 @@ export function PuzzleHub() {
           title="Killer"
           desc="Cage sums are the only clue"
           tilt="tilt-b"
+        />
+        <PuzzleCard
+          href="/play?variant=calc"
+          emoji="🧮"
+          title="Keisan"
+          desc="Math cages — the sums, differences, products & quotients are the clue"
+          tilt="tilt-c"
           sticker={
             <Sticker color="lime" rotate={10} className="absolute -top-3 -right-2 z-10">
               new!
-            </Sticker>
-          }
-        />
-        <PuzzleCard
-          emoji="➗"
-          title="KenKen"
-          desc="Coming soon"
-          tilt="tilt-c"
-          sticker={
-            <Sticker color="pink" rotate={-8} className="absolute -top-3 -right-2 z-10">
-              soon
             </Sticker>
           }
         />

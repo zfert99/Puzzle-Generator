@@ -520,21 +520,21 @@ work exists yet.
 
 ---
 
-## Phase 8 — KenKen 🔢
+## Phase 8 — Keisan (Calcudoku) 🔢
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/kenken`) — the Killer branch is retired
-> **Status:** 📋 Planned — full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md)
-> **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md)
+> **Status:** ✅ Done (feature-complete: engine + all surfaces) — **K0–K5 + a measured difficulty rebalance + the full 5-tier 9×9 ladder (K7a–K7d) + K6 Mystery / No-Op mode**. Keisan is playable, printable, discoverable, and in the daily rotation at 4×4/6×6/9×9, with a **5-tier 9×9 ladder** (easy/medium/hard/**expert**/**extreme**) at parity with Classic/Killer, plus a **🔮 Mystery (no-op) toggle** at any size/difficulty ([walkthrough](keisan-walkthrough.md)). **K7 was re-sliced** after a 9×9 de-risk found maxSize-5/T5 infeasible and the solver capped at ~T2: **K7a** (3-tier givens-gradient) → **K7b** (bounded-recursion "T5", the keen.c transplant — measured that guess *depth* never exceeds 1) → **K7c** (Expert = needs a depth-1 Nishio guess) → **K7d** (Extreme = needs *many* Nishio steps — the guess-step *count* is a monotone difficulty axis, so the research's "Option 2" won with no solver expansion). **K6** (Mystery / No-Op) landed last so it applies across the whole ladder — the operator-**union** combination table made hiding the operator a near-free add (no new solver technique). Optional follow-ons remain: a Mystery *daily* board, 5×5/7×7, and the deferred perf work below. See [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) + the [honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md). Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (reuse audit + [external plan review](research/kenken-plan-review.md), GREEN) + a [difficulty-calibration](research/kenken-difficulty-calibration.md) pass
+> **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) · [kenken-plan-review.md](research/kenken-plan-review.md)
 > **Estimated effort:** Medium-Large (the Killer machinery halves it)
 > **Prerequisite:** Phase 6 (shared cage engine, scoring, daily registry)
 
 Latin-square cage arithmetic (no boxes, digits repeat within cages, +−×÷ with operator-set
-difficulty). Sizes 4×4 + 6×6 first (5/7 later, 9 optional). Five slices K1–K5: multiset
-combination tables → exact solver/generator → logical tiers → measured difficulty bands →
-surfaces (play/PDF/dailies/hub — the "soon" card goes live). Reuses the cage overlay, the
-two-factor scorer, the generate-and-grade pipeline, and the daily-board registry. Ships
-under a neutral name (KenKen is trademarked).
+difficulty). Sizes 4×4 + 6×6 first (5/7 later, 9 optional). Slices K0–K5: **K0 boxless-grid
+foundation (done)** → multiset combination tables → exact solver/generator → logical tiers →
+measured difficulty bands → surfaces (play/PDF/dailies/hub — the "soon" card goes live). Reuses
+the cage overlay, the two-factor scorer, the generate-and-grade pipeline, and the daily-board
+registry. Displayed as **Keisan** (internal slug `calc`); "KenKen" is trademarked and avoided.
 
 ## Phase 9 — Social, Progression & Economy 🍪
 
@@ -574,7 +574,7 @@ gantt
 
     section 🧮 Engine (cont.)
     Phase 6 - Killer Sudoku             :p6, after p5, 21d
-    Phase 8 - KenKen                    :p8, after p6, 14d
+    Phase 8 - Keisan                    :p8, after p6, 14d
 
     section 🗄️ Infrastructure (cont.)
     Phase 9 - Social & Economy          :p9, after p8, 21d

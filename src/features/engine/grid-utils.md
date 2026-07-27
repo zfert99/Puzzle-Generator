@@ -26,10 +26,15 @@ Return the new 2D array containing the copied rows.
 
 **Why:** The fundamental rule of Sudoku. Before we can tentatively place a number during generation or counting, we must ensure it doesn't immediately violate the rules.
 
+**Boxless (K0):** on a 5×5/7×7 Latin-square grid (`config.hasBoxes === false`) there is no box —
+rows and columns are the whole rule — so we short-circuit to `true` right after the row/column
+scan, never touching the box sentinel dims.
+
 ```text
-Extract the box dimensions from the config.
+Extract the box dimensions and hasBoxes from the config.
 For every cell in the target row and target column:
   If the cell contains the number, return false.
+If hasBoxes is false (boxless Latin-square grid): return true (rows/columns are the whole rule).
 Calculate the top-left coordinate of the subgrid that contains the target cell.
 For every cell in that subgrid:
   If the cell contains the number, return false.
@@ -56,6 +61,12 @@ this cell?" — and is shared by `fillGrid` and `countSolutions`.
 ## `fillGrid(grid, config)`
 
 **Why:** We generate puzzles by starting with a completely solved, valid grid, and then digging holes into it. It uses **bitmask-based backtracking with a Minimum Remaining Values (MRV) heuristic**. The old version filled cells in index order and rescanned the whole row/column/box (`isValid`) for every candidate — O(size) per test. Instead we keep a used-digit bitmask per row, column, and box (so each legality test is a single O(1) bit-AND) and always branch on the empty cell with the FEWEST legal digits first. Most-constrained-first collapses the search tree, and this is the representation AGENTS.md Section 1 mandates for the generator core.
+
+**Boxless (K0):** for a 5×5/7×7 Latin-square grid the row-strip box sentinel (`boxWidth = size`,
+`boxHeight = 1`) makes `boxOf(r, c)` collapse to `r`, so `boxMask[r]` simply mirrors `rowMask[r]`.
+The box term becomes a redundant no-op and the fill is a pure Latin square — with **no** branch
+added to this hot loop (protecting the AGENTS.md §3 benchmark). The K0 Latin-square test at 5/7 is
+the guard: if the sentinel ever changes, that test fails.
 
 ```text
 Seed rowMask/colMask/boxMask from any pre-placed clues.

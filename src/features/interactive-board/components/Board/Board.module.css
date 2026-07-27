@@ -176,16 +176,19 @@
   line-height: 1;
 }
 
-/* Killer: EVERY cell's candidate grid — not just cage-anchor cells — reserves the same top
-   margin, driven purely by the board's `data-variant` attribute (no per-cell JS). A cell-by-
+/* Killer AND Keisan: EVERY cell's candidate grid — not just cage-anchor cells — reserves the same
+   top margin, driven purely by the board's `data-variant` attribute (no per-cell JS). A cell-by-
    cell conditional offset (only shifting cage-anchor cells) made candidate positions
    inconsistent across the board; applying it uniformly keeps every cell's 3×3 layout
    pixel-identical. Only the TOP is reserved, not the left too (an earlier version also
-   shifted left, cramping the grid into the bottom-right) — the cage-sum's background pad
-   (`cage-geometry.ts`) is only ~21% of the cell tall regardless of digit count, so clearing
+   shifted left, cramping the grid into the bottom-right) — the cage label's background pad
+   (`cage-geometry.ts`) is only ~21% of the cell tall regardless of label length, so clearing
    the top alone fully clears it without needing to also give up horizontal space; sudoku.com's
-   own layout reserves a plain top strip for the sum rather than a top-left corner block. */
-.board[data-variant='killer'] .candidates {
+   own layout reserves a plain top strip for the sum rather than a top-left corner block. Keisan
+   labels (`6+`, `3÷`) are a touch wider than Killer's bare sums, but the pad is height-driven so
+   the same top-only clearance covers both. */
+.board[data-variant='killer'] .candidates,
+.board[data-variant='calc'] .candidates {
   inset: 24% 2% 2% 2%;
   /* A touch smaller than classic's 0.46em — the top clearance above already eats into the
      cell's height, so the candidate rows have less room than a classic cell's do; a smaller

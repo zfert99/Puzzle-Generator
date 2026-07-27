@@ -1,13 +1,16 @@
 import { useState, useCallback } from 'react';
 import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
+import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 
-type AnyPuzzle = SudokuPuzzle | KillerPuzzle;
+type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle;
 
 interface PuzzleRequest {
   difficulty: Difficulty;
   gridSize?: GridSize;
-  variant?: 'classic' | 'killer';
+  variant?: 'classic' | 'killer' | 'calc';
+  /** Keisan Mystery / No-Op mode — hide the cage operators (calc only). */
+  noOp?: boolean;
 }
 
 /**
@@ -24,14 +27,14 @@ export function usePuzzle() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic' }: PuzzleRequest) => {
+  const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
     setLoading(true);
     try {
       const res = await fetch('/api/puzzle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty, gridSize, variant }),
+        body: JSON.stringify({ difficulty, gridSize, variant, noOp }),
       });
 
       if (!res.ok) {

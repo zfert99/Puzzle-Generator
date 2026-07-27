@@ -37,10 +37,41 @@ describe('DifficultyConfigurator', () => {
     expect(onChange).toHaveBeenCalledWith('easy', 5);
   });
 
-  it('warns about slow generation when extreme puzzles are requested', () => {
+  it('warns about slow generation when extreme puzzles are requested (classic)', () => {
     render(
       <DifficultyConfigurator gridSize={9} counts={{ ...zeroCounts, extreme: 1 }} onChange={() => {}} />
     );
     expect(screen.getByText(/elite-tier strategies/i)).toBeInTheDocument();
+  });
+
+  it('classic Expert alone triggers no slow-generation warning', () => {
+    render(
+      <DifficultyConfigurator gridSize={9} counts={{ ...zeroCounts, expert: 3 }} onChange={() => {}} />
+    );
+    expect(screen.queryByText(/seconds|elite-tier|hypothesis/i)).not.toBeInTheDocument();
+  });
+
+  it('Keisan Expert / Extreme warnings name the hypothesis (Nishio) cost', () => {
+    const { rerender } = render(
+      <DifficultyConfigurator gridSize={9} variant="calc" counts={{ ...zeroCounts, expert: 1 }} onChange={() => {}} />
+    );
+    expect(screen.getByText(/Keisan Expert needs a hypothesis .*1–4 seconds/i)).toBeInTheDocument();
+
+    rerender(
+      <DifficultyConfigurator gridSize={9} variant="calc" counts={{ ...zeroCounts, extreme: 1 }} onChange={() => {}} />
+    );
+    expect(screen.getByText(/Keisan Extreme needs many hypothesis .*2–5 seconds/i)).toBeInTheDocument();
+  });
+
+  it('Mystery mode escalates the Keisan warning to the tens-of-seconds range', () => {
+    const { rerender } = render(
+      <DifficultyConfigurator gridSize={9} variant="calc" mystery counts={{ ...zeroCounts, expert: 1 }} onChange={() => {}} />
+    );
+    expect(screen.getByText(/Mystery on.*5–15 seconds/i)).toBeInTheDocument();
+
+    rerender(
+      <DifficultyConfigurator gridSize={9} variant="calc" mystery counts={{ ...zeroCounts, extreme: 1 }} onChange={() => {}} />
+    );
+    expect(screen.getByText(/Mystery Extreme.*15–30 seconds.*up to a minute/i)).toBeInTheDocument();
   });
 });

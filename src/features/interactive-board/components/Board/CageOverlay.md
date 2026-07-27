@@ -1,7 +1,9 @@
 # CageOverlay (`CageOverlay.tsx`)
 
-The Killer cage layer for the interactive board — an SVG overlaid exactly on the grid, drawing
-the dashed cage outlines and corner sum labels.
+The cage layer for the interactive board — an SVG overlaid exactly on the grid, drawing the dashed
+cage outlines and corner labels. **Variant-agnostic:** it takes pre-labeled cages (`LabeledCage`),
+so it serves both Killer (sum label `"12"`) and Keisan/Calcudoku (target+operator `"12+"`/`"3÷"`).
+The board normalizes either cage type to `{ cells, label }` before passing them in.
 
 ## Why an SVG overlay
 
