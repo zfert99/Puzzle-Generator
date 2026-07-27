@@ -32,7 +32,7 @@
  */
 
 import type { GridSize } from '../sudoku';
-import { calcCombosFor } from './calc-combinations';
+import { calcCageCombos } from './calc-combinations';
 import type { CalcCage } from './calc-types';
 
 /** Number of set bits in a small integer (a digit-set mask). */
@@ -91,7 +91,10 @@ export class CalcSolver {
     // Precompile each cage's valid multisets to count arrays (arithmetic layer only — geometry is
     // enforced by the row/col masks during search).
     this.cageCombos = cages.map((cage) => {
-      const multisets = calcCombosFor(cage.op, cage.cells.length, cage.target, this.size);
+      // `calcCageCombos` returns the operator-UNION multisets for a no-op (Mystery) cage, so
+      // uniqueness is verified across EVERY operator interpretation — a puzzle only counts as unique
+      // if exactly one grid satisfies every cage under *some* operator.
+      const multisets = calcCageCombos(cage, this.size);
       const counts = multisets.map((m) => {
         const c = new Uint8Array(this.size + 1);
         for (const d of m) c[d] += 1;

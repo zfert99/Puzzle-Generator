@@ -65,9 +65,14 @@ need no operator, so they always pass.
 
 ## `CalcCage`
 
-`{ id, op, target, cells }` — cells are FLAT indices (`row * size + col`), the same convention as
-Killer's `Cage`. A single-cell cage is a given (its `target` is the digit, `op` irrelevant). This
+`{ id, op, target, cells, noOp? }` — cells are FLAT indices (`row * size + col`), the same convention
+as Killer's `Cage`. A single-cell cage is a given (its `target` is the digit, `op` irrelevant). This
 is the shape the solver, generator, and renderers (K2–K5) consume.
+
+`noOp?` (K6, **Mystery mode**): when `true`, the operator is hidden from the player — renderers show
+only the target, and the solvers/uniqueness reason over the operator-union multiset table
+(`calcCageCombos`). `op` still holds the true operator (used to generate + compute the target). An
+orthogonal toggle: any size, any difficulty.
 
 ## Naming / trademark
 

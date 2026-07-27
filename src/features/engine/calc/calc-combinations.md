@@ -61,6 +61,22 @@ Lazily memoized in a `Map` keyed by `(N, op, size, target)`, computed on first r
 - **Cost:** enumeration is bounded by cage size (the generator caps cages small), so first-touch is
   negligible and every later read is a `Map` hit. `_clearCalcComboMemo()` is a test hook.
 
+## Mystery / No-Op cages (K6)
+
+`calcNoOpCombosFor(size, target, N)` is the arithmetic core of **Mystery mode**: the operator is
+hidden, so a cage may hold any multiset *some* legal operator would produce. It returns the
+**deduplicated union** of `calcCombosFor` across the operators legal for that cage size — 2-cell:
+`+ − × ÷`; 3+-cell: `+ ×` (`−`/`÷` are 2-cell-only). Memoized separately, keyed by `(N, size, target)`
+(no operator in the key — that's the whole point).
+
+`calcCageCombos(cage, N)` is the **single dispatch** every consumer routes through: it returns the
+union table when `cage.noOp`, else the plain single-operator table. Both solvers (their cage-multiset
+precompute) and the generator's shape gate call it, so no-op support needed **zero** per-technique
+branches — the wider candidate set flows through the existing machinery. The union is always a superset
+of any single operator's combos, so a Mystery cage is strictly *more* ambiguous; uniqueness is
+correspondingly harder, and the generator re-verifies against this table (a puzzle only counts as
+unique if exactly one grid satisfies every cage under *some* operator).
+
 ## Worked examples (the K1 gate)
 
 ```text

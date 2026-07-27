@@ -169,7 +169,8 @@ export function drawCalcGrid(
     grid: showSolution ? puzzle.solution : puzzle.grid,
     cages: puzzle.cages.map((cage) => ({
       cells: cage.cells,
-      label: cage.cells.length === 1 ? String(cage.target) : `${cage.target}${PDF_OPERATOR_SYMBOL[cage.op]}`,
+      // Mystery (no-op) cages hide their operator — show only the target.
+      label: cage.cells.length === 1 || cage.noOp ? String(cage.target) : `${cage.target}${PDF_OPERATOR_SYMBOL[cage.op]}`,
     })),
     startX,
     startY,

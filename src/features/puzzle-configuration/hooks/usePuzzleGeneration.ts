@@ -8,6 +8,8 @@ interface GenerationConfig {
   hard: number;
   expert?: number;
   extreme?: number;
+  /** Keisan Mystery / No-Op mode — hide the cage operators (calc only). */
+  noOp?: boolean;
 }
 
 export function usePuzzleGeneration() {

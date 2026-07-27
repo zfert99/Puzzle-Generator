@@ -2,11 +2,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   calcCombosFor,
+  calcNoOpCombosFor,
+  calcCageCombos,
   calcUnionMask,
   calcGuaranteedMask,
   _clearCalcComboMemo,
   type Multiset,
 } from './calc-combinations';
+import type { CalcCage } from './calc-types';
 
 /** Normalize a list of multisets to a comparable, order-independent form. */
 function normalize(combos: readonly Multiset[]): string[] {
@@ -19,6 +22,38 @@ function maskOf(...digits: number[]): number {
   for (const d of digits) m |= 1 << (d - 1);
   return m;
 }
+
+describe('calcNoOpCombosFor / calcCageCombos — Mystery (no-op) union (K6)', () => {
+  it('unions every operator legal for a 2-cell cage (+ − × ÷), deduplicated', () => {
+    // target 6 on 6×6: + → {a+b=6}, − → {|a-b|=6: none in 1..6}, × → {1,6},{2,3}, ÷ → {a/b=6: none}.
+    // union of add {1,5},{2,4},{3,3} and mul {1,6},{2,3}.
+    const noop = normalize(calcNoOpCombosFor(2, 6, 6));
+    const add = normalize(calcCombosFor('add', 2, 6, 6));
+    const mul = normalize(calcCombosFor('mul', 2, 6, 6));
+    // Every single-operator combo is present in the union...
+    for (const c of [...add, ...mul]) expect(noop).toContain(c);
+    // ...and the union has no duplicates.
+    expect(new Set(noop).size).toBe(noop.length);
+    // A multiset producible by two operators (e.g. {2,2}: +4 AND ×4) appears once for target 4.
+    expect(normalize(calcNoOpCombosFor(2, 4, 6))).toEqual([...new Set(normalize(calcNoOpCombosFor(2, 4, 6)))].sort());
+  });
+
+  it('a 3+-cell cage unions only + and × (− / ÷ are 2-cell only)', () => {
+    const noop = normalize(calcNoOpCombosFor(3, 6, 6));
+    const union = new Set([...normalize(calcCombosFor('add', 3, 6, 6)), ...normalize(calcCombosFor('mul', 3, 6, 6))]);
+    expect(new Set(noop)).toEqual(union);
+  });
+
+  it('calcCageCombos dispatches on the noOp flag', () => {
+    const base = { id: 0, target: 6, cells: [0, 1] };
+    const plain: CalcCage = { ...base, op: 'add' };
+    const mystery: CalcCage = { ...base, op: 'add', noOp: true };
+    expect(normalize(calcCageCombos(plain, 6))).toEqual(normalize(calcCombosFor('add', 2, 6, 6)));
+    expect(normalize(calcCageCombos(mystery, 6))).toEqual(normalize(calcNoOpCombosFor(2, 6, 6)));
+    // The union is a strict superset here (mul adds {1,6},{2,3} on top of add's sets).
+    expect(calcCageCombos(mystery, 6).length).toBeGreaterThan(calcCageCombos(plain, 6).length);
+  });
+});
 
 describe('calcCombosFor — addition', () => {
   it('includes repeat multisets: 4+ over two cells → {1,3} and {2,2}', () => {

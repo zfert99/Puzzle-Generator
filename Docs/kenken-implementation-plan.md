@@ -1,13 +1,13 @@
 # Keisan (Calcudoku) — Implementation Plan
 
-> **Status:** 🚧 In Progress — engine K0–K4 + core surfaces K5 shipped + a measured difficulty
-> rebalance + Keisan minis in the daily rotation. Next up **K7 (9×9)**, then **K6 (No-Op / Mystery)**
-> — order swapped so No-Op lands on top of the finished 9×9 tiers. K7 is itself **re-sliced** after
-> a 9×9 de-risk measurement (see K7 below): **K7a ✅** (3-tier 9×9) → **K7b ✅** (bounded-recursion
-> "T5"; measured that depth-2 never fires, so depth is one step, not a ladder) → **K7c ✅** (4-tier
-> 9×9 — Expert = needs a Nishio guess) → **K7d ✅** (Extreme = needs *many* Nishio steps; Slice-0
-> instrumentation found the guess-step count is a monotone difficulty axis, so Option 2 won with no
-> solver expansion — the full 5-tier 9×9 ladder is in). **Next: K6** No-Op / Mystery. Build log:
+> **Status:** ✅ Feature-complete (engine + all surfaces) — K0–K5 + difficulty rebalance + the full
+> 5-tier 9×9 ladder (K7a–K7d) + **K6 Mystery / No-Op mode**. K7 was **re-sliced** after a 9×9 de-risk
+> (see K7 below): **K7a ✅** (3-tier 9×9) → **K7b ✅** (bounded-recursion "T5"; measured that depth-2
+> never fires, so depth is one step, not a ladder) → **K7c ✅** (Expert = needs a Nishio guess) →
+> **K7d ✅** (Extreme = needs *many* Nishio steps; Slice-0 instrumentation found the guess-step count
+> is a monotone difficulty axis, so Option 2 won with no solver expansion). **K6 ✅** (Mystery toggle —
+> hide operators; the operator-union combination table made it a near-free add). Remaining ideas are
+> optional follow-ons (a Mystery *daily* board; 5×5/7×7; the deferred perf work below). Build log:
 > [calcudoku/keisan walkthrough](keisan-walkthrough.md).
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
 > [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
@@ -395,18 +395,26 @@ remove givens / merge cages toward the target band) to fix the ~0.1% hard accept
 Expert/Extreme live in the offline pool, slow generation there is tolerable — pull these in only if
 cron latency actually hurts. 5×5/7×7 remain representable from K0 but stay out of scope.
 
-### K6 — No-Op / Mystery mode 📋 After K7 (applies to the finished 9×9 tiers too)
+### K6 — No-Op / Mystery mode ✅ Done (applies across the finished 9×9 tiers too)
 
-An orthogonal **"Mystery" toggle** (selectable at any size/difficulty), NOT a 5th tier — matches the
-research + kenkenpuzzle.com/calcudoku.org practice ("surface it as its own labeled mode"). Sequenced
-**after** K7 deliberately: No-Op then lands on top of the whole finished ladder (including 9×9
-Expert/Extreme), instead of being redone when those tiers arrive. The cage shows only a target; the
-solver must deduce the operator too (3+ cells ⇒ + or ×). Real engine work, not a flag: (1) exact-solver
-cage pruning that **unions candidate multisets across every operator a target admits**, plus
-**uniqueness across all operator interpretations**; (2) a new logical-solver **operator-deduction
-technique** so no-op puzzles stay gradable/human-solvable; (3) generation that rejects
-operator-ambiguous puzzles. Rendering is trivial (the cage label is already a string — just omit the
-operator). Its own uniqueness + gradability gates.
+An orthogonal **"Mystery" toggle** (any size/difficulty), NOT a 5th tier — matches
+kenkenpuzzle.com/calcudoku.org practice. Landed *after* K7 deliberately, so it applies to the whole
+finished ladder including 9×9 Expert/Extreme. The cage shows only a target; the solver deduces the
+operator too (3+ cells ⇒ + or ×).
+
+The build turned out **far cleaner than the "real engine work, not a flag" framing above feared** —
+because the whole solver stack already reasons off the cage-combination table. The entire arithmetic
+difference is **one new function**, `calcNoOpCombosFor` (the deduplicated operator-**union** multisets
+per cage), exposed via a single dispatch `calcCageCombos(cage, N)` that both solvers' cage-multiset
+precompute and the generator's shape gate route through. So: (1) uniqueness "across every operator
+interpretation" and (2) gradability without knowing the operator **both fell out for free** — no new
+logical-solver technique was needed (the union set flows through every existing technique). Generation
+adds a `noOp` option that flags each multi-cell cage before the gates; rendering (board + PDF) omits
+the operator symbol; `CalcCage.noOp` + `StoredCalcCage.noOp` (jsonb, no migration) persist it.
+Surfaced as a **🔮 Mystery toggle** on `/play` and `/generate`. **De-risk gate met:** 4×4/6×6
+easy/medium/hard all **30/30 unique + gradable** in no-op mode (6×6 easy slowest at ~82 ms avg since
+the union tightens the small-cage easy band). Deliberately **interactive + PDF only for now** — no
+Mystery *daily* board yet (a cheap follow-on: thread a `noOp` flag through the board registry).
 
 ## 4. Risks
 

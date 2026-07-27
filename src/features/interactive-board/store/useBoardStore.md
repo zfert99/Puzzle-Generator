@@ -40,7 +40,8 @@ discriminant, not duck-typing:** killer/calc carry an explicit `variant` tag (cl
 `'variant' in puzzle ? puzzle.variant : 'classic'` distinguishes all three — the old
 `'cages' in puzzle` couldn't tell killer from calc (both have cages). Cages are normalized to
 `BoardCage = { id, cells, label }` at game start (Killer label = sum `"12"`; Keisan label =
-target+operator `"12+"`/`"3÷"`, or bare value for a single-cell given), so the overlay, `cellToCage`,
+target+operator `"12+"`/`"3÷"`, or bare value for a single-cell given **or a Mystery/no-op cage** —
+K6 hides the operator, so a no-op cage shows only its target `"12"`), so the overlay, `cellToCage`,
 and pencil-stripping are variant-agnostic. **Keisan uses a boxless `config`** (`calcGridConfig`,
 `hasBoxes: false`) even at 4/6, so peers are row/col-only and Cell.tsx draws no box borders (K0).
 `inputDigit`'s cage-mate pencil stripping stays **Killer-only** (Keisan permits repeats), gated on

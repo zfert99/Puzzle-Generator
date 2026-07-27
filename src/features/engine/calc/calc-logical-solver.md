@@ -22,6 +22,10 @@ valid*.
 
 ## The tier ladder
 
+The constructor precompiles each cage's multisets via `calcCageCombos(cage, N)`, so a **Mystery /
+no-op cage** (K6) automatically feeds every technique below the operator-**union** candidate set — the
+solver deduces the operation along with the digits, with **no** per-technique no-op branches.
+
 | Tier | Techniques | Notes |
 |---|---|---|
 | **1** | cage arithmetic, naked single, hidden single | Single-cell cages are placed as givens at construction. Cage arithmetic restricts each empty cell to digits some still-valid multiset needs (cheap, over-approximating, sound). |

@@ -12,6 +12,7 @@ export default function PuzzleForm() {
   const [variant, setVariant] = useState<'classic' | 'killer' | 'calc'>('classic');
   const [killerSize, setKillerSize] = useState<6 | 9>(9);
   const [calcSize, setCalcSize] = useState<4 | 6 | 9>(6);
+  const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
     easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0
@@ -37,7 +38,7 @@ export default function PuzzleForm() {
     if (isKiller) {
       await generate({ variant: 'killer', gridSize: killerSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: killerSize === 9 ? counts.expert : 0, extreme: killerSize === 9 ? counts.extreme : 0 });
     } else if (isCalc) {
-      await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: calcSize === 9 ? counts.expert : 0, extreme: calcSize === 9 ? counts.extreme : 0 });
+      await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: calcSize === 9 ? counts.expert : 0, extreme: calcSize === 9 ? counts.extreme : 0, noOp: mystery });
     } else {
       await generate({ ...counts, gridSize });
     }
@@ -102,9 +103,23 @@ export default function PuzzleForm() {
               </button>
             ))}
           </div>
-          <p className="text-xs text-ink-soft text-center mb-6">
+          <p className="text-xs text-ink-soft text-center mb-3">
             Calcudoku — a Latin square with arithmetic cages (+ − × ÷); no givens, the math is the clue.
           </p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={mystery}
+            onClick={() => setMystery((m) => !m)}
+            className={`w-full flex items-center justify-between px-3 py-2 mb-6 rounded-lg border-2 border-ink transition-all ${
+              mystery ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+            }`}
+          >
+            <span className="text-sm font-medium">🔮 Mystery mode — hide operators</span>
+            <span className={`text-xs px-2 py-0.5 rounded ${mystery ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-soft'}`}>
+              {mystery ? 'ON' : 'OFF'}
+            </span>
+          </button>
         </>
       ) : (
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />

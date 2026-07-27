@@ -102,10 +102,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
       }
 
-      const puzzles = generateCalcBatch({ easy, medium, hard, expert, extreme }, { gridSize: calcSize });
+      const noOp = body?.noOp === true; // Mystery mode: hide operators
+      const puzzles = generateCalcBatch({ easy, medium, hard, expert, extreme }, { gridSize: calcSize, noOp });
       const pdfBuffer = await generateCalcPDF(puzzles);
       logger.info(
-        { event: 'generation_success', variant: 'calc', counts: { easy, medium, hard, expert, extreme }, gridSize: calcSize, durationMs: Math.round(performance.now() - startTime) },
+        { event: 'generation_success', variant: 'calc', counts: { easy, medium, hard, expert, extreme }, gridSize: calcSize, noOp, durationMs: Math.round(performance.now() - startTime) },
         'Successfully generated Keisan puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Keisan.pdf');

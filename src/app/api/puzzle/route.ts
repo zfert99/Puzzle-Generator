@@ -75,9 +75,10 @@ export async function POST(req: NextRequest) {
       if ((difficulty === 'expert' || difficulty === 'extreme') && gridSize !== 9) {
         return NextResponse.json({ error: 'Expert and Extreme Keisan are only available at 9×9' }, { status: 400 });
       }
-      const puzzle = generateCalcSudoku(difficulty as CalcDifficulty, { gridSize });
+      const noOp = body?.noOp === true; // Mystery mode: hide operators (orthogonal to size/difficulty)
+      const puzzle = generateCalcSudoku(difficulty as CalcDifficulty, { gridSize, noOp });
       logger.info(
-        { event: 'puzzle_success', variant: 'calc', difficulty, gridSize, durationMs: Math.round(performance.now() - startTime) },
+        { event: 'puzzle_success', variant: 'calc', difficulty, gridSize, noOp, durationMs: Math.round(performance.now() - startTime) },
         'Generated interactive Keisan puzzle',
       );
       return NextResponse.json(puzzle, { status: 200 });

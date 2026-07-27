@@ -46,6 +46,8 @@ export interface StoredCalcCage {
   op: CalcOperator;
   target: number;
   cells: number[];
+  /** Mystery / No-Op (K6): operator hidden from the player. Omitted for normal cages. jsonb, no migration. */
+  noOp?: boolean;
 }
 
 /**

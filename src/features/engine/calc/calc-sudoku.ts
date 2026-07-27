@@ -26,7 +26,7 @@ import {
 import { CalcSolver } from './calc-solver';
 import { CalcLogicalSolver, type CalcTier } from './calc-logical-solver';
 import { scoreCalcSolve } from './calc-score';
-import { calcCombosFor } from './calc-combinations';
+import { calcCageCombos } from './calc-combinations';
 import type { CalcCage, CalcDifficulty, CalcOperator, CalcPuzzle } from './calc-types';
 
 const QUAD_OP: readonly CalcOperator[] = ['add', 'sub', 'mul', 'div'];
@@ -136,17 +136,20 @@ function isGiftCage(cage: CalcCage, gridSize: number, level: GiftBanLevel): bool
   const size = cage.cells.length;
   if (size < 2) return false; // single-cell givens are handled by the singles band
   const N = gridSize;
-  const combos = calcCombosFor(cage.op, size, cage.target, N).length;
+  const combos = calcCageCombos(cage, N).length; // union multisets when no-op — a Mystery cage's real ambiguity
   if (combos <= 1) return true; // fully-determined multiset — banned at every level
   if (level === 'combos1') return false;
-  if (size === 2) {
+  // The operator-specific "freebie" heuristics below assume the player can SEE the operator, so they
+  // don't apply to a no-op cage (its op is hidden). For no-op, the `combos` count above is the honest
+  // gift signal; skip the single-op patterns.
+  if (!cage.noOp && size === 2) {
     // keen.c 2-cell freebies: + with tiny/huge sums, − with the max difference, ÷ with a big quotient.
     if (cage.op === 'add' && (cage.target <= 4 || cage.target >= 2 * N - 2)) return true;
     if (cage.op === 'sub' && cage.target === N - 1) return true;
     if (cage.op === 'div' && cage.target > N / 2) return true;
   }
   if (level === 'twoCell') return false;
-  if (cage.op === 'mul' && combos <= 2) return true; // × that factors into ≤2 sets ≈ a given
+  if (!cage.noOp && cage.op === 'mul' && combos <= 2) return true; // × that factors into ≤2 sets ≈ a given
   return false;
 }
 
@@ -259,7 +262,7 @@ function shapeOk(cages: CalcCage[], config: CalcDifficultyConfig, gridSize: numb
     if (checkBent && isBentCage(cage.cells, gridSize)) bent += 1;
     if (isGiftCage(cage, gridSize, giftLevel)) footholds += 1;
     if (config.maxCombosPerCage !== undefined) {
-      const combos = calcCombosFor(cage.op, size, cage.target, gridSize).length;
+      const combos = calcCageCombos(cage, gridSize).length; // union count for no-op cages
       if (combos > config.maxCombosPerCage) return false;
     }
   }
@@ -278,6 +281,14 @@ export interface CalcGenPipelineOptions {
   solution?: number[][];
   /** Grading attempts before giving up (default 4000). */
   maxAttempts?: number;
+  /**
+   * **Mystery / No-Op (K6):** hide every cage's operator. The cages are still assigned a real
+   * operator + target (so the puzzle is well-formed), but each is flagged `noOp`, so the shape gate,
+   * grader, and uniqueness check all reason over the operator-UNION multisets — the puzzle must stay
+   * uniquely solvable and logic-gradable *without* knowing the operators. An orthogonal toggle over
+   * the normal difficulty tiers.
+   */
+  noOp?: boolean;
 }
 
 /**
@@ -314,6 +325,11 @@ export function generateCalcSudoku(
     const shapes = generateCalcCageShapes(gridSize, { minSize: config.minSize, maxSize: config.maxSize, rng });
     const cages = assignCalcCages(shapes, solution, { activeOps: config.activeOps, operatorWeights: config.operatorWeights, rng });
     if (!cages) continue;
+    // Mystery mode: flag every multi-cell cage no-op BEFORE any gate, so the shape check, grader, and
+    // uniqueness proof all reason over the operator-union table. Single-cell cages are givens (no op).
+    if (options.noOp) {
+      for (const cage of cages) if (cage.cells.length > 1) cage.noOp = true;
+    }
     if (!shapeOk(cages, config, gridSize)) continue;
 
     const result = new CalcLogicalSolver(cages, gridSize as GridSize).solve({ maxTier: config.solveCap });
@@ -357,7 +373,7 @@ export function generateCalcSudoku(
 /** Generate a batch of graded Keisan puzzles — `counts[difficulty]` of each, easy→extreme order. */
 export function generateCalcBatch(
   counts: Partial<Record<CalcDifficulty, number>>,
-  options: { gridSize?: 4 | 6 | 9 } = {},
+  options: { gridSize?: 4 | 6 | 9; noOp?: boolean } = {},
 ): CalcPuzzle[] {
   const puzzles: CalcPuzzle[] = [];
   // `expert`/`extreme` are 9×9-only; callers pass 0 for them at 4×4/6×6 (the UI/route gate it), so the

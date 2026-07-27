@@ -118,6 +118,18 @@ the step band; same 0-given shape + `solveCap 5` + `techniqueFloor 4`. Rare + sl
 technique expansion (cage-line intersection, pairwise multi-cage elimination) was **not needed** — the
 step-count axis gave a cleaner, cheaper tier; those remain deferred (see the K7d research brief).
 
+## Mystery / No-Op mode (K6)
+
+The `noOp` pipeline option is an **orthogonal toggle** over any size/difficulty: after the normal
+assign step, every multi-cell cage is flagged `noOp` *before* any gate, so the shape check, grader,
+and uniqueness proof all reason over the operator-**union** table (`calcCageCombos`). The cage keeps
+its real operator (to compute the target + fill from the solution) but hides it from the player. No
+recalibration: the same tier configs apply, and a Mystery board simply plays a notch harder (you must
+deduce the operator too) — the industry-standard treatment (calcudoku.org). Measured feasible at every
+size/tier (4×4/6×6 easy/medium/hard: **30/30 unique + gradable**; 6×6 easy is the slowest at ~82 ms
+avg since the union tightens the small-cage easy band). Gift/combo shape gates also read the union;
+the single-operator "freebie" heuristics are skipped for no-op cages (their op is hidden).
+
 ## Gate (met, full-spec)
 
 Every band generates **avg ≤ 78 ms** (6×6 hard the slowest, max ~245 ms — under the 1 s budget),

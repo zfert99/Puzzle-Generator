@@ -8,7 +8,8 @@
 > **Status:** 🚧 In Progress — engine K0–K4 ✅ · surfaces K5 core ✅ (play/PDF/hub) · difficulty
 > rebalance ✅ · daily rotation ✅ · **K7a (9×9, 3 tiers) ✅** · **K7b (bounded-recursion "T5") ✅** ·
 > **K7c (9×9 Expert = needs a Nishio guess) ✅** · **K7d (9×9 Extreme = needs *many* Nishio steps) ✅**
-> — the full 5-tier 9×9 ladder is in · **next:** K6 No-Op / Mystery · **Branch:** `feature/kenken`
+> · **K6 (Mystery / No-Op mode) ✅** — feature-complete (engine + all surfaces); optional follow-ons
+> only (a Mystery *daily* board; 5×5/7×7) · **Branch:** `feature/kenken`
 
 ## Naming
 
@@ -594,3 +595,44 @@ New test: Extreme is unique, T5-solves with `hardestTier === 5` and **`guessStep
 from Expert's ≤5), and throws at 4×4/6×6. Daily registry asserts the `calc` section is now
 `[easy, medium, hard, expert, extreme]` and `formatDailyKey('calc9-extreme') === 'keisan extreme'`.
 312 tests green; tsc / lint / markdownlint clean; 4×4/6×6 untouched.
+
+## K6 — Mystery / No-Op mode ✅
+
+An orthogonal **🔮 Mystery toggle** (any size/difficulty): every cage shows only its target, and the
+player must deduce the operator (+ − × ÷) along with the digits. Sequenced last so it applies across
+the whole finished ladder, including 9×9 Expert/Extreme.
+
+### The whole thing is one combination-table function
+
+The original plan feared "real engine work, not a flag" — a new operator-deduction solver technique,
+bespoke uniqueness logic. It turned out **far cleaner**, because the entire solver stack already
+reasons off the cage-combination table. The arithmetic difference of Mystery mode is a single
+function, **`calcNoOpCombosFor(size, target, N)`** — the *deduplicated union* of the multisets every
+legal operator would produce (2-cell: + − × ÷; 3+-cell: + ×). A one-line dispatch,
+**`calcCageCombos(cage, N)`**, returns that union when `cage.noOp` else the plain table, and both
+solvers' cage-multiset precompute + the generator's shape gate route through it. So **uniqueness
+"across every operator interpretation" and gradability-without-the-operator both fell out for free** —
+zero new techniques, zero per-technique no-op branches.
+
+### The rest
+
+- `CalcCage.noOp` + `StoredCalcCage.noOp` (jsonb, no migration) carry the flag; the generator's `noOp`
+  option flags every multi-cell cage before the gates.
+- Rendering: the board label (`useBoardStore`) and PDF omit the operator symbol when `noOp` (a no-op
+  cage shows just `"12"`, like a single-cell given).
+- Surfaces: a 🔮 Mystery toggle on `/play` and `/generate`, threaded through `usePuzzle` /
+  `usePuzzleGeneration` → both API routes → the engine.
+- The single-operator "freebie" gift heuristics are skipped for no-op cages (their op is hidden); the
+  gift/combo shape gates otherwise read the union count.
+
+### De-risk + verification
+
+Gate met: **4×4/6×6 easy/medium/hard all 30/30 unique + gradable** in no-op mode (6×6 easy the
+slowest at ~82 ms avg — the union tightens the small-cage easy band). Tests: `calcNoOpCombosFor` is
+the dedup'd union (2-cell all four ops, 3+-cell + × only); `calcCageCombos` dispatches on `noOp`; no-op
+generation yields unique, gradable puzzles with every multi-cell cage flagged. **316 tests green**;
+tsc / lint / markdownlint clean.
+
+**Scope note:** interactive `/play` + `/generate` PDF only. No Mystery *daily* board yet — a cheap
+follow-on (thread a `noOp` flag through the board registry + service), deliberately deferred to keep
+this slice focused.

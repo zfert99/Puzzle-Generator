@@ -71,8 +71,29 @@ describe('generateCalcSudoku', () => {
     }
   });
 
+  it('Mystery / No-Op (K6): generates unique, gradable puzzles with every operator hidden', () => {
+    // No-op is an orthogonal toggle over any size/difficulty. The union table makes cages more
+    // ambiguous, so uniqueness is verified across ALL operator interpretations — but it still holds.
+    for (const gridSize of [4, 6] as const) {
+      const p = generateCalcSudoku('medium', { gridSize, noOp: true });
+      // Every multi-cell cage carries the hidden-operator flag; single-cell givens do not.
+      for (const cage of p.cages) {
+        if (cage.cells.length > 1) expect(cage.noOp).toBe(true);
+        else expect(cage.noOp).toBeFalsy();
+      }
+      // Well-formed: Latin square, cages partition + satisfy the true operator.
+      expect(isLatinSquare(p.solution, gridSize)).toBe(true);
+      expect(cagesPartition(p.cages, gridSize)).toBe(true);
+      expect(cagesSatisfied(p.cages, p.solution, gridSize)).toBe(true);
+      // Unique AND logic-gradable WITHOUT knowing the operators (both solvers read the union table).
+      expect(new CalcSolver(p.cages, gridSize as GridSize).countSolutions(2)).toBe(1);
+      expect(new CalcLogicalSolver(p.cages, gridSize as GridSize).solve({ maxTier: 5 }).solved).toBe(true);
+    }
+  });
+
   it('9×9 Expert (K7c) is 0-given, needs a depth-1 Nishio guess, and is 9×9-only', () => {
-    // Expert = the honest top of the ladder: unique, T4 can't finish it, T5 (Nishio) can.
+    // Expert = the honest top of the ladder: unique, T4 can't finish it, T5 (Nishio) can. Generation
+    // pays a T5 grade per candidate (~0.5s avg, ~1.8s tail), so allow headroom under suite contention.
     const p = generateCalcSudoku('expert', { gridSize: 9 });
     expect(p.difficulty).toBe('expert');
     expect(p.gridSize).toBe(9);
@@ -86,7 +107,7 @@ describe('generateCalcSudoku', () => {
     // Expert exists only at 9×9 — 4×4/6×6 have no such config and must throw.
     expect(() => generateCalcSudoku('expert', { gridSize: 4 })).toThrow();
     expect(() => generateCalcSudoku('expert', { gridSize: 6 })).toThrow();
-  });
+  }, 30000);
 
   it('9×9 Extreme (K7d) needs MANY Nishio steps (≥6) — disjoint from Expert (≤5), 9×9-only', async () => {
     // Extreme is the honest fifth tier: the guess-step COUNT (not depth) is the axis. Generation is

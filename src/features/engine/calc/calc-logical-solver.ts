@@ -19,7 +19,7 @@
  */
 
 import type { GridSize } from '../sudoku';
-import { calcCombosFor } from './calc-combinations';
+import { calcCageCombos } from './calc-combinations';
 import type { CalcCage } from './calc-types';
 
 /**
@@ -118,8 +118,11 @@ export class CalcLogicalSolver {
     cages.forEach((cage, index) => {
       for (const cell of cage.cells) this.cellCage[cell] = index;
     });
+    // `calcCageCombos` honours the Mystery (no-op) flag: for a no-op cage it returns the
+    // operator-UNION multisets, so every technique below reasons over "any operator could apply"
+    // automatically — no per-technique no-op branches needed.
     this.cageCounts = cages.map((cage) =>
-      calcCombosFor(cage.op, cage.cells.length, cage.target, this.size).map((m) => {
+      calcCageCombos(cage, this.size).map((m) => {
         const c = new Uint8Array(this.size + 1);
         for (const d of m) c[d] += 1;
         return c;

@@ -9,6 +9,8 @@ interface PuzzleRequest {
   difficulty: Difficulty;
   gridSize?: GridSize;
   variant?: 'classic' | 'killer' | 'calc';
+  /** Keisan Mystery / No-Op mode — hide the cage operators (calc only). */
+  noOp?: boolean;
 }
 
 /**
@@ -25,14 +27,14 @@ export function usePuzzle() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic' }: PuzzleRequest) => {
+  const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
     setLoading(true);
     try {
       const res = await fetch('/api/puzzle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty, gridSize, variant }),
+        body: JSON.stringify({ difficulty, gridSize, variant, noOp }),
       });
 
       if (!res.ok) {

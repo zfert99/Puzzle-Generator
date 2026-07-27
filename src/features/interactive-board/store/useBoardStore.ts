@@ -135,7 +135,9 @@ const buildCellToCage = (cages: BoardCage[], size: number): number[] => {
 /**
  * Normalize a puzzle's cages to the board's label-carrying shape. Killer labels are the bare sum
  * (`"12"`); Keisan labels are the target followed by its operator glyph (`"12+"`, `"3÷"`) — a
- * single-cell Keisan cage is a given, so it shows just the value (no operator).
+ * single-cell Keisan cage is a given, so it shows just the value (no operator). A **Mystery / no-op**
+ * Keisan cage (`cage.noOp`) hides its operator, so it shows only the target (`"12"`) — that hidden
+ * operator IS the puzzle.
  */
 const toBoardCages = (puzzle: BoardPuzzle, variant: PuzzleVariant): BoardCage[] => {
   if (variant === 'killer') {
@@ -145,7 +147,7 @@ const toBoardCages = (puzzle: BoardPuzzle, variant: PuzzleVariant): BoardCage[] 
     return (puzzle as CalcPuzzle).cages.map((cage) => ({
       id: cage.id,
       cells: cage.cells,
-      label: cage.cells.length === 1 ? String(cage.target) : `${cage.target}${OPERATOR_SYMBOL[cage.op]}`,
+      label: cage.cells.length === 1 || cage.noOp ? String(cage.target) : `${cage.target}${OPERATOR_SYMBOL[cage.op]}`,
     }));
   }
   return [];

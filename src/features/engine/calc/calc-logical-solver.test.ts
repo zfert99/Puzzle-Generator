@@ -119,7 +119,7 @@ describe('CalcLogicalSolver — bounded-recursion tier (K7b, T5 = depth-1 Nishio
     expect(r5.hardestTier).toBe(5);
     expect(r5.maxGuessDepth).toBe(1);
     for (let r = 0; r < 9; r++) expect(solver.grid2d[r]).toEqual(solution[r]);
-  });
+  }, 30000); // heavy: searches up to 120 seeds of unique 9×9 generation — allow headroom under suite load
 
   it('leaves maxGuessDepth 0 when the named ladder already solves the puzzle', () => {
     // A board T4 solves must never be charged a guess — the tier stays ≤ 4 even with maxTier 5.

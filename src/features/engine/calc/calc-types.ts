@@ -51,6 +51,14 @@ export interface CalcCage {
   target: number;
   /** Flat cell indices (`row * size + col`); length ≥ 1, orthogonally connected. */
   cells: number[];
+  /**
+   * **Mystery / No-Op (K6):** when `true`, the operator is HIDDEN from the player — the cage shows
+   * only its target, and the solver must deduce the operation as well as the digits. `op` still holds
+   * the true operator (used to generate + compute the target); rendering omits its symbol, and the
+   * solvers/uniqueness reason over the operator-UNION multiset table (`calcCageCombos`). Absent/false
+   * = a normal cage. An orthogonal toggle: any size, any difficulty.
+   */
+  noOp?: boolean;
 }
 
 /** Keisan difficulty tiers (v1: easy/medium/hard; expert may follow, like Killer). */

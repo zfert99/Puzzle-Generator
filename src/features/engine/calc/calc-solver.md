@@ -20,8 +20,11 @@ cage layer only has to enforce the arithmetic.
 
 ## Cage-candidate pruning (mandatory)
 
-Each cage precompiles its valid multisets (from `calc-combinations`) into per-digit **count
-arrays**. During search it tracks `cagePlaced[cage]` (the multiset of digits already placed) and a
+Each cage precompiles its valid multisets via `calcCageCombos(cage, N)` (from `calc-combinations`)
+into per-digit **count arrays**. For a **Mystery / no-op cage** (`cage.noOp`, K6) that helper returns
+the operator-**union** multisets, so uniqueness is automatically checked across *every* operator
+interpretation — a no-op puzzle counts as unique only if exactly one grid satisfies each cage under
+some operator. Everything below is unchanged; the wider candidate set just flows through. During search it tracks `cagePlaced[cage]` (the multiset of digits already placed) and a
 derived `cageMask[cage]`:
 
 ```text

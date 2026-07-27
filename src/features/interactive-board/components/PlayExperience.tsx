@@ -50,6 +50,7 @@ export default function PlayExperience() {
   const [variant, setVariant] = useState<PlayVariant>(initialVariant);
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(initialVariant === 'calc' ? 6 : 9);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
+  const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle — hide operators
   const [view, setView] = useState<'config' | 'playing'>('config');
   const [viewingSolved, setViewingSolved] = useState(false);
   const [warnOpen, setWarnOpen] = useState(false);
@@ -103,7 +104,7 @@ export default function PlayExperience() {
   };
 
   const startFresh = async () => {
-    const puzzle = await fetchPuzzle({ difficulty, gridSize, variant });
+    const puzzle = await fetchPuzzle({ difficulty, gridSize, variant, noOp: isCalc && mystery });
     if (puzzle) {
       setViewingSolved(false);
       startNewGame(puzzle); // mode defaults to 'play'; variant/cages come from the puzzle
@@ -219,6 +220,30 @@ export default function PlayExperience() {
             <p className="text-xs text-ink-soft text-center mt-2">Extreme Keisan needs many hypothesis steps — generating one can take a few seconds.</p>
           )}
         </div>
+
+        {/* Mystery / No-Op toggle — Keisan only. Hides the cage operators; an orthogonal modifier over
+            any size/difficulty (the operator becomes part of the puzzle). */}
+        {isCalc && (
+          <div className="mb-6">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={mystery}
+              onClick={() => setMystery((m) => !m)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border-2 border-ink transition-all ${
+                mystery ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+              }`}
+            >
+              <span className="text-sm font-medium">🔮 Mystery mode</span>
+              <span className={`text-xs px-2 py-0.5 rounded ${mystery ? 'bg-ink text-paper' : 'bg-paper-2 text-ink-soft'}`}>
+                {mystery ? 'ON' : 'OFF'}
+              </span>
+            </button>
+            <p className="text-xs text-ink-soft text-center mt-2">
+              Operators are hidden — deduce whether each cage is + − × ÷ as well as its digits.
+            </p>
+          </div>
+        )}
 
         {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 

@@ -38,7 +38,7 @@
  * See `calc-combinations.md` for the "why".
  */
 
-import type { CalcOperator } from './calc-types';
+import type { CalcCage, CalcOperator } from './calc-types';
 
 /** An ascending MULTISET of digits, e.g. `[1, 1, 2, 3]` (repeats allowed). Frozen — never mutate. */
 export type Multiset = readonly number[];
@@ -248,7 +248,56 @@ export function calcGuaranteedMask(
   return entryFor(op, size, target, maxDigit).guaranteedMask;
 }
 
+/** Lazy memo for no-op union combos, keyed by `${N}:${size}:${target}`. */
+const NOOP_MEMO = new Map<string, readonly Multiset[]>();
+
+/**
+ * No-Op ("Mystery") cage combos — the **union** of every multiset that hits `target` under ANY
+ * operator legal for a `size`-cell cage (2-cell: `+ − × ÷`; 3+-cell: `+ ×`), deduplicated. This is
+ * the *entire* arithmetic difference of Mystery mode: the operator is hidden, so a cage may hold any
+ * multiset some operator would produce, and every existing solver technique then works unchanged off
+ * this wider candidate set. Single-cell cages are givens (no operator) — returned as-is.
+ *
+ * The union is a superset of any single operator's combos, so a Mystery cage is *more* ambiguous than
+ * a plain one — uniqueness is correspondingly harder to achieve (the generator re-verifies against
+ * this table, so it only keeps puzzles that stay unique across all operator interpretations).
+ */
+export function calcNoOpCombosFor(size: number, target: number, maxDigit: number): readonly Multiset[] {
+  if (size < 2) return calcCombosFor('add', size, target, maxDigit); // 1-cell given — op is irrelevant
+  const key = `${maxDigit}:${size}:${target}`;
+  const cached = NOOP_MEMO.get(key);
+  if (cached) return cached;
+
+  const seen = new Set<string>();
+  const union: number[][] = [];
+  const ops: CalcOperator[] = size === 2 ? ['add', 'sub', 'mul', 'div'] : ['add', 'mul'];
+  for (const op of ops) {
+    for (const multiset of calcCombosFor(op, size, target, maxDigit)) {
+      const dedupeKey = multiset.join(',');
+      if (!seen.has(dedupeKey)) {
+        seen.add(dedupeKey);
+        union.push([...multiset]);
+      }
+    }
+  }
+  const frozen = deepFreeze(union);
+  NOOP_MEMO.set(key, frozen);
+  return frozen;
+}
+
+/**
+ * Valid multisets for a cage, honouring the **Mystery (no-op) flag**: the operator-union table when
+ * `cage.noOp`, else the single-operator table. The one place every consumer (both solvers, the
+ * generator's shape gate) routes cage-combo lookups through, so no-op support is a single dispatch.
+ */
+export function calcCageCombos(cage: CalcCage, maxDigit: number): readonly Multiset[] {
+  return cage.noOp
+    ? calcNoOpCombosFor(cage.cells.length, cage.target, maxDigit)
+    : calcCombosFor(cage.op, cage.cells.length, cage.target, maxDigit);
+}
+
 /** Test/diagnostic hook: clear the memo so a test can measure cold-build behaviour. */
 export function _clearCalcComboMemo(): void {
   MEMO.clear();
+  NOOP_MEMO.clear();
 }
