@@ -129,6 +129,8 @@ export default function PuzzleForm() {
         gridSize={gridSize}
         counts={counts}
         onChange={handleDifficultyChange}
+        variant={variant}
+        mystery={isCalc && mystery}
         difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : undefined}
       />
 
