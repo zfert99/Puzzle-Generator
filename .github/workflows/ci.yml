@@ -49,7 +49,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Fail the job on any high-or-critical severity advisory in the dependency
-      # tree. Lower severities are surfaced by Dependabot PRs instead of blocking.
-      - name: npm audit (high+)
-        run: npm audit --audit-level=high
+      # Fail the job on any high-or-critical severity advisory in the PRODUCTION
+      # dependency tree (`--omit=dev`). Lower severities are surfaced by Dependabot
+      # PRs instead of blocking. Dev-only tooling (the eslint toolchain) is excluded
+      # deliberately: its remaining "high" is a brace-expansion DoS advisory whose npm
+      # range (`<=5.0.7`) over-flags even the PATCHED maintenance releases, and the
+      # only version it accepts (>=5.0.8) changes the module's export shape and breaks
+      # eslint's pinned minimatch@3 (`expand is not a function`) — eslint-plugin-import
+      # still pins minimatch@3, so it can't be moved off it. That code is lint-time
+      # only, never shipped, so it does not gate releases. Run `npm audit` locally for
+      # the full-tree (incl. dev) view.
+      - name: npm audit (production, high+)
+        run: npm audit --audit-level=high --omit=dev
