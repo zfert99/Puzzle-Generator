@@ -43,8 +43,8 @@ export default function PlayExperience() {
   const searchParams = useSearchParams();
   const mounted = useHasMounted();
   // Deep link from a hub card (`/play?variant=killer|calc`): preselect the variant as the initial
-  // state (not via a setState-in-effect). Keisan (`calc`) is 4/6 only, so it also seeds a valid
-  // initial size (6) rather than the classic default of 9.
+  // state (not via a setState-in-effect). Keisan (`calc`) comes in 4/6/9; it seeds 6 (the friendly
+  // mid size) rather than the classic default of 9.
   const initialVariant: PlayVariant =
     searchParams.get('variant') === 'killer' ? 'killer' : searchParams.get('variant') === 'calc' ? 'calc' : 'classic';
   const [variant, setVariant] = useState<PlayVariant>(initialVariant);
@@ -97,8 +97,8 @@ export default function PlayExperience() {
   const handleVariantChange = (v: PlayVariant) => {
     setVariant(v);
     if (v === 'killer' && gridSize === 4) setGridSize(9); // Killer comes in 6×6 and 9×9
-    if (v === 'calc' && gridSize === 9) setGridSize(6); // Keisan comes in 4×4 and 6×6
-    // Keisan and 6×6 boards have no expert/extreme tier — clamp down.
+    // Keisan comes in 4×4 / 6×6 / 9×9 — every size is valid, so no size clamp on switch.
+    // Keisan (any size) and 6×6 boards have no expert/extreme tier — clamp down.
     if ((v === 'calc' || gridSize === 6) && (difficulty === 'expert' || difficulty === 'extreme')) {
       setDifficulty('hard');
     }
@@ -184,11 +184,11 @@ export default function PlayExperience() {
           ))}
         </div>
 
-        {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6. */}
+        {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6/9. */}
         <GridSizeSelector
           value={gridSize}
           onChange={handleGridSizeChange}
-          sizes={isKiller ? [6, 9] : isCalc ? [4, 6] : undefined}
+          sizes={isKiller ? [6, 9] : isCalc ? [4, 6, 9] : undefined}
         />
 
         <div className="mb-6">
@@ -211,7 +211,7 @@ export default function PlayExperience() {
               );
             })}
           </div>
-          {miniGrid && (
+          {miniGrid && !isCalc && (
             <p className="text-xs text-ink-soft text-center mt-2">Expert and Extreme are only available for 9×9 grids.</p>
           )}
           {isKiller && difficulty === 'extreme' && (

@@ -13,7 +13,9 @@ import type { Grid, NewDailyPuzzle } from './schema';
  *   verbatim so every historical row stays valid (no migration).
  * - **killer** — the full 9×9 Killer ladder. (Replaces the single legacy `'killer'` key, which
  *   was one engine-medium puzzle per day; old rows remain readable via the legacy guard.)
- * - **minis** — the small boards: 4×4 and 6×6 classic, and 6×6 Killer (its full ladder).
+ * - **minis** — the small boards: 4×4 and 6×6 classic, 6×6 Killer, and 4×4/6×6 Keisan.
+ * - **calc** — the top-level **Keisan** section: 9×9 Keisan (K7a, easy/medium/hard). Mirrors the
+ *   "Classic 9×9" / "Killer 9×9" sections; auto-hidden by the pickers while it holds no boards.
  *
  * `minSolveMs` is the anti-cheat plausibility floor (see `solve-rules.md`) — conservative
  * lower bounds per board, not records to police fast solvers.
@@ -72,6 +74,13 @@ export const DAILY_BOARDS = [
   { key: 'calc6-easy', section: 'minis', label: 'keisan 6×6 easy', variant: 'calc', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 150_000 },
   { key: 'calc6-medium', section: 'minis', label: 'keisan 6×6 medium', variant: 'calc', gridSize: 6, difficulty: 'medium', minSolveMs: 14_000, botTimeMs: 240_000 },
   { key: 'calc6-hard', section: 'minis', label: 'keisan 6×6 hard', variant: 'calc', gridSize: 6, difficulty: 'hard', minSolveMs: 20_000, botTimeMs: 390_000 },
+  // ---- Keisan 9×9 (K7a: 3 tiers). The top-level `calc`/Keisan section — mirrors "Classic 9×9" /
+  // "Killer 9×9". Tiers separate on givens (~17 → ~10 → ~2) + operators; boxless arithmetic on a full
+  // 81-cell grid runs slower than Killer 9×9, so bot times sit a notch above the Killer ladder.
+  // Expert/Extreme arrive with K7b/K7c (bounded-recursion "T5" + offline pool).
+  { key: 'calc9-easy', section: 'calc', label: 'easy', variant: 'calc', gridSize: 9, difficulty: 'easy', minSolveMs: 25_000, botTimeMs: 420_000 },
+  { key: 'calc9-medium', section: 'calc', label: 'medium', variant: 'calc', gridSize: 9, difficulty: 'medium', minSolveMs: 35_000, botTimeMs: 660_000 },
+  { key: 'calc9-hard', section: 'calc', label: 'hard', variant: 'calc', gridSize: 9, difficulty: 'hard', minSolveMs: 50_000, botTimeMs: 1_080_000 },
 ] as const satisfies readonly DailyBoard[];
 
 export type DailyBoardKey = (typeof DAILY_BOARDS)[number]['key'];

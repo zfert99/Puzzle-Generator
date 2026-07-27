@@ -50,7 +50,7 @@ export async function generateDailyPuzzles(
       board.variant === 'killer'
         ? generateKillerSudoku(board.difficulty as KillerDifficulty, { gridSize: board.gridSize as 6 | 9 })
         : board.variant === 'calc'
-          ? generateCalcSudoku(board.difficulty as CalcDifficulty, { gridSize: board.gridSize as 4 | 6 })
+          ? generateCalcSudoku(board.difficulty as CalcDifficulty, { gridSize: board.gridSize as 4 | 6 | 9 })
           : generateSudoku(board.difficulty as Difficulty, board.gridSize);
     return toDailyPuzzleRow(puzzle, isoDate, board.key);
   });

@@ -64,13 +64,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(puzzle, { status: 200 });
     }
 
-    // ---- Keisan branch (Calcudoku; 4×4 or 6×6, easy/medium/hard) ----
+    // ---- Keisan branch (Calcudoku; 4×4, 6×6, or 9×9 — easy/medium/hard) ----
     if (variant === 'calc') {
       if (!CALC_DIFFICULTIES.includes(difficulty)) {
         return NextResponse.json({ error: 'Keisan difficulty must be easy, medium, or hard' }, { status: 400 });
       }
-      if (gridSize !== 4 && gridSize !== 6) {
-        return NextResponse.json({ error: 'Keisan grid size must be 4 or 6' }, { status: 400 });
+      if (gridSize !== 4 && gridSize !== 6 && gridSize !== 9) {
+        return NextResponse.json({ error: 'Keisan grid size must be 4, 6, or 9' }, { status: 400 });
       }
       const puzzle = generateCalcSudoku(difficulty as CalcDifficulty, { gridSize });
       logger.info(

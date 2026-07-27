@@ -31,13 +31,17 @@ function cagesSatisfied(cages: CalcCage[], grid: number[][], size: number): bool
 }
 
 describe('generateCalcSudoku', () => {
-  const cases: { gridSize: 4 | 6; difficulty: CalcDifficulty }[] = [
+  const cases: { gridSize: 4 | 6 | 9; difficulty: CalcDifficulty }[] = [
     { gridSize: 4, difficulty: 'easy' },
     { gridSize: 4, difficulty: 'medium' },
     { gridSize: 4, difficulty: 'hard' },
     { gridSize: 6, difficulty: 'easy' },
     { gridSize: 6, difficulty: 'medium' },
     { gridSize: 6, difficulty: 'hard' },
+    // K7a: 9×9, 3 tiers (givens-gradient, no score band).
+    { gridSize: 9, difficulty: 'easy' },
+    { gridSize: 9, difficulty: 'medium' },
+    { gridSize: 9, difficulty: 'hard' },
   ];
 
   for (const { gridSize, difficulty } of cases) {
@@ -61,10 +65,22 @@ describe('generateCalcSudoku', () => {
   }
 
   it('easy tiers use the +/−/÷ palette (no × — factor reasoning is a difficulty step)', () => {
-    for (const gridSize of [4, 6] as const) {
+    for (const gridSize of [4, 6, 9] as const) {
       const p = generateCalcSudoku('easy', { gridSize });
       expect(p.cages.every((c) => c.op !== 'mul')).toBe(true);
     }
+  });
+
+  it('9×9 tiers separate on a disjoint givens gradient (easy ≥12 > medium 6–11 > hard ≤3)', () => {
+    // K7a: the tiers are defined by single-cell-cage (given) count, not a score band. The ranges are
+    // disjoint by construction, so the tier ordering holds sample-to-sample.
+    const singles = (d: CalcDifficulty) =>
+      generateCalcSudoku(d, { gridSize: 9 }).cages.filter((c) => c.cells.length === 1).length;
+    expect(singles('easy')).toBeGreaterThanOrEqual(12);
+    const med = singles('medium');
+    expect(med).toBeGreaterThanOrEqual(6);
+    expect(med).toBeLessThanOrEqual(11);
+    expect(singles('hard')).toBeLessThanOrEqual(3);
   });
 
   it('hard is structurally chunky: ~1 given and bigger cages (the rebalance)', () => {

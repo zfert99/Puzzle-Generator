@@ -62,11 +62,13 @@ describe('toDailyPuzzleRow', () => {
       .toEqual(['easy', 'medium', 'hard', 'expert', 'extreme']);
     expect(DAILY_BOARDS.filter((b) => b.section === 'killer')).toHaveLength(5);
     // Keisan 4×4/6×6 live in MINIS (with the classic/killer minis) — 9 + 6 = 15. The top-level
-    // `calc` section is reserved for 9×9 Keisan (K7), so it's empty for now — and no board carries
-    // `section: 'calc'`, which the `as const satisfies` proves at compile time.
+    // `calc` section is the 9×9 Keisan ladder (K7a: easy/medium/hard), mirroring Classic/Killer 9×9.
     expect(DAILY_BOARDS.filter((b) => b.section === 'minis')).toHaveLength(15);
+    expect(DAILY_BOARDS.filter((b) => b.section === 'calc').map((b) => b.key))
+      .toEqual(['calc9-easy', 'calc9-medium', 'calc9-hard']);
+    expect(DAILY_BOARDS.filter((b) => b.section === 'calc').every((b) => b.gridSize === 9)).toBe(true);
     expect(DAILY_BOARDS.filter((b) => b.variant === 'calc').map((b) => b.key))
-      .toEqual(['calc4-easy', 'calc4-medium', 'calc4-hard', 'calc6-easy', 'calc6-medium', 'calc6-hard']);
+      .toEqual(['calc4-easy', 'calc4-medium', 'calc4-hard', 'calc6-easy', 'calc6-medium', 'calc6-hard', 'calc9-easy', 'calc9-medium', 'calc9-hard']);
     // Keys are unique — they are the UNIQUE(date, difficulty) idempotency handle.
     expect(new Set(DAILY_BOARDS.map((b) => b.key)).size).toBe(DAILY_BOARDS.length);
     // The legacy single-killer key stays readable (archived rows) but is not generated.
@@ -75,6 +77,7 @@ describe('toDailyPuzzleRow', () => {
     expect(formatDailyKey('killer-expert')).toBe('killer expert');
     expect(formatDailyKey('mini6-hard')).toBe('6×6 hard');
     expect(formatDailyKey('calc6-hard')).toBe('keisan 6×6 hard');
+    expect(formatDailyKey('calc9-hard')).toBe('keisan hard'); // 9×9 Keisan section: label is the bare tier
   });
 
   it('maps a Killer puzzle to its board key, carrying cages and cage count', () => {

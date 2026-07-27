@@ -38,6 +38,10 @@ const SCORE_CUT_4_EASY_MED = 5;
 const SCORE_CUT_4_MED_HARD = 9;
 const SCORE_CUT_6_EASY_MED = 19;
 const SCORE_CUT_6_MED_HARD = 31;
+// 9×9 (K7a) deliberately uses NO score-band cuts — see DIFFICULTY_CONFIG_9. Measured score
+// distributions overlap across the givens-defined tiers (easy p50 36 / medium 39 / hard 61, with
+// wide overlap), so a score cut would misclassify. The tiers separate on givens + operators +
+// technique floor instead.
 
 interface CalcDifficultyConfig {
   /**
@@ -176,9 +180,39 @@ const DIFFICULTY_CONFIG_6: Record<CalcDifficulty, CalcDifficultyConfig> = {
   hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, solveCap: 4, maxSingles: 0, maxFootholds: 3, maxCombosPerCage: 15, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 1, scoreBand: { min: SCORE_CUT_6_MED_HARD } },
 };
 
-const DIFFICULTY_CONFIGS: Record<4 | 6, Record<CalcDifficulty, CalcDifficultyConfig>> = {
+/**
+ * 9×9 Keisan (81 cells) — K7a, 3 tiers only (Easy/Medium/Hard). **Max cage size stays 3 at every
+ * tier**: a de-risk measurement found maxSize-4 costs ~13× verify for negligible difficulty gain and
+ * maxSize-5 is infeasible (0% gradable), and real 9×9 Calcudoku is 2–3-cell-cage dominated.
+ *
+ * **Tiers separate on single-cell givens (the strongest lever), not a score band.** On 9×9 the
+ * givens distribution is bimodal — `minSize: 1` yields ~15–17 givens, `minSize: 2` yields ~2 — so
+ * Easy/Medium share the many-givens regime and split by a `maxSingles` cap (Easy ≥12, Medium 6–11)
+ * plus the operator palette (Easy drops ×), while Hard takes the few-givens regime (≤3). The givens
+ * ranges are disjoint by construction, so the tiers are disjoint regardless of score. No `scoreBand`:
+ * measured score distributions overlap heavily across these tiers (the logical solver caps at ~T2 on
+ * 9×9, so its score barely discriminates), which is exactly the "no technique ladder" finding — a
+ * score cut would misclassify. Hard adds `techniqueFloor: 1` (must need more than cage-arithmetic +
+ * singles) so it can't be cracked trivially.
+ *
+ * **No `maxFootholds` / combo cap.** With ~25 cages per 9×9 board, a per-cage combo ceiling or a
+ * tight gift-cage count rejects almost every board (a 3-cell cage naturally reaches 13 combos), which
+ * collapsed the accept rate ~25× and pushed Hard generation to ~400 ms. Dropping them, Hard generates
+ * in ~14 ms avg with no loss of measured difficulty.
+ *
+ * Expert/Extreme are deferred to K7b (bounded-recursion "T5") + K7c (offline pool). See
+ * `Docs/research/keisan-9x9-feasibility-findings.md` and the K7 re-slice in the plan.
+ */
+const DIFFICULTY_CONFIG_9: Record<CalcDifficulty, CalcDifficultyConfig> = {
+  easy: { activeOps: TRI_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 12, maxSingles: 26, operatorWeights: EASY_OP_WEIGHTS, giftBanLevel: 'combos1' },
+  medium: { activeOps: QUAD_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 6, maxSingles: 11, giftBanLevel: 'twoCell' },
+  hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 3, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 1 },
+};
+
+const DIFFICULTY_CONFIGS: Record<4 | 6 | 9, Record<CalcDifficulty, CalcDifficultyConfig>> = {
   4: DIFFICULTY_CONFIG_4,
   6: DIFFICULTY_CONFIG_6,
+  9: DIFFICULTY_CONFIG_9,
 };
 
 /** Reject a cage set whose shape is wrong for the tier: givens, gift cages, combo ceiling, or bent ratio. */
@@ -211,8 +245,8 @@ function shapeOk(cages: CalcCage[], config: CalcDifficultyConfig, gridSize: numb
 }
 
 export interface CalcGenPipelineOptions {
-  /** 4 (default) or 6 for v1. */
-  gridSize?: 4 | 6;
+  /** 4 (default), 6, or 9. 9 ships 3 tiers only (K7a); Expert/Extreme land in K7b/K7c. */
+  gridSize?: 4 | 6 | 9;
   rng?: () => number;
   /** A solved Latin square to build on (deterministic tests). Default: a fresh one per attempt. */
   solution?: number[][];
@@ -275,8 +309,11 @@ export function generateCalcSudoku(
       if (config.scoreBand.max !== undefined && final >= config.scoreBand.max) continue;
     }
 
-    // Belt-and-braces: the logical solver is sound, so full solvability already implies a unique
-    // solution — this guards only against a technique bug, off the hot path.
+    // Belt-and-braces uniqueness (the logical solver is sound, so full solvability already implies a
+    // unique solution — this guards only against a technique bug, off the hot path). `verifyNodeBudget`
+    // caps the proof cost: on low-givens 9×9 hard, proving uniqueness by exhaustion can run to
+    // hundreds of ms, so a budget turns the pathological tail into a cheap `-1` reject (never a false
+    // accept — a genuinely unique board just gets re-rolled).
     if (new CalcSolver(cages, gridSize as GridSize).countSolutions(2, config.verifyNodeBudget) !== 1) continue;
 
     return { variant: 'calc', grid: createEmptyGrid(gridSize), solution, cages, difficulty, gridSize: gridSize as GridSize };
@@ -288,7 +325,7 @@ export function generateCalcSudoku(
 /** Generate a batch of graded Keisan puzzles — `counts[difficulty]` of each, easy→hard order. */
 export function generateCalcBatch(
   counts: Partial<Record<CalcDifficulty, number>>,
-  options: { gridSize?: 4 | 6 } = {},
+  options: { gridSize?: 4 | 6 | 9 } = {},
 ): CalcPuzzle[] {
   const puzzles: CalcPuzzle[] = [];
   for (const difficulty of ['easy', 'medium', 'hard'] as const) {

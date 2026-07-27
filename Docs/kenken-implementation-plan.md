@@ -1,13 +1,20 @@
 # Keisan (Calcudoku) — Implementation Plan
 
 > **Status:** 🚧 In Progress — engine K0–K4 + core surfaces K5 shipped + a measured difficulty
-> rebalance; next up **K6 (No-Op / Mystery)**, then **K7 (9×9 + 5-tier)**, plus the K5 daily-rotation
-> tail. Build log: [calcudoku/keisan walkthrough](keisan-walkthrough.md).
+> rebalance + Keisan minis in the daily rotation. Next up **K7 (9×9)**, then **K6 (No-Op / Mystery)**
+> — order swapped so No-Op lands on top of the finished 9×9 tiers. K7 is itself **re-sliced** after
+> a 9×9 de-risk measurement (see K7 below): **K7a** (3-tier 9×9 now) → **K7b** (bounded-recursion
+> "T5") → **K7c** (5-tier 9×9 with an offline pool). Build log:
+> [calcudoku/keisan walkthrough](keisan-walkthrough.md).
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
 > [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
 > [kenken-plan-review.md](research/kenken-plan-review.md) (external review of THIS plan —
 > verdict: GREEN) · [kenken-difficulty-calibration.md](research/kenken-difficulty-calibration.md)
-> (keen.c/KSudoku/billabob difficulty levers — drove the difficulty rebalance and the K6/K7 plan)
+> (keen.c/KSudoku/billabob difficulty levers — drove the difficulty rebalance) ·
+> [keisan-difficulty-levers.md](research/keisan-difficulty-levers.md) (per-size lever tables) ·
+> [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) (our measured
+> 9×9 de-risk — three walls) · [9×9 honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+> (keen.c bounded-recursion "T5", uniqueness speedups, constructive generation — drove the K7 re-slice)
 > **Pattern source:** the Killer plans — this plan reuses their slice/gate discipline and,
 > deliberately, large parts of their code.
 
@@ -315,25 +322,71 @@ box-optional base instead of each rediscovering the coupling.
 > 6×6 hard now ~0.7 givens + ~3.4 four-cell cages/puzzle; bands re-cut disjoint; gate met. See the
 > walkthrough's "Difficulty rebalance" section.
 
-### K6 — No-Op / Mystery mode 📋 Next
+### K7 — 9×9 Keisan 📋 Next (re-sliced after a de-risk measurement)
+
+**Why re-sliced.** A 9×9 de-risk (see
+[keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md)) found three walls
+that kill the original "just add a 5-tier ladder" plan: (1) **maxSize-5 cages are a dead end** —
+verify time explodes ~50×, uniqueness craters to 3%, and our T1–T4 solver grades **zero** of them;
+(2) the logical solver **effectively caps at Tier 2** on 9×9, so there is **no technique ladder** to
+hang Expert/Extreme on; (3) **single-cell givens are load-bearing** — ~15 givens take a maxSize-3
+board from 8.5 ms → 0.5 ms verify and 65% → 100% gradable, so difficulty *is* the inverse of givens
+count and the 0-given hard end is exactly the slow, low-yield regime.
+
+The [9×9 honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+resolves it: the missing "T5" is **not** a hand-coded technique but **bounded guess-and-check with a
+counted recursion depth** — exactly how Tatham's `keen.c` produces its `EXTREME`/`UNREASONABLE`
+tiers (their technique functions are literally `NULL`; the shared solver's recursion machinery does
+the grading). That gives an honest, always-available difficulty axis on 0-given boards. The research
+also confirms **maxSize 4 is not worth its ~13× verify cost** (real 9×9 Calcudoku is 2–3-cell-cage
+dominated; Tatham caps at 6 and calls big cages "annoying") and that **score-band tiers are
+industry-standard** (HoDoKu weighted-sum; calcudoku.org rates purely by empirical solve-rate) — *as
+long as* we stop advertising the top tiers as pure-logic-solvable, which the bounded-recursion tier
+then lets us do honestly (every board has a solve path: T1–T4 + ≤D guesses).
+
+Three sub-slices, each independently shippable and gated:
+
+- **K7a — 3-tier 9×9 (Easy/Medium/Hard), maxSize 3, givens + score band.** No new engine — it's the
+  model already shipped at 4×4/6×6. Populates the (currently auto-hidden) top-level **Keisan** daily
+  section, mirroring "Classic 9×9" / "Killer 9×9". Adding Expert/Extreme later is **additive** (new
+  board keys, no rename/migration), so this commits us to nothing K7b/K7c must undo.
+  **Gate:** ≥ 95% of accepted Hard boards gradable by current T1–T4; interactive p95 generation
+  < 250 ms; ≥ 24/25 Hard boards carry a −/÷ cage (the existing A/B benchmark); disjoint bands.
+- **K7b — bounded-recursion "T5" (the keen.c transplant).** After T1–T4 stall, invoke a
+  counted guess-and-check: pick the min-remaining-values cell, hypothesize each candidate, propagate
+  with T1–T4, close by contradiction or unique completion; record max depth D. Provisional
+  T5-Nishio = depth-1, T5-Extreme = depth-2. **Instrument** firing rates of the intermediate
+  techniques while in there (pointing/claiming, multi-line region-sum, AIC, pairwise cage-combo) —
+  their real firing rate on 0-given 9×9 is the biggest open empirical question.
+  **Gate:** ≥ 90% of 0-given maxSize-3 boards receive a *bounded* rating (depth ≤ 2); depth-band
+  monotonic against an external solve-time proxy. **If depth-2 boards aren't meaningfully
+  harder / human-reproducible, cap at depth-1 and keep 4 named tiers, not 5** (the depth-*graded*
+  split is the research's own reconstructed extension, not proven `keen.c` behaviour — verify before
+  committing).
+- **K7c — 5-tier 9×9 with an offline pool.** Easy/Medium/Hard interactive (maxSize 3);
+  Expert/Extreme distinguished by **score band + T5 guess-depth** (not maxSize) and generated by the
+  **daily cron into a served pool** (the cron is already offline — no new infra). Player-facing copy
+  states the honest guarantee ("solvable with logic plus at most one/two hypothesis steps").
+  **Gate:** pool holds ≥ N days of buffer; per-tier leaderboard variance below an agreed threshold.
+
+**Deferred as optional perf work, not blockers** (from the research's Slices 1–2): GAC `alldifferent`
+(Régin 1994) to speed uniqueness proving, and constructive **"dig-out"** generation (start gradable,
+remove givens / merge cages toward the target band) to fix the ~0.1% hard accept rate. Because
+Expert/Extreme live in the offline pool, slow generation there is tolerable — pull these in only if
+cron latency actually hurts. 5×5/7×7 remain representable from K0 but stay out of scope.
+
+### K6 — No-Op / Mystery mode 📋 After K7 (applies to the finished 9×9 tiers too)
 
 An orthogonal **"Mystery" toggle** (selectable at any size/difficulty), NOT a 5th tier — matches the
-research + kenkenpuzzle.com/calcudoku.org practice ("surface it as its own labeled mode"). The cage
-shows only a target; the solver must deduce the operator too (3+ cells ⇒ + or ×). Real engine work,
-not a flag: (1) exact-solver cage pruning that **unions candidate multisets across every operator a
-target admits**, plus **uniqueness across all operator interpretations**; (2) a new logical-solver
-**operator-deduction technique** so no-op puzzles stay gradable/human-solvable; (3) generation that
-rejects operator-ambiguous puzzles. Rendering is trivial (the cage label is already a string — just
-omit the operator). Its own uniqueness + gradability gates.
-
-### K7 — 9×9 + the full 5-tier ladder 📋 After K6
-
-The natural home for **Expert/Extreme**. The difficulty-calibration research is **per-size
-normalized** ("Extreme = the hardest techniques *for that size*"), so a 9×9 ladder gets the top
-tiers; no-op can be part of what makes 9×9 Extreme brutal. 5×5/7×7 are already representable from K0,
-so a 4→5→6→7→9 ladder is open. Likely needs T5 solver techniques (chains/multi-cage) for the top
-tiers, and a fresh per-size band calibration. Small grids keep easy/med/hard (consistent with
-classic/Killer); the extra tiers live on the big grid.
+research + kenkenpuzzle.com/calcudoku.org practice ("surface it as its own labeled mode"). Sequenced
+**after** K7 deliberately: No-Op then lands on top of the whole finished ladder (including 9×9
+Expert/Extreme), instead of being redone when those tiers arrive. The cage shows only a target; the
+solver must deduce the operator too (3+ cells ⇒ + or ×). Real engine work, not a flag: (1) exact-solver
+cage pruning that **unions candidate multisets across every operator a target admits**, plus
+**uniqueness across all operator interpretations**; (2) a new logical-solver **operator-deduction
+technique** so no-op puzzles stay gradable/human-solvable; (3) generation that rejects
+operator-ambiguous puzzles. Rendering is trivial (the cage label is already a string — just omit the
+operator). Its own uniqueness + gradability gates.
 
 ## 4. Risks
 
@@ -354,6 +407,8 @@ classic/Killer); the extra tiers live on the big grid.
 | 13 | Geometric feasibility ≠ arithmetic validity: masks over-count for line-shaped cages (a line cage can't hold repeats at all) | Two-layer check (K1): arithmetic multiset table → placement-time geometric legality; masks documented as priors, never trusted as exact for line cages |
 | 14 | Users expect difficulty labels comparable ACROSS sizes; a "hard 5×5" may not sit between hard 4×4 and hard 6×6 | Bands re-fit (not rescaled) per size (K4); set the user-facing expectation that labels are per-size, not a cross-size ranking |
 | 15 | No-Op/Mystery mode (deferred) multiplies uniqueness cost — must verify across EVERY operator interpretation per cage | Correctly deferred to its own slice; roadmap carries the future cost so it isn't rediscovered as "just another operator set" |
+| 16 | 9×9 top tiers are score-band cuts, not pure-logic solve paths (T1–T4 grades ~0% of 0-given boards) — labeling one "Expert, logic-only" when it needs a guess erodes player trust and makes timed leaderboards noisy/unfair | K7b bounded-recursion "T5" gives every accepted board a guaranteed path (T1–T4 + ≤D guesses); state the honest guarantee in copy; calibrate bands against real solve data, not an absolute clue count |
+| 17 | 9×9 hard-tier generation is slow + low-yield (0-given verify ~50× slower; ~0.1% accept at the narrow band) | Restrict Expert/Extreme to the **offline daily-cron pool** (K7c) so latency is decoupled from interactive play; optional Régin GAC + constructive dig-out generation only if cron latency hurts |
 
 ## 5. Definition of done (v1)
 

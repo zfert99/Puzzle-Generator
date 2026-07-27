@@ -195,6 +195,31 @@ Ship Mystery as a **toggle on the puzzle picker**, orthogonal to size and diffic
 
 81 cells. This is where the ladder has enough room for Expert and Extreme to mean something.
 
+> **⚠️ Measured-reality correction (2026-07 de-risk).** The table below was a *pre-measurement*
+> starting point, and a 9×9 de-risk overturned three of its core assumptions. Read
+> [keisan-9x9-feasibility-findings.md](keisan-9x9-feasibility-findings.md) and the
+> [9×9 honest-ladder research](compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+> before using these numbers. What changed:
+>
+> - **Max cage size stays 3, all tiers — not 3→5.** maxSize-5 cages are infeasible (verify ~50×
+>   slower, 3% unique, **0%** gradable); maxSize-4 costs ~13× verify for negligible difficulty gain.
+>   Real 9×9 Calcudoku is 2–3-cell-cage dominated. So the "Max cage size" and "Cage size mix" rows
+>   are wrong — hold at maxSize 3 everywhere.
+> - **The "Technique ceiling" row (T3/T4/T5) does not hold.** Our T1–T4 solver caps at **~T2** on
+>   9×9 in practice; T3/T4 essentially never fire. Named tiers come from **givens + score band**, not
+>   a technique ladder.
+> - **"T5" = bounded recursion, and it discriminates *all* the hard tiers, not just Extreme.** The
+>   honest top-end axis is counted guess-and-check depth (the `keen.c` `EXTREME`/`UNREASONABLE`
+>   transplant — those tiers have `NULL` technique functions). So the "Bifurcation: No / …/ Bounded
+>   only" row is inverted: bounded recursion is the *mechanism* the top tiers are built on, gated by
+>   depth (provisionally depth-1 = Nishio, depth-2 = Extreme — **verify depth-2 is human-reproducible
+>   before committing, else keep 4 tiers**).
+>
+> Net: the ladder is **givens count → score band → bounded-recursion depth**, all at maxSize 3.
+> Treat the single-cell-cage counts and combo caps below as still-useful starting shape; ignore the
+> max-cage-size, cage-size-mix, technique-ceiling, and bifurcation rows. See the re-sliced K7a/K7b/K7c
+> in [kenken-implementation-plan.md](../kenken-implementation-plan.md).
+
 | Lever | Easy | Medium | Hard | Expert | Extreme |
 |---|---|---|---|---|---|
 | Single-cell cages | 6–9 (7–11%) | 3–5 (4–6%) | 1–2 (1–2%) | 0–1 | **0** |
@@ -239,8 +264,15 @@ This matches how kenkenpuzzle.com and calcudoku.org actually work, and it's the 
 | **3** | Add the tier gate (solve at T, confirm failure at T−1) and the re-roll loop. | ≥95% of generated puzzles land in band; median generation <200 ms at 6×6 |
 | **4** | Calibrate at **6×6 first**, then port the shape to 5×5 and 7×7, then 4×4 last. | Solve-time distributions separate cleanly between adjacent tiers |
 | **5** | Instrument real solve times and abandonment. Recalibrate the tables from telemetry. | Solve-rate curve is monotonic across tiers within each size |
-| **6** | Mystery slice (own uniqueness + gradability gates, see §3). | ≥90% generation success, 100% uniqueness |
-| **7** | 9×9 + 5-tier ladder. | Extreme requires T5; generation stays under 2 s |
+| **7a** | 3-tier 9×9 (Easy/Medium/Hard), maxSize 3, givens + score band. No new engine. | ≥95% Hard gradable by T1–T4; interactive p95 < 250 ms; bands disjoint |
+| **7b** | Bounded-recursion "T5" (keen.c transplant): counted guess-depth; instrument intermediate-technique firing rates. | ≥90% of 0-given maxSize-3 boards get a bounded rating (depth ≤ 2); depth-band monotonic vs solve-time proxy |
+| **7c** | 5-tier 9×9: Expert/Extreme via score band + guess-depth, generated offline into the daily-cron pool. | Pool buffer ≥ N days; per-tier leaderboard variance under threshold |
+| **8** | Mystery / No-Op slice (own uniqueness + gradability gates, see §3) — after 9×9 so it lands on the finished tiers. | ≥90% generation success, 100% uniqueness |
+
+> **Order note:** steps 7a–7c (9×9) now come **before** the Mystery slice (was step 6 → now step 8),
+> so No-Op lands on top of the completed 9×9 ladder rather than being redone when those tiers arrive.
+> The original step-7 gate ("Extreme requires T5; generation under 2 s") was written against a
+> hand-coded T5 that doesn't exist — superseded by the 7a/7b/7c gates above.
 
 ---
 

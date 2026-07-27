@@ -1,7 +1,7 @@
 # Keisan Generation Pipeline (`calc-sudoku.ts`)
 
 Assembles K1–K3 into `generateCalcSudoku(difficulty)`, which emits a **uniquely-solvable,
-difficulty-graded** Keisan puzzle. v1 offers easy/medium/hard at 4×4 and 6×6.
+difficulty-graded** Keisan puzzle. Offers easy/medium/hard at 4×4, 6×6, and **9×9 (K7a)**.
 
 ## Pipeline (cheapest gate first)
 
@@ -71,6 +71,33 @@ techniques, e.g. cage-line reduction as a separate tier) — a future K3 expansi
 
 Disjoint by construction. Recalibrate whenever the technique weights or shape gates change.
 
+### 9×9 (K7a): givens-gradient tiers, NO score band
+
+9×9 breaks the score-band model, so it's handled differently — the reasons are measured (see
+`Docs/research/keisan-9x9-feasibility-findings.md` and the "honest-ladder" research):
+
+- **Max cage size stays 3 at every tier.** maxSize-4 costs ~13× verify for no difficulty gain;
+  maxSize-5 is infeasible (0% gradable). Real 9×9 Calcudoku is 2–3-cell-cage dominated.
+- **Tiers separate on single-cell givens, not score.** The givens distribution is bimodal —
+  `minSize: 1` → ~15–17 givens, `minSize: 2` → ~2 — so Easy/Medium share the many-givens regime and
+  split by a `maxSingles` cap (**Easy ≥12, Medium 6–11**) plus the operator palette (Easy drops ×),
+  and **Hard** takes the few-givens regime (**≤3**) with `techniqueFloor: 1`. The givens ranges are
+  disjoint by construction → tiers are disjoint regardless of score. There is **no `scoreBand`**:
+  the solver caps at ~T2 on 9×9, so its score barely discriminates (measured easy p50 36 / medium 39
+  / hard 61, heavily overlapping) — a score cut would misclassify. This is the "no technique ladder"
+  finding made concrete.
+- **No `maxFootholds` / combo cap on 9×9.** With ~25 cages/board, any per-cage combo ceiling or tight
+  gift-count rejects almost every board (a 3-cell cage naturally reaches 13 combos), which collapsed
+  Hard's accept rate ~25× (~400 ms gen). Dropping them, Hard generates in ~14 ms avg, unchanged
+  difficulty.
+- **`verifyNodeBudget`** is available to cap the uniqueness proof on pathological low-givens boards
+  (a `-1` "couldn't settle in budget" → cheap reject, never a false accept). Not needed at K7a's
+  settings but wired for the harder K7b/K7c tiers.
+
+Measured gate (100 boards/tier): gen **p95 ≤ 38 ms** (easy 22 / medium 19 / hard 38), **max 136 ms**;
+**100% gradable** every tier; givens **13–23 / 7–11 / 0–3** (disjoint, monotonic); Hard carries −/÷ in
+**100%** of boards. Well inside the interactive budget.
+
 ## Gate (met, full-spec)
 
 Every band generates **avg ≤ 78 ms** (6×6 hard the slowest, max ~245 ms — under the 1 s budget),
@@ -84,4 +111,6 @@ cages can only be `+`/`×`), so hard uses equal `mul/sub/div` weights — `×` s
 **Yield note:** 6×6 hard's accept rate is ~0.1% (the tightest tier — stacked shape + score + floor
 gates), but attempts are cheap (~0.07 ms; most are shape-rejected before the logical solve), so
 wall-clock stays ~78 ms avg. `maxAttempts` defaults to **40 000** so exhaustion is astronomically
-unlikely. No-Op / Mystery (K6) and 9×9 + 5-tier (K7) remain later slices; 5×5/7×7 deferred.
+unlikely. **9×9 shipped as K7a (3 tiers, givens-gradient — see above).** Expert/Extreme (K7b
+bounded-recursion "T5" + K7c offline pool) and No-Op / Mystery (K6) remain later slices; 5×5/7×7
+deferred.

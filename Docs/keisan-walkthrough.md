@@ -6,8 +6,8 @@
 > and the judgment calls made along the way. Append a new section as each slice (K2…) ships.
 >
 > **Status:** 🚧 In Progress — engine K0–K4 ✅ · surfaces K5 core ✅ (play/PDF/hub) · difficulty
-> rebalance ✅ · **next:** No-Op / Mystery mode (K6), then 9×9 + 5-tier (K7), plus the K5 daily-rotation
-> tail · **Branch:** `feature/kenken`
+> rebalance ✅ · daily rotation ✅ · **K7a (9×9, 3 tiers) ✅** · **next:** K7b bounded-recursion "T5"
+> then K7c 5-tier offline pool (Expert/Extreme), then K6 No-Op / Mystery · **Branch:** `feature/kenken`
 
 ## Naming
 
@@ -403,6 +403,55 @@ Keisan is now in the daily rotation, and the daily path was made **variant-safe*
 
 Unit-tested end to end at the boundaries: registry shape + `formatDailyKey('calc6-hard')` →
 "keisan 6×6 hard"; `toDailyPuzzleRow` maps a Keisan puzzle variant-safely with op+target cages;
-`generateDailyPuzzles` generates all **25** boards (incl. the 6 calc) for real + seeds the bot solve
+`generateDailyPuzzles` generates all boards (incl. the calc ones) for real + seeds the bot solve
 on each (DB mocked at the boundary). Typecheck / lint / `next build` clean. The live DB round-trip
 (seed → fetch → solve → rank) runs via the daily cron (or a manual `db:seed`).
+
+## K7a — 9×9 Keisan, 3 tiers ✅
+
+The first slice of the re-sliced K7. A 9×9 de-risk killed the original "just add a 5-tier ladder"
+plan, so K7a ships the honest, cheap part: **9×9 easy/medium/hard**, interactive-fast, in the daily
+rotation's top-level **Keisan** section (mirroring "Classic 9×9" / "Killer 9×9"). Expert/Extreme wait
+for K7b/K7c. Full rationale: [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md)
+and the [honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md).
+
+### What the de-risk forced
+
+Three measured walls (see the findings doc): maxSize-5 cages are infeasible (0% gradable, ~50×
+verify), the logical solver caps at **~T2** on 9×9 (no technique ladder to hang tiers on), and
+single-cell givens are load-bearing for feasibility. So the tiers can't come from a technique ladder
+— they come from **givens + operators**:
+
+- **Max cage size 3 at every tier** (maxSize-4 = ~13× verify for no gain; real 9×9 Calcudoku is
+  2–3-cell dominated).
+- **Givens gradient, disjoint by construction:** the givens distribution is bimodal (`minSize: 1` →
+  ~15–17, `minSize: 2` → ~2), so **Easy ≥12 givens** (TRI_OP, no ×), **Medium 6–11** (QUAD_OP), **Hard
+  ≤3** (QUAD_OP + `techniqueFloor: 1`). Disjoint singles ranges ⇒ disjoint tiers regardless of score.
+- **No score band.** Measured scores overlap heavily (easy p50 36 / medium 39 / hard 61) because the
+  solver barely discriminates at 9×9 — a cut would misclassify. This *is* the "no technique ladder"
+  finding, so 9×9 leans on givens, not the HoDoKu-style band that 4×4/6×6 use.
+
+### The two speed traps (and fixes)
+
+- **`maxFootholds` on 9×9 tanked Hard's accept rate ~25×** (→ ~400 ms gen). With ~25 cages/board, a
+  tight gift-cage count rejects nearly every board. Dropped it → Hard generates in **~14 ms avg**,
+  same measured difficulty. Same reason the per-cage combo ceiling is off at 9×9 (a 3-cell cage
+  naturally reaches 13 combos).
+- **`verifyNodeBudget`** added to the config (caps the uniqueness proof on pathological low-givens
+  boards: `-1` "unsettled in budget" → cheap reject, never a false accept). Not needed at K7a's
+  settings but wired for the harder K7b/K7c tiers.
+
+### Surfaces + dailies
+
+`DIFFICULTY_CONFIG_9` + a widened `gridSize: 4 | 6 | 9` thread through `/play` (size selector now
+`[4, 6, 9]` for Keisan; no expert/extreme, matching the minis), `/generate` (Keisan size button adds
+9×9; PDF is already size-generic), and both API routes. Three daily boards `calc9-{easy,medium,hard}`
+join the registry in the new `calc` section — which the picker/leaderboard auto-show now that it's
+populated (they skipped it while empty).
+
+### Verification (K7a)
+
+Gate met (100 boards/tier): gen **p95 ≤ 38 ms** (easy 22 / medium 19 / hard 38), **max 136 ms**;
+**100% gradable** every tier; givens **13–23 / 7–11 / 0–3** (disjoint, monotonic); Hard carries −/÷
+in **100%** of boards. Full test battery green (68 calc + daily + service tests); tsc / lint clean;
+4×4/6×6 generation unchanged (no shared-path edits — the grade-before-verify order stayed put).

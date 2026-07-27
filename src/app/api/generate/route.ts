@@ -82,11 +82,11 @@ export async function POST(req: NextRequest) {
       return pdfResponse(pdfBuffer, 'Killer_Sudoku.pdf');
     }
 
-    // ---- Keisan (Calcudoku) branch (4×4 / 6×6, easy/medium/hard) ----
+    // ---- Keisan (Calcudoku) branch (4×4 / 6×6 / 9×9, easy/medium/hard) ----
     if (body?.variant === 'calc') {
       const { easy = 0, medium = 0, hard = 0, gridSize: calcSize = 6 } = body || {};
-      if (calcSize !== 4 && calcSize !== 6) {
-        return NextResponse.json({ error: 'Keisan grid size must be 4 or 6' }, { status: 400 });
+      if (calcSize !== 4 && calcSize !== 6 && calcSize !== 9) {
+        return NextResponse.json({ error: 'Keisan grid size must be 4, 6, or 9' }, { status: 400 });
       }
       if (![easy, medium, hard].every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0)) {
         return NextResponse.json({ error: 'Keisan counts (easy, medium, hard) must be non-negative integers' }, { status: 400 });

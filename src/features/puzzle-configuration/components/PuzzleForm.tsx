@@ -11,7 +11,7 @@ const CALC_DIFFICULTIES = ['easy', 'medium', 'hard'];
 export default function PuzzleForm() {
   const [variant, setVariant] = useState<'classic' | 'killer' | 'calc'>('classic');
   const [killerSize, setKillerSize] = useState<6 | 9>(9);
-  const [calcSize, setCalcSize] = useState<4 | 6>(6);
+  const [calcSize, setCalcSize] = useState<4 | 6 | 9>(6);
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
     easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0
@@ -89,7 +89,7 @@ export default function PuzzleForm() {
       ) : isCalc ? (
         <>
           <div className="flex gap-2 mb-3 justify-center">
-            {([4, 6] as const).map((size) => (
+            {([4, 6, 9] as const).map((size) => (
               <button
                 key={size}
                 type="button"
