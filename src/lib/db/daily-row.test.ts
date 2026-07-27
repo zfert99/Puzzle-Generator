@@ -61,8 +61,11 @@ describe('toDailyPuzzleRow', () => {
     expect(DAILY_BOARDS.filter((b) => b.section === 'classic').map((b) => b.key))
       .toEqual(['easy', 'medium', 'hard', 'expert', 'extreme']);
     expect(DAILY_BOARDS.filter((b) => b.section === 'killer')).toHaveLength(5);
-    expect(DAILY_BOARDS.filter((b) => b.section === 'minis')).toHaveLength(9);
-    expect(DAILY_BOARDS.filter((b) => b.section === 'calc').map((b) => b.key))
+    // Keisan 4×4/6×6 live in MINIS (with the classic/killer minis) — 9 + 6 = 15. The top-level
+    // `calc` section is reserved for 9×9 Keisan (K7), so it's empty for now — and no board carries
+    // `section: 'calc'`, which the `as const satisfies` proves at compile time.
+    expect(DAILY_BOARDS.filter((b) => b.section === 'minis')).toHaveLength(15);
+    expect(DAILY_BOARDS.filter((b) => b.variant === 'calc').map((b) => b.key))
       .toEqual(['calc4-easy', 'calc4-medium', 'calc4-hard', 'calc6-easy', 'calc6-medium', 'calc6-hard']);
     // Keys are unique — they are the UNIQUE(date, difficulty) idempotency handle.
     expect(new Set(DAILY_BOARDS.map((b) => b.key)).size).toBe(DAILY_BOARDS.length);

@@ -379,10 +379,12 @@ hard-×-weighted-with-`−`/`÷`-variety.
 Keisan is now in the daily rotation, and the daily path was made **variant-safe** in the process
 (the audit-flagged duck-typing).
 
-- **Registry:** a fourth `calc` section in `DAILY_BOARDS` — `calc4-{easy,medium,hard}` +
-  `calc6-{easy,medium,hard}` (6 boards → 25 total), each with a `minSolveMs` anti-cheat floor and a
-  tuned "Sudoku Bot" `botTimeMs` (Keisan solves slower than classic of the same size, so a touch
-  higher).
+- **Registry:** `calc4-{easy,medium,hard}` + `calc6-{easy,medium,hard}` (6 boards → 25 total), each
+  with a `minSolveMs` anti-cheat floor and a tuned "Sudoku Bot" `botTimeMs`. **Sectioning matches the
+  other variants:** the 4×4/6×6 Keisan boards live in the **minis** section (alongside the classic
+  and killer minis), and the top-level **Keisan** section mirrors "Classic 9×9" / "Killer 9×9" — it's
+  reserved for **9×9 Keisan (K7)** and auto-hidden while empty (the picker/leaderboard skip
+  zero-board sections).
 - **Variant-safe discriminants** (replacing `'cages' in puzzle`, which couldn't tell Killer from
   Keisan — both carry cages):
   - `toDailyPuzzleRow` now keys off the explicit `variant` tag.
