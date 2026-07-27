@@ -163,6 +163,38 @@ limits carry up to 9×9.
 
 ---
 
+## 6b. K7b result — bounded recursion works, but is a single step (the K7c fork)
+
+The bounded-recursion "T5" (the keen.c transplant) is now built into `CalcLogicalSolver` (tiers 5/6:
+depth-1 Nishio and depth-2), and measured. Result:
+
+- **It works and is sound.** Of unique low-givens 9×9 boards, ~77% solve at T4 and ~23% are T4-stuck.
+  **Depth-1 Nishio (T5) solves 100% of the T4-stuck ones, every solution verified correct** against
+  the exact solver. Grading costs ~65 ms avg / ~450 ms p95 at maxSize 3.
+- **Depth-2 never fires.** Across *both* maxSize-3 and maxSize-4 populations, every T4-stuck board
+  that is solvable at all is solvable at depth-1. Not one board needed depth-2. (maxSize-4 T6 grading
+  also costs p95 ~7 s — far slower, for no depth-2 payoff.)
+
+**The fork this opens (K7c).** Guess *depth* was the plan's intended Expert↔Extreme separator
+(depth-1 = Expert, depth-2 = Extreme). Since depth-2 doesn't occur, depth gives only **two** buckets
+among 0-given boards: *needs a Nishio guess* vs *doesn't*. That's enough for **one** guess-gated tier,
+not two. Options for a 5-tier 9×9 ladder — needs a decision before K7c builds:
+
+1. **4 tiers, not 5** (the plan's stated contingency): Easy / Medium / Hard / **Expert = needs
+   depth-1 Nishio**. Drop Extreme at 9×9. Honest and simple; breaks 5-tier parity with Classic/Killer.
+2. **Count Nishio steps as the Extreme axis:** Expert = solvable with 1–k depth-1 guesses, Extreme =
+   needs many. A continuous within-depth-1 axis; needs measurement that step-count is monotonic with
+   real difficulty (it may just be noise).
+3. **Score-band-split the T5 population:** Expert = T5 + lower two-factor score, Extreme = T5 + higher
+   — but §2 already showed the score barely discriminates at 9×9, so this is weak.
+4. **Add a real intermediate technique** (cage-region intersection / multi-line region-sum from the
+   honest-ladder research §Q1) so more boards need *named* T3–T4 work, widening the pre-guess ladder
+   and letting Expert/Extreme separate on technique before the Nishio backstop. Most work, most
+   honest; effectively a K3 solver expansion.
+
+Recommendation leaning: (1) now (ship a 4-tier 9×9), with (4) as the eventual upgrade if 5-tier
+parity is wanted — because (2)/(3) dress up an axis the data says isn't there.
+
 ## 6. Reproducing
 
 The measurements were one-off scripts (not committed). To regenerate: fill a Latin square with

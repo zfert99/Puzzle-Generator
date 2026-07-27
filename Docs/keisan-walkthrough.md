@@ -6,8 +6,9 @@
 > and the judgment calls made along the way. Append a new section as each slice (K2…) ships.
 >
 > **Status:** 🚧 In Progress — engine K0–K4 ✅ · surfaces K5 core ✅ (play/PDF/hub) · difficulty
-> rebalance ✅ · daily rotation ✅ · **K7a (9×9, 3 tiers) ✅** · **next:** K7b bounded-recursion "T5"
-> then K7c 5-tier offline pool (Expert/Extreme), then K6 No-Op / Mystery · **Branch:** `feature/kenken`
+> rebalance ✅ · daily rotation ✅ · **K7a (9×9, 3 tiers) ✅** · **K7b (bounded-recursion "T5") ✅** ·
+> **next:** K7c Expert/Extreme ladder — ⏸ blocked on a tier-shape decision (depth-2 never fires), then
+> K6 No-Op / Mystery · **Branch:** `feature/kenken`
 
 ## Naming
 
@@ -455,3 +456,50 @@ Gate met (100 boards/tier): gen **p95 ≤ 38 ms** (easy 22 / medium 19 / hard 38
 **100% gradable** every tier; givens **13–23 / 7–11 / 0–3** (disjoint, monotonic); Hard carries −/÷
 in **100%** of boards. Full test battery green (68 calc + daily + service tests); tsc / lint clean;
 4×4/6×6 generation unchanged (no shared-path edits — the grade-before-verify order stayed put).
+
+## K7b — bounded-recursion "T5" ✅ (with a plan-changing finding)
+
+The honest answer to "the named ladder caps at ~T2 on 9×9, so what discriminates the hardest
+0-given boards?" — Tatham's `keen.c` design, where the top tiers have **no bespoke technique** and
+are produced by counted guess-and-check. Built into `CalcLogicalSolver` as **tiers 5 (depth-1
+Nishio) and 6 (depth-2)**.
+
+### Mechanism
+
+When T1–T4 stall, `nishioRound` scans empty cells min-remaining-values-first and, for each
+candidate, `isRefutable` hypothesises it (`snapshot` → `place` → `deducePlain` with T1–T4 →
+`restore`); if the branch hits a contradiction, the candidate is a **sound elimination**.
+`hasContradiction` flags a dead branch two ways: an empty cell with zero candidates, **or** a
+fully-placed cage matching no valid multiset (the latter catches a guess that fills a cage's last
+cell directly — `cageArithmetic` only prunes empty cells, so it can't). The solve loop escalates
+**minimal depth first**, so `hardestTier = 4 + maxGuessDepth` records the *cheapest* guess a board
+needs; a `guessNodeBudget` (default 200 k) bounds the depth-2 path. Every elimination is sound → a
+completed guess-solve is a valid logical solution path (tested: a T4-stuck 9×9 solves at T5 with the
+grid matching the exact solution).
+
+### The finding — depth-2 never fires
+
+Measured on unique low-givens 9×9 boards: ~77% solve at T4, **~23% are T4-stuck**, and **depth-1
+Nishio solves 100% of the T4-stuck ones, all verified correct**. Across *both* maxSize-3 and
+maxSize-4 populations, **not one board needed depth-2** (maxSize-4 T6 grading also costs p95 ~7 s —
+slow for no payoff). T5 grading is ~65 ms avg / ~450 ms p95 at maxSize 3.
+
+So the guess-*depth* axis is a **single step** (needs-a-guess vs not), exactly the contingency K7b
+flagged. The mechanism stays (depth-2 is dormant capacity for later sizes / No-Op), but 9×9 uses
+depth-1 only.
+
+### Why this blocks K7c (per the roadblock rule)
+
+K7c planned to split Expert↔Extreme by guess-depth. Depth-2 doesn't exist, so depth gives **one**
+guess-gated tier, not two — K7c can't be built as specified. Following the new *Roadblock & Research
+Rules*, I stopped and wrote the fork up (options 1–4) in
+[keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) §6b + the plan's
+K7c entry, rather than improvising an Extreme tier the data doesn't support. K7b itself is complete
+and committed; K7c awaits a tier-shape decision.
+
+### Verification (K7b)
+
+New solver tests: a T4-stuck 9×9 solves at T5 with the grid matching the exact solution and
+`maxGuessDepth === 1`; a T4-solvable board reports `maxGuessDepth === 0`. Existing soundness fuzz
+still green. tsc / lint / markdownlint clean; no generator changes yet (the T5 solver is capability
+only — Expert/Extreme configs land in K7c once the tier shape is decided).

@@ -22,8 +22,15 @@ import type { GridSize } from '../sudoku';
 import { calcCombosFor } from './calc-combinations';
 import type { CalcCage } from './calc-types';
 
-/** Grading tiers: 0 = already solved; 1..4 as the technique ladder (see the `.md`). */
-export type CalcTier = 0 | 1 | 2 | 3 | 4;
+/**
+ * Grading tiers: 0 = already solved; 1..4 are the named-technique ladder (see the `.md`); 5 and 6 are
+ * **bounded-recursion tiers** (K7b, the `keen.c` transplant) with NO bespoke technique — they mean
+ * the puzzle needed guess-and-check to a counted depth: **5 = depth-1 (Nishio: one hypothesis driven
+ * to a contradiction, so its negation is a sound elimination), 6 = depth-2** (a hypothesis whose
+ * refutation itself needs a depth-1 Nishio). This is the only axis that discriminates the hardest
+ * 0-given 9×9 boards, where the named ladder caps at ~T2.
+ */
+export type CalcTier = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 /** Every technique the deduction loop can apply, in rough priority order. */
 export type CalcTechnique =
@@ -57,6 +64,12 @@ export interface CalcSolveResult {
   passes: number;
   /** Mean naked singles simultaneously available per pass — opportunity density (high = open/easy). */
   avgOpenSingles: number;
+  /**
+   * Deepest bounded-recursion guess the solve required (0 = pure named-technique logic, 1 = Nishio,
+   * 2 = depth-2). Only populated when `solve` runs with `maxTier ≥ 5`; the tier↔depth map is
+   * `hardestTier = 4 + maxGuessDepth` whenever a guess was needed.
+   */
+  maxGuessDepth: number;
 }
 
 function popcount(mask: number): number {
@@ -87,6 +100,8 @@ export class CalcLogicalSolver {
   private cands: number[][]; // bitmask per cell (0 once placed)
   private empties: number;
   private hardestTier: CalcTier = 0;
+  /** Remaining bounded-recursion hypothesis budget (guards the depth-2 tier from blowing up). */
+  private guessNodes = 0;
 
   constructor(cages: CalcCage[], gridSize: GridSize) {
     this.size = gridSize;
@@ -476,6 +491,114 @@ export class CalcLogicalSolver {
     return false;
   }
 
+  // ---- Tiers 5–6: bounded-recursion guessing (keen.c transplant) ------------------------------
+
+  /** Snapshot the mutable solve state so a hypothesis branch can be rolled back. */
+  private snapshot(): { grid: number[][]; cands: number[][]; empties: number } {
+    return { grid: this.grid.map((row) => row.slice()), cands: this.cands.map((row) => row.slice()), empties: this.empties };
+  }
+
+  private restore(snap: { grid: number[][]; cands: number[][]; empties: number }): void {
+    this.grid = snap.grid;
+    this.cands = snap.cands;
+    this.empties = snap.empties;
+  }
+
+  /**
+   * Is the current state provably dead? Two sources: (a) an empty cell with no candidates left, and
+   * (b) a *fully-placed* cage whose digits match no valid multiset (cageArithmetic can't catch this —
+   * it only prunes empty cells, so a hypothesis that fills a cage's last cell directly needs this
+   * check). Both make the branch a contradiction.
+   */
+  private hasContradiction(): boolean {
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
+        if (this.grid[r][c] === 0 && this.cands[r][c] === 0) return true;
+      }
+    }
+    for (let i = 0; i < this.cages.length; i++) {
+      const cage = this.cages[i];
+      let full = true;
+      for (const cell of cage.cells) {
+        if (this.grid[Math.floor(cell / this.size)][cell % this.size] === 0) { full = false; break; }
+      }
+      if (!full) continue;
+      const placed = this.placedCounts(cage);
+      let ok = false;
+      for (const multiset of this.cageCounts[i]) {
+        let equal = true;
+        for (let d = 1; d <= this.size; d++) {
+          if (multiset[d] !== placed[d]) { equal = false; break; }
+        }
+        if (equal) { ok = true; break; }
+      }
+      if (!ok) return true;
+    }
+    return false;
+  }
+
+  /** Run the named-technique ladder to a fixpoint WITHOUT recording (used inside hypothesis branches). */
+  private deducePlain(ladder: { run: () => boolean }[]): 'solved' | 'stuck' | 'contradiction' {
+    while (this.empties > 0) {
+      if (this.hasContradiction()) return 'contradiction';
+      let progressed = false;
+      for (const technique of ladder) {
+        if (technique.run()) { progressed = true; break; }
+      }
+      if (!progressed) break;
+    }
+    if (this.hasContradiction()) return 'contradiction';
+    return this.empties === 0 ? 'solved' : 'stuck';
+  }
+
+  /**
+   * Does hypothesising `(r,c) = digit` lead to a contradiction within `depth` levels of guessing?
+   * depth-1 = propagate with the named ladder alone (Nishio); depth-2 = also allow one round of
+   * depth-1 Nishio inside the branch. A `true` result means the digit is a **sound** elimination.
+   * Always rolls the state back.
+   */
+  private isRefutable(ladder: { run: () => boolean }[], r: number, c: number, digit: number, depth: number): boolean {
+    const snap = this.snapshot();
+    this.place(r, c, digit);
+    let res = this.deducePlain(ladder);
+    // Deeper refutation: keep applying depth-(depth-1) Nishio + re-deducing until it resolves or dries up.
+    while (res === 'stuck' && depth > 1 && this.guessNodes > 0 && this.nishioRound(ladder, depth - 1)) {
+      res = this.deducePlain(ladder);
+    }
+    this.restore(snap);
+    return res === 'contradiction';
+  }
+
+  /**
+   * One round of bounded-recursion elimination at `depth`: scan empty cells in min-remaining-values
+   * order and eliminate the first candidate that is refutable at that depth. Returns whether it
+   * eliminated anything. Bounded by `guessNodes` so the depth-2 tier can't run away.
+   */
+  private nishioRound(ladder: { run: () => boolean }[], depth: number): boolean {
+    const cells: { r: number; c: number; n: number }[] = [];
+    for (let r = 0; r < this.size; r++) {
+      for (let c = 0; c < this.size; c++) {
+        if (this.grid[r][c] === 0) cells.push({ r, c, n: popcount(this.cands[r][c]) });
+      }
+    }
+    cells.sort((a, b) => a.n - b.n);
+    for (const { r, c } of cells) {
+      let mask = this.cands[r][c];
+      while (mask) {
+        if (this.guessNodes <= 0) return false;
+        this.guessNodes -= 1;
+        const digit = lowestDigit(mask);
+        const bit = 1 << (digit - 1);
+        mask &= ~bit;
+        if (this.isRefutable(ladder, r, c, digit, depth)) {
+          this.eliminate(r, c, bit);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   // ---- Solve loop -----------------------------------------------------------------------------
 
   /**
@@ -483,8 +606,12 @@ export class CalcLogicalSolver {
    * technique that makes progress and restarts from the cheapest — so the recorded `hardestTier`
    * is the minimum ceiling the puzzle actually demands. Records technique counts and the mean
    * open-singles density for the K4 scorer.
+   *
+   * With `maxTier ≥ 5`, when the named ladder stalls it escalates to bounded-recursion guessing
+   * (tiers 5/6), trying the minimal depth first so `hardestTier` / `maxGuessDepth` record the
+   * *cheapest* guess the puzzle actually needs. `guessNodeBudget` caps total hypotheses.
    */
-  solve({ maxTier = 4 as CalcTier }: { maxTier?: CalcTier } = {}): CalcSolveResult {
+  solve({ maxTier = 4 as CalcTier, guessNodeBudget = 200000 }: { maxTier?: CalcTier; guessNodeBudget?: number } = {}): CalcSolveResult {
     const allTechniques: { name: CalcTechnique; run: () => boolean }[] = [
       { name: 'cageArithmetic', run: () => this.cageArithmetic() },
       { name: 'nakedSingle', run: () => this.nakedSingle() },
@@ -495,11 +622,17 @@ export class CalcLogicalSolver {
       { name: 'lineSum', run: () => this.lineSum() },
       { name: 'xWing', run: () => this.xWing() },
     ];
-    const ladder = allTechniques.filter((t) => TECHNIQUE_TIER[t.name] <= maxTier);
+    // Named techniques run only through T4; the guess tiers (5/6) are the ladder's overflow, not a
+    // named technique, so cap the technique filter at 4 and derive the allowed guess depth separately.
+    const namedCeil = Math.min(maxTier, 4) as CalcTier;
+    const ladder = allTechniques.filter((t) => TECHNIQUE_TIER[t.name] <= namedCeil);
+    const guessDepthAllowed = maxTier >= 5 ? maxTier - 4 : 0; // T5 → 1, T6 → 2
+    this.guessNodes = guessNodeBudget;
 
     const techniqueCounts: Partial<Record<CalcTechnique, number>> = {};
     let passes = 0;
     let openSinglesSum = 0;
+    let maxGuessDepth = 0;
 
     while (this.empties > 0) {
       openSinglesSum += this.countOpenSingles();
@@ -514,7 +647,22 @@ export class CalcLogicalSolver {
           break;
         }
       }
-      if (!progressed) break;
+      if (progressed) continue;
+
+      // Named ladder stalled — escalate to bounded-recursion guessing (minimal depth first).
+      if (guessDepthAllowed > 0 && this.guessNodes > 0 && !this.hasContradiction()) {
+        for (let depth = 1; depth <= guessDepthAllowed; depth++) {
+          if (this.nishioRound(ladder, depth)) {
+            maxGuessDepth = Math.max(maxGuessDepth, depth);
+            const tier = (4 + depth) as CalcTier;
+            if (tier > this.hardestTier) this.hardestTier = tier;
+            progressed = true;
+            break;
+          }
+        }
+        if (progressed) continue;
+      }
+      break;
     }
 
     return {
@@ -523,6 +671,7 @@ export class CalcLogicalSolver {
       techniqueCounts,
       passes,
       avgOpenSingles: passes > 0 ? openSinglesSum / passes : 0,
+      maxGuessDepth,
     };
   }
 }

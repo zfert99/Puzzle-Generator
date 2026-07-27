@@ -89,3 +89,48 @@ describe('CalcLogicalSolver — grading', () => {
     expect(capped.hardestTier).toBeLessThanOrEqual(2);
   });
 });
+
+describe('CalcLogicalSolver — bounded-recursion tier (K7b, T5 = depth-1 Nishio)', () => {
+  // Search seeds for a low-givens 9×9 board the named ladder (T4) can NOT finish but a single
+  // depth-1 guess can — the exact population Expert/Extreme will draw from. Deterministic per seed.
+  function findT4StuckUnique(): { cages: ReturnType<typeof generateUniqueCalc>['cages']; solution: number[][] } | null {
+    for (let seed = 1; seed <= 120; seed++) {
+      const { cages, solution } = generateUniqueCalc(9, { rng: seededRng(seed * 101 + 7), minSize: 2, maxSize: 3 });
+      if (cages.filter((c) => c.cells.length === 1).length > 3) continue; // want the hard, low-givens regime
+      const stuck = !new CalcLogicalSolver(cages, 9).solve({ maxTier: 4 }).solved;
+      if (stuck && new CalcLogicalSolver(cages, 9).solve({ maxTier: 5 }).solved) return { cages, solution };
+    }
+    return null;
+  }
+
+  it('solves a T4-stuck 9×9 with depth-1 guessing, and the solution is CORRECT', () => {
+    const found = findT4StuckUnique();
+    expect(found).not.toBeNull();
+    const { cages, solution } = found!;
+
+    // T4 genuinely can't finish it (that's why it needs the guess tier).
+    expect(new CalcLogicalSolver(cages, 9).solve({ maxTier: 4 }).solved).toBe(false);
+
+    // T5 finishes it, needs exactly depth-1, and every placed digit matches the unique solution —
+    // a wrong (unsound) elimination would surface here as a mismatched grid.
+    const solver = new CalcLogicalSolver(cages, 9);
+    const r5 = solver.solve({ maxTier: 5 });
+    expect(r5.solved).toBe(true);
+    expect(r5.hardestTier).toBe(5);
+    expect(r5.maxGuessDepth).toBe(1);
+    for (let r = 0; r < 9; r++) expect(solver.grid2d[r]).toEqual(solution[r]);
+  });
+
+  it('leaves maxGuessDepth 0 when the named ladder already solves the puzzle', () => {
+    // A board T4 solves must never be charged a guess — the tier stays ≤ 4 even with maxTier 5.
+    for (let seed = 1; seed <= 60; seed++) {
+      const { cages } = generateUniqueCalc(6, { rng: seededRng(seed * 31), maxSize: 3 });
+      const r = new CalcLogicalSolver(cages, 6).solve({ maxTier: 5 });
+      if (r.solved && r.hardestTier <= 4) {
+        expect(r.maxGuessDepth).toBe(0);
+        return;
+      }
+    }
+    throw new Error('expected a T4-solvable 6×6 in the seed range');
+  });
+});
