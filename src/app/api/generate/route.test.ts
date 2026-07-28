@@ -102,6 +102,32 @@ describe('Sad Paths', () => {
     expect(body.error).toMatch(/maximum|limit|too many/i);
   });
 
+  // ── Extreme sub-count cap (per-difficulty DoS guard) ──────────────────────────
+  // Extreme is the slow path across every variant; more than MAX_EXTREME (5) of it in one
+  // request can blow the 60 s function budget even while the 50-total cap is satisfied. These
+  // must reject BEFORE any generation runs, so they're fast (no generous timeout needed).
+
+  test('Classic: more than 5 extreme puzzles returns 400', async () => {
+    const res = await POST(buildRequest({ extreme: 6 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/extreme/i);
+  });
+
+  test('Killer: more than 5 extreme puzzles returns 400', async () => {
+    const res = await POST(buildRequest({ variant: 'killer', extreme: 6 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/extreme/i);
+  });
+
+  test('Keisan: more than 5 extreme puzzles returns 400', async () => {
+    const res = await POST(buildRequest({ variant: 'calc', gridSize: 9, extreme: 6 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/extreme/i);
+  });
+
   test('Bad Data Types: non-numeric values are rejected', async () => {
     const res = await POST(buildRequest({ easy: 'apple', medium: 'banana', hard: 'cherry', expert: 'date' }));
     expect(res.status).toBe(400);

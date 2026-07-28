@@ -25,7 +25,13 @@ solve():
 Start the recursion and return the counter.
 ```
 
-## `applyExhaustiveDigger(grid, config)`
+> **Injectable `rng` (all three diggers).** `applyExhaustiveDigger`, `applyQuotaDigger`, and
+> `applyExtremeDigger` each take a trailing `rng: () => number = Math.random`, forwarded to `shuffle`
+> / `fillGrid` (and the quota digger's cell pick). It defaults to `Math.random` — existing behavior
+> unchanged — but lets `generateSudoku` thread a seeded PRNG through the whole pipeline for
+> reproducible generation, matching the `calc/`/`killer/` convention.
+
+## `applyExhaustiveDigger(grid, config, rng = Math.random)`
 
 **Why:** Used for Expert puzzles. Brute-force uniqueness is not enough for higher difficulties — a puzzle might be unique, but require guessing. We must guarantee that a *human* can solve it using pure logic. We iterate through every single cell and try to remove it, verifying solvability with the `HumanSolver` at each step.
 
@@ -43,16 +49,22 @@ For each position in the shuffled array:
     Put the saved value back into the cell.
 ```
 
-## `applyQuotaDigger(grid, difficulty, config)`
+## `applyQuotaDigger(grid, difficulty, config, rng = Math.random)`
 
 **Why:** Used for Easy, Medium, and Hard puzzles. These difficulties just need a specific number of clues removed to feel right. It's much faster to randomly poke holes and check brute-force uniqueness than to run the full `HumanSolver` simulation.
+
+**Bounded cell pick:** the cell to dig is chosen by collecting the currently-filled positions and
+indexing into them with `rng()`. The earlier version re-rolled a random `(row, col)` in an inner
+`while (grid[row][col] === 0)` loop until it hit a filled cell — uniform, but with **no** iteration
+bound; it terminated only by the invariant that a filled cell always remains. Picking from the filled
+list is the same uniform choice, but bounded (O(cells) per attempt, negligible beside `countSolutions`).
 
 ```text
 Determine the target number of clues to remove based on the grid size and difficulty.
 Set an attempts counter to 0.
 While we still need to remove clues AND we haven't failed 100 times:
-  Pick a random row and column.
-  If the cell is already empty, pick again until we find a filled cell.
+  Collect all currently-filled cell positions; if none remain, stop (defensive).
+  Pick one of those filled positions at random via rng().
   Save the value and empty the cell.
   Create a copy of the grid.
   If countSolutions on the copy returns exactly 1:
@@ -64,7 +76,7 @@ While we still need to remove clues AND we haven't failed 100 times:
     Increment the attempts counter.
 ```
 
-## `applyExtremeDigger(grid, solution, config)`
+## `applyExtremeDigger(grid, solution, config, rng = Math.random)`
 
 **Why:** Extreme puzzles must explicitly *require* advanced techniques (like AICs). Standard exhaustive digging often results in Expert puzzles by chance. We wrap the exhaustive digger in a retry loop: if the resulting puzzle doesn't actually trigger the extreme logic paths in our solver, we throw it away and start over with a fresh solution grid.
 

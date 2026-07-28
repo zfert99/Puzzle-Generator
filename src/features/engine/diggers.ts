@@ -91,9 +91,9 @@ export function countSolutions(grid: number[][], config: GridConfig, limit = 2):
  * by a human using pure logic (without guessing).
  * It achieves this by utilizing the `HumanSolver`.
  */
-export function applyExhaustiveDigger(grid: number[][], config: GridConfig): void {
+export function applyExhaustiveDigger(grid: number[][], config: GridConfig, rng: () => number = Math.random): void {
   // Create an array of all positions and shuffle it
-  const positions = shuffle(Array.from({ length: config.totalCells }, (_, i) => i));
+  const positions = shuffle(Array.from({ length: config.totalCells }, (_, i) => i), rng);
   
   // Attempt to "dig" (remove) the number at each position one by one
   for (const pos of positions) {
@@ -134,7 +134,7 @@ export function applyExhaustiveDigger(grid: number[][], config: GridConfig): voi
  *   6x6: Easy=20, Medium=16, Hard=10
  *   9x9: Easy=41(removes 40), Medium=31(removes 50), Hard=26(removes 55)
  */
-export function applyQuotaDigger(grid: number[][], difficulty: Difficulty, config: GridConfig): void {
+export function applyQuotaDigger(grid: number[][], difficulty: Difficulty, config: GridConfig, rng: () => number = Math.random): void {
   // Only the box-tileable classic sizes exist here — 5/7 are boxless KenKen sizes with no
   // classic digger (Partial, not an exhaustive Record, so we don't invent quotas for puzzles
   // that can't exist). The `?.` + `?? 40` fallback keeps a boxless size from throwing.
@@ -153,15 +153,22 @@ export function applyQuotaDigger(grid: number[][], difficulty: Difficulty, confi
 
   // Keep digging until we've removed enough clues OR we've failed 100 times
   while (cluesToRemove > 0 && attempts < 100) {
-    // Pick a completely random cell
-    let row = Math.floor(Math.random() * config.size);
-    let col = Math.floor(Math.random() * config.size);
-    
-    // If the cell is already empty, keep picking until we hit a filled one
-    while (grid[row][col] === 0) {
-      row = Math.floor(Math.random() * config.size);
-      col = Math.floor(Math.random() * config.size);
+    // Pick a random *filled* cell. Collecting the filled positions and indexing into them (instead
+    // of re-rolling a random cell until one happens to be non-empty) gives the same uniform choice
+    // over filled cells but is bounded — the old inner `while (grid[row][col] === 0)` re-roll had no
+    // iteration cap and only terminated by the invariant that a filled cell still exists. The rebuild
+    // is O(cells) per attempt, negligible next to the `countSolutions` call below.
+    const filled: number[] = [];
+    for (let r = 0; r < config.size; r++) {
+      for (let c = 0; c < config.size; c++) {
+        if (grid[r][c] !== 0) filled.push(r * config.size + c);
+      }
     }
+    if (filled.length === 0) break; // nothing left to dig (defensive — quotas never empty the grid)
+
+    const pos = filled[Math.floor(rng() * filled.length)];
+    const row = Math.floor(pos / config.size);
+    const col = pos % config.size;
 
     // Backup the value
     const backup = grid[row][col];
@@ -192,14 +199,14 @@ export function applyQuotaDigger(grid: number[][], difficulty: Difficulty, confi
  * solved with only expert-level strategies, the entire process is retried with a fresh
  * solution grid.
  */
-export function applyExtremeDigger(grid: number[][], solution: number[][], config: GridConfig): void {
+export function applyExtremeDigger(grid: number[][], solution: number[][], config: GridConfig, rng: () => number = Math.random): void {
   const MAX_RETRIES = 50;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     // On retry, generate a completely new solution and start fresh
     if (attempt > 0) {
       const newSolution = createEmptyGrid(config.size);
-      fillGrid(newSolution, config);
+      fillGrid(newSolution, config, rng);
       // Copy the new solution into both the grid and solution arrays
       for (let r = 0; r < config.size; r++) {
         for (let c = 0; c < config.size; c++) {
@@ -210,7 +217,7 @@ export function applyExtremeDigger(grid: number[][], solution: number[][], confi
     }
 
     // Step 1: Exhaustively dig holes (same logic as expert digger)
-    const positions = shuffle(Array.from({ length: config.totalCells }, (_, i) => i));
+    const positions = shuffle(Array.from({ length: config.totalCells }, (_, i) => i), rng);
     for (const pos of positions) {
       const row = Math.floor(pos / config.size);
       const col = pos % config.size;

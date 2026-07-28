@@ -42,7 +42,7 @@ npm test
 
 ### Run Benchmarks
 
-There are two benchmark scripts provided. When executed, they automatically append their performance results (along with the current Git commit hash and timestamp) to `src/features/engine/benchmarks/benchmark-logs.md`.
+Four benchmark scripts are provided. When executed, they automatically append their performance results (along with the current Git commit hash and timestamp) to `src/features/engine/benchmarks/benchmark-logs.md`.
 
 To test the pure logical solving speed on a notoriously difficult Expert puzzle:
 
@@ -54,6 +54,13 @@ To test the entire end-to-end generation pipeline (generating 10 completely rand
 
 ```bash
 npx tsx src/features/engine/benchmarks/benchmark.ts
+```
+
+To benchmark Keisan (Calcudoku) and Killer generation across the full tier ladder:
+
+```bash
+npx tsx src/features/engine/benchmarks/benchmark-calc.ts
+npx tsx src/features/engine/benchmarks/benchmark-killer.ts
 ```
 
 ## How It Works

@@ -28,3 +28,22 @@ SELECT userId, user.name, time_ms, mistakes
 **Why a COUNT, not a scan:** Rank = `1 + (completed attempts strictly faster)`, computed with
 a single COUNT so it stays cheap as the board grows. Ties share a rank. Returns null if the
 user hasn't completed the puzzle.
+
+## `getUserRanksForPuzzles(db, userId, puzzleIds)`
+
+**Why:** the batched form of `getUserRank` — same `1 + (strictly-faster count)` rank and tie
+semantics, but for many puzzles in **one** query instead of two-per-puzzle. It self-joins
+`solve_attempts` (the caller's own row per puzzle) against a `faster` alias (completed attempts with
+a smaller time), `LEFT JOIN` so rank-1 puzzles survive, and `GROUP BY puzzle_id`. Returns a
+`Map<puzzleId, rank>`; a puzzle the user hasn't completed is absent. Kills the N+1 in
+`/api/me/today` (up to ~11 dailies × 2 queries → a single grouped query).
+
+```text
+SELECT me.puzzle_id, count(faster.id) AS faster
+  FROM solve_attempts me
+  LEFT JOIN solve_attempts faster
+    ON faster.puzzle_id = me.puzzle_id AND faster.completed AND faster.time_ms < me.time_ms
+  WHERE me.user_id = userId AND me.completed AND me.puzzle_id IN (puzzleIds)
+  GROUP BY me.puzzle_id
+-> Map(puzzle_id -> faster + 1)
+```

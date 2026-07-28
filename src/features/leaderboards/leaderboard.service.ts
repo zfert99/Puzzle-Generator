@@ -1,4 +1,5 @@
-import { and, asc, eq, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts } from '@/lib/db/schema';
 import { user } from '@/lib/db/auth-schema';
@@ -85,4 +86,50 @@ export async function getUserRank(
     );
 
   return { rank: faster + 1, timeMs: me.timeMs, mistakes: me.mistakes };
+}
+
+/**
+ * `getUserRank` for **many puzzles at once**, in a single query instead of two-per-puzzle. For each
+ * puzzle the user has completed among `puzzleIds`, computes `rank = 1 + (completed attempts strictly
+ * faster)` — the same tie semantics as `getUserRank`, via a self-join counting the faster rows. A
+ * `LEFT JOIN` keeps rank-1 puzzles (zero faster attempts) in the result. Returns a map
+ * `puzzleId → rank`; a puzzle the user hasn't completed is simply absent.
+ *
+ * Exists to kill the N+1 in `/api/me/today`, which needs the caller's rank on each of the day's
+ * completed dailies — previously one `getUserRank` (two queries) per completion.
+ */
+export async function getUserRanksForPuzzles(
+  db: Database,
+  userId: string,
+  puzzleIds: string[],
+): Promise<Map<string, number>> {
+  if (puzzleIds.length === 0) return new Map();
+
+  // `me` = the caller's own attempt per puzzle (one, by the UNIQUE(user_id, puzzle_id) constraint);
+  // `faster` = any completed attempt on the same puzzle with a strictly smaller time.
+  const faster = alias(solveAttempts, 'faster');
+  const rows = await db
+    .select({
+      puzzleId: solveAttempts.puzzleId,
+      faster: sql<number>`count(${faster.id})`.mapWith(Number),
+    })
+    .from(solveAttempts)
+    .leftJoin(
+      faster,
+      and(
+        eq(faster.puzzleId, solveAttempts.puzzleId),
+        eq(faster.completed, true),
+        lt(faster.timeMs, solveAttempts.timeMs),
+      ),
+    )
+    .where(
+      and(
+        eq(solveAttempts.userId, userId),
+        eq(solveAttempts.completed, true),
+        inArray(solveAttempts.puzzleId, puzzleIds),
+      ),
+    )
+    .groupBy(solveAttempts.puzzleId);
+
+  return new Map(rows.map((r) => [r.puzzleId, r.faster + 1]));
 }

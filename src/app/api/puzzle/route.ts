@@ -5,6 +5,7 @@ import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
 
 const KILLER_DIFFICULTIES: KillerDifficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const CALC_DIFFICULTIES: CalcDifficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
@@ -36,6 +37,16 @@ const VALID_GRID_SIZES: GridSize[] = [4, 6, 9];
 export async function POST(req: NextRequest) {
   const startTime = performance.now();
   try {
+    // Per-IP throttle: unauth server-side generation with maxDuration=60 (review finding H1). One
+    // puzzle per game means 30 req/min is generous headroom for a real player, tight for an abuser.
+    const rl = await rateLimit(`puzzle:${clientIp(req)}`, { max: 30, windowSec: 60 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please slow down and try again shortly.' },
+        { status: 429, headers: rl.retryAfter ? { 'Retry-After': String(rl.retryAfter) } : undefined },
+      );
+    }
+
     let body;
     try {
       body = await req.json();

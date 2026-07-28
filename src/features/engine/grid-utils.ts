@@ -67,12 +67,17 @@ export function isValid(grid: number[][], row: number, col: number, num: number,
  * Shuffles an array in place using the modern Fisher-Yates algorithm.
  * Used to randomize the order in which we test numbers (1-N) or dig cells,
  * ensuring every generated puzzle is completely unique.
+ *
+ * `rng` defaults to `Math.random` (so every existing caller is unchanged), but is injectable so a
+ * seeded PRNG can drive deterministic, reproducible generation — the same convention the `calc/` and
+ * `killer/` engines already use (`options.rng ?? Math.random`). This is what makes the Sudoku core
+ * seedable; previously it hard-called `Math.random` and could not be reproduced in a test.
  */
-export function shuffle(array: number[]): number[] {
+export function shuffle(array: number[], rng: () => number = Math.random): number[] {
   // Iterate backwards from the last element to the second element
   for (let i = array.length - 1; i > 0; i--) {
     // Generate a random index j between 0 and i (inclusive)
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     // Swap the elements at indices i and j
     [array[i], array[j]] = [array[j], array[i]];
   }
@@ -88,8 +93,12 @@ export function shuffle(array: number[]): number[] {
  * digits first. Most-constrained-first collapses the search tree dramatically and
  * bit operations make each legality test O(1). Digits are still tried in random
  * order so every generated solution is unique. See AGENTS.md Section 1.
+ *
+ * `rng` is threaded into the candidate shuffle so generation can be seeded/reproduced; it defaults
+ * to `Math.random`, and passing it changes nothing about the search — only which of the equally
+ * valid solutions is produced.
  */
-export function fillGrid(grid: number[][], config: GridConfig): boolean {
+export function fillGrid(grid: number[][], config: GridConfig, rng: () => number = Math.random): boolean {
   const { size, boxWidth, boxHeight, maxNum } = config;
   const fullMask = (1 << maxNum) - 1;
   const boxesPerRow = size / boxWidth;
@@ -145,7 +154,7 @@ export function fillGrid(grid: number[][], config: GridConfig): boolean {
       candidates.push(31 - Math.clz32(lowestBit) + 1);
       m &= m - 1;
     }
-    shuffle(candidates);
+    shuffle(candidates, rng);
 
     const b = boxOf(bestR, bestC);
     for (const num of candidates) {

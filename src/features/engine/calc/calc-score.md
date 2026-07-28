@@ -38,3 +38,11 @@ measured distributions, recalibrated whenever weights change):
 step must be earned) doubles its raw score; one averaging 6+ (moves everywhere) halves it. Monotone,
 gentle, centred near 1 at `avgOpen ≈ 2`. Only monotonicity is load-bearing — the actual band
 thresholds are calibrated against measured distributions, not the exact curve.
+
+## Robustness
+
+The weight lookup is guarded with `?? 0`: if the solver ever reports a technique that
+`CALC_TECHNIQUE_WEIGHTS` doesn't cover (e.g. a new technique added without updating the map),
+`undefined × count` would be `NaN` and silently poison `final` and every band cut downstream. An
+unweighted technique contributes `0` instead. Covered by `calc-score.test.ts` (mirrors
+`killer-score.test.ts`, plus the NaN-guard case).

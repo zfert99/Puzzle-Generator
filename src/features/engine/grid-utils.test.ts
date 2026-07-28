@@ -78,11 +78,26 @@ describe('isValid', () => {
   });
 });
 
+// A tiny LCG (same one the calc tests use) for reproducible, seeded generation.
+function seededRng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
 describe('shuffle', () => {
   it('preserves the multiset of elements', () => {
     const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     const shuffled = shuffle([...arr]);
     expect([...shuffled].sort((a, b) => a - b)).toEqual(arr);
+  });
+
+  it('is deterministic under a seeded rng (reproducible order)', () => {
+    const a = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], seededRng(42));
+    const b = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], seededRng(42));
+    expect(a).toEqual(b); // same seed → identical permutation
   });
 });
 
@@ -103,6 +118,18 @@ describe('fillGrid', () => {
     const grid = createEmptyGrid(size);
     expect(fillGrid(grid, config)).toBe(true);
     assertLatinSquare(grid, size);
+  });
+
+  // The injectable rng makes generation reproducible — the reason the Sudoku core was made seedable.
+  it('produces identical solutions for the same seed and different ones for different seeds', () => {
+    const config = getGridConfig(9);
+    const fill = (seed: number) => {
+      const g = createEmptyGrid(9);
+      fillGrid(g, config, seededRng(seed));
+      return g;
+    };
+    expect(fill(2026)).toEqual(fill(2026)); // reproducible
+    expect(fill(1)).not.toEqual(fill(2)); // seed actually drives the output
   });
 });
 

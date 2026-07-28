@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import PDFDocument from 'pdfkit';
 import { SudokuPuzzle, getGridConfig, type GridSize, type GridConfig } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
@@ -15,14 +14,14 @@ import { calcGridConfig } from '@/features/engine/calc/calc-generator';
  */
 const PDF_OPERATOR_SYMBOL: Record<CalcOperator, string> = { add: '+', sub: '-', mul: '×', div: '÷' };
 
-export function drawTitlePage(doc: any): void {
+export function drawTitlePage(doc: PDFKit.PDFDocument): void {
   doc.addPage();
   doc.fontSize(36).text('Sudoku Puzzle Book', { align: 'center' });
   doc.moveDown(2);
   doc.fontSize(18).text('Generated specifically for you.', { align: 'center' });
 }
 
-export function drawGrid(doc: any, grid: number[][], startX: number, startY: number, gridDrawSize: number): void {
+export function drawGrid(doc: PDFKit.PDFDocument, grid: number[][], startX: number, startY: number, gridDrawSize: number): void {
   const puzzleSize = grid.length;
   const config = getGridConfig(puzzleSize as GridSize);
   const cellSize = gridDrawSize / puzzleSize;
@@ -72,7 +71,7 @@ export function drawGrid(doc: any, grid: number[][], startX: number, startY: num
  * target+operator). A small white pad behind each label keeps it legible over the dashed border.
  */
 function drawCagedGrid(
-  doc: any,
+  doc: PDFKit.PDFDocument,
   opts: {
     config: GridConfig;
     grid: number[][];
@@ -138,7 +137,7 @@ function drawCagedGrid(
 
 /** Draw a Killer grid — box-tileable config, cage labels are the bare sum. */
 export function drawKillerGrid(
-  doc: any,
+  doc: PDFKit.PDFDocument,
   puzzle: KillerPuzzle,
   startX: number,
   startY: number,
@@ -157,7 +156,7 @@ export function drawKillerGrid(
 
 /** Draw a Keisan grid — boxless config (no box borders), cage labels are target+operator (`12+`, `3÷`). */
 export function drawCalcGrid(
-  doc: any,
+  doc: PDFKit.PDFDocument,
   puzzle: CalcPuzzle,
   startX: number,
   startY: number,
@@ -254,10 +253,10 @@ export async function generateCalcPDF(puzzles: CalcPuzzle[]): Promise<Buffer> {
 }
 
 export function drawPuzzles(
-  doc: any, 
-  grouped: Record<string, { puzzle: SudokuPuzzle, index: number }[]>, 
-  outlineRoot: any, 
-  isAnswers = false, 
+  doc: PDFKit.PDFDocument, 
+  grouped: Record<string, { puzzle: SudokuPuzzle, index: number }[]>,
+  outlineRoot: PDFKit.PDFOutline,
+  isAnswers = false,
   gridDrawSize = 400
 ): void {
   const parentOutline = outlineRoot.addItem(isAnswers ? 'Answer Keys' : 'Puzzles');

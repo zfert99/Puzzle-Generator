@@ -4,6 +4,18 @@ This document explains the core logic behind our `route.ts` API endpoint for the
 
 ---
 
+## 0. Rate Limiting (the first gate)
+
+**Goal:** Stop a single client from exhausting serverless compute/$ on this unauthenticated,
+CPU-heavy route (review finding **H1**).
+**Steps:**
+
+1. Derive the caller's IP (`clientIp`, from `x-forwarded-for`/`x-real-ip`).
+2. Consume one token from that IP's budget: **10 requests / 60 s** (`rateLimit`, backed by Upstash
+   Redis when configured, in-memory otherwise — see [`rate-limit.md`](../../../lib/rate-limit.md)).
+3. If the budget is exhausted, return **429 Too Many Requests** with a `Retry-After` header — before
+   parsing the body or doing any work.
+
 ## 1. Receiving the Request
 
 **Goal:** Intercept the incoming `POST` request from the frontend and figure out exactly what the user wants.
@@ -43,8 +55,9 @@ The classic path (sections 2–5) is unchanged and runs when `variant` is absent
 2. **Negative/Decimal Check:** Are any of the values negative (e.g., `-5`) or non-integer (e.g., `2.7`)? If so, return a `400 Bad Request` error.
 3. **Grid Size Check:** Is `gridSize` one of the valid values (4, 6, or 9)? If not, return a `400 Bad Request` error.
 4. **Mini Grid Difficulty Check:** If `gridSize` is NOT 9, are `expert` or `extreme` greater than 0? If so, return a `400 Bad Request` error — Expert and Extreme difficulties are only available for 9x9 grids.
-5. **Zero Check:** Are all five values equal to `0`? If so, return a `400 Bad Request` error with the message: "Please select at least one puzzle to generate".
-6. **Overload Check:** Does the total exceed the maximum limit of 50? If so, return a `400 Bad Request` error to prevent server overload.
+5. **Extreme Sub-Count Check:** Is `extreme` greater than `MAX_EXTREME` (5)? If so, return a `400 Bad Request` error. Extreme is the slow path in every variant, so the 50-total cap isn't enough on its own — a request of 50 Extreme puzzles satisfies the total cap but blows the `maxDuration = 60` function budget and 504s. This per-difficulty cap applies to all three variant branches (classic, Killer, Keisan) so no single request can exceed the duration budget.
+6. **Zero Check:** Are all five values equal to `0`? If so, return a `400 Bad Request` error with the message: "Please select at least one puzzle to generate".
+7. **Overload Check:** Does the total exceed the maximum limit of 50? If so, return a `400 Bad Request` error to prevent server overload.
 
 ---
 

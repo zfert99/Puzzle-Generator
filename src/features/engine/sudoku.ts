@@ -76,28 +76,32 @@ export interface SudokuPuzzle {
  * 
  * @param difficulty The requested difficulty level for the puzzle.
  * @param gridSize The dimensions of the grid (defaults to 9 for 9x9).
+ * @param rng Random source, defaulting to `Math.random`. Injectable so a seeded PRNG can produce
+ *   reproducible puzzles (deterministic tests); passing it changes nothing about correctness or
+ *   difficulty, only which specific puzzle is drawn. Threaded through fill + every digger so the
+ *   whole pipeline is seedable — matching the `calc/`/`killer/` engines' `rng` convention.
  * @returns A fully generated Sudoku puzzle and its solution.
  */
-export function generateSudoku(difficulty: Difficulty, gridSize: GridSize = 9): SudokuPuzzle {
+export function generateSudoku(difficulty: Difficulty, gridSize: GridSize = 9, rng: () => number = Math.random): SudokuPuzzle {
   const config = getGridConfig(gridSize);
 
   const solution = createEmptyGrid(config.size);
-  fillGrid(solution, config);
+  fillGrid(solution, config, rng);
   const grid = copyGrid(solution);
 
   // Apply the appropriate digging strategy based on requested difficulty
   if (difficulty === 'extreme' && gridSize === 9) {
     // Extreme puzzles require the most advanced strategies (W-Wing, ALS, AICs)
     // Only supported on 9x9 grids
-    applyExtremeDigger(grid, solution, config);
+    applyExtremeDigger(grid, solution, config, rng);
   } else if (difficulty === 'expert' && gridSize === 9) {
     // Expert puzzles use logical deduction to guarantee they require advanced strategies
     // Only supported on 9x9 grids
-    applyExhaustiveDigger(grid, config);
+    applyExhaustiveDigger(grid, config, rng);
   } else {
     // Easier puzzles (and all mini puzzles) remove a set number of clues
     // while maintaining a unique solution
-    applyQuotaDigger(grid, difficulty, config);
+    applyQuotaDigger(grid, difficulty, config, rng);
   }
 
   return { grid, solution, difficulty, gridSize };

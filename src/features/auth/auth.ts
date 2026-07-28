@@ -32,13 +32,26 @@ const socialProviders =
     ? { google: { clientId: googleId, clientSecret: googleSecret } }
     : undefined;
 
+// Trusted origins for better-auth's Origin/CSRF check. The production origin (BETTER_AUTH_URL) is
+// trusted automatically. Vercel preview deployments are served from a unique per-deployment
+// subdomain that `baseURL` can't know ahead of time, so their origin check would reject every
+// preview without help. We add THIS deployment's own Vercel origins (from Vercel's system env vars)
+// rather than a `https://*.vercel.app` wildcard — the wildcard trusted every Vercel customer's app,
+// not just this project's previews (an over-broad CSRF trust surface; AGENTS.md §6 says scope preview
+// trust narrowly). `BETTER_AUTH_TRUSTED_ORIGINS` (comma-separated) is an explicit escape hatch for any
+// additional origin (e.g. a custom preview domain) without reintroducing a wildcard.
+const vercelPreviewOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
+  .filter((host): host is string => Boolean(host))
+  .map((host) => `https://${host}`);
+const explicitTrustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const trustedOrigins = [...new Set([...vercelPreviewOrigins, ...explicitTrustedOrigins])];
+
 export const auth = betterAuth({
   baseURL: appUrl,
-  // The production origin (from BETTER_AUTH_URL) is trusted automatically. Vercel preview
-  // deployments get a unique `*.vercel.app` subdomain per branch/PR, so without this
-  // wildcard their OAuth/passkey origin checks fail on every preview — this only widens
-  // trust to Vercel's own preview domains, it can't loosen anything in production.
-  trustedOrigins: ['https://*.vercel.app'],
+  trustedOrigins,
   database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
   // Rate-limit storage: shared across Vercel's separate serverless instances via Upstash
   // when configured, instead of the library's default in-memory counters (which don't
