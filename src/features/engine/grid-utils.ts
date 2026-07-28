@@ -2,20 +2,15 @@ import type { GridConfig } from './sudoku';
 
 /**
  * The largest grid the engine supports (9×9 classic/Killer; boxless KenKen sizes 5/7 are smaller).
- * `assertGridSize` bounds every size-driven allocation below against it. The API routes already
- * validate `gridSize ∈ {4, 6, 9}` before any generation runs, so this never fires in practice — it
- * is defense-in-depth so no engine allocation (`Array(size)`, the per-line bitmask arrays) is ever
- * sized by an unbounded external value, i.e. a resource-exhaustion DoS path (CodeQL
- * `js/resource-exhaustion`). Keep it a hard guard, not a clamp: an out-of-range size is a bug, not
- * something to silently coerce into a wrong-sized grid.
+ * Every size-driven allocation below (`createEmptyGrid`'s arrays, `fillGrid`'s per-line bitmasks) is
+ * bounded against it *inline* — a `size < 1 || size > MAX_GRID_SIZE` guard in the same function, right
+ * before the allocation. The API routes already validate `gridSize ∈ {4, 6, 9}` before any generation
+ * runs, so the guard never fires in practice; it's defense-in-depth so no allocation is ever sized by
+ * an unbounded external value (a resource-exhaustion DoS path — CodeQL `js/resource-exhaustion`, which
+ * only recognises the bound when it is in-function, not delegated to a helper). Hard guard, not a
+ * clamp: an out-of-range size is a bug, not something to coerce into a wrong-sized grid.
  */
 const MAX_GRID_SIZE = 9;
-
-function assertGridSize(size: number): void {
-  if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {
-    throw new RangeError(`Unsupported grid size: ${size} (expected an integer in 1..${MAX_GRID_SIZE})`);
-  }
-}
 
 /**
  * Population count (number of set bits) via Brian Kernighan's algorithm. Used to
@@ -36,7 +31,10 @@ export function popcount(mask: number): number {
  * 0 is used throughout the engine to represent an empty cell.
  */
 export function createEmptyGrid(size: number): number[][] {
-  assertGridSize(size);
+  // Inline bound (see MAX_GRID_SIZE) — defense-in-depth against a resource-exhaustion allocation.
+  if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {
+    throw new RangeError(`Unsupported grid size: ${size} (expected an integer in 1..${MAX_GRID_SIZE})`);
+  }
   return Array.from({ length: size }, () => Array(size).fill(0));
 }
 
@@ -118,7 +116,11 @@ export function shuffle(array: number[], rng: () => number = Math.random): numbe
  */
 export function fillGrid(grid: number[][], config: GridConfig, rng: () => number = Math.random): boolean {
   const { size, boxWidth, boxHeight, maxNum } = config;
-  assertGridSize(size); // bound the per-line bitmask allocations below (defense-in-depth; see MAX_GRID_SIZE)
+  // Inline bound (see MAX_GRID_SIZE) — keeps the per-line bitmask allocations below from being sized
+  // by an unbounded external value (resource exhaustion).
+  if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {
+    throw new RangeError(`Unsupported grid size: ${size} (expected an integer in 1..${MAX_GRID_SIZE})`);
+  }
   const fullMask = (1 << maxNum) - 1;
   const boxesPerRow = size / boxWidth;
   // Boxless (Latin-square-only) sizes carry a row-strip box sentinel (boxWidth = size,
