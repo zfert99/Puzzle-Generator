@@ -6,7 +6,15 @@ This module provides pure, stateless utility functions for manipulating and veri
 
 **Why:** We need a standardized way to generate the initial state of a Sudoku puzzle. We use `0` to represent empty cells rather than `null` or `undefined` because it's easier to serialize and process mathematically in the solver logic.
 
+**Bounded size (`assertGridSize`):** both `createEmptyGrid` and `fillGrid` first assert `size` is an
+integer in `1..MAX_GRID_SIZE` (9), throwing `RangeError` otherwise. The API routes already validate
+`gridSize ∈ {4, 6, 9}` before any generation, so this never fires in practice — it's defense-in-depth
+so no engine allocation (`Array(size)`, the per-line bitmask arrays in `fillGrid`) is ever sized by an
+unbounded external value (a resource-exhaustion DoS path; CodeQL `js/resource-exhaustion`). It's a
+hard guard, not a clamp: an out-of-range size is a bug, not something to coerce into a wrong-sized grid.
+
 ```text
+Assert size is an integer in 1..9 (throw RangeError otherwise).
 Initialize a 2D array of the given size.
 Fill every cell with the integer 0.
 Return the 2D array.

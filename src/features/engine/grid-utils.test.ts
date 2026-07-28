@@ -48,6 +48,16 @@ describe('createEmptyGrid', () => {
     expect(g).toHaveLength(9);
     expect(g.every(row => row.length === 9 && row.every(v => v === 0))).toBe(true);
   });
+
+  it.each([4, 5, 6, 7, 9])('accepts every supported grid size (%i)', (size) => {
+    expect(createEmptyGrid(size)).toHaveLength(size);
+  });
+
+  // Defense-in-depth: an allocation size must never come from an unbounded value (resource
+  // exhaustion). Out-of-range / non-integer sizes throw rather than allocating.
+  it.each([0, -1, 10, 100, 1_000_000, 2.5, NaN])('throws RangeError on an unsupported size (%p)', (size) => {
+    expect(() => createEmptyGrid(size)).toThrow(RangeError);
+  });
 });
 
 describe('copyGrid', () => {
