@@ -21,7 +21,13 @@ import { upstashRateLimitStorage } from './rate-limit-storage';
  * only on `session.userId`, so the auth-library choice stays isolated here.
  */
 const appUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
-const rpID = new URL(appUrl).hostname; // e.g. "localhost" in dev, the domain in prod
+// rpID defaults to the app URL's hostname, but can be pinned to the apex ahead of
+// the multi-zone migration so passkeys survive the move to biscuitlab.net/puzzles.
+// A credential is bound to its rpID; see Docs/multi-zone-migration-plan.md §1-2.
+const rpID = process.env.PASSKEY_RP_ID ?? new URL(appUrl).hostname;
+// WebAuthn origin is scheme+host only (no path); derive it so a future
+// BETTER_AUTH_URL that carries a "/puzzles" path still yields the correct origin.
+const passkeyOrigin = new URL(appUrl).origin;
 
 // Register Google only when its credentials exist, so a missing OAuth app doesn't break
 // the build or startup — email/password + passkeys still work without it.
@@ -74,7 +80,7 @@ export const auth = betterAuth({
   },
   ...(socialProviders ? { socialProviders } : {}),
   plugins: [
-    passkey({ rpID, rpName: 'Puzzle Generator', origin: appUrl }),
+    passkey({ rpID, rpName: 'Puzzle Generator', origin: passkeyOrigin }),
     nextCookies(), // MUST be last: attaches Set-Cookie via Next's cookies() in server actions.
   ],
 });

@@ -19,8 +19,9 @@ present. A missing OAuth app then can't break the build or startup — email/pas
 passkeys still work without it. This lets the backend ship before the OAuth app exists.
 
 ```text
-appUrl  = BETTER_AUTH_URL (or http://localhost:3000)
-rpID    = hostname of appUrl        (passkey relying-party id)
+appUrl        = BETTER_AUTH_URL (or http://localhost:3000)
+rpID          = PASSKEY_RP_ID  ??  hostname of appUrl    (passkey relying-party id)
+passkeyOrigin = origin of appUrl (scheme+host, no path)
 
 betterAuth:
   baseURL:        appUrl
@@ -29,7 +30,7 @@ betterAuth:
   rateLimit.customStorage — ONLY if Upstash env creds exist (see below)
   emailAndPassword: enabled, password hashing overridden to Argon2id (see password.ts)
   socialProviders: google — ONLY if its env creds exist
-  plugins: [ passkey(rpID, rpName, origin=appUrl), nextCookies() ]   # nextCookies LAST
+  plugins: [ passkey(rpID, rpName, origin=passkeyOrigin), nextCookies() ]   # nextCookies LAST
 ```
 
 ## Why `trustedOrigins` is scoped to this deployment (not a Vercel wildcard)
@@ -54,10 +55,25 @@ calls out scoping preview trust narrowly, so this was tightened:
   origin (e.g. a custom preview or staging domain) without reintroducing a wildcard.
 - **De-duplicated** via a `Set` before being passed to better-auth.
 
-Note: passkeys still bind to the stable `rpID` from `BETTER_AUTH_URL`, so passkey login across
+Note: passkeys still bind to the stable `rpID` (see the next section), so passkey login across
 changing preview domains is a separate constraint — this change is only about the Origin/CSRF trust
 surface for the auth endpoints. Original wildcard added while auditing against
 `Docs/research/ai-assisted-nextjs-security-reference.md`; scoped down in the follow-up review pass.
+
+## Why `rpID`/`origin` are overridable (multi-zone migration groundwork)
+
+**Why:** a passkey credential is permanently bound to the `rpID` it was created under, and
+WebAuthn requires the `rpID` to be a registrable domain suffix of the serving origin. When
+Puzzle Lab moves from `puzzles.biscuitlab.net` to `biscuitlab.net/puzzles`, an `rpID` derived
+from the old host would become invalid on the new origin and break auth. So:
+
+- **`rpID = process.env.PASSKEY_RP_ID ?? hostname(appUrl)`** — defaults to today's behaviour, but
+  lets the apex (`biscuitlab.net`) be pinned via env *before* the migration, while still serving
+  from the subdomain (the apex is a valid suffix of it). Passkeys registered under the apex then
+  survive the move. Changing `rpID` invalidates existing passkeys once — do it early, on its own.
+- **`passkeyOrigin = origin of appUrl`** — the WebAuthn `origin` is scheme+host with no path; once
+  `BETTER_AUTH_URL` carries a `/puzzles` path, passing `appUrl` verbatim would be the wrong origin,
+  so it's derived. Full sequence: `Docs/multi-zone-migration-plan.md`.
 
 ## Why rate-limit storage is conditional (July 2026)
 
