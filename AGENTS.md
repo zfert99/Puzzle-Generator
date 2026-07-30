@@ -10,6 +10,20 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 Whenever we generate a new file, create a corresponding markdown file (Plain English Pseudocode) for it.
 Whenever we edit an existing file, update its corresponding markdown file to reflect the changes.
+
+**Backfill docs before every PR.** Before opening any pull request, bring all documentation
+current as part of that same PR — never as a follow-up. Verify and update, as applicable:
+
+- The mirrored `.md` file for every `.ts`/`.tsx` touched (per the two rules above).
+- `Docs/roadmap.md` and the `README.md` status table when a phase's scope or status changed
+  (see Roadmap Rules).
+- A `Docs/research/*.md` record for any roadblock, plan divergence, or incident hit while
+  building (see Roadblock & Research Rules).
+- Markdown linting on every doc changed (`npx markdownlint-cli`).
+
+A PR that ships code with stale, missing, or unlinted docs is incomplete. If a fix or
+incident is discovered *after* a PR merges (e.g. during production smoke-testing), record it
+in `Docs/` and land that doc via its own quick follow-up PR rather than leaving it uncommitted.
 <!-- END:documentation-rules -->
 
 <!-- BEGIN:roadmap-rules -->
