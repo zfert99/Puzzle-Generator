@@ -42,7 +42,8 @@ describe('PuzzleForm Component', () => {
 
     // Defaults: gridSize=9, easy=2, medium=2, hard=2, expert=0, extreme=0
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/generate', expect.objectContaining({
+    // Path carries the '/puzzles' basePath via apiPath() — Next does not prefix fetch() (see src/lib/base-path.ts).
+    expect(fetchMock).toHaveBeenCalledWith('/puzzles/api/generate', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0, gridSize: 9 }),

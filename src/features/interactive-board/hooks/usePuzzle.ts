@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { apiPath } from '@/lib/base-path';
 import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
@@ -31,7 +32,7 @@ export function usePuzzle() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/puzzle', {
+      const res = await fetch(apiPath('/api/puzzle'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ difficulty, gridSize, variant, noOp }),

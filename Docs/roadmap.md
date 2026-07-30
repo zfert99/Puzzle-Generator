@@ -772,6 +772,25 @@ a real regression test this time, not just manual verification.
 
 ---
 
+### Multi-zone cutover regression — `fetch()` and the basePath ✅ Fixed (July 30, 2026)
+
+After the multi-zone migration set `basePath: '/puzzles'` (`next.config.ts`), puzzle
+generation (`/play`), the daily (`/daily`), and PDF export (`/generate`) all silently
+stopped working. Root cause: **Next does not prepend `basePath` to `fetch()`** (only to
+`<Link>`/`next/image`/`router`/`/_next/*` assets), so every client `fetch('/api/...')`
+resolved to the hub's root zone and 404'd. The auth client had been migrated
+(`basePath: '/puzzles/api/auth'`); the app's own nine data-fetch calls were missed.
+
+Fixed with a single source-of-truth helper `src/lib/base-path.ts` (`apiPath()`), applied
+to all nine calls, plus a three-place sync note (`next.config.ts` ↔ `base-path.ts` ↔
+`auth-client.ts`). Verified via dev smoke (`/puzzles/api/puzzle` → 200; bare path → 404)
+and the full 353-test suite. **Guardrail:** any new client `fetch('/api/...')` MUST go
+through `apiPath()`. Full write-up:
+[multi-zone-basepath-fetch-fix.md](research/multi-zone-basepath-fetch-fix.md); folded into
+the [migration plan](multi-zone-migration-plan.md) §3/§4.
+
+---
+
 ## Key Decisions
 
 These were open questions earlier in the roadmap; all are now resolved.

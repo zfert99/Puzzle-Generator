@@ -33,7 +33,8 @@ describe('usePuzzle', () => {
       await result.current.fetchPuzzle({ difficulty: 'hard', gridSize: 9 });
     });
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/puzzle', expect.objectContaining({
+    // Path carries the '/puzzles' basePath via apiPath() — Next does not prefix fetch() (see src/lib/base-path.ts).
+    expect(fetchMock).toHaveBeenCalledWith('/puzzles/api/puzzle', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ difficulty: 'hard', gridSize: 9, variant: 'classic' }),

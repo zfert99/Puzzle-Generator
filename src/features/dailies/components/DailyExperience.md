@@ -22,6 +22,11 @@ phase gate — so the completed daily can't leak the *other* way onto `/play` (s
 (the stored, cron-generated board) via `useDaily` — never from the client generator. This
 also keeps generation off the main thread and out of SSR (AGENTS.md §1).
 
+> **basePath:** the three direct `fetch()` calls here — `/api/me/today`, `/api/solve`,
+> `/api/daily/start` — go through `apiPath()` (`src/lib/base-path.ts`) to prepend the
+> `/puzzles` basePath. Next does not apply basePath to `fetch()`, so bare `/api/...` paths
+> 404 under the multi-zone rewrite (the bug that broke the daily after cutover).
+
 ```text
 Until hydrated: render a neutral placeholder (avoids reading persisted state during SSR).
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { DAILY_BOARDS, formatDailyKey, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useSession } from '@/features/auth/auth-client';
+import { apiPath } from '@/lib/base-path';
 import { useCountUp } from '@/features/juice/useCountUp';
 import { BOT_USER_ID } from '@/features/leaderboards/bot-identity';
 
@@ -63,7 +64,7 @@ export function LeaderboardView({
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/leaderboard?difficulty=${difficulty}${date ? `&date=${date}` : ''}`)
+    fetch(apiPath(`/api/leaderboard?difficulty=${difficulty}${date ? `&date=${date}` : ''}`))
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!active) return;
@@ -97,13 +98,13 @@ export function LeaderboardView({
   useEffect(() => {
     if (!session || date) return;
     let active = true;
-    fetch('/api/me/streak')
+    fetch(apiPath('/api/me/streak'))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (active) setStreak(d?.streak ?? null);
       })
       .catch(() => {});
-    fetch('/api/me/bests')
+    fetch(apiPath('/api/me/bests'))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (active) setBests(d?.bests ?? []);
