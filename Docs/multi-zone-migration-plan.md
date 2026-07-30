@@ -137,14 +137,24 @@ route handler moves to `/puzzles/api/cron/daily`:
    ]
 ```
 
-**better-auth with a path in the base URL (validation doc §3 — confirmed):**
+**better-auth under Next basePath (CORRECTED — safety review §3):**
 
-- `BETTER_AUTH_URL` becomes `https://biscuitlab.net/puzzles`. **The client must be
-  pointed at the prefixed auth path** or `/api/auth/*` calls 404. Use the client
-  **`basePath`**, not `baseURL`: `createAuthClient({ basePath: '/puzzles/api/auth' })`.
-  (Do not pass a relative `baseURL` — better-auth runs `new URL(baseURL)`, which throws
-  `Invalid base URL` at build. With no `baseURL`, it resolves the origin itself and
-  appends `basePath`, so it stays env-agnostic.) Test the full round-trip.
+- **`BETTER_AUTH_URL` must be ORIGIN-ONLY: `https://biscuitlab.net`.** A path in it
+  makes better-auth's router base `/puzzles` (not `/puzzles/api/auth`) — the exact
+  404 bug we hit (`withPath` drops the default basePath once the URL has a path).
+- **The SERVER `basePath` is conditional on a basePath-strip test** — run it first
+  (log `request.url` in the `[...all]` route on a GET to
+  `/puzzles/api/auth/get-session`; see `Docs/multi-zone-cutover-log.md`):
+  - **Not stripped** (URL keeps `/puzzles`): set server `basePath: '/puzzles/api/auth'`.
+  - **Stripped** (URL is `/api/auth/...`): leave server `basePath` default
+    (`/api/auth`) AND set the Google provider **`redirectURI`** explicitly to
+    `https://biscuitlab.net/puzzles/api/auth/callback/google` (the stripped base
+    would otherwise generate it without `/puzzles`).
+- The **client** uses `basePath: '/puzzles/api/auth'` either way. Do NOT pass a
+  relative `baseURL` — `new URL(baseURL)` throws `Invalid base URL` at build.
+- Cookie `Path` is hard-coded `/` in better-auth, so `get-session` on normal pages
+  works regardless. If PG uses better-auth **plugins** with their own routes, test
+  each explicitly (#4715 reported a plugin route still 404'd after the workaround).
 - `trustedOrigins` includes `https://biscuitlab.net` (already scoped by PR #25's
   env mechanism — add the apex).
 - Keep cookies **host-only** — do NOT set `Domain=.biscuitlab.net`. Both zones are
@@ -156,8 +166,13 @@ route handler moves to `/puzzles/api/cron/daily`:
 - Update the Google OAuth **Authorized redirect URI** →
   `https://biscuitlab.net/puzzles/api/auth/callback/google` and **JS origins** →
   `https://biscuitlab.net`.
-- Set `images.remotePatterns` for any external image hosts (image optimization
-  rides the `/puzzles/:path*` rewrite).
+- Set `images.remotePatterns` **and `images.qualities`** (Next 16 requires an
+  explicit qualities allowlist — a quality not listed returns 400) for image
+  optimization, which rides the `/puzzles/:path*` rewrite at `/puzzles/_next/image`.
+- **Emit per-page canonicals** (safety review §7 — top SEO gap): add
+  `alternates: { canonical: './' }` in the root layout so every page declares its
+  `biscuitlab.net/puzzles/...` URL, resolved against `metadataBase`. The exposed
+  origin alias makes this important, not optional.
 - Full absolute-URL audit (validation doc §9): OG images, sitemap `loc`, JSON-LD
   URLs, canonical/alternate links, `robots.txt` `Sitemap:`, WebAuthn `origin`,
   OAuth callbacks, transactional email + share links, any hardcoded
@@ -171,19 +186,20 @@ route handler moves to `/puzzles/api/cron/daily`:
 2. [x] Ship §2 (rpID/origin decoupling) — ✅ merged in #27.
 3. [x] **rpID move** — ✅ `PASSKEY_RP_ID=biscuitlab.net` set on Puzzle Lab prod;
        a fresh passkey registered via the new `/account` page (#28) round-trips.
-4. [ ] Rewrite target is the deployment's own `*.vercel.app` URL (distinct from
-       `puzzles.biscuitlab.net`, so no redirect loop). Vercel auto-`noindex`es
-       `*.vercel.app`; **no dedicated origin host and no Host-based `noindex`** —
-       that would fire on the proxied response too and deindex the public URLs
-       (validation doc §1).
-5. [ ] `metadataBase = https://biscuitlab.net/puzzles` + per-page canonicals as
-       the primary anti-index mitigation for the origin URL.
-6. [~] Ship §3 (basePath + `serverActions.allowedOrigins` + metadataBase + cron
-       path + client `basePath`) — **this PR (draft); merge at the flip.**
-7. [ ] `BETTER_AUTH_URL` → `https://biscuitlab.net/puzzles`; the auth **client**
-       `basePath` is `/puzzles/api/auth` (in code); add `https://biscuitlab.net` to
-       `trustedOrigins`; keep cookies **host-only** (no `.biscuitlab.net`); update
-       Google OAuth redirect URI + JS origins.
+4. [ ] Rewrite target = **dedicated custom host `origin-puzzles.biscuitlab.net`**
+       on this project (grey-cloud DNS), **Deployment Protection left ON** (safety
+       review §1). The generated `*.vercel.app` alias does NOT work — Standard
+       Protection covers it; custom domains are exempt. Do NOT disable protection.
+5. [ ] `metadataBase = https://biscuitlab.net/puzzles` + **per-page canonicals**
+       (`alternates: { canonical: './' }` in the root layout) — top SEO gap, and
+       the primary anti-index mitigation for the origin URL. No Host-based `noindex`.
+6. [x] Ship §3 (basePath + `serverActions.allowedOrigins` + metadataBase + cron
+       path + client `basePath`) — ✅ merged in #29 (deploys at the flip).
+7. [ ] `BETTER_AUTH_URL` → **`https://biscuitlab.net`** (origin only — a path breaks
+       the router base); server `basePath` per the strip test (§3); client
+       `basePath` is `/puzzles/api/auth` (in code, #29); add `https://biscuitlab.net`
+       to `trustedOrigins`; cookies **host-only**; update Google OAuth redirect URI
+       (+ explicit `redirectURI` if basePath is stripped) + JS origins.
 8. [ ] After the hub's rewrite + 301 are live: verify `biscuitlab.net/puzzles`
        serves with assets + auth intact, `puzzles.biscuitlab.net` 301s without
        looping, and a passkey registered at step 3 still works.
