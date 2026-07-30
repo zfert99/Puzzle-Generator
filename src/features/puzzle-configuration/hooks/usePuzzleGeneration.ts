@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiPath } from '@/lib/base-path';
 
 interface GenerationConfig {
   variant?: 'classic' | 'killer' | 'calc';
@@ -31,7 +32,7 @@ export function usePuzzleGeneration() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/generate', {
+      const res = await fetch(apiPath('/api/generate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)

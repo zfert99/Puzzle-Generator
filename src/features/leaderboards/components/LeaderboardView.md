@@ -24,6 +24,10 @@ inside async callbacks, and the loading flash on tab-switch is driven from the c
 synchronous reset. All ranking/ownership is decided server-side; this is a pure view over
 `/api/leaderboard` and `/api/me/streak`.
 
+All three endpoints are requested through `apiPath()` (`src/lib/base-path.ts`), which
+prepends the `/puzzles` basePath — Next does not apply basePath to `fetch()`, so bare
+`/api/...` paths 404 under the multi-zone rewrite.
+
 ```text
 effect [difficulty] -> GET /api/leaderboard -> setEntries/setMe (async)
 effect [session]    -> if signed in, GET /api/me/streak + /api/me/bests -> setStreak/setBests (async)

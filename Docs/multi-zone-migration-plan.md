@@ -177,6 +177,15 @@ route handler moves to `/puzzles/api/cron/daily`:
   URLs, canonical/alternate links, `robots.txt` `Sitemap:`, WebAuthn `origin`,
   OAuth callbacks, transactional email + share links, any hardcoded
   `puzzles.biscuitlab.net`.
+- **Same-origin `fetch()` calls need the basePath too (POST-CUTOVER REGRESSION —
+  fixed 2026-07-30).** Next does NOT prepend `basePath` to `fetch()` (only to
+  `<Link>`/`next/image`/`router`/`/_next/*`), so every client `fetch('/api/...')`
+  404s under the `/puzzles` mount. This broke generation, the daily, and PDF export
+  after cutover. Fix: `src/lib/base-path.ts` (`apiPath()`), applied to all nine app
+  fetch calls. This is the *relative*-URL counterpart to the absolute-URL audit above
+  — it looks correct precisely because it's relative. See
+  `Docs/research/multi-zone-basepath-fetch-fix.md`. **Guardrail:** any new client
+  `fetch('/api/...')` MUST go through `apiPath()`.
 
 ---
 
@@ -203,6 +212,11 @@ route handler moves to `/puzzles/api/cron/daily`:
 8. [ ] After the hub's rewrite + 301 are live: verify `biscuitlab.net/puzzles`
        serves with assets + auth intact, `puzzles.biscuitlab.net` 301s without
        looping, and a passkey registered at step 3 still works.
+9. [x] **Post-cutover regression fixed (2026-07-30):** client `fetch('/api/...')`
+       calls did not carry the `/puzzles` basePath, 404ing generation, the daily,
+       and PDF export. Wrapped all nine in `apiPath()` (`src/lib/base-path.ts`);
+       verified via dev smoke (`/puzzles/api/puzzle` → 200, bare path → 404) + full
+       suite. Write-up: [multi-zone-basepath-fetch-fix.md](research/multi-zone-basepath-fetch-fix.md).
 
 ## 5. Rollback
 

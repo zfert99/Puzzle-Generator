@@ -3,6 +3,10 @@
 Client hook that fetches today's daily puzzle from `GET /api/daily?difficulty=…` and
 tracks the async lifecycle (`loading`, `error`).
 
+> The request goes through `apiPath()` (`src/lib/base-path.ts`), which prepends the
+> `/puzzles` basePath. Next does not apply basePath to `fetch()`, so a bare `/api/daily`
+> 404s under the multi-zone rewrite — the bug that broke the daily after cutover.
+
 ## Why it is separate from `usePuzzle`
 
 **Why:** `usePuzzle` **POSTs** to generate a fresh throwaway puzzle; a daily is instead

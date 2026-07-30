@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { apiPath } from '@/lib/base-path';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
@@ -18,7 +19,8 @@ export type DailyPuzzleResponse =
   | (Omit<CalcPuzzle, 'difficulty'> & DailyBase);
 
 /**
- * Fetches today's daily puzzle from `GET /api/daily?difficulty=…`. The board's heavy
+ * Fetches today's daily puzzle from `GET /api/daily?difficulty=…` (via `apiPath`, which adds
+ * the `/puzzles` basePath — Next does not prefix `fetch()`; see `src/lib/base-path.ts`). The board's heavy
  * logic never runs during SSR — this only fires client-side on a user action — so it
  * sidesteps the hydration-mismatch pitfall (AGENTS.md §1), same as `usePuzzle`.
  *
@@ -34,7 +36,7 @@ export function useDaily() {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/daily?difficulty=${difficulty}${date ? `&date=${date}` : ''}`,
+        apiPath(`/api/daily?difficulty=${difficulty}${date ? `&date=${date}` : ''}`),
         { method: 'GET' },
       );
 

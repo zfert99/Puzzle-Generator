@@ -17,6 +17,7 @@ import { Sticker } from '@/features/chaos/Sticker';
 import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
+import { apiPath } from '@/lib/base-path';
 import { DAILY_BOARDS, formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { useDaily } from '../hooks/useDaily';
 
@@ -141,7 +142,7 @@ export default function DailyExperience() {
   useEffect(() => {
     if (!session) return;
     let active = true;
-    fetch('/api/me/today')
+    fetch(apiPath('/api/me/today'))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (active && d?.completed) setCompletedToday(d.completed);
@@ -163,7 +164,7 @@ export default function DailyExperience() {
     if (!session || dailyDate !== todayIso) return;
 
     const { grid, mistakes, elapsedTime } = useBoardStore.getState();
-    fetch('/api/solve', {
+    fetch(apiPath('/api/solve'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ difficulty, grid, mistakes, timeMs: elapsedTime * 1000 }),
@@ -195,7 +196,7 @@ export default function DailyExperience() {
 
     // Record the server-side start (marks the attempt + one-per-day lock). Called
     // unconditionally; a signed-out caller just gets a harmless 401.
-    fetch('/api/daily/start', {
+    fetch(apiPath('/api/daily/start'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ difficulty: chosen }),

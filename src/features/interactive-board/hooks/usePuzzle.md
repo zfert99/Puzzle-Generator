@@ -23,7 +23,9 @@ Returns `{ puzzle, loading, error, fetchPuzzle }`:
 ## What `fetchPuzzle` does
 
 1. Clear any previous error; set `loading` true.
-2. `POST` the `{ difficulty, gridSize }` as JSON to `/api/puzzle`.
+2. `POST` the `{ difficulty, gridSize }` as JSON to `apiPath('/api/puzzle')`. `apiPath`
+   prepends the `/puzzles` basePath — Next does not apply basePath to `fetch()`, so a bare
+   `/api/puzzle` 404s under the multi-zone rewrite (see `src/lib/base-path.md`).
 3. If the response is not OK, read the JSON body and throw its `error` field (the
    server sends a safe, generic message — no stack traces).
 4. On success, parse the puzzle JSON, store it in `puzzle`, and return it.
