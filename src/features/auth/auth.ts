@@ -25,17 +25,39 @@ const appUrl = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
 // the multi-zone migration so passkeys survive the move to biscuitlab.net/puzzles.
 // A credential is bound to its rpID; see Docs/multi-zone-migration-plan.md §1-2.
 const rpID = process.env.PASSKEY_RP_ID ?? new URL(appUrl).hostname;
-// WebAuthn origin is scheme+host only (no path); derive it so a future
-// BETTER_AUTH_URL that carries a "/puzzles" path still yields the correct origin.
-const passkeyOrigin = new URL(appUrl).origin;
+// The public scheme+host, with any path stripped — used as both the WebAuthn `origin`
+// (which is scheme+host only) and better-auth's `baseURL`. Deriving the origin (rather
+// than passing `appUrl` verbatim) is load-bearing for the multi-zone setup: under
+// `basePath: '/puzzles'`, Next strips `/puzzles` before the route handler, so better-auth
+// receives requests at `/api/auth/*` and its router must match there. better-auth sets its
+// router base from `new URL(baseURL).pathname`, so a `baseURL` carrying `/puzzles` (as the
+// env once did) mounts the router at `/puzzles` and every endpoint 404s. An origin-only
+// `baseURL` mounts it at the default `/api/auth`, matching what the handler actually gets —
+// and stays correct even if `BETTER_AUTH_URL` is misconfigured back to carrying a path.
+// See Docs/multi-zone-migration-plan.md and the hub's Docs/multi-zone-cutover-log.md.
+const publicOrigin = new URL(appUrl).origin;
 
 // Register Google only when its credentials exist, so a missing OAuth app doesn't break
 // the build or startup — email/password + passkeys still work without it.
 const googleId = process.env.GOOGLE_CLIENT_ID;
 const googleSecret = process.env.GOOGLE_CLIENT_SECRET;
+// The OAuth callback is the one absolute URL better-auth builds server-side that the
+// origin-only `baseURL` gets wrong: it would derive `${publicOrigin}/api/auth/callback/google`
+// (no `/puzzles`), which the hub's `/puzzles/*` rewrite doesn't cover and Google can't reach.
+// Pin it explicitly to the public, `/puzzles`-prefixed path the browser and Google actually
+// use (the mirror of the client's `basePath: '/puzzles/api/auth'`); the hub rewrites it to the
+// origin and Next strips `/puzzles` back off before the handler. This value must also be
+// whitelisted as an Authorized redirect URI in the Google Cloud console.
+const googleRedirectURI = `${publicOrigin}/puzzles/api/auth/callback/google`;
 const socialProviders =
   googleId && googleSecret
-    ? { google: { clientId: googleId, clientSecret: googleSecret } }
+    ? {
+        google: {
+          clientId: googleId,
+          clientSecret: googleSecret,
+          redirectURI: googleRedirectURI,
+        },
+      }
     : undefined;
 
 // Trusted origins for better-auth's Origin/CSRF check. The production origin (BETTER_AUTH_URL) is
@@ -56,7 +78,7 @@ const explicitTrustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
 const trustedOrigins = [...new Set([...vercelPreviewOrigins, ...explicitTrustedOrigins])];
 
 export const auth = betterAuth({
-  baseURL: appUrl,
+  baseURL: publicOrigin,
   trustedOrigins,
   database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
   // Rate-limit storage: shared across Vercel's separate serverless instances via Upstash
@@ -80,7 +102,7 @@ export const auth = betterAuth({
   },
   ...(socialProviders ? { socialProviders } : {}),
   plugins: [
-    passkey({ rpID, rpName: 'Puzzle Generator', origin: passkeyOrigin }),
+    passkey({ rpID, rpName: 'Puzzle Generator', origin: publicOrigin }),
     nextCookies(), // MUST be last: attaches Set-Cookie via Next's cookies() in server actions.
   ],
 });

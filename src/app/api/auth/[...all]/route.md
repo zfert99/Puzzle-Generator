@@ -17,5 +17,13 @@ export { GET, POST } = toNextJsHandler(auth)
 ## Note
 
 `runtime = "nodejs"` is required: the Argon2id hasher (`@node-rs/argon2`) and the Neon DB
-driver are Node-native and crash on the Edge runtime. The OAuth redirect URI Google must be
-given is `<BETTER_AUTH_URL>/api/auth/callback/google`.
+driver are Node-native and crash on the Edge runtime.
+
+Under the multi-zone `basePath: '/puzzles'`, Next strips `/puzzles` before this handler
+runs, so it receives requests at `/api/auth/*` (verified live — see the hub's
+`Docs/multi-zone-cutover-log.md`). The OAuth redirect URI Google must be given is the
+**public**, `/puzzles`-prefixed URL the browser uses —
+`https://biscuitlab.net/puzzles/api/auth/callback/google` — which the hub rewrites to the
+origin and Next strips back off before reaching here. It is pinned via the Google
+provider's `redirectURI` in [`auth.ts`](../../../features/auth/auth.md), not derived from
+`baseURL` (which is origin-only).
