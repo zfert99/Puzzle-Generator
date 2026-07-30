@@ -60,6 +60,35 @@ Any new client-side `fetch('/api/...')` MUST go through `apiPath()`. A bare
 `fetch('/api/...')` is a latent 404 under the basePath. Server-side code (route handlers,
 cron) is unaffected. See [src/lib/base-path.md](../src/lib/base-path.md).
 
+## Follow-up: the daily cron missed 2026-07-30 (separate from the fetch bug)
+
+Production smoke-testing after the fetch fix surfaced a **second, unrelated** cutover
+casualty: the daily-generation cron did not run for **2026-07-30**, so every daily board
+was missing that day. This is *not* the `fetch()` bug — the cron is server-to-server
+(Vercel → the guarded route handler) and never touches client `fetch()`.
+
+**Evidence (read-only query of `daily_puzzles.created_at`, prod DB):** dailies were
+generated on time every day 07-16 → 07-29 (always just after 00:00 UTC; one earlier
+one-off miss on 07-24, pre-migration), then nothing for 07-30.
+
+**Most likely cause:** a deploy/config-mismatch during the cutover window — when the
+00:00 UTC 07-30 run fired, the production deployment's registered cron path and the route's
+new basePath'd location (`/puzzles/api/cron/daily`) were momentarily out of sync, so the
+scheduled invocation 404'd and inserted nothing. Everything reconciled by the later deploys
+(#29–#35): the route now returns 401 (reachable + `CRON_SECRET`-guarded), `vercel.json`'s
+cron path matches, and the old path 404s.
+
+**Remediation applied (2026-07-30 ~19:52 UTC):** backfilled today by calling
+`generateDailyPuzzles(db, <today UTC>)` directly against the prod DB (the same idempotent
+function the cron runs; `onConflictDoNothing` on `(date, difficulty)`). Result:
+**30/30 boards inserted**, all now serving `200` via `/puzzles/api/daily`, and the
+leaderboard populated (Sudoku Bot seeded).
+
+**Open item:** confirm the **07-31 00:00 UTC** scheduled run self-heals (config is
+internally consistent, so it should). The exact 07-30 failure log lives in Vercel's cron
+execution history — checking runs older than the retention window requires a Vercel Pro
+plan, so the deploy-window explanation above stands as the working root cause.
+
 ## Related docs
 
 - Deep write-up: [research/multi-zone-basepath-fetch-fix.md](research/multi-zone-basepath-fetch-fix.md)
