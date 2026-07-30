@@ -4,8 +4,15 @@ import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF } from '@/feature
 import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
 import { logger } from '@/lib/logger';
+import { rateLimit, clientIp } from '@/lib/rate-limit';
 
 const MAX_PUZZLES = 50;
+// Extreme puzzles are the slow path across every variant — Killer Extreme ≈ 5.5 s each, classic
+// Extreme digs ≈ 0.9 s each (full-solution regen, up to 50 retries), and 9×9 Keisan Extreme runs
+// the tier-5/6 bounded-recursion solver. The total-count cap (50) isn't enough on its own: 50
+// Extreme of any variant blows the `maxDuration = 60` budget and 504s. Cap the Extreme sub-count so
+// no single request can exceed the function duration. Applied to all three variant branches below.
+const MAX_EXTREME = 5;
 
 /** A downloadable-PDF response with the given filename. */
 function pdfResponse(pdf: Buffer, filename: string): NextResponse {
@@ -40,6 +47,16 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const startTime = performance.now();
   try {
+    // Per-IP throttle: this route runs the CPU-heavy generator + PDF render with maxDuration=60 and
+    // takes no auth, so it's the prime DoS/cost target (review finding H1). 10 req/min per IP.
+    const rl = await rateLimit(`generate:${clientIp(req)}`, { max: 10, windowSec: 60 });
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please slow down and try again shortly.' },
+        { status: 429, headers: rl.retryAfter ? { 'Retry-After': String(rl.retryAfter) } : undefined },
+      );
+    }
+
     let body;
     // Step 1: Safely parse the incoming JSON request body
     try {
@@ -62,8 +79,8 @@ export async function POST(req: NextRequest) {
       }
       // Extreme generates in ~5.5 s each (tier-5-necessary layouts are rare); cap the count so
       // a PDF request stays inside the function duration budget.
-      if (extreme > 5) {
-        return NextResponse.json({ error: 'At most 5 extreme Killer puzzles per PDF request' }, { status: 400 });
+      if (extreme > MAX_EXTREME) {
+        return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme Killer puzzles per PDF request` }, { status: 400 });
       }
       const total = easy + medium + hard + expert + extreme;
       if (total === 0) {
@@ -93,6 +110,11 @@ export async function POST(req: NextRequest) {
       }
       if ((expert > 0 || extreme > 0) && calcSize !== 9) {
         return NextResponse.json({ error: 'Expert and Extreme Keisan are only available at 9×9' }, { status: 400 });
+      }
+      // 9×9 Keisan Extreme runs the tier-5/6 recursion solver; cap the sub-count so a batch stays
+      // inside the function duration budget (the total cap alone allows 50 Extreme → timeout).
+      if (extreme > MAX_EXTREME) {
+        return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme Keisan puzzles per PDF request` }, { status: 400 });
       }
       const total = easy + medium + hard + expert + extreme;
       if (total === 0) {
@@ -137,6 +159,12 @@ export async function POST(req: NextRequest) {
     // Validate difficulty restrictions for mini grids
     if (gridSize !== 9 && (expert > 0 || extreme > 0)) {
       return NextResponse.json({ error: `Expert and Extreme difficulties are only available for 9x9 grids` }, { status: 400 });
+    }
+
+    // Classic Extreme digs ~0.9 s each (full-solution regen, up to 50 retries); cap the sub-count
+    // so a batch stays inside the function duration budget (the total cap alone allows 50 Extreme).
+    if (extreme > MAX_EXTREME) {
+      return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme puzzles per PDF request` }, { status: 400 });
     }
 
     // Ensure the user requested at least one puzzle

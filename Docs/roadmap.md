@@ -50,9 +50,9 @@ rotation alongside classic Sudoku.
 | **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (server-timed) | ✅ Shipped |
 | **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
 | **Engine** | Killer Sudoku — cage-aware bitmask backtracking + MRV exact solver, randomized cage generator, five-tier grader (Basic → Extreme), 6×6 beginner variant | ✅ Shipped |
-| **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and a 19-board `/daily` registry (Classic + 5 Killer tiers + Minis) | ✅ Shipped |
+| **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and a 30-board `/daily` registry (Classic + Killer + Keisan ladders + Minis) — see the [daily-redesign-plan.md](daily-redesign-plan.md) to collapse this to an 11-slot random-type ladder | ✅ Shipped |
 | **QoL** | Save & continue — one saved-game slot, puzzle archive, deep-linkable "Continue" banners | ✅ Shipped |
-| **Testing** | Vitest unit suite (239 tests) + Playwright E2E + benchmark scripts with auto-logging | ✅ Shipped |
+| **Testing** | Vitest unit suite (335 tests) + Playwright E2E + benchmark scripts with auto-logging (Sudoku solver + pipeline, plus Keisan & Killer generation) | ✅ Shipped |
 | **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) + baseline security headers | ✅ Shipped |
 | **Leaderboards** | "Sudoku Bot" — a transparent, 🤖-badged system account posting a tuned, beatable time on every daily board | ✅ Shipped |
 
@@ -76,6 +76,29 @@ rotation alongside classic Sudoku.
 > work), and **baseline security headers** (`X-Content-Type-Options`, `X-Frame-Options`,
 > `Referrer-Policy`, `Permissions-Policy`) in `next.config.ts`. **Tabled for a dedicated
 > security pass later** — see the backlog entry under "Up Next" below.
+
+<!-- -->
+
+> **Whole-app code review + remediation (July 28, 2026):** an intensive review of the full
+> app on `main`. The verified baseline was strong (clean BOLA/parameterized-query posture,
+> DB sessions, correct hydration/`"use client"` boundaries, mirrored docs), so remediation was
+> a short list, all landed with tests + docs:
+>
+> - **Per-IP rate limiting on the public generation routes** (`/api/generate`, `/api/puzzle`) —
+>   the review's top (DoS/cost) finding. New [`rate-limit.ts`](../src/lib/rate-limit.ts) reuses
+>   the existing Upstash Redis client (in-memory fallback, fails open), returning 429 +
+>   `Retry-After`. This closes the app-route half of the rate-limit backlog below (auth was
+>   already covered).
+> - **Scoped the `trustedOrigins` Vercel trust** from the `*.vercel.app` wildcard (every Vercel
+>   customer's app) down to this deployment's own origins (`VERCEL_URL`/`VERCEL_BRANCH_URL`) plus
+>   an explicit `BETTER_AUTH_TRUSTED_ORIGINS` env list.
+> - **Per-difficulty `extreme` cap** on the calc/classic `/api/generate` branches (Killer already
+>   had it) — 50 Extreme puzzles would blow the 60 s function budget; the new Keisan/Killer
+>   benchmarks confirmed Killer Extreme ≈ 6.5 s each, so 5 is the safe ceiling.
+> - **Killed the `/api/me/today` N+1** via a batched rank self-join, hardened the Keisan
+>   difficulty scorer against NaN, made the Sudoku generator **seedable** (injectable `rng`, plus
+>   a bounded digger loop), typed the PDF service off `any`, and added the previously-missing
+>   Keisan/Killer generation benchmarks (the engine had zero coverage).
 
 ---
 
@@ -370,7 +393,7 @@ CREATE TABLE solve_attempts (
 - **Polish done:** animated rank reveal, all-time personal bests ([`/api/me/bests`](../src/app/api/me/bests/route.ts)), and the `bg-pattern.svg` background asset.
 - **"Sudoku Bot" (July 2026):** a transparent, non-loginable system account
   ([bot.ts](../src/features/leaderboards/bot.ts)) that posts a hand-tuned, beatable time on
-  every one of the 19 daily boards — a visible "time to beat" while the real player base is
+  every one of the (currently 30) daily boards — a visible "time to beat" while the real player base is
   small. Seeded idempotently inside the existing `generateDailyPuzzles` pipeline (no new
   cron); badged with 🤖 + explicit text (not color alone) in
   [LeaderboardView](../src/features/leaderboards/components/LeaderboardView.tsx). Floated as
@@ -524,7 +547,7 @@ work exists yet.
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/kenken`) — the Killer branch is retired
-> **Status:** ✅ Done (feature-complete: engine + all surfaces) — **K0–K5 + a measured difficulty rebalance + the full 5-tier 9×9 ladder (K7a–K7d) + K6 Mystery / No-Op mode**. Keisan is playable, printable, discoverable, and in the daily rotation at 4×4/6×6/9×9, with a **5-tier 9×9 ladder** (easy/medium/hard/**expert**/**extreme**) at parity with Classic/Killer, plus a **🔮 Mystery (no-op) toggle** at any size/difficulty ([walkthrough](keisan-walkthrough.md)). **K7 was re-sliced** after a 9×9 de-risk found maxSize-5/T5 infeasible and the solver capped at ~T2: **K7a** (3-tier givens-gradient) → **K7b** (bounded-recursion "T5", the keen.c transplant — measured that guess *depth* never exceeds 1) → **K7c** (Expert = needs a depth-1 Nishio guess) → **K7d** (Extreme = needs *many* Nishio steps — the guess-step *count* is a monotone difficulty axis, so the research's "Option 2" won with no solver expansion). **K6** (Mystery / No-Op) landed last so it applies across the whole ladder — the operator-**union** combination table made hiding the operator a near-free add (no new solver technique). Optional follow-ons remain: a Mystery *daily* board, 5×5/7×7, and the deferred perf work below. See [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) + the [honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md). Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (reuse audit + [external plan review](research/kenken-plan-review.md), GREEN) + a [difficulty-calibration](research/kenken-difficulty-calibration.md) pass
+> **Status:** ✅ Done (feature-complete: engine + all surfaces) — **K0–K5 + a measured difficulty rebalance + the full 5-tier 9×9 ladder (K7a–K7d) + K6 Mystery / No-Op mode**. Keisan is playable, printable, discoverable, and in the daily rotation at 4×4/6×6/9×9, with a **5-tier 9×9 ladder** (easy/medium/hard/**expert**/**extreme**) at parity with Classic/Killer, plus a **🔮 Mystery (no-op) toggle** at any size/difficulty ([walkthrough](keisan-walkthrough.md)). **K7 was re-sliced** after a 9×9 de-risk found maxSize-5/T5 infeasible and the solver capped at ~T2: **K7a** (3-tier givens-gradient) → **K7b** (bounded-recursion "T5", the keen.c transplant — measured that guess *depth* never exceeds 1) → **K7c** (Expert = needs a depth-1 Nishio guess) → **K7d** (Extreme = needs *many* Nishio steps — the guess-step *count* is a monotone difficulty axis, so the research's "Option 2" won with no solver expansion). **K6** (Mystery / No-Op) landed last so it applies across the whole ladder — the operator-**union** combination table made hiding the operator a near-free add (no new solver technique). Optional follow-ons remain: a Mystery *daily* board, 5×5/7×7, and the deferred perf work below. See [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) + the [honest-ladder research](research/keisan-9x9-honest-ladder.md). Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (reuse audit + [external plan review](research/kenken-plan-review.md), GREEN) + a [difficulty-calibration](research/kenken-difficulty-calibration.md) pass
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) · [kenken-plan-review.md](research/kenken-plan-review.md)
 > **Estimated effort:** Medium-Large (the Killer machinery halves it)
 > **Prerequisite:** Phase 6 (shared cage engine, scoring, daily registry)
@@ -632,6 +655,16 @@ speed races**, **community puzzle sharing**, and a **mobile app**.
 
 The subsections below capture the remaining backlog items.
 
+### Daily redesign — random-type ladder + medals 🔜 Up next (planned July 2026)
+
+The `/daily` grew to a **30-board wall** (Classic + Killer + Keisan ladders + 15 minis) that
+overwhelms the ritual and scatters a small player base across empty leaderboards. Planned
+redesign: collapse to **11 slots** — a fixed difficulty ladder (easy→extreme) whose *puzzle
+type is rolled each day*, plus a 6-board mini set (e/m/h × 4×4/6×6) — with completion
+**medals** (bronze/silver/gold per set) designed ledger-ready as the Phase 9 crumbs faucet.
+Full design, migration (`variant` column + key reuse), and ripple into the progression plan:
+[daily-redesign-plan.md](daily-redesign-plan.md).
+
 ### KenKen 🔜 Up next (Killer's cousin)
 
 Killer Sudoku itself is now **Phase 6** (see above). **KenKen / Mathdoku** remains backlog:
@@ -672,8 +705,18 @@ reward-granting endpoints worth rate-limiting hardest:
 > session reads too — see [rate-limit-storage.md](../src/features/auth/rate-limit-storage.md)
 > for why), with an atomic `INCR`+`EXPIRE` `consume` path and fail-open behavior on Redis
 > errors. Falls back to better-auth's in-memory default when `UPSTASH_REDIS_REST_URL`/
-> `_TOKEN` (or Vercel's `KV_REST_API_URL`/`_TOKEN`) aren't set. Explicit limits on
-> reward/economy endpoints are still a Phase 9 prerequisite once those endpoints exist.
+> `_TOKEN` (or Vercel's `KV_REST_API_URL`/`_TOKEN`) aren't set.
+
+<!-- -->
+
+> [!NOTE]
+> **Per-IP rate limiting on the generation routes** ✅ Shipped (whole-app review, July 28
+> 2026) — `/api/generate` (10/min) and `/api/puzzle` (30/min) now throttle per IP via
+> [`rate-limit.ts`](../src/lib/rate-limit.ts), a fixed-window counter on the same Upstash
+> client (in-memory fallback, fails open), returning 429 + `Retry-After`. These were the
+> unauthenticated, CPU-heavy endpoints most exposed to DoS/cost-exhaustion. **Explicit limits
+> on the future reward/economy endpoints (crumbs payouts, shop purchases) are still a Phase 9
+> prerequisite** once those endpoints exist — the mechanism is now in place to apply.
 
 - **Nonce-based CSP** — the other standard security-header addition, deferred because it
   needs the two inline pre-paint `<script>` tags in `layout.tsx` (theme + reduced-motion

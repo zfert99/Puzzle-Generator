@@ -95,3 +95,29 @@
 | 2026-07-24T01:20:43.568Z | `570cabb` | HumanSolver Basic (5000x) | 0.11 ms | 9464 solves/sec |
 | 2026-07-24T01:20:43.568Z | `570cabb` | HumanSolver Advanced (5000x) | 0.18 ms | 5668 solves/sec |
 | 2026-07-24T01:20:43.568Z | `570cabb` | HumanSolver Extreme (1000x) | 12.45 ms | 80 solves/sec |
+| 2026-07-28T12:37:56.736Z | `42affa6` | Keisan Gen 9×9 Easy (20x) | 7.65 ms | N/A |
+| 2026-07-28T12:37:56.736Z | `42affa6` | Keisan Gen 9×9 Medium (20x) | 5.65 ms | N/A |
+| 2026-07-28T12:37:56.736Z | `42affa6` | Keisan Gen 9×9 Hard (20x) | 11.35 ms | N/A |
+| 2026-07-28T12:37:56.736Z | `42affa6` | Keisan Gen 9×9 Expert (10x) | 294.00 ms | N/A |
+| 2026-07-28T12:37:56.736Z | `42affa6` | Keisan Gen 9×9 Extreme (5x) | 836.00 ms | N/A |
+| 2026-07-28T12:37:56.736Z | `42affa6` | Keisan Gen 9×9 Hard Mystery (10x) | 65.70 ms | N/A |
+| 2026-07-28T12:38:10.971Z | `42affa6` | Killer Gen 9×9 Easy (20x) | 13.30 ms | N/A |
+| 2026-07-28T12:38:10.971Z | `42affa6` | Killer Gen 9×9 Medium (20x) | 99.15 ms | N/A |
+| 2026-07-28T12:38:10.971Z | `42affa6` | Killer Gen 9×9 Hard (20x) | 529.10 ms | N/A |
+| 2026-07-28T12:38:10.971Z | `42affa6` | Killer Gen 9×9 Expert (10x) | 346.20 ms | N/A |
+| 2026-07-28T12:38:10.971Z | `42affa6` | Killer Gen 9×9 Extreme (5x) | 6458.80 ms | N/A |
+| 2026-07-28T12:38:10.971Z | `42affa6` | Killer Gen 6×6 Hard (20x) | 7.85 ms | N/A |
+| 2026-07-28T12:47:22.866Z | `42affa6` | HumanSolver Basic (5000x) | 0.12 ms | 8000 solves/sec |
+| 2026-07-28T12:47:22.866Z | `42affa6` | HumanSolver Advanced (5000x) | 0.17 ms | 5777 solves/sec |
+| 2026-07-28T12:47:22.866Z | `42affa6` | HumanSolver Extreme (1000x) | 4.08 ms | 245 solves/sec |
+| 2026-07-28T12:48:13.694Z | `42affa6` | Pipeline Gen (10x Expert) | 21.20 ms | N/A |
+| 2026-07-28T12:48:13.694Z | `42affa6` | Pipeline Gen (5x Extreme) | 2737.80 ms | N/A |
+| 2026-07-30T00:00:27.446Z | `83594a5` | HumanSolver Basic (5000x) | 0.09 ms | 10626 solves/sec |
+| 2026-07-30T00:00:27.446Z | `83594a5` | HumanSolver Advanced (5000x) | 0.14 ms | 7071 solves/sec |
+| 2026-07-30T00:00:27.446Z | `83594a5` | HumanSolver Extreme (1000x) | 10.00 ms | 100 solves/sec |
+| 2026-07-30T00:01:12.169Z | `83594a5` | HumanSolver Basic (5000x) | 0.11 ms | 9197 solves/sec |
+| 2026-07-30T00:01:12.169Z | `83594a5` | HumanSolver Advanced (5000x) | 0.17 ms | 5925 solves/sec |
+| 2026-07-30T00:01:12.169Z | `83594a5` | HumanSolver Extreme (1000x) | 17.22 ms | 58 solves/sec |
+| 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Basic (5000x) | 0.13 ms | 7782 solves/sec |
+| 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Advanced (5000x) | 0.12 ms | 8095 solves/sec |
+| 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Extreme (1000x) | 15.41 ms | 65 solves/sec |

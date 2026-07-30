@@ -198,7 +198,7 @@ Ship Mystery as a **toggle on the puzzle picker**, orthogonal to size and diffic
 > **⚠️ Measured-reality correction (2026-07 de-risk).** The table below was a *pre-measurement*
 > starting point, and a 9×9 de-risk overturned three of its core assumptions. Read
 > [keisan-9x9-feasibility-findings.md](keisan-9x9-feasibility-findings.md) and the
-> [9×9 honest-ladder research](compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+> [9×9 honest-ladder research](keisan-9x9-honest-ladder.md)
 > before using these numbers. What changed:
 >
 > - **Max cage size stays 3, all tiers — not 3→5.** maxSize-5 cages are infeasible (verify ~50×

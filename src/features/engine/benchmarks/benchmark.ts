@@ -1,7 +1,6 @@
 import { generateSudoku } from '../sudoku';
 import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
+import { appendBenchmarkRows } from './benchmark-log';
 
 /**
  * Main benchmark script for the overall Sudoku Generator.
@@ -66,15 +65,10 @@ async function main() {
   try {
     const commit = execSync('git rev-parse --short HEAD').toString().trim();
     const timestamp = new Date().toISOString();
-    const logPath = path.join(__dirname, 'benchmark-logs.md');
-    
     const logEntry1 = `| ${timestamp} | \`${commit}\` | Pipeline Gen (10x Expert) | ${average.toFixed(2)} ms | N/A |\n`;
     const logEntry2 = `| ${timestamp} | \`${commit}\` | Pipeline Gen (5x Extreme) | ${extremeAverage.toFixed(2)} ms | N/A |\n`;
-    
-    if (!fs.existsSync(logPath)) {
-      fs.writeFileSync(logPath, `# Benchmark Logs\n\n<!-- markdownlint-disable MD013 MD060 -->\n\n| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
-    }
-    fs.appendFileSync(logPath, logEntry1 + logEntry2);
+
+    const logPath = appendBenchmarkRows([logEntry1, logEntry2]);
     console.log(`Logged results to ${logPath}`);
   } catch (err) {
     console.error('Failed to log benchmark:', err);

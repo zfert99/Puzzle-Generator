@@ -12,7 +12,8 @@ button. Sign-in required; scoped to the session user (BOLA).
 ```text
 requireUserId()                          # 401 if signed out
 completions = getTodayCompletions(userId, todayUTC)   # WHERE user_id + completed + date
-for each: attach rank via getUserRank
+ranks = getUserRanksForPuzzles(userId, completion puzzleIds)  # ONE batched self-join, not N+1
+for each: attach ranks.get(puzzleId)
 -> 200 { completed: { [difficulty]: { timeMs, rank } } }
 ```
 

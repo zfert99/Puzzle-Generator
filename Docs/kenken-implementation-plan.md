@@ -16,7 +16,7 @@
 > (keen.c/KSudoku/billabob difficulty levers — drove the difficulty rebalance) ·
 > [keisan-difficulty-levers.md](research/keisan-difficulty-levers.md) (per-size lever tables) ·
 > [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) (our measured
-> 9×9 de-risk — three walls) · [9×9 honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+> 9×9 de-risk — three walls) · [9×9 honest-ladder research](research/keisan-9x9-honest-ladder.md)
 > (keen.c bounded-recursion "T5", uniqueness speedups, constructive generation — drove the K7 re-slice)
 > **Pattern source:** the Killer plans — this plan reuses their slice/gate discipline and,
 > deliberately, large parts of their code.
@@ -336,7 +336,7 @@ hang Expert/Extreme on; (3) **single-cell givens are load-bearing** — ~15 give
 board from 8.5 ms → 0.5 ms verify and 65% → 100% gradable, so difficulty *is* the inverse of givens
 count and the 0-given hard end is exactly the slow, low-yield regime.
 
-The [9×9 honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+The [9×9 honest-ladder research](research/keisan-9x9-honest-ladder.md)
 resolves it: the missing "T5" is **not** a hand-coded technique but **bounded guess-and-check with a
 counted recursion depth** — exactly how Tatham's `keen.c` produces its `EXTREME`/`UNREASONABLE`
 tiers (their technique functions are literally `NULL`; the shared solver's recursion machinery does
@@ -367,7 +367,7 @@ Three sub-slices, each independently shippable and gated:
 - **K7c — 4-tier 9×9 (Expert = needs depth-1 Nishio) 📋 Next.** K7b found depth-2 never fires, so
   guess-depth gives one new tier, not two. The option-4 research
   ([verdict](research/keisan-solver-technique-expansion-research.md#-research-verdict-external-pass-complete-2026-07-27),
-  [full doc](research/compass_artifact_wf-bb40e383-544c-5bfa-a4d0-a3b6202da609_text_markdown.md))
+  [full doc](research/keisan-9x9-option4-validation.md))
   landed on: **ship the 4-tier ladder now, don't block on a fifth tier** (uneven tier counts across
   variants are normal; a *dishonest* Extreme is worse than none). So K7c adds **Expert** to the 9×9
   ladder using the K7b solver — Expert = a 0-given board whose hardest required step is a depth-1

@@ -24,7 +24,7 @@ rpID    = hostname of appUrl        (passkey relying-party id)
 
 betterAuth:
   baseURL:        appUrl
-  trustedOrigins: ['https://*.vercel.app']   # see below
+  trustedOrigins: this deployment's own Vercel origins + explicit env list   # see below
   database: drizzleAdapter(db, provider "pg", schema = auth tables)
   rateLimit.customStorage — ONLY if Upstash env creds exist (see below)
   emailAndPassword: enabled, password hashing overridden to Argon2id (see password.ts)
@@ -32,17 +32,32 @@ betterAuth:
   plugins: [ passkey(rpID, rpName, origin=appUrl), nextCookies() ]   # nextCookies LAST
 ```
 
-## Why `trustedOrigins` includes a Vercel preview wildcard (July 2026)
+## Why `trustedOrigins` is scoped to this deployment (not a Vercel wildcard)
 
 **Why:** better-auth always trusts `baseURL`'s own origin automatically, so production (via
-`BETTER_AUTH_URL`) needed no extra config. But Vercel preview deployments each get a unique
-`*.vercel.app` subdomain per branch/PR that `baseURL` doesn't know about ahead of time —
-without an explicit trusted pattern, the Origin/CSRF check (`origin-check` middleware) and
-OAuth/passkey callback validation would reject every preview deployment. better-auth's
-pattern matcher supports wildcards natively (`matchesOriginPattern`), so this only *widens*
-trust to Vercel's own preview domains — it can't loosen anything about the production origin.
-Added while auditing the codebase against a new web-security research doc
-(`Docs/research/ai-assisted-nextjs-security-reference.md`).
+`BETTER_AUTH_URL`) needs no extra config. But Vercel preview deployments each get a unique
+subdomain per branch/PR that `baseURL` doesn't know ahead of time — without an explicit trusted
+origin, the Origin/CSRF check (`origin-check` middleware) and OAuth/passkey callback validation
+would reject every preview deployment.
+
+The **first** fix (July 2026) used `trustedOrigins: ['https://*.vercel.app']`. That worked, but the
+wildcard trusts **every** `*.vercel.app` deployment — i.e. every other Vercel customer's app — as a
+trusted origin for this app's CSRF/origin checks, not just this project's own previews. AGENTS.md §6
+calls out scoping preview trust narrowly, so this was tightened:
+
+- **Per-deployment, not wildcard.** We build the list from Vercel's system env vars — `VERCEL_URL`
+  (the immutable per-deployment URL) and `VERCEL_BRANCH_URL` (the branch alias) — each prefixed with
+  `https://`. These resolve to *this* deployment's own origins only; a stranger's `*.vercel.app`
+  deployment is never trusted. Locally (env vars unset) the list is empty and only `baseURL` is
+  trusted, which is correct for `localhost` dev.
+- **Explicit escape hatch.** `BETTER_AUTH_TRUSTED_ORIGINS` (comma-separated) can add any further
+  origin (e.g. a custom preview or staging domain) without reintroducing a wildcard.
+- **De-duplicated** via a `Set` before being passed to better-auth.
+
+Note: passkeys still bind to the stable `rpID` from `BETTER_AUTH_URL`, so passkey login across
+changing preview domains is a separate constraint — this change is only about the Origin/CSRF trust
+surface for the auth endpoints. Original wildcard added while auditing against
+`Docs/research/ai-assisted-nextjs-security-reference.md`; scoped down in the follow-up review pass.
 
 ## Why rate-limit storage is conditional (July 2026)
 

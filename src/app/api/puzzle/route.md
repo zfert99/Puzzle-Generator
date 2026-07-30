@@ -21,6 +21,17 @@ This mirrors the existing `/api/generate` (PDF) route's shape: a thin controller
 that validates input, delegates to the engine service, logs a structured wide
 event, and returns a **generic** error on failure.
 
+## 0. Rate limiting
+
+**Goal:** stop a single client from exhausting serverless compute on this unauthenticated,
+server-side-generation route (review finding **H1**).
+
+1. Derive the caller's IP and consume one token from its budget: **30 requests / 60 s** — generous
+   for a real player (one puzzle per game), tight for an abuser. Backed by Upstash Redis when
+   configured, in-memory otherwise (see [`rate-limit.md`](../../../lib/rate-limit.md)).
+2. If the budget is exhausted, return **429 Too Many Requests** with a `Retry-After` header before
+   doing any work.
+
 ## 1. Receiving the request
 
 **Goal:** read what puzzle the client wants.

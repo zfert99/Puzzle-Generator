@@ -3,7 +3,7 @@ import { db } from '@/lib/db/client';
 import { requireUserId } from '@/features/auth/session';
 import { UnauthorizedError } from '@/features/auth/errors';
 import { getTodayCompletions } from '@/features/leaderboards/attempts.service';
-import { getUserRank } from '@/features/leaderboards/leaderboard.service';
+import { getUserRanksForPuzzles } from '@/features/leaderboards/leaderboard.service';
 import { toUtcDateString } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
@@ -23,11 +23,11 @@ export async function GET() {
     const isoDate = toUtcDateString(new Date());
     const completions = await getTodayCompletions(db, userId, isoDate);
 
-    const entries = await Promise.all(
-      completions.map(async (c) => {
-        const rank = await getUserRank(db, c.puzzleId, userId);
-        return [c.difficulty, { timeMs: c.timeMs, rank: rank?.rank ?? null }] as const;
-      }),
+    // One batched rank query instead of one getUserRank (two queries) per completion — the day has
+    // up to ~11 dailies, so the old N+1 meant ~22 round-trips; this is a single grouped self-join.
+    const ranks = await getUserRanksForPuzzles(db, userId, completions.map((c) => c.puzzleId));
+    const entries = completions.map(
+      (c) => [c.difficulty, { timeMs: c.timeMs, rank: ranks.get(c.puzzleId) ?? null }] as const,
     );
 
     return NextResponse.json({ completed: Object.fromEntries(entries) }, { status: 200 });

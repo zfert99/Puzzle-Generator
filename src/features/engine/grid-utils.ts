@@ -1,6 +1,18 @@
 import type { GridConfig } from './sudoku';
 
 /**
+ * The largest grid the engine supports (9×9 classic/Killer; boxless KenKen sizes 5/7 are smaller).
+ * Every size-driven allocation below (`createEmptyGrid`'s arrays, `fillGrid`'s per-line bitmasks) is
+ * bounded against it *inline* — a `size < 1 || size > MAX_GRID_SIZE` guard in the same function, right
+ * before the allocation. The API routes already validate `gridSize ∈ {4, 6, 9}` before any generation
+ * runs, so the guard never fires in practice; it's defense-in-depth so no allocation is ever sized by
+ * an unbounded external value (a resource-exhaustion DoS path — CodeQL `js/resource-exhaustion`, which
+ * only recognises the bound when it is in-function, not delegated to a helper). Hard guard, not a
+ * clamp: an out-of-range size is a bug, not something to coerce into a wrong-sized grid.
+ */
+const MAX_GRID_SIZE = 9;
+
+/**
  * Population count (number of set bits) via Brian Kernighan's algorithm. Used to
  * measure how many digits are still legal for a cell (popcount over a candidate
  * bitmask) — the metric the MRV heuristic minimises. See AGENTS.md Section 1.
@@ -19,6 +31,10 @@ export function popcount(mask: number): number {
  * 0 is used throughout the engine to represent an empty cell.
  */
 export function createEmptyGrid(size: number): number[][] {
+  // Inline bound (see MAX_GRID_SIZE) — defense-in-depth against a resource-exhaustion allocation.
+  if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {
+    throw new RangeError(`Unsupported grid size: ${size} (expected an integer in 1..${MAX_GRID_SIZE})`);
+  }
   return Array.from({ length: size }, () => Array(size).fill(0));
 }
 
@@ -67,12 +83,17 @@ export function isValid(grid: number[][], row: number, col: number, num: number,
  * Shuffles an array in place using the modern Fisher-Yates algorithm.
  * Used to randomize the order in which we test numbers (1-N) or dig cells,
  * ensuring every generated puzzle is completely unique.
+ *
+ * `rng` defaults to `Math.random` (so every existing caller is unchanged), but is injectable so a
+ * seeded PRNG can drive deterministic, reproducible generation — the same convention the `calc/` and
+ * `killer/` engines already use (`options.rng ?? Math.random`). This is what makes the Sudoku core
+ * seedable; previously it hard-called `Math.random` and could not be reproduced in a test.
  */
-export function shuffle(array: number[]): number[] {
+export function shuffle(array: number[], rng: () => number = Math.random): number[] {
   // Iterate backwards from the last element to the second element
   for (let i = array.length - 1; i > 0; i--) {
     // Generate a random index j between 0 and i (inclusive)
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     // Swap the elements at indices i and j
     [array[i], array[j]] = [array[j], array[i]];
   }
@@ -88,9 +109,18 @@ export function shuffle(array: number[]): number[] {
  * digits first. Most-constrained-first collapses the search tree dramatically and
  * bit operations make each legality test O(1). Digits are still tried in random
  * order so every generated solution is unique. See AGENTS.md Section 1.
+ *
+ * `rng` is threaded into the candidate shuffle so generation can be seeded/reproduced; it defaults
+ * to `Math.random`, and passing it changes nothing about the search — only which of the equally
+ * valid solutions is produced.
  */
-export function fillGrid(grid: number[][], config: GridConfig): boolean {
+export function fillGrid(grid: number[][], config: GridConfig, rng: () => number = Math.random): boolean {
   const { size, boxWidth, boxHeight, maxNum } = config;
+  // Inline bound (see MAX_GRID_SIZE) — keeps the per-line bitmask allocations below from being sized
+  // by an unbounded external value (resource exhaustion).
+  if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {
+    throw new RangeError(`Unsupported grid size: ${size} (expected an integer in 1..${MAX_GRID_SIZE})`);
+  }
   const fullMask = (1 << maxNum) - 1;
   const boxesPerRow = size / boxWidth;
   // Boxless (Latin-square-only) sizes carry a row-strip box sentinel (boxWidth = size,
@@ -145,7 +175,7 @@ export function fillGrid(grid: number[][], config: GridConfig): boolean {
       candidates.push(31 - Math.clz32(lowestBit) + 1);
       m &= m - 1;
     }
-    shuffle(candidates);
+    shuffle(candidates, rng);
 
     const b = boxOf(bestR, bestC);
     for (const num of candidates) {

@@ -48,6 +48,16 @@ describe('createEmptyGrid', () => {
     expect(g).toHaveLength(9);
     expect(g.every(row => row.length === 9 && row.every(v => v === 0))).toBe(true);
   });
+
+  it.each([4, 5, 6, 7, 9])('accepts every supported grid size (%i)', (size) => {
+    expect(createEmptyGrid(size)).toHaveLength(size);
+  });
+
+  // Defense-in-depth: an allocation size must never come from an unbounded value (resource
+  // exhaustion). Out-of-range / non-integer sizes throw rather than allocating.
+  it.each([0, -1, 10, 100, 1_000_000, 2.5, NaN])('throws RangeError on an unsupported size (%p)', (size) => {
+    expect(() => createEmptyGrid(size)).toThrow(RangeError);
+  });
 });
 
 describe('copyGrid', () => {
@@ -78,11 +88,26 @@ describe('isValid', () => {
   });
 });
 
+// A tiny LCG (same one the calc tests use) for reproducible, seeded generation.
+function seededRng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
 describe('shuffle', () => {
   it('preserves the multiset of elements', () => {
     const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     const shuffled = shuffle([...arr]);
     expect([...shuffled].sort((a, b) => a - b)).toEqual(arr);
+  });
+
+  it('is deterministic under a seeded rng (reproducible order)', () => {
+    const a = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], seededRng(42));
+    const b = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], seededRng(42));
+    expect(a).toEqual(b); // same seed → identical permutation
   });
 });
 
@@ -103,6 +128,18 @@ describe('fillGrid', () => {
     const grid = createEmptyGrid(size);
     expect(fillGrid(grid, config)).toBe(true);
     assertLatinSquare(grid, size);
+  });
+
+  // The injectable rng makes generation reproducible — the reason the Sudoku core was made seedable.
+  it('produces identical solutions for the same seed and different ones for different seeds', () => {
+    const config = getGridConfig(9);
+    const fill = (seed: number) => {
+      const g = createEmptyGrid(9);
+      fillGrid(g, config, seededRng(seed));
+      return g;
+    };
+    expect(fill(2026)).toEqual(fill(2026)); // reproducible
+    expect(fill(1)).not.toEqual(fill(2)); // seed actually drives the output
   });
 });
 

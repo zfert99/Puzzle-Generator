@@ -51,7 +51,10 @@ export interface CalcScore {
 export function scoreCalcSolve(result: CalcSolveResult): CalcScore {
   let raw = 0;
   for (const technique of Object.keys(result.techniqueCounts) as CalcTechnique[]) {
-    raw += CALC_TECHNIQUE_WEIGHTS[technique] * (result.techniqueCounts[technique] ?? 0);
+    // `?? 0` on the weight (not just the count) is load-bearing: if the solver ever reports a
+    // technique the weights map doesn't cover, `undefined * count` is NaN, which silently poisons
+    // `final` and every band cut downstream of it. An unweighted technique contributes 0 instead.
+    raw += (CALC_TECHNIQUE_WEIGHTS[technique] ?? 0) * (result.techniqueCounts[technique] ?? 0);
   }
   const densityFactor = Math.min(2, Math.max(0.5, 2 / (1 + result.avgOpenSingles / 2)));
   return { raw, densityFactor, final: raw * densityFactor };

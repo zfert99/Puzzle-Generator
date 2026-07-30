@@ -118,19 +118,24 @@ Latin-square test at 5/7 guards this (if the sentinel ever changes, that test fa
 
 ## 4. The Master Function & Diggers
 
-### `generateSudoku(difficulty, gridSize = 9)`
+### `generateSudoku(difficulty, gridSize = 9, rng = Math.random)`
 
 **Goal:** Act as the "traffic cop" to prepare the puzzle and delegate to the right digging strategy.
 **Steps:**
 
 1. Get the `GridConfig` for the requested `gridSize`.
 2. Create a blank NxN grid filled with 0s.
-3. Call `fillGrid` to completely solve it with random numbers.
+3. Call `fillGrid` (passing `rng`) to completely solve it with random numbers.
 4. Save a copy of this full grid as the `solution`.
-5. If `difficulty` is 'extreme' AND `gridSize` is 9, call `applyExtremeDigger()`.
-6. If `difficulty` is 'expert' AND `gridSize` is 9, call `applyExhaustiveDigger()`.
-7. Otherwise, call `applyQuotaDigger()`.
+5. If `difficulty` is 'extreme' AND `gridSize` is 9, call `applyExtremeDigger()` (passing `rng`).
+6. If `difficulty` is 'expert' AND `gridSize` is 9, call `applyExhaustiveDigger()` (passing `rng`).
+7. Otherwise, call `applyQuotaDigger()` (passing `rng`).
 8. Return the final `{ grid, solution, difficulty, gridSize }` object.
+
+**`rng` (seedable generation):** defaults to `Math.random`, so callers that don't care are unchanged.
+Threaded through `fillGrid` and every digger so a seeded PRNG makes the *entire* Sudoku pipeline
+reproducible — the `calc/`/`killer/` engines already work this way. It affects only *which* valid
+puzzle is drawn, never correctness or difficulty.
 
 ### `applyExhaustiveDigger(grid, config)`
 
