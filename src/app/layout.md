@@ -44,11 +44,29 @@ string lives in `@/features/theme/theme` (`THEME_PRE_PAINT_SCRIPT`).
     {children}            # each page renders a flex-1 main below the header
 ```
 
-## `metadataBase` (Phase 3 multi-zone)
+## `metadataBase` + per-page canonical (Phase 3 multi-zone)
 
 **Why:** Under `basePath: '/puzzles'` the app is public at `biscuitlab.net/puzzles`, but the
-deployment also answers on its `*.vercel.app` origin. `metadataBase = https://biscuitlab.net/puzzles`
+deployment also answers on its origin host. `metadataBase = https://biscuitlab.net/puzzles`
 makes canonicals and OG URLs resolve to the public path, not the origin host. Per-page
 self-referencing canonicals are the **primary** defense against the origin URL being indexed —
 NOT a Host-based `noindex`, which would also fire on the proxied response and deindex the
 public URLs (see `Docs/multi-zone-migration-plan.md` / validation doc §1, §9).
+
+**How (one line, all routes):** `alternates: { canonical: './' }` in the root metadata. Next
+resolves a `'./'` canonical against the **current route's** pathname
+(`path.posix.resolve(pathname, './')`) and then composes it with `metadataBase` — so every
+page emits a canonical at its own `/puzzles/*` URL with **no** per-page code. The `basePath`
+does not double up: the pathname Next feeds the resolver is basePath-stripped, so `metadataBase`
+adds `/puzzles` exactly once. Verified live in dev under `basePath`:
+
+```text
+/signin       -> https://biscuitlab.net/puzzles/signin
+/ (home)      -> https://biscuitlab.net/puzzles/
+/leaderboard  -> https://biscuitlab.net/puzzles/leaderboard
+/books        -> https://biscuitlab.net/puzzles/books
+```
+
+No page sets its own `alternates`, so none shadows the inherited canonical. (If one ever needs
+a custom `alternates`, it must re-include `canonical: './'` — Next replaces the whole
+`alternates` object, it does not deep-merge it.)
