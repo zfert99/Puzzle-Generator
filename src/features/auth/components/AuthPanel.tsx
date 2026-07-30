@@ -10,8 +10,9 @@ type Mode = 'signin' | 'signup';
  * The sign-in / sign-up panel. Passkeys-first per AGENTS.md §6: the passkey button is the
  * primary returning-login, with Google and email/password as account bootstraps.
  *
- * On success it navigates to `callbackURL` (Google redirects itself). Errors from the
- * better-auth client are surfaced inline rather than thrown, so the form stays usable.
+ * On success it navigates to `callbackURL` — an in-app, root-relative path (Next's
+ * `basePath` is added where needed; see `handleGoogle`). Errors from the better-auth
+ * client are surfaced inline rather than thrown, so the form stays usable.
  */
 export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) {
   const router = useRouter();
@@ -53,7 +54,16 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
     setError('');
     setBusy(true);
     // Redirects the browser to Google; no local navigation needed on success.
-    await signIn.social({ provider: 'google', callbackURL });
+    // better-auth resolves a social `callbackURL` against the auth origin, NOT Next's
+    // router — so unlike `router.push()` in `done()`, it does NOT prepend Next's
+    // `basePath`. Under `basePath: '/puzzles'` a bare "/daily" would send the user to
+    // biscuitlab.net/daily (no /puzzles → 404 — the reported bug). Prefix the basePath
+    // explicitly here; the email/passkey flows keep the raw value because router.push
+    // adds it for them. (Guarded so an already-prefixed callbackURL isn't doubled.)
+    const basePath = '/puzzles';
+    const hasBasePath = callbackURL === basePath || callbackURL.startsWith(`${basePath}/`);
+    const socialCallbackURL = hasBasePath ? callbackURL : `${basePath}${callbackURL}`;
+    await signIn.social({ provider: 'google', callbackURL: socialCallbackURL });
   };
 
   return (
