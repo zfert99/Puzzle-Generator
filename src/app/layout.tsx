@@ -57,6 +57,13 @@ export const metadata: Metadata = {
   title: "Puzzle Generator",
   description:
     "Daily sudoku, competitive leaderboards, and print-ready puzzle books.",
+  // Per-page canonical. Next resolves a "./" canonical against the CURRENT route's
+  // pathname (path.posix.resolve(pathname, "./")), then composes it with
+  // metadataBase — so every page emits a canonical at its own biscuitlab.net/puzzles/*
+  // URL, not the origin *.vercel.app. This is the primary anti-duplicate-index defense
+  // for the exposed origin (canonical-first, NOT a Host-based noindex — that would fire
+  // on the proxied response too). Verified per-route under basePath (no double /puzzles).
+  alternates: { canonical: "./" },
 };
 
 export default function RootLayout({
