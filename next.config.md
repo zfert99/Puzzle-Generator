@@ -39,7 +39,7 @@ into this baseline-headers change.
 `next dev -H 0.0.0.0` at the machine's LAN IP would get HMR/`/_next/*` requests 403'd
 without an explicit allowlist entry. Added to test real mobile bugs (reported via
 screenshots from an actual phone) directly against the dev server — per
-`Docs/research/compass_artifact_wf-5a169f5a-3c9f-5799-9a6f-6060e47bd0ca_text_markdown.md`,
+`Docs/research/testing-mobile-responsiveness-locally.md`,
 this "Tier 1" same-network loop is free, keeps hot-reload, and catches the large majority of
 responsive/layout bugs without a deploy; reserve Vercel preview deployments for sharing with
 others, not for iterating on responsiveness solo. Dev-only — has no effect in production.

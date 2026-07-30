@@ -1,9 +1,17 @@
 # Social / Progression / Economy — Implementation Plan
 
 > **Status:** 📋 Planned, implementation-ready (v2, July 2026 — grounded against the shipped
-> codebase: better-auth users, `solve_attempts`, the 19-board daily registry, and the
+> codebase: better-auth users, `solve_attempts`, the daily registry, and the
 > AGENTS.md §6 security posture). v1 of this plan sketched the systems; v2 pins schemas to
 > real tables, names the integration points, and gives each slice a gate.
+>
+> **⚠️ Reshape pending:** the [daily-redesign-plan.md](daily-redesign-plan.md) collapses the
+> daily to an 11-slot random-type ladder with completion **medals**. When that lands, this
+> plan's per-variant *sections* (classic/killer/minis/calc) collapse to two **sets** (main,
+> minis) + `overall`, gold-day denominators re-key onto the 11 slots, variant achievements
+> read the new stored `variant` column, and the medal award (idempotent, top-up per set/day)
+> becomes the headline crumbs faucet ahead of the flat per-board table in §4. Reconcile S1–S3
+> against that plan before building.
 
 ## 1. Overview
 
@@ -30,7 +38,7 @@ Design principles locked for v1:
 |---|---|
 | “users” table | better-auth `user` (TEXT ids) in `auth-schema.ts` — all FKs are `text` |
 | “puzzle completion events” | `solve_attempts` rows written by `/api/solve` (`completed`, server `time_ms`, `mistakes`, unique per user×puzzle) — the ONLY trusted earn trigger |
-| “puzzleType 'killer_sudoku' / 'kakuro'” | The **daily-board registry** (`daily-row.ts`): 19 keys/day in three sections (classic / killer / minis) — KenKen adds a fourth. Achievements + streaks key off board keys and sections, not invented type strings |
+| “puzzleType 'killer_sudoku' / 'kakuro'” | The **daily-board registry** (`daily-row.ts`): currently 30 keys/day in four sections (classic / killer / minis / calc) — but the [daily-redesign-plan.md](daily-redesign-plan.md) collapses this to 11 random-type slots in two sets. Achievements + streaks key off slots/sets and the stored `variant`, not invented type strings |
 | “each type publishes fixed 5 levels/day” | Sections have different sizes (classic 5, killer 5, minis 9). Gold-day denominators come from `DAILY_BOARDS` counts, never hardcoded |
 | new `dailyCompletions` table | **Not needed** — `solve_attempts ⋈ daily_puzzles` already IS the completion log (date, key, time, mistakes). Derive; don’t duplicate state |
 | “streaks” table | A computed-on-read streak already ships (`streak.service.ts`). Freezes need STORED state, so S2 introduces `streak_state` and the computed version becomes its bootstrap/verification oracle |

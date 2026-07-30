@@ -18,7 +18,7 @@ Nishio backstop — giving honest, technique-separated Expert and Extreme tiers.
 what to add, the Calcudoku-specific caveats, and the questions to answer before committing to build.
 
 Written to be researched against (like the 9×9 de-risk → external honest-ladder research loop). The
-prior external research ([honest-ladder research](compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+prior external research ([honest-ladder research](keisan-9x9-honest-ladder.md)
 §Q1) already surveys the technique *landscape*; this brief narrows it to *our* solver and the
 specific empirical questions that decide whether option 4 is worth the K3-scale cost.
 
@@ -26,7 +26,7 @@ specific empirical questions that decide whether option 4 is worth the K3-scale 
 
 ## ✅ Research verdict (external pass complete, 2026-07-27)
 
-Full doc: [Widening the Calcudoku Ladder — validating Option 4](compass_artifact_wf-bb40e383-544c-5bfa-a4d0-a3b6202da609_text_markdown.md).
+Full doc: [Widening the Calcudoku Ladder — validating Option 4](keisan-9x9-option4-validation.md).
 It **re-orders this brief's plan** — read it over §3–§5 below, which are now superseded on ranking:
 
 - **Ship Option 1 (4 tiers) now; treat Option 4 as a *gated, instrumented* upgrade, not a foregone
@@ -185,7 +185,7 @@ Expert config + daily board generated into the offline cron pool.
 
 ## 7. Sources to build on
 
-- [honest-ladder research §Q1](compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md)
+- [honest-ladder research §Q1](keisan-9x9-honest-ladder.md)
   — billabob's KenKen technique-cost table (pointing/claiming, region sum/parity, AIC, multi-cage
   combination elimination), with ratings; the definitive external survey.
 - [keisan-9x9-feasibility-findings.md](keisan-9x9-feasibility-findings.md) — the 9×9 de-risk + the

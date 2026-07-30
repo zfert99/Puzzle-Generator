@@ -415,7 +415,7 @@ The first slice of the re-sliced K7. A 9×9 de-risk killed the original "just ad
 plan, so K7a ships the honest, cheap part: **9×9 easy/medium/hard**, interactive-fast, in the daily
 rotation's top-level **Keisan** section (mirroring "Classic 9×9" / "Killer 9×9"). Expert/Extreme wait
 for K7b/K7c. Full rationale: [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md)
-and the [honest-ladder research](research/compass_artifact_wf-feb5af89-67a1-51e8-bf2f-f348f76adfdd_text_markdown.md).
+and the [honest-ladder research](research/keisan-9x9-honest-ladder.md).
 
 ### What the de-risk forced
 
@@ -508,7 +508,7 @@ only — Expert/Extreme configs land in K7c once the tier shape is decided).
 ## K7c — 9×9 Expert (4-tier ladder) ✅
 
 The tier-shape decision resolved via an external research pass (chosen: research option 4). The
-verdict — [full doc](research/compass_artifact_wf-bb40e383-544c-5bfa-a4d0-a3b6202da609_text_markdown.md),
+verdict — [full doc](research/keisan-9x9-option4-validation.md),
 folded into the [technique-expansion brief](research/keisan-solver-technique-expansion-research.md#-research-verdict-external-pass-complete-2026-07-27)
 — was blunt: **ship the 4-tier ladder now; don't block on a fifth tier** (uneven tier counts across
 variants are normal and low-confusion; a *dishonest* Extreme is worse than none). The would-be
