@@ -49,6 +49,11 @@ const permanentMarker = Permanent_Marker({
 const caveat = Caveat({ subsets: ["latin"], variable: "--font-caveat", preload: false });
 
 export const metadata: Metadata = {
+  // Public URL including the /puzzles path, so canonicals + OG URLs resolve to the
+  // real host (biscuitlab.net/puzzles), not the origin *.vercel.app. Canonical tags
+  // are the primary anti-index defense for the origin — NOT a Host-based noindex,
+  // which would fire on the proxied response too (validation doc §1, §9).
+  metadataBase: new URL("https://biscuitlab.net/puzzles"),
   title: "Puzzle Generator",
   description:
     "Daily sudoku, competitive leaderboards, and print-ready puzzle books.",

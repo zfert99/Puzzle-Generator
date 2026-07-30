@@ -43,3 +43,12 @@ string lives in `@/features/theme/theme` (`THEME_PRE_PAINT_SCRIPT`).
     <AppHeader/>          # global grape nav bar (5.2) — nav, theme toggle, account
     {children}            # each page renders a flex-1 main below the header
 ```
+
+## `metadataBase` (Phase 3 multi-zone)
+
+**Why:** Under `basePath: '/puzzles'` the app is public at `biscuitlab.net/puzzles`, but the
+deployment also answers on its `*.vercel.app` origin. `metadataBase = https://biscuitlab.net/puzzles`
+makes canonicals and OG URLs resolve to the public path, not the origin host. Per-page
+self-referencing canonicals are the **primary** defense against the origin URL being indexed —
+NOT a Host-based `noindex`, which would also fire on the proxied response and deindex the
+public URLs (see `Docs/multi-zone-migration-plan.md` / validation doc §1, §9).

@@ -46,3 +46,15 @@ others, not for iterating on responsiveness solo. Dev-only — has no effect in 
 Hardcodes this machine's current LAN IP rather than a wildcard/CIDR, since the guard is a
 security boundary and the IP is only needed for the duration of a local testing session; if
 the network's DHCP lease changes, update the entry (`ipconfig getifaddr en0` on macOS).
+
+## `basePath` + `serverActions.allowedOrigins` (Phase 3 multi-zone)
+
+**Why:** Puzzle Lab is served under `biscuitlab.net/puzzles` via the hub's multi-zone
+rewrite, so `basePath: '/puzzles'` scopes every route and `/_next/*` asset. In Next 15+
+`basePath` also scopes assets, so no `assetPrefix` is needed. It is **build-time inlined** —
+changing it requires a redeploy (relevant to rollback). Because the app now receives requests
+proxied from the public origin, cross-zone Server Actions (better-auth / form posts) must
+trust it: `experimental.serverActions.allowedOrigins: ['biscuitlab.net']` (still nested under
+`experimental` in this Next version). Full sequence + rationale:
+[`Docs/multi-zone-migration-plan.md`](Docs/multi-zone-migration-plan.md) and the hub repo's
+migration runbook.

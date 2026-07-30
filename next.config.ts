@@ -11,7 +11,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Served under /puzzles via the hub's multi-zone rewrite (Phase 3). basePath
+  // scopes routes AND /_next/* assets in Next 15+ — no assetPrefix needed. It is
+  // build-time inlined, so a change requires a redeploy. See
+  // Docs/multi-zone-migration-plan.md.
+  basePath: '/puzzles',
   serverExternalPackages: ['pdfkit'],
+  // Cross-zone Server Actions (better-auth / form posts) must trust the public
+  // origin, since the request arrives through the hub's proxy. Still nested under
+  // `experimental` in this Next version (per the serverActions config docs).
+  experimental: { serverActions: { allowedOrigins: ['biscuitlab.net'] } },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

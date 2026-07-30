@@ -139,10 +139,12 @@ route handler moves to `/puzzles/api/cron/daily`:
 
 **better-auth with a path in the base URL (validation doc §3 — confirmed):**
 
-- `BETTER_AUTH_URL` becomes `https://biscuitlab.net/puzzles`. better-auth honors a
-  path in `baseURL`, **but the client must be given the full URL including the
-  path** or `/api/auth/*` calls 404: `createAuthClient({ baseURL:
-  'https://biscuitlab.net/puzzles/api/auth' })`. Test the full round-trip.
+- `BETTER_AUTH_URL` becomes `https://biscuitlab.net/puzzles`. **The client must be
+  pointed at the prefixed auth path** or `/api/auth/*` calls 404. Use the client
+  **`basePath`**, not `baseURL`: `createAuthClient({ basePath: '/puzzles/api/auth' })`.
+  (Do not pass a relative `baseURL` — better-auth runs `new URL(baseURL)`, which throws
+  `Invalid base URL` at build. With no `baseURL`, it resolves the origin itself and
+  appends `basePath`, so it stays env-agnostic.) Test the full round-trip.
 - `trustedOrigins` includes `https://biscuitlab.net` (already scoped by PR #25's
   env mechanism — add the apex).
 - Keep cookies **host-only** — do NOT set `Domain=.biscuitlab.net`. Both zones are
@@ -165,12 +167,10 @@ route handler moves to `/puzzles/api/cron/daily`:
 
 ## 4. Ordered checklist (Puzzle-Generator side)
 
-1. [ ] Merge PR #25 (security hardening). It already scopes `trustedOrigins`.
-2. [ ] Ship §2 (rpID/origin decoupling) as a small PR.
-3. [ ] **rpID move** (user, Vercel env): set `PASSKEY_RP_ID=biscuitlab.net` in the
-       Puzzle Lab **production** env, redeploy, and verify a fresh passkey
-       registers *and* authenticates on `puzzles.biscuitlab.net`. This is the
-       non-negotiable prerequisite; it goes on its own.
+1. [x] Merge PR #25 (security hardening; scopes `trustedOrigins`). ✅
+2. [x] Ship §2 (rpID/origin decoupling) — ✅ merged in #27.
+3. [x] **rpID move** — ✅ `PASSKEY_RP_ID=biscuitlab.net` set on Puzzle Lab prod;
+       a fresh passkey registered via the new `/account` page (#28) round-trips.
 4. [ ] Rewrite target is the deployment's own `*.vercel.app` URL (distinct from
        `puzzles.biscuitlab.net`, so no redirect loop). Vercel auto-`noindex`es
        `*.vercel.app`; **no dedicated origin host and no Host-based `noindex`** —
@@ -178,10 +178,10 @@ route handler moves to `/puzzles/api/cron/daily`:
        (validation doc §1).
 5. [ ] `metadataBase = https://biscuitlab.net/puzzles` + per-page canonicals as
        the primary anti-index mitigation for the origin URL.
-6. [ ] Ship §3 (basePath + `serverActions.allowedOrigins` + metadataBase + cron
-       path) — the cutover PR.
-7. [ ] `BETTER_AUTH_URL` → `https://biscuitlab.net/puzzles`; set the auth **client**
-       `baseURL` to `.../puzzles/api/auth`; add `https://biscuitlab.net` to
+6. [~] Ship §3 (basePath + `serverActions.allowedOrigins` + metadataBase + cron
+       path + client `basePath`) — **this PR (draft); merge at the flip.**
+7. [ ] `BETTER_AUTH_URL` → `https://biscuitlab.net/puzzles`; the auth **client**
+       `basePath` is `/puzzles/api/auth` (in code); add `https://biscuitlab.net` to
        `trustedOrigins`; keep cookies **host-only** (no `.biscuitlab.net`); update
        Google OAuth redirect URI + JS origins.
 8. [ ] After the hub's rewrite + 301 are live: verify `biscuitlab.net/puzzles`
