@@ -19,18 +19,18 @@ present. A missing OAuth app then can't break the build or startup — email/pas
 passkeys still work without it. This lets the backend ship before the OAuth app exists.
 
 ```text
-appUrl        = BETTER_AUTH_URL (or http://localhost:3000)
-rpID          = PASSKEY_RP_ID  ??  hostname of appUrl    (passkey relying-party id)
-passkeyOrigin = origin of appUrl (scheme+host, no path)
+appUrl       = BETTER_AUTH_URL (or http://localhost:3000)
+rpID         = PASSKEY_RP_ID  ??  hostname of appUrl     (passkey relying-party id)
+publicOrigin = origin of appUrl (scheme+host, no path)   # used as baseURL AND passkey origin
 
 betterAuth:
-  baseURL:        appUrl
+  baseURL:        publicOrigin       # origin-only → router mounts at /api/auth (see below)
   trustedOrigins: this deployment's own Vercel origins + explicit env list   # see below
   database: drizzleAdapter(db, provider "pg", schema = auth tables)
   rateLimit.customStorage — ONLY if Upstash env creds exist (see below)
   emailAndPassword: enabled, password hashing overridden to Argon2id (see password.ts)
-  socialProviders: google — ONLY if its env creds exist
-  plugins: [ passkey(rpID, rpName, origin=passkeyOrigin), nextCookies() ]   # nextCookies LAST
+  socialProviders: google (redirectURI pinned to public /puzzles path) — ONLY if creds exist
+  plugins: [ passkey(rpID, rpName, origin=publicOrigin), nextCookies() ]   # nextCookies LAST
 ```
 
 ## Why `trustedOrigins` is scoped to this deployment (not a Vercel wildcard)
@@ -71,9 +71,33 @@ from the old host would become invalid on the new origin and break auth. So:
   lets the apex (`biscuitlab.net`) be pinned via env *before* the migration, while still serving
   from the subdomain (the apex is a valid suffix of it). Passkeys registered under the apex then
   survive the move. Changing `rpID` invalidates existing passkeys once — do it early, on its own.
-- **`passkeyOrigin = origin of appUrl`** — the WebAuthn `origin` is scheme+host with no path; once
+- **`publicOrigin = origin of appUrl`** — the WebAuthn `origin` is scheme+host with no path; once
   `BETTER_AUTH_URL` carries a `/puzzles` path, passing `appUrl` verbatim would be the wrong origin,
-  so it's derived. Full sequence: `Docs/multi-zone-migration-plan.md`.
+  so it's derived. The same value doubles as `baseURL` (next section). Full sequence:
+  `Docs/multi-zone-migration-plan.md`.
+
+## Why `baseURL` is origin-only and the Google `redirectURI` is pinned (multi-zone cutover)
+
+**Why:** this is the fix for the endpoint-404 that blocked the subfolder cutover. Two facts
+combine: (1) under `basePath: '/puzzles'`, **Next strips `/puzzles` before the route handler**, so
+better-auth receives requests at `/api/auth/*` (verified live via a temporary request-logging
+diagnostic — see the hub's `Docs/multi-zone-cutover-log.md`); and (2) better-auth derives its
+**router mount path from `new URL(baseURL).pathname`**. So when `baseURL` carried the `/puzzles`
+path, the router mounted at `/puzzles` while requests arrived at `/api/auth/*` → every endpoint
+404'd.
+
+- **`baseURL: publicOrigin`** (origin-only, path stripped) mounts the router at the default
+  `/api/auth`, matching what the handler actually receives. Deriving it in code (rather than
+  trusting the operator to set `BETTER_AUTH_URL` origin-only) means a stray `/puzzles` in the env
+  can't reintroduce the 404.
+- **Google `redirectURI` is pinned** to `${publicOrigin}/puzzles/api/auth/callback/google`. The
+  OAuth callback is the one absolute URL better-auth builds server-side (`${baseURL}/api/auth/
+  callback/google`), and with an origin-only `baseURL` that omits `/puzzles` — a path the hub's
+  `/puzzles/*` rewrite doesn't cover and Google can't reach. Pinning it to the public,
+  `/puzzles`-prefixed URL (the mirror of the client's `basePath: '/puzzles/api/auth'`) sends the
+  browser to a URL the hub rewrites to the origin, where Next strips `/puzzles` back off. **This
+  exact URL must be whitelisted as an Authorized redirect URI in the Google Cloud console**, with
+  `https://biscuitlab.net` as an authorized JavaScript origin.
 
 ## Why rate-limit storage is conditional (July 2026)
 

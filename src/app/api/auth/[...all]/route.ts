@@ -11,21 +11,4 @@ import { auth } from '@/features/auth/auth';
  */
 export const runtime = 'nodejs';
 
-const handlers = toNextJsHandler(auth);
-
-/**
- * TEMP diagnostic (multi-zone basePath test) — removed in the auth-fix PR.
- * `GET .../api/auth/get-session?__pathcheck=1` returns the URL/pathname this handler
- * actually receives, to determine whether Next 16 strips the `/puzzles` basePath
- * before better-auth sees it (which decides the correct server `basePath`). See
- * Docs/multi-zone-cutover-log.md.
- */
-export const GET = (request: Request) => {
-  const url = new URL(request.url);
-  if (url.searchParams.has('__pathcheck')) {
-    return Response.json({ url: request.url, pathname: url.pathname });
-  }
-  return handlers.GET(request);
-};
-
-export const POST = handlers.POST;
+export const { GET, POST } = toNextJsHandler(auth);
