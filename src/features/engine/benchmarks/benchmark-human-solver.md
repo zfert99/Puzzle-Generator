@@ -43,6 +43,10 @@ Execute the script from the root of the project using `tsx` (which is standard f
 npx tsx src/features/engine/benchmarks/benchmark-human-solver.ts
 ```
 
+One row per tier is appended to `benchmark-logs.md` through the shared
+[`benchmark-log.ts`](benchmark-log.md) writer, so a run's numbers are comparable against the
+commit-stamped history rather than only the console output.
+
 ## Expected Results
 
 Representative numbers on a modern CPU with the current `Set`-based candidate

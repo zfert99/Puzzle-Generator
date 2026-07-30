@@ -1,7 +1,6 @@
 import { HumanSolver } from '../human-solver';
 import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
+import { appendBenchmarkRows } from './benchmark-log';
 
 import { generateSudoku, Difficulty } from '../sudoku';
 
@@ -84,14 +83,7 @@ async function main() {
 
   // --- Auto-Logging ---
   try {
-    const logPath = path.join(__dirname, 'benchmark-logs.md');
-    
-    if (!fs.existsSync(logPath)) {
-      fs.writeFileSync(logPath, `# Benchmark Logs\n\n<!-- markdownlint-disable MD013 MD060 -->\n\n| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
-    }
-    for (const entry of logEntries) {
-      fs.appendFileSync(logPath, entry);
-    }
+    const logPath = appendBenchmarkRows(logEntries);
     console.log(`Logged all tier results to ${logPath}`);
   } catch (err) {
     console.error('Failed to log benchmark:', err);

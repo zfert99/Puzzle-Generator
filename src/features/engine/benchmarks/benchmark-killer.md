@@ -25,6 +25,7 @@ Counts shrink as tiers get slower to bound total wall-clock. Inputs are randomiz
 npx tsx src/features/engine/benchmarks/benchmark-killer.ts
 ```
 
-Appends one row per tier to `benchmark-logs.md` (`| timestamp | commit | label | avg ms | N/A |`).
+Appends one row per tier to `benchmark-logs.md` (`| timestamp | commit | label | avg ms | N/A |`)
+via the shared [`benchmark-log.ts`](benchmark-log.md) writer.
 No fixed pass/fail target yet — this is the baseline to regression-guard against; watch for large
 jumps versus the previous commit's rows.

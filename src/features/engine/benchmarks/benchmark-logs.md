@@ -112,3 +112,12 @@
 | 2026-07-28T12:47:22.866Z | `42affa6` | HumanSolver Extreme (1000x) | 4.08 ms | 245 solves/sec |
 | 2026-07-28T12:48:13.694Z | `42affa6` | Pipeline Gen (10x Expert) | 21.20 ms | N/A |
 | 2026-07-28T12:48:13.694Z | `42affa6` | Pipeline Gen (5x Extreme) | 2737.80 ms | N/A |
+| 2026-07-30T00:00:27.446Z | `83594a5` | HumanSolver Basic (5000x) | 0.09 ms | 10626 solves/sec |
+| 2026-07-30T00:00:27.446Z | `83594a5` | HumanSolver Advanced (5000x) | 0.14 ms | 7071 solves/sec |
+| 2026-07-30T00:00:27.446Z | `83594a5` | HumanSolver Extreme (1000x) | 10.00 ms | 100 solves/sec |
+| 2026-07-30T00:01:12.169Z | `83594a5` | HumanSolver Basic (5000x) | 0.11 ms | 9197 solves/sec |
+| 2026-07-30T00:01:12.169Z | `83594a5` | HumanSolver Advanced (5000x) | 0.17 ms | 5925 solves/sec |
+| 2026-07-30T00:01:12.169Z | `83594a5` | HumanSolver Extreme (1000x) | 17.22 ms | 58 solves/sec |
+| 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Basic (5000x) | 0.13 ms | 7782 solves/sec |
+| 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Advanced (5000x) | 0.12 ms | 8095 solves/sec |
+| 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Extreme (1000x) | 15.41 ms | 65 solves/sec |

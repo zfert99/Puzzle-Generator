@@ -1,8 +1,7 @@
 import { generateCalcSudoku } from '../calc/calc-sudoku';
 import type { CalcDifficulty } from '../calc/calc-types';
 import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
+import { appendBenchmarkRows } from './benchmark-log';
 
 /**
  * Generation benchmark for Keisan (Calcudoku) — the newly-merged engine had ZERO benchmark coverage
@@ -67,11 +66,7 @@ function main(): void {
   console.log(`  avg ${noOpAvg.toFixed(2)} ms/puzzle`);
   rows.push(`| ${timestamp} | \`${commit}\` | Keisan Gen 9×9 Hard Mystery (10x) | ${noOpAvg.toFixed(2)} ms | N/A |\n`);
 
-  const logPath = path.join(__dirname, 'benchmark-logs.md');
-  if (!fs.existsSync(logPath)) {
-    fs.writeFileSync(logPath, `# Benchmark Logs\n\n<!-- markdownlint-disable MD013 MD060 -->\n\n| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
-  }
-  fs.appendFileSync(logPath, rows.join(''));
+  const logPath = appendBenchmarkRows(rows);
   console.log(`\nLogged ${rows.length} rows to ${logPath}`);
 }
 

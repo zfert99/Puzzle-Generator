@@ -1,7 +1,6 @@
 import { generateKillerSudoku, type KillerDifficulty } from '../killer/killer-sudoku';
 import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
+import { appendBenchmarkRows } from './benchmark-log';
 
 /**
  * Generation benchmark for Killer Sudoku — the merged engine had ZERO benchmark coverage (review
@@ -65,11 +64,7 @@ function main(): void {
   console.log(`  avg ${miniAvg.toFixed(2)} ms/puzzle`);
   rows.push(`| ${timestamp} | \`${commit}\` | Killer Gen 6×6 Hard (20x) | ${miniAvg.toFixed(2)} ms | N/A |\n`);
 
-  const logPath = path.join(__dirname, 'benchmark-logs.md');
-  if (!fs.existsSync(logPath)) {
-    fs.writeFileSync(logPath, `# Benchmark Logs\n\n<!-- markdownlint-disable MD013 MD060 -->\n\n| Timestamp | Commit | Benchmark | Avg Time | Metric |\n|---|---|---|---|---|\n`);
-  }
-  fs.appendFileSync(logPath, rows.join(''));
+  const logPath = appendBenchmarkRows(rows);
   console.log(`\nLogged ${rows.length} rows to ${logPath}`);
 }
 

@@ -41,3 +41,20 @@ This document explains the core logic behind our `benchmark.ts` script. It break
 2. Divide the `total` by 10 (the number of puzzles) to calculate the `average` time.
 3. Print the total time and the average time (formatted to 2 decimal places) to the console.
 4. Finally, execute the `main()` function at the bottom of the script so it actually runs when we execute the file.
+
+---
+
+## 4. Result Logging
+
+**Goal:** Keep a commit-stamped history so a slow run can be compared against previous ones instead
+of being judged in isolation.
+
+**Steps:**
+
+1. Read the current short git commit hash and the current timestamp, so each row identifies exactly
+   which version of the engine produced it.
+2. Build one markdown table row for the Expert pipeline average and one for the Extreme average.
+3. Hand both rows to the shared [`benchmark-log.ts`](benchmark-log.md) writer, which appends them to
+   `benchmark-logs.md` and creates that file's header if it does not exist yet.
+4. Wrap the whole logging step in error handling — a failure to write the log should report itself
+   but must never discard the benchmark numbers already printed to the console.
