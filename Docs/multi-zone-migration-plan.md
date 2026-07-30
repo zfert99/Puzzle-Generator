@@ -195,28 +195,36 @@ route handler moves to `/puzzles/api/cron/daily`:
 2. [x] Ship §2 (rpID/origin decoupling) — ✅ merged in #27.
 3. [x] **rpID move** — ✅ `PASSKEY_RP_ID=biscuitlab.net` set on Puzzle Lab prod;
        a fresh passkey registered via the new `/account` page (#28) round-trips.
-4. [ ] Rewrite target = **dedicated custom host `origin-puzzles.biscuitlab.net`**
+4. [x] Rewrite target = **dedicated custom host `origin-puzzles.biscuitlab.net`**
        on this project (grey-cloud DNS), **Deployment Protection left ON** (safety
-       review §1). The generated `*.vercel.app` alias does NOT work — Standard
-       Protection covers it; custom domains are exempt. Do NOT disable protection.
-5. [ ] `metadataBase = https://biscuitlab.net/puzzles` + **per-page canonicals**
-       (`alternates: { canonical: './' }` in the root layout) — top SEO gap, and
-       the primary anti-index mitigation for the origin URL. No Host-based `noindex`.
+       review §1). ✅ live — the generated `*.vercel.app` alias 302s (locked); the
+       hub's `PUZZLES_ORIGIN` points at the custom host. Protection was NOT disabled.
+5. [x] `metadataBase = https://biscuitlab.net/puzzles` + **per-page canonicals**
+       (`alternates: { canonical: './' }` in the root layout) — ✅ shipped in #34;
+       verified each route self-canonicalizes to `…/puzzles/*` with no double prefix.
 6. [x] Ship §3 (basePath + `serverActions.allowedOrigins` + metadataBase + cron
        path + client `basePath`) — ✅ merged in #29 (deploys at the flip).
-7. [ ] `BETTER_AUTH_URL` → **`https://biscuitlab.net`** (origin only — a path breaks
-       the router base); server `basePath` per the strip test (§3); client
-       `basePath` is `/puzzles/api/auth` (in code, #29); add `https://biscuitlab.net`
-       to `trustedOrigins`; cookies **host-only**; update Google OAuth redirect URI
-       (+ explicit `redirectURI` if basePath is stripped) + JS origins.
-8. [ ] After the hub's rewrite + 301 are live: verify `biscuitlab.net/puzzles`
-       serves with assets + auth intact, `puzzles.biscuitlab.net` 301s without
-       looping, and a passkey registered at step 3 still works.
+7. [x] `BETTER_AUTH_URL` → **`https://biscuitlab.net`** (origin only). ✅ The strip
+       test showed Next strips `/puzzles`, so the server derives an origin-only
+       `baseURL` (router mounts at `/api/auth`, #32) and the Google `redirectURI` +
+       client social `callbackURL` are pinned to the public `/puzzles/...` path
+       (#32/#33). Client `basePath` `/puzzles/api/auth` (#29); cookies host-only.
+8. [x] After the hub's rewrite + 301 are live: ✅ verified — `biscuitlab.net/puzzles`
+       serves with assets + auth intact (passkey + Google OAuth round-trips confirmed
+       in the browser); the `puzzles.biscuitlab.net` 301 is folded into the hub
+       (host-scoped `redirects()`), pending only the domain attach.
 9. [x] **Post-cutover regression fixed (2026-07-30):** client `fetch('/api/...')`
        calls did not carry the `/puzzles` basePath, 404ing generation, the daily,
        and PDF export. Wrapped all nine in `apiPath()` (`src/lib/base-path.ts`);
        verified via dev smoke (`/puzzles/api/puzzle` → 200, bare path → 404) + full
        suite. Write-up: [multi-zone-basepath-fetch-fix.md](research/multi-zone-basepath-fetch-fix.md).
+10. [x] **Sitemap + noindex hygiene (2026-07-30):** added `app/sitemap.ts`
+       (`/puzzles/sitemap.xml` — 6 curated absolute URLs, no `lastmod`) and
+       `robots: { index: false }` on `/signin` + `/account` (excluded from the
+       sitemap). Cross-zone discovery uses **Option B** — this sitemap + the hub's
+       own, both in the hub `robots.txt`; **no** hand-rolled index (special-file
+       collision). Decision record:
+       [sitemap-architecture-multi-zone.md](research/sitemap-architecture-multi-zone.md).
 
 ## 5. Rollback
 

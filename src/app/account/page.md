@@ -11,3 +11,9 @@ on the session and prompts sign-in when absent.
 Reached by clicking the account handle in the global `AppHeader` (see
 [AccountBadge.md](../../features/auth/components/AccountBadge.md)). Passkey management lives
 in [PasskeyManager](../../features/auth/components/PasskeyManager.md).
+
+## Why `robots: { index: false }`
+
+**Why:** `/account` is auth-gated (Googlebot gets a redirect / thin shell) with no search
+value. It's kept crawlable but `noindex`, and excluded from `app/sitemap.ts`. Same rationale
+as `/signin` — see `Docs/research/sitemap-architecture-multi-zone.md` (Fork 2).

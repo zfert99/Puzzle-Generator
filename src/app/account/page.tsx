@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import { PasskeyManager } from '@/features/auth/components/PasskeyManager';
 
-export const metadata: Metadata = { title: 'Account' };
+// `noindex`: /account is auth-gated (Googlebot gets a redirect/thin shell) and has no
+// search value; keep it crawlable but out of the index, and out of the sitemap. See
+// Docs/research/sitemap-architecture-multi-zone.md (Fork 2).
+export const metadata: Metadata = { title: 'Account', robots: { index: false, follow: true } };
 
 /**
  * /account — the signed-in account surface. Server Component shell (routing/layout only);
