@@ -13,8 +13,8 @@ const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
  * reactive `useSession`, so it updates without a page reload.
  *
  * "Add passkey" was removed from the header (deliberate declutter, July 2026) — passkey
- * *sign-in/up* still lives on `/signin`; post-sign-in registration of an additional passkey
- * has no UI for now and belongs on a future account/settings surface, not the banner.
+ * *sign-in/up* lives on `/signin`, and managing passkeys (add/remove) lives on `/account`,
+ * reached by clicking the handle here rather than crowding the banner.
  */
 export function AccountBadge() {
   const { data: session, isPending } = useSession();
@@ -80,7 +80,9 @@ export function AccountBadge() {
 
   return (
     <div className="flex items-center gap-3 text-sm">
-      <span className="text-paper font-semibold">{display}</span>
+      <Link href="/account" className="text-paper font-semibold hover:underline">
+        {display}
+      </Link>
       <button
         type="button"
         onClick={() => { setValue(user.username || ''); setEditing(true); }}

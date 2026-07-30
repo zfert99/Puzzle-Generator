@@ -9,15 +9,14 @@ link when signed out. Uses better-auth's reactive `useSession`, so it updates wi
 reload after sign-in/out.
 
 "Add passkey" was **removed from the banner** (deliberate declutter, July 2026). Passkey
-sign-in/up still lives on `/signin`; registering an *additional* passkey from a signed-in
-session currently has no UI — it belongs on a future account/settings surface, not squeezed
-into the header. (`better-auth`'s `passkey.addPasskey` remains available client-side when
-that surface exists.)
+sign-in/up lives on `/signin`, and managing passkeys (add/remove) lives on the `/account`
+surface — reached by clicking the handle here — rather than squeezed into the header. See
+[PasskeyManager](./PasskeyManager.md).
 
 ```text
 isPending -> "…"
 no session -> "Sign in" link (/signin)
-session    -> username||name · Set/Change username · Sign out
+session    -> handle (links to /account) · Set/Change username · Sign out
 editing    -> inline input -> updateUser({ username }) (3–20 [a-zA-Z0-9_-]; "Taken" on conflict)
 ```
 
