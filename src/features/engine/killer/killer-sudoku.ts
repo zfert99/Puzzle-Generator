@@ -141,7 +141,22 @@ const DIFFICULTY_CONFIG_6: Partial<Record<KillerDifficulty, DifficultyConfig>> =
   },
 };
 
-const DIFFICULTY_CONFIGS: Record<6 | 9, Partial<Record<KillerDifficulty, DifficultyConfig>>> = {
+/**
+ * 4×4 Killer — the mini-set's beginner tier, **easy ONLY** (de-risked:
+ * [killer-4x4-feasibility.md](../../../../Docs/research/killer-4x4-feasibility.md)). On a 16-cell
+ * grid with digits 1–4, the cage-sum-only clue set pins ~99% of uniquely-solvable layouts to
+ * trivial tier-1 logic — tiers 4/5 measured zero, tier 2/3 < 3% with a narrow (max ~16) score
+ * range — so there is no honest medium/hard band to build (the operations-graded 4×4 niche is
+ * filled by Keisan, not Killer). No `scoreBand`: easy-only has no adjacent tier to stay disjoint
+ * from, so a band would only cost yield. `maxSingles: 8` is generous against the measured median
+ * of ~4 givens/puzzle, keeping generation cheap (~0.04–0.09 ms/attempt, double-digit % unique).
+ */
+const DIFFICULTY_CONFIG_4: Partial<Record<KillerDifficulty, DifficultyConfig>> = {
+  easy: { solveCap: 2, minSize: 1, maxSize: 3, maxSingles: 8 },
+};
+
+const DIFFICULTY_CONFIGS: Record<4 | 6 | 9, Partial<Record<KillerDifficulty, DifficultyConfig>>> = {
+  4: DIFFICULTY_CONFIG_4,
   6: DIFFICULTY_CONFIG_6,
   9: DIFFICULTY_CONFIG_9,
 };
@@ -161,8 +176,11 @@ function cageShapeOk(cages: Cage[], config: DifficultyConfig, gridSize: number):
 }
 
 export interface KillerGenOptions {
-  /** 9 (default, full ladder) or 6 (beginner variant, easy/medium/hard only). */
-  gridSize?: 6 | 9;
+  /**
+   * 9 (default, full ladder), 6 (beginner variant, easy/medium/hard), or 4 (mini, **easy only** —
+   * see `DIFFICULTY_CONFIG_4`). Requesting a difficulty a size doesn't offer throws immediately.
+   */
+  gridSize?: 4 | 6 | 9;
   /** RNG for cage generation (default `Math.random`). Inject a seeded PRNG for determinism. */
   rng?: () => number;
   /** A solved grid to build on. Default: a fresh random solution via `fillGrid` per attempt. */
@@ -283,13 +301,19 @@ export function generateKillerSudoku(
 }
 
 /** Generate a batch of graded Killers — `counts[difficulty]` puzzles of each, easy→hard order.
- * At 6×6 only easy/medium/hard counts are honoured (expert/extreme are 9×9-only tiers). */
+ * Only difficulties the size offers are honoured: 9×9 = full ladder, 6×6 = easy/medium/hard,
+ * 4×4 = easy only (higher tiers don't exist at those sizes — see the per-size configs). */
 export function generateKillerBatch(
   counts: Partial<Record<KillerDifficulty, number>>,
-  options: { gridSize?: 6 | 9 } = {},
+  options: { gridSize?: 4 | 6 | 9 } = {},
 ): KillerPuzzle[] {
   const gridSize = options.gridSize ?? 9;
-  const ladder = gridSize === 6 ? (['easy', 'medium', 'hard'] as const) : (['easy', 'medium', 'hard', 'expert', 'extreme'] as const);
+  const LADDERS: Record<4 | 6 | 9, readonly KillerDifficulty[]> = {
+    4: ['easy'],
+    6: ['easy', 'medium', 'hard'],
+    9: ['easy', 'medium', 'hard', 'expert', 'extreme'],
+  };
+  const ladder = LADDERS[gridSize];
   const puzzles: KillerPuzzle[] = [];
   for (const difficulty of ladder) {
     const n = counts[difficulty] ?? 0;

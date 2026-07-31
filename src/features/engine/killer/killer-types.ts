@@ -32,7 +32,7 @@ export interface KillerPuzzle {
   /** Cages partitioning the grid — every cell in exactly one cage. */
   cages: Cage[];
   difficulty: Difficulty;
-  gridSize: 6 | 9; // 9×9 (full ladder) or 6×6 (beginner variant, easy/medium/hard)
+  gridSize: 4 | 6 | 9; // 9×9 (full ladder), 6×6 (easy/medium/hard), or 4×4 (mini, easy only)
 }
 
 /** The existing classic puzzle, tagged so it can share a union with Killer. */

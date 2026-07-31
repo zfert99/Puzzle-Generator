@@ -64,6 +64,18 @@ function main(): void {
   console.log(`  avg ${miniAvg.toFixed(2)} ms/puzzle`);
   rows.push(`| ${timestamp} | \`${commit}\` | Killer Gen 6×6 Hard (20x) | ${miniAvg.toFixed(2)} ms | N/A |\n`);
 
+  // One 4×4 row — the mini beginner tier (digits 1–4, easy only — Killer 4×4 de-risk).
+  console.log('Generating 20 easy Killer (4×4)...');
+  const tinyTimes: number[] = [];
+  for (let i = 0; i < 20; i++) {
+    const start = Date.now();
+    generateKillerSudoku('easy', { gridSize: 4 });
+    tinyTimes.push(Date.now() - start);
+  }
+  const tinyAvg = tinyTimes.reduce((a, b) => a + b, 0) / tinyTimes.length;
+  console.log(`  avg ${tinyAvg.toFixed(2)} ms/puzzle`);
+  rows.push(`| ${timestamp} | \`${commit}\` | Killer Gen 4×4 Easy (20x) | ${tinyAvg.toFixed(2)} ms | N/A |\n`);
+
   const logPath = appendBenchmarkRows(rows);
   console.log(`\nLogged ${rows.length} rows to ${logPath}`);
 }

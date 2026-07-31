@@ -15,6 +15,8 @@ needs a tracked baseline rather than being assumed cheap.
 
 - 9×9 generation, averaged per tier: Easy/Medium/Hard (20×), Expert (10×), Extreme (5×).
 - One 6×6 Hard row (20×) — the beginner variant (digits 1–6, easy/medium/hard only).
+- One 4×4 Easy row (20×) — the mini tier (digits 1–4, easy only; Killer 4×4 is easy-only per the
+  de-risk — see `killer-4x4-feasibility.md`). Expected ~0.15 ms — trivially cheap.
 
 Counts shrink as tiers get slower to bound total wall-clock. Inputs are randomized (a fresh
 `Math.random` puzzle per call) to avoid V8 shape-caching / dead-code elimination (AGENTS.md §5).

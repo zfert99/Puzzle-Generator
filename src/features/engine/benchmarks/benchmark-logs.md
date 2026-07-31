@@ -121,3 +121,10 @@
 | 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Basic (5000x) | 0.13 ms | 7782 solves/sec |
 | 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Advanced (5000x) | 0.12 ms | 8095 solves/sec |
 | 2026-07-30T00:01:50.222Z | `83594a5` | HumanSolver Extreme (1000x) | 15.41 ms | 65 solves/sec |
+| 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 9×9 Easy (20x) | 12.20 ms | N/A |
+| 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 9×9 Medium (20x) | 96.20 ms | N/A |
+| 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 9×9 Hard (20x) | 402.05 ms | N/A |
+| 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 9×9 Expert (10x) | 288.30 ms | N/A |
+| 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 9×9 Extreme (5x) | 4304.00 ms | N/A |
+| 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 6×6 Hard (20x) | 6.65 ms | N/A |
+| 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 4×4 Easy (20x) | 0.15 ms | N/A |

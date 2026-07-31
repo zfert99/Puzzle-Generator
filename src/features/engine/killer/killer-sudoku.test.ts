@@ -110,6 +110,25 @@ describe('generateKillerSudoku', () => {
     expect(() => generateKillerSudoku('extreme', { gridSize: 6 })).toThrow(/not available at 6×6/);
   });
 
+  it('generates a 4×4 Killer (easy): 16 cells covered, unique, no givens, tier-capped', () => {
+    const puzzle = generateKillerSudoku('easy', { gridSize: 4 });
+    expect(puzzle.gridSize).toBe(4);
+    expect(puzzle.cages.reduce((total, cage) => total + cage.cells.length, 0)).toBe(16);
+    expect(puzzle.grid.flat().every((v) => v === 0)).toBe(true); // no givens (cages are the clue)
+    expect(validateKillerCages(puzzle.cages, puzzle.solution)).toEqual([]);
+    expect(new KillerSolver(puzzle.cages, 4).countSolutions(2)).toBe(1);
+    expect(new KillerSolver(puzzle.cages, 4).solve()).toEqual(puzzle.solution);
+    const grade = new KillerLogicalSolver(puzzle.cages, 4).solve();
+    expect(grade.solved).toBe(true);
+    expect(grade.hardestTier).toBeLessThanOrEqual(SOLVE_CAP.easy);
+  });
+
+  it('rejects medium/hard/expert/extreme at 4×4 (easy-only mini)', () => {
+    for (const difficulty of ['medium', 'hard', 'expert', 'extreme'] as const) {
+      expect(() => generateKillerSudoku(difficulty, { gridSize: 4 })).toThrow(/not available at 4×4/);
+    }
+  });
+
   it('keeps the medium/hard foothold bands apart (medium ≥ 3 anchors, hard ≤ 3)', () => {
     const footholds = (puzzle: ReturnType<typeof generateKillerSudoku>) =>
       puzzle.cages.filter((c) => c.cells.length >= 2 && combosFor(c.cells.length, c.sum).length === 1).length;

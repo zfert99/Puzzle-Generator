@@ -2,8 +2,9 @@
 
 > **Status:** 🚧 In progress (living document — the canonical plan for this initiative; the
 > `~/.claude/plans` scratch file is superseded by this doc). Each **Step** below carries its spec
-> *and* its progress/step-log. Only the process-rules groundwork (Step 1) has shipped; no daily
-> code changed yet.
+> *and* its progress/step-log. Shipped so far: the process-rules groundwork (Step 1) and the Killer
+> 4×4 easy-only generator (Step 2, engine only). No *daily* code has changed yet — the restructure
+> proper (migration, registry reshape, cron roller, serve/UI) begins at Step 3.
 >
 > **This supersedes the earlier "11-slot random-type ladder + medals" design.** That model fixed a
 > *difficulty* ladder and rolled *type* per slot; the owner chose the **inverse, simpler** model
@@ -126,7 +127,7 @@ together under each step. Status key: ✅ done · 🚧 in progress · ⏳ not st
 - *Blockers:* Two `markdownlint` MD037 false-positives from bold `$`-amounts on wrapped lines →
   resolved by unbolding those amounts.
 
-### Step 2 — Killer 4×4 generator (easy-only) — de-risk ✅ Done · build ⏸ Deferred
+### Step 2 — Killer 4×4 generator (easy-only) — de-risk ✅ Done · build ✅ Done
 
 **Spec.** Add a `DIFFICULTY_CONFIG_4` for Killer with **`easy` only** in `src/features/engine/killer/`
 (alongside the 6×6/9×9 configs in `killer-sudoku.ts`; a new *size*, not a new engine — the exact
@@ -134,18 +135,28 @@ solver and `cage-combinations` already support 4-digit grids). Add the `(killer,
 row (Step 3's profile table). Mirror the `.md` doc; add generation tests; run `benchmark-killer.ts`.
 Killer stays eligible only for the easy-4×4 mini slot and any 6×6 slot (per the model's eligibility).
 
-**Progress — de-risk ✅ Done 2026-07-31; generator build ⏸ deferred (awaiting go-ahead).**
+**Progress — de-risk ✅ Done 2026-07-31; generator build ✅ Done 2026-07-31.**
 
-- *Process:* Throwaway spike (4000 attempts × 4 cage-configs) measuring unique-solution yield +
-  min-tier grading at 4×4; recorded in
+- *Process (de-risk):* Throwaway spike (4000 attempts × 4 cage-configs) measuring unique-solution
+  yield + min-tier grading at 4×4; recorded in
   [killer-4x4-feasibility.md](research/killer-4x4-feasibility.md). Spike deleted (never committed).
-- *Learnings:* 4×4 Killer is **easy-only** — cheap/reliable to generate (~0.04–0.09 ms/attempt) but
-  tiers 4–5 = 0 and tier 2/3 < 3%, because Killer has no givens (only cage sums) so a 16-cell grid
-  collapses to tier-1 logic. Keisan already fills the operations-graded 4×4 niche (easy = `+ − ÷`;
-  medium/hard add `×`). → build easy-only + eligibility-constrained roller (folded into the model).
-  This *reduced* scope vs. the assumed full 4×4 ladder.
-- *Blockers:* The finding contradicted the plan assumption ("build Killer 4×4 → eligible for all 4×4
-  mini slots"); surfaced to the owner, who confirmed easy-only before proceeding.
+- *Process (build):* Added `DIFFICULTY_CONFIG_4 = { easy: { solveCap: 2, minSize: 1, maxSize: 3,
+  maxSingles: 8 } }` and wired size `4` into `DIFFICULTY_CONFIGS`; widened `KillerGenOptions.gridSize`
+  and `generateKillerBatch` to `4 | 6 | 9` (batch ladder now a per-size `LADDERS` table: 4×4 = easy
+  only). Added two tests (4×4 easy: 16 cells covered, unique, no givens, tier-capped; medium/hard/
+  expert/extreme at 4×4 throw `not available at 4×4`) — all 22 killer-sudoku tests green. Added a 4×4
+  Easy benchmark row; mirrored `killer-sudoku.md` + `benchmark-killer.md`. **The `(killer,4,easy)`
+  profile row is deferred to Step 3**, where the profile table is actually created (it doesn't exist
+  yet).
+- *Learnings:* 4×4 Killer is **easy-only** — cheap/reliable to generate (measured **0.15 ms/puzzle**
+  end-to-end, matching the spike's ~0.04–0.09 ms/attempt) but tiers 4–5 = 0 and tier 2/3 < 3%,
+  because Killer has no givens (only cage sums) so a 16-cell grid collapses to tier-1 logic. Keisan
+  already fills the operations-graded 4×4 niche (easy = `+ − ÷`; medium/hard add `×`). No `scoreBand`
+  needed — easy-only has no adjacent tier to stay disjoint from. This *reduced* scope vs. the assumed
+  full 4×4 ladder.
+- *Blockers:* The de-risk finding contradicted the plan assumption ("build Killer 4×4 → eligible for
+  all 4×4 mini slots"); surfaced to the owner, who confirmed easy-only before proceeding. No blockers
+  in the build.
 
 ### Step 3 — Migration `0004` + registry reshape + cron roller — ⏳ Not started
 
