@@ -172,7 +172,7 @@ Killer stays eligible only for the easy-4×4 mini slot and any 6×6 slot (per th
 > (Risk #4). Read-path/consumer inventory lives in the ripple map; the affected files are named per
 > sub-step below.
 
-### Step 3a — Migration `0004` (add + backfill `variant`) — ⏳ Not started
+### Step 3a — Migration `0004` (add + backfill `variant`) — ✅ Done (committed, PR open)
 
 **Spec.** Safe and standalone: add the stored `variant` column and start *writing* it, while nothing
 *reads* it yet — so the cron keeps producing the same 30 rows and behavior is unchanged. Lands before
@@ -207,7 +207,22 @@ Killer stays eligible only for the easy-4×4 mini slot and any 6×6 slot (per th
 - **Tests + docs** — `daily-row.test.ts`: `toDailyPuzzleRow` sets the right `variant` for classic /
   killer / calc. Mirror `schema.md` + `daily-row.md`. `npx vitest run` + lint + markdownlint.
 
-**Progress —** *(not started)*
+**Progress — ✅ Done 2026-07-31 (branch `feat/daily-restructure-step3`, commit `9ed2404`).**
+
+- *Process:* Added `variant text NOT NULL` to `schema.ts`; declared it, ran `db:generate` (emitted the
+  unsafe bare `ADD COLUMN … NOT NULL`), then **hand-authored** `0004_safe_pyro.sql` to the safe
+  add-nullable → backfill (classic / killer / calc by key pattern) → `SET NOT NULL` sequence, keeping
+  drizzle's snapshot + journal (which already encode the final NOT NULL state). `toDailyPuzzleRow`
+  now emits `variant` from the puzzle. Full suite 355 green, `npm run build` clean (caught nothing
+  this time, but run regardless — eslint doesn't type-check), lint + markdownlint clean. Docs:
+  `schema.md`, `daily-row.md`.
+- *Learnings:* `drizzle-kit generate` runs offline and does **not** prompt on a NOT-NULL add — it
+  just emits the naive (unsafe-on-existing-rows) SQL, so the hand-edit is mandatory and the
+  snapshot/journal it writes are still correct to keep. The `SET NOT NULL` at the end *is* the
+  no-null assertion (Risk #3) — no separate `RAISE` block needed.
+- *Blockers / open:* The migration is **committed but not applied** — `db:migrate` runs under the
+  privileged DB role; dry-run on a Neon branch before prod. `variant` has no reader until 3b, so
+  applying it early is harmless.
 
 ### Step 3b — Registry reshape + roller + read-path cutover — ⏳ Not started
 
