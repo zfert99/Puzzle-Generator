@@ -151,7 +151,9 @@ Killer stays eligible only for the easy-4×4 mini slot and any 6×6 slot (per th
   profile row is deferred to Step 3**, where the profile table is actually created (it doesn't exist
   yet).
 - *Learnings:* 4×4 Killer is **easy-only** — cheap/reliable to generate (measured **0.15 ms/puzzle**
-  end-to-end, matching the spike's ~0.04–0.09 ms/attempt) but tiers 4–5 = 0 and tier 2/3 < 3%,
+  end-to-end, matching the spike's ~0.04–0.09 ms/attempt) but tier 2/3 < 3% (tiers 4–5 are *not*
+  evidence — the solver gates them to 9×9, so they were never attempted; see the correction in the
+  feasibility doc),
   because Killer has no givens (only cage sums) so a 16-cell grid collapses to tier-1 logic. Keisan
   already fills the operations-graded 4×4 niche (easy = `+ − ÷`; medium/hard add `×`). No `scoreBand`
   needed — easy-only has no adjacent tier to stay disjoint from. This *reduced* scope vs. the assumed
