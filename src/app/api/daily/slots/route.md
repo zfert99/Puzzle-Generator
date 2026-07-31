@@ -16,9 +16,9 @@ served from the stored rows.
 Validate `date` (ISO YYYY-MM-DD; not in the future) -> 400 otherwise.
 Select every daily_puzzles row for that date: key, variant, grid.
 Shape each into { key, variant, difficulty, gridSize, section }:
-  difficulty = the rung (mini keys have their `mini-` prefix stripped)
+  difficulty = the rung the key refers to (difficultyForKey — handles active AND retired keys)
   gridSize   = derived from the stored grid's length (no grid_size column needed)
-  section    = 'mini' if the key starts with `mini-`, else 'standard'
+  section    = 'mini' if gridSize < 9, else 'standard'
 Sort: standard slots in ladder order, then minis easy -> hard.
 Return 200 { date, slots }.
 ```
@@ -29,6 +29,14 @@ Return 200 { date, slots }.
 solution the interactive board needs locally) comes from `GET /api/daily`, which is the single place
 that anti-cheat posture is reasoned about. Keeping this endpoint solution-free means it can stay
 public and uncached-but-cheap without widening the surface that serves answers.
+
+**Why `section` comes from the grid size, not the `mini-` key prefix.** The prefix looks like the
+obvious signal but is wrong for **retired** keys: `mini4-medium`, `killer6-hard` and `calc4-easy`
+carry no `mini-` prefix, so they'd be filed under Standard — and because the shared `slotLabel` only
+shows a board's size for minis, an archived day rendered several indistinguishable
+"Medium · Classic" pills. Size is the real signal (a board is a mini iff it's smaller than 9×9) and
+it holds for active and retired keys alike. Caught by looking at the rendered page, now covered by a
+route test.
 
 ## Archive behaviour
 

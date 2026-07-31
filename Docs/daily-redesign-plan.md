@@ -321,8 +321,20 @@ its tests (low-risk LOC). Files/lines per the ripple map.
     validated against 3 s instead of 60 s. Fixed by resolving the rung from any key shape, with
     legacy `killer` → `medium` (which reproduces its historical 30 s floor exactly); locked in with
     regression tests asserting every retired key still gets a real profile floor.
+  - **A second bug surfaced only by running the app** (dev server, per the visual-check rule): the
+    slots endpoint derived `section` from the `mini-` key prefix, so every *retired* mini
+    (`mini4-*`, `killer6-*`, `calc4-*`) was filed under **Standard** — and since `slotLabel` shows a
+    board's size only for minis, the picker rendered a wall of indistinguishable "Medium · Classic"
+    pills. **Not** a cutover-only artifact: archived dates are the permanent case. Fixed by keying
+    section off the grid size (mini ⟺ < 9×9), which is correct for active and retired keys alike;
+    covered by a new `slots/route.test.ts`. Tests + types were both green *before* this was found —
+    a reminder that rendering-shaped bugs need the running app, not just the suite.
 - *Blockers:* None. The slice exceeds the ~400-LOC target, as the spec anticipated — the read-path
   cutover can't be split from the roller without shipping a broken daily.
+- *Verified in the running app (owner to confirm visuals):* `/daily`, `/leaderboard` and `/archive`
+  all render the two-section layout with unambiguous "Difficulty · Type" labels and no console
+  errors; the leaderboard's bot time read **3:30 = 210 000 ms**, exactly `classic-9-easy`'s
+  `botTimeMs` — end-to-end proof the profile-driven bot seeding is keyed correctly.
 
 ### Step 4 — UI polish: section collapse + "Difficulty · Type" labels — ⏳ Mostly landed in 3b
 

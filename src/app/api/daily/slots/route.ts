@@ -49,7 +49,13 @@ export async function GET(req: NextRequest) {
         variant: r.variant,
         difficulty: difficultyForKey(r.key),
         gridSize: r.grid.length,
-        section: r.key.startsWith('mini-') ? ('mini' as const) : ('standard' as const),
+        // Section is derived from the GRID SIZE, not the key prefix: a board is a mini iff it is
+        // smaller than 9×9. That holds for the active slot keys (standard is always 9×9, `mini-*`
+        // never is) AND for retired keys on archived dates — keying off the `mini-` prefix instead
+        // would file every legacy mini (`mini4-*`, `killer6-*`, `calc4-*`) under Standard and, since
+        // `slotLabel` only shows the size for minis, render them with duplicate ambiguous labels
+        // ("Medium · Classic" three times over).
+        section: r.grid.length < 9 ? ('mini' as const) : ('standard' as const),
       }))
       .sort((a, b) => sortIndex(a.key) - sortIndex(b.key));
 

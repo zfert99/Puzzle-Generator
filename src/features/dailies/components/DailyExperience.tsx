@@ -295,7 +295,7 @@ export default function DailyExperience() {
           </Sticker>
           <h2 className="text-2xl font-semibold mb-1 text-center">Today&apos;s Daily</h2>
           <p className="text-xs text-ink-soft text-center mb-6">
-            One shared puzzle per difficulty · resets at 00:00 UTC
+            One puzzle per type, difficulty rolls daily · resets at 00:00 UTC
             {!session && ' · sign in to be ranked'}
           </p>
 
