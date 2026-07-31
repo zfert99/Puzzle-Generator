@@ -5,13 +5,25 @@
 > AGENTS.md §6 security posture). v1 of this plan sketched the systems; v2 pins schemas to
 > real tables, names the integration points, and gives each slice a gate.
 >
-> **⚠️ Reshape pending:** the [daily-redesign-plan.md](daily-redesign-plan.md) collapses the
-> daily to an 11-slot random-type ladder with completion **medals**. When that lands, this
-> plan's per-variant *sections* (classic/killer/minis/calc) collapse to two **sets** (main,
-> minis) + `overall`, gold-day denominators re-key onto the 11 slots, variant achievements
-> read the new stored `variant` column, and the medal award (idempotent, top-up per set/day)
-> becomes the headline crumbs faucet ahead of the flat per-board table in §4. Reconcile S1–S3
-> against that plan before building.
+> **⚠️ Reshape SHIPPED (July 2026) — reconcile S1–S3 before building.** The
+> [daily restructure](daily-redesign-plan.md) is live, and it landed the **inverse** of what an
+> earlier draft of this banner anticipated: not an 11-slot random-*type* ladder, but **type-as-slot**
+> — one slot per puzzle TYPE with the DIFFICULTY rolled per day (**3 standard + 3 mini = 6
+> boards/day**, scaling to 5+5). What that means here:
+>
+> - This plan's per-variant *sections* (classic/killer/minis/calc) collapse to two **sets**
+>   (standard, minis) + `overall`.
+> - Gold-day denominators key onto **that day's actual slot count** (3 per set today, 5 later) —
+>   dynamic, which the S3 per-date snapshot already anticipated. Never a flat registry count.
+> - Variant achievements read the stored `daily_puzzles.variant` column (migration `0004`), which
+>   now exists and is backfilled across all history.
+> - Slot keys are the difficulty rung (`easy…extreme`) for standard and `mini-<tier>` for minis; a
+>   given key's TYPE varies by day, so anything cross-date must group by `(key, variant)` — the same
+>   correction already applied to `getPersonalBests`.
+> - **Medals remain unbuilt and deferred to Phase 9** (this plan). The restructure deliberately
+>   shipped only the two-set *shape* plus archive completion counts, leaving the medal award
+>   (idempotent, top-up per set/day) as the headline crumbs faucet to design here, ahead of the flat
+>   per-board table in §4.
 
 ## 1. Overview
 
@@ -38,8 +50,8 @@ Design principles locked for v1:
 |---|---|
 | “users” table | better-auth `user` (TEXT ids) in `auth-schema.ts` — all FKs are `text` |
 | “puzzle completion events” | `solve_attempts` rows written by `/api/solve` (`completed`, server `time_ms`, `mistakes`, unique per user×puzzle) — the ONLY trusted earn trigger |
-| “puzzleType 'killer_sudoku' / 'kakuro'” | The **daily-board registry** (`daily-row.ts`): currently 30 keys/day in four sections (classic / killer / minis / calc) — but the [daily-redesign-plan.md](daily-redesign-plan.md) collapses this to 11 random-type slots in two sets. Achievements + streaks key off slots/sets and the stored `variant`, not invented type strings |
-| “each type publishes fixed 5 levels/day” | Sections have different sizes (classic 5, killer 5, minis 9). Gold-day denominators come from `DAILY_BOARDS` counts, never hardcoded |
+| “puzzleType 'killer_sudoku' / 'kakuro'” | The **daily registry** (`daily-row.ts`). As of the [daily restructure](daily-redesign-plan.md) (shipped July 2026) this is **type-as-slot**: one slot per puzzle TYPE with the DIFFICULTY rolled per day — **3 standard + 3 mini = 6 boards/day**, scaling to 5+5 as types 4–5 land. Achievements + streaks key off slots/sets and the stored `daily_puzzles.variant`, not invented type strings. (An earlier draft of this table described an 11-slot random-*type* ladder; that design was superseded by the inverse, simpler model actually built.) |
+| “each type publishes fixed 5 levels/day” | Wrong shape. There are **two sets** — standard and minis — with the day's slot count as the denominator (3 each today, 5 each later). Gold-day denominators are derived from that day's actual rows, never hardcoded and no longer from a flat `DAILY_BOARDS` count |
 | new `dailyCompletions` table | **Not needed** — `solve_attempts ⋈ daily_puzzles` already IS the completion log (date, key, time, mistakes). Derive; don’t duplicate state |
 | “streaks” table | A computed-on-read streak already ships (`streak.service.ts`). Freezes need STORED state, so S2 introduces `streak_state` and the computed version becomes its bootstrap/verification oracle |
 

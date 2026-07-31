@@ -48,9 +48,12 @@ ON CONFLICT DO NOTHING
 
 ## Where the bot's daily solve comes from
 
-Not implemented in this file — see `seedBotSolves` in `dailies.service.ts`. Its target time
-per board is `botTimeMs` on `DAILY_BOARDS` (`daily-row.ts`): a hand-tuned "good, beatable"
-human time, deliberately well above that board's `minSolveMs` anti-cheat floor.
+Not implemented in this file — see `seedBotSolves` in `dailies.service.ts`. Its target time comes
+from the `(variant, size, difficulty)` **profile table** (`getProfile` in `daily-row.ts`) via the
+row's stored `variant`: a hand-tuned "good, beatable" human time, deliberately well above that
+board's `minSolveMs` anti-cheat floor. (It used to be a `botTimeMs`-by-key map off the flat board
+registry; under type-as-slot a key like `hard` holds a different type each day, so the time has to
+follow the actual board.)
 
 ## Narrative thread for later phases (not built here)
 

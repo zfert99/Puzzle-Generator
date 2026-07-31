@@ -31,5 +31,6 @@ local win-detection still fired ("Daily Solved!"), so the player saw a false suc
 nothing was recorded, so the solve never appeared on the leaderboard or in the dailies
 "completed" list. Fixed by validating against any of this app's actual `GridSize`s (4, 6, 9)
 instead of a hardcoded 9, with the digit range following the grid's own size. `gridsMatch`
-(`solve-rules.ts`) and `MIN_SOLVE_MS` were already size-agnostic — this route-level shape
-check was the only place still assuming every daily is 9×9.
+(`solve-rules.ts`) and the plausibility floor were already size-agnostic — this route-level shape
+check was the only place still assuming every daily is 9×9. (The floor was then keyed on
+`(variant, size, difficulty)` outright by the daily restructure — see `solve-rules.md`.)
