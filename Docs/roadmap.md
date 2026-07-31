@@ -50,7 +50,7 @@ rotation alongside classic Sudoku.
 | **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (server-timed) | ✅ Shipped |
 | **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
 | **Engine** | Killer Sudoku — cage-aware bitmask backtracking + MRV exact solver, randomized cage generator, five-tier grader (Basic → Extreme), 6×6 beginner variant | ✅ Shipped |
-| **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and a 30-board `/daily` registry (Classic + Killer + Keisan ladders + Minis) — see the [daily-redesign-plan.md](daily-redesign-plan.md) to collapse this to an 11-slot random-type ladder | ✅ Shipped |
+| **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and a 30-board `/daily` registry (Classic + Killer + Keisan ladders + Minis) — see the [daily-redesign-plan.md](daily-redesign-plan.md) to restructure this to a type-as-slot model (one daily per type, 3+3→5+5) | ✅ Shipped |
 | **QoL** | Save & continue — one saved-game slot, puzzle archive, deep-linkable "Continue" banners | ✅ Shipped |
 | **Testing** | Vitest unit suite (335 tests) + Playwright E2E + benchmark scripts with auto-logging (Sudoku solver + pipeline, plus Keisan & Killer generation) | ✅ Shipped |
 | **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) + baseline security headers | ✅ Shipped |
@@ -655,15 +655,21 @@ speed races**, **community puzzle sharing**, and a **mobile app**.
 
 The subsections below capture the remaining backlog items.
 
-### Daily redesign — random-type ladder + medals 🔜 Up next (planned July 2026)
+### Daily restructure — type-as-slot (one daily per type) 🚧 In progress (July 2026)
 
 The `/daily` grew to a **30-board wall** (Classic + Killer + Keisan ladders + 15 minis) that
-overwhelms the ritual and scatters a small player base across empty leaderboards. Planned
-redesign: collapse to **11 slots** — a fixed difficulty ladder (easy→extreme) whose *puzzle
-type is rolled each day*, plus a 6-board mini set (e/m/h × 4×4/6×6) — with completion
-**medals** (bronze/silver/gold per set) designed ledger-ready as the Phase 9 crumbs faucet.
-Full design, migration (`variant` column + key reuse), and ripple into the progression plan:
-[daily-redesign-plan.md](daily-redesign-plan.md).
+overwhelms the ritual and scatters a small player base across empty leaderboards. Restructure:
+**one daily slot per puzzle TYPE, with the DIFFICULTY randomized** — N types → N standard +
+N mini boards (**3 + 3 = 6 now**, scaling to 5 + 5 = 10 as the next two puzzle types land).
+Standard = 3 distinct random difficulties (9×9); minis = 3-tier (e/m/h), size easy/medium = 4×4,
+hard = random(4×4/6×6). Also adds a **Killer 4×4 (easy-only)** generator and archive **completion
+counts (X/N)**; medals/gold-days remain deferred to Phase 9. **This supersedes the earlier
+"11-slot random-type ladder + medals" design** (fixed *difficulty*, random *type*) — the inverse,
+simpler model was chosen; the migration infra (`variant` column, slot-list + profile-table
+reshape, retire old keys read-only) carries forward. Full living design + step log:
+[daily-redesign-plan.md](daily-redesign-plan.md); Killer 4×4 de-risk:
+[killer-4x4-feasibility.md](research/killer-4x4-feasibility.md). Process groundwork shipped in
+[PR #42](https://github.com/zfert99/Puzzle-Generator/pull/42).
 
 ### KenKen 🔜 Up next (Killer's cousin)
 
