@@ -42,6 +42,7 @@ describe('toDailyPuzzleRow', () => {
 
     expect(row.date).toBe('2026-07-11');
     expect(row.difficulty).toBe('easy');
+    expect(row.variant).toBe('classic'); // stored type — classic has no `variant` on the puzzle
     expect(row.grid).toBe(puzzle.grid);
     expect(row.solution).toBe(puzzle.solution);
     expect(row.clueCount).toBe(countClues(puzzle.grid));
@@ -90,6 +91,7 @@ describe('toDailyPuzzleRow', () => {
     const row = toDailyPuzzleRow(puzzle, '2026-07-17', 'killer-medium');
 
     expect(row.difficulty).toBe('killer-medium'); // the board key, not the engine difficulty
+    expect(row.variant).toBe('killer'); // stored type, from the puzzle's own `variant`
     expect(row.cages).toBe(puzzle.cages);
     expect(row.clueCount).toBe(puzzle.cages.length);
     // Killer ships no givens — the grid the client sees is all zeros; cages are the clue.
@@ -103,6 +105,7 @@ describe('toDailyPuzzleRow', () => {
     const row = toDailyPuzzleRow(puzzle, '2026-07-26', 'calc6-hard');
 
     expect(row.difficulty).toBe('calc6-hard');
+    expect(row.variant).toBe('calc'); // stored type, from the puzzle's own `variant`
     expect(row.cages).toBe(puzzle.cages);
     // Keisan cages carry op + target (not Killer's sum) — the shape the board reconstructs from.
     expect(row.cages?.[0]).toHaveProperty('op');

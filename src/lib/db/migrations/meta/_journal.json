@@ -29,6 +29,13 @@
       "when": 1784338057545,
       "tag": "0003_killer_daily_cages",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785524085024,
+      "tag": "0004_safe_pyro",
+      "breakpoints": true
     }
   ]
 }

@@ -34,11 +34,18 @@ day is it," which matches the server-authoritative-time posture of the anti-chea
 ```text
 Return a row with:
   date       = the given ISO YYYY-MM-DD (UTC) string
-  difficulty = the puzzle's difficulty
+  difficulty = the daily-board KEY passed by the caller
+  variant    = the puzzle TYPE: 'variant' in puzzle ? puzzle.variant : 'classic'
   grid       = the unsolved grid
   solution   = the solved grid (server-only)
-  clueCount  = countClues(grid)
+  clueCount  = cage count for Killer/Keisan, else countClues(grid)
+  cages      = the cage partition for Killer/Keisan, else null
 ```
+
+`variant` is derived from the puzzle object itself (Killer/Keisan carry an explicit `variant`;
+classic doesn't), **not** from the registry — so it stays correct once the roller assigns types to
+rung-keyed slots (Step 3b). It backs the stored `daily_puzzles.variant` column (migration `0004`),
+which readers use instead of inferring type from the key.
 
 ## `toUtcDateString(now)`
 
@@ -61,9 +68,11 @@ Killer daily up with zero changes.
 
 ## The daily-board registry (July 2026)
 
-`DAILY_BOARDS` replaced the flat difficulty list: 19 boards/day in three sections — classic
+`DAILY_BOARDS` replaced the flat difficulty list: 30 boards/day across four sections — classic
 9×9 (keys unchanged, so historical rows need no migration), the full Killer 9×9 ladder
-(`killer-easy` … `killer-extreme`), and minis (`mini4-*`, `mini6-*`, `killer6-*`). The `key`
+(`killer-easy` … `killer-extreme`), minis (`mini4-*`, `mini6-*`, `killer6-*`, `calc4-*`, `calc6-*`),
+and Keisan 9×9 (`calc9-*`). (This flat registry is being reshaped into a slot-list + profile table by
+Step 3b of the daily restructure — see `Docs/daily-redesign-plan.md`.) The `key`
 IS the `daily_puzzles.difficulty` value, the API/leaderboard key, and the idempotency handle.
 Each entry carries its section, label, variant, gridSize, engine difficulty, and anti-cheat
 floor (`minSolveMs` — single source of truth for `solve-rules`). `toDailyPuzzleRow` now takes

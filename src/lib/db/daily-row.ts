@@ -152,6 +152,9 @@ export function toDailyPuzzleRow(
   return {
     date: isoDate,
     difficulty: key,
+    // Stored so readers stop inferring type from the key. Derived from the puzzle itself (not the
+    // registry), so this is correct even once the roller assigns types to rung-keyed slots.
+    variant: hasCages ? puzzle.variant : 'classic',
     grid: puzzle.grid,
     solution: puzzle.solution,
     clueCount: hasCages ? puzzle.cages.length : countClues(puzzle.grid),
