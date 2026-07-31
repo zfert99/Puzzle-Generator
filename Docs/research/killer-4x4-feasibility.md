@@ -31,8 +31,19 @@ and the exact solver is size-generic — so only the spike itself was throwaway.
 | 2–2 | 0.035 | 14.5% | 88.5% | **t1 100%**, t2 0%, t3 0% | 0 | 4.4 |
 | 2–3 | 0.039 | 27.9% | 99.7% | **t1 96.9%**, t2 0.7%, t3 2.4% | 1 | 5.4 |
 
-**Tiers 4 and 5 were zero in every configuration.** Tier 2/3 combined never exceeded ~3%, and the
-two-factor score range is narrow (medians 3–5; max ~16 in the loosest config).
+**Tier 2/3 combined never exceeded ~3%** in any configuration, and the two-factor score range is
+narrow (medians 3–5; max ~16 in the loosest config) — the entire 4×4 range sits below the 9×9
+generator's *easy* cut of 42.
+
+> **Correction (2026-07-31): tiers 4–5 are not evidence here.** An earlier version of this doc
+> reported "tiers 4 and 5 were zero in every configuration" as a finding. That is true but
+> **circular**: `killer-logical-solver.ts` gates every tier-4-and-up technique to 9×9 —
+> `if (technique.tier >= 4 && this.size !== 9) break;` — so X-Wing, Swordfish, Y-Wing, XYZ-Wing,
+> W-Wing, ALS-XZ, AIC, `cageComboRestriction` and `ruleOf45MultiCell` were **never attempted** at
+> 4×4. Their absence measures the solver's configuration, not the puzzle size. The decision is
+> unaffected — it rests on the tier-2/3 rate and the score collapse, both of which ARE measured —
+> but the claim should not be repeated. (Caught while writing the devlog for this work; the same
+> wording had propagated into the draft post.)
 
 ## Why it doesn't work (as a 3-tier ladder)
 
