@@ -84,10 +84,17 @@ function the cron runs; `onConflictDoNothing` on `(date, difficulty)`). Result:
 **30/30 boards inserted**, all now serving `200` via `/puzzles/api/daily`, and the
 leaderboard populated (Sudoku Bot seeded).
 
-**Open item:** confirm the **07-31 00:00 UTC** scheduled run self-heals (config is
-internally consistent, so it should). The exact 07-30 failure log lives in Vercel's cron
-execution history — checking runs older than the retention window requires a Vercel Pro
-plan, so the deploy-window explanation above stands as the working root cause.
+**Resolved (2026-07-31):** the **07-31 00:00 UTC** scheduled run self-healed — the cron
+inserted **30/30 boards at 00:27 UTC** on its own (verified in the prod DB and via the
+public `/puzzles/api/daily` API, all serving `date=2026-07-31`), matching the ~00:2x–00:5x
+cadence of every healthy pre-incident day. 07-30 stands as a single miss during the cutover
+window (its boards carry the ~19:56 UTC manual-backfill timestamp, distinct from the
+scheduled runs), which confirms the deploy-window explanation above. No recurring failure —
+the cron is healthy again; the migration incident is closed.
+
+The exact 07-30 failure log lives in Vercel's cron execution history; checking runs older
+than the free-tier retention window needs a Vercel Pro plan, so the deploy-window
+explanation stands as the working root cause rather than a log-confirmed one.
 
 ## Related docs
 
