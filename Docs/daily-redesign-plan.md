@@ -2,11 +2,11 @@
 
 > **Status:** 🚧 In progress (living document — the canonical plan for this initiative; the
 > `~/.claude/plans` scratch file is superseded by this doc). Each **Step** below carries its spec
-> *and* its progress/step-log. Shipped so far: the process-rules groundwork (Step 1) and the Killer
-> 4×4 easy-only generator (Step 2, engine only). No *daily* code has changed yet — the restructure
-> proper begins at **Step 3**, now planned in detail and split into **3a** (migration `0004` — safe,
-> standalone) and **3b** (registry reshape + roller + read-path cutover), followed by Step 4 (UI
-> polish) and Step 5 (archive X/N).
+> *and* its progress/step-log. **The restructure is live:** Step 1 (process rules), Step 2 (Killer
+> 4×4 generator), Step 3a (migration `0004` — stored `variant`), and Step 3b (registry reshape +
+> cron roller + read-path cutover + the functional picker/tabs) are all done — `/daily` now rolls
+> **6 boards/day** (3 standard + 3 mini) instead of 30. Remaining: Step 4 (UI polish — most of it
+> landed early with 3b) and Step 5 (archive X/N counts).
 >
 > **This supersedes the earlier "11-slot random-type ladder + medals" design.** That model fixed a
 > *difficulty* ladder and rolled *type* per slot; the owner chose the **inverse, simpler** model
@@ -224,7 +224,7 @@ Killer stays eligible only for the easy-4×4 mini slot and any 6×6 slot (per th
   privileged DB role; dry-run on a Neon branch before prod. `variant` has no reader until 3b, so
   applying it early is harmless.
 
-### Step 3b — Registry reshape + roller + read-path cutover — ⏳ Not started
+### Step 3b — Registry reshape + roller + read-path cutover — ✅ Done
 
 **Spec.** The atomic flip to type-as-slot. Because the roller writes rung-keyed rows whose *type*
 varies, every reader that infers type from the key switches to the stored `variant` + profile table
@@ -285,19 +285,77 @@ its tests (low-risk LOC). Files/lines per the ripple map.
   `dailies.service.md`, `route.md`, `solve-rules.md`. `npx vitest run` + lint + markdownlint;
   no benchmark (no core-solver change).
 
-**Progress —** *(not started)*
+**Progress — ✅ Done 2026-07-31 (branch `feat/daily-restructure-step3b`).**
 
-### Step 4 — UI polish: section collapse + "Difficulty · Type" labels — ⏳ Not started
+- *Process:* Rewrote `daily-row.ts` to slots + `PROFILE` (31 rows) + `isEligible` + a pure
+  `rollDailyAssignment(rng)`; built the roller into `generateDailyPuzzles` with a retry→fallback that
+  can never leave a slot empty; cut the three readers over to the stored `variant` (serve route,
+  `isImplausiblyFast`, bot-seed) plus variant-scoped `getPersonalBests`; added **`GET
+  /api/daily/slots`** + a shared `slotLabel` so the picker and leaderboard tabs render the day's real
+  boards as "Difficulty · Type"; `maxDuration` 120→60. Tests rewritten across five files (367 green);
+  build + lint + markdownlint clean.
+- *Learnings:*
+  - **Two injectable seams beat mocking.** The roll takes an `rng` and the service takes a `generate`
+    seam, so the roller's orchestration/fallback is tested for real in **~1.5 s** instead of paying
+    real generation (the old service test spent ~60 s regenerating 30 boards, incl. a ~5.5 s
+    Killer-extreme). Mocks stay at the boundary (DB + engine), per AGENTS.md §4.
+  - **Enumerate-then-filter, not roll-and-retry,** for the mini assignment: build every
+    `(type→slot permutation × hard-slot size)` and keep the `isEligible` ones, then pick uniformly.
+    Killer-4×4-easy-only falls out for free — no retry loop, no possibility of an invalid roll.
+  - **Verified end-to-end against the real engines + DB** with `npm run db:seed`: the roll produced
+    `mini-easy`→Keisan 4×4, `mini-medium`→Classic 4×4, `mini-hard`→**Killer 6×6** — Killer correctly
+    avoided the ineligible hard-4×4 and took the 6×6 slot.
+  - **The cutover date is a visible one-day artifact:** that date already held 30 old-registry rows,
+    so the 3 rolled standard rungs collided (`onConflictDoNothing`) and only the 3 new `mini-*` slots
+    inserted — it now shows 33 boards. That's correct idempotency (first-write-wins, so no player's
+    board changes under them) and it self-heals on the next fresh date; archived dates intentionally
+    keep showing the boards they really had.
+  - A stale `solve-rules.test.ts` still called the old `isImplausiblyFast(key, ms)` — it wasn't in
+    the ripple map (which had focused on key/section consumers) and was caught only by the **full**
+    suite, not by lint or the targeted runs. Full-suite runs stay the backstop for signature changes.
+  - **The pre-merge judgment pass caught a real anti-cheat hole** (exactly the "AI logic is
+    plausible-but-wrong" case the checklist targets). The first `difficultyForKey` only stripped a
+    `mini-` prefix, so every *retired* key (`killer-extreme`, `calc9-expert`, …) resolved to no rung
+    → no profile → the permissive 3 s default floor. Retired keys are still solvable **on the
+    cutover date** (that day holds old and new rows), so a `killer-extreme` solve would have been
+    validated against 3 s instead of 60 s. Fixed by resolving the rung from any key shape, with
+    legacy `killer` → `medium` (which reproduces its historical 30 s floor exactly); locked in with
+    regression tests asserting every retired key still gets a real profile floor.
+  - **A second bug surfaced only by running the app** (dev server, per the visual-check rule): the
+    slots endpoint derived `section` from the `mini-` key prefix, so every *retired* mini
+    (`mini4-*`, `killer6-*`, `calc4-*`) was filed under **Standard** — and since `slotLabel` shows a
+    board's size only for minis, the picker rendered a wall of indistinguishable "Medium · Classic"
+    pills. **Not** a cutover-only artifact: archived dates are the permanent case. Fixed by keying
+    section off the grid size (mini ⟺ < 9×9), which is correct for active and retired keys alike;
+    covered by a new `slots/route.test.ts`. Tests + types were both green *before* this was found —
+    a reminder that rendering-shaped bugs need the running app, not just the suite.
+- *Blockers:* None. The slice exceeds the ~400-LOC target, as the spec anticipated — the read-path
+  cutover can't be split from the roller without shipping a broken daily.
+- *Verified in the running app (owner to confirm visuals):* `/daily`, `/leaderboard` and `/archive`
+  all render the two-section layout with unambiguous "Difficulty · Type" labels and no console
+  errors; the leaderboard's bot time read **3:30 = 210 000 ms**, exactly `classic-9-easy`'s
+  `botTimeMs` — end-to-end proof the profile-driven bot seeding is keyed correctly.
 
-**Spec.** (The serve-route `variant` read moved into Step 3b.) Pure presentation:
+### Step 4 — UI polish: section collapse + "Difficulty · Type" labels — ⏳ Mostly landed in 3b
 
-- **Labels** compose from difficulty + stored `variant` (e.g. "Hard · Killer"): `formatDailyKey`
-  (`daily-row.ts`), `DailyExperience.tsx` picker, `LeaderboardView.tsx` tabs + `myBest` rendering.
-- **Section collapse** — from four (Classic / Killer / Minis / Keisan) to **Standard** + **Minis**.
-- Decide the standard-tab display: all 5 rung tabs vs. only today's 3 populated (archive still needs
-  the full set for past days). Update mirrored `.md`s.
+**Spec.** (The serve-route `variant` read moved into Step 3b.) Pure presentation — and most of it
+**shipped early in 3b**, because the picker/tabs could not stay functional on the old
+`DAILY_BOARDS`-by-section rendering once the roll went live:
 
-**Progress —** *(not started)*
+- ✅ **Labels** compose from difficulty + stored `variant` ("Hard · Killer") via the shared
+  `slotLabel` (`features/dailies/slot-display.ts`), used by both the picker and the leaderboard tabs.
+- ✅ **Section collapse** — four sections (Classic / Killer / Minis / Keisan) → **Standard** +
+  **Minis**, driven by `GET /api/daily/slots`.
+- ✅ **Standard-tab display decided:** show only the day's *populated* slots (3 of 5 rungs), since
+  the tabs are now built from the day's real rows — which also makes the archive correct for free
+  (a past date lists exactly the boards it had, retired keys included).
+
+**Remaining (true polish, not blocking):** visual pass on the new two-section picker at desktop
+width (the panel was sized for four chip rows); a one-time "the daily changed" note for returning
+players (Risk #5); and deciding whether the Continue banner should show the composed label (it
+currently falls back to `formatDailyKey`, since a saved key carries no variant context).
+
+**Progress —** *(core landed with 3b; polish not started)*
 
 ### Step 5 — Archive completion counts (X/N) — ⏳ Not started
 

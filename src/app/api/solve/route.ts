@@ -71,7 +71,6 @@ export async function POST(req: NextRequest) {
     const attempt = await recordSolve(db, {
       userId,
       puzzle,
-      difficulty,
       submittedGrid: grid,
       mistakes,
       clientTimeMs,

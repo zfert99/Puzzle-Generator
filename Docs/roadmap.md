@@ -50,7 +50,7 @@ rotation alongside classic Sudoku.
 | **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (server-timed) | ✅ Shipped |
 | **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
 | **Engine** | Killer Sudoku — cage-aware bitmask backtracking + MRV exact solver, randomized cage generator, five-tier grader (Basic → Extreme), 6×6 beginner variant | ✅ Shipped |
-| **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and a 30-board `/daily` registry (Classic + Killer + Keisan ladders + Minis) — see the [daily-redesign-plan.md](daily-redesign-plan.md) to restructure this to a type-as-slot model (one daily per type, 3+3→5+5) | ✅ Shipped |
+| **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and the `/daily` registry — **restructured to type-as-slot** (one daily per type, difficulty rolled per day: 3 standard + 3 mini = 6 boards/day, down from 30; scales to 5+5) — see [daily-redesign-plan.md](daily-redesign-plan.md) | ✅ Shipped |
 | **QoL** | Save & continue — one saved-game slot, puzzle archive, deep-linkable "Continue" banners | ✅ Shipped |
 | **Testing** | Vitest unit suite (335 tests) + Playwright E2E + benchmark scripts with auto-logging (Sudoku solver + pipeline, plus Keisan & Killer generation) | ✅ Shipped |
 | **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) + baseline security headers | ✅ Shipped |
@@ -668,8 +668,16 @@ counts (X/N)**; medals/gold-days remain deferred to Phase 9. **This supersedes t
 simpler model was chosen; the migration infra (`variant` column, slot-list + profile-table
 reshape, retire old keys read-only) carries forward. Full living design + step log:
 [daily-redesign-plan.md](daily-redesign-plan.md); Killer 4×4 de-risk:
-[killer-4x4-feasibility.md](research/killer-4x4-feasibility.md). Process groundwork shipped in
-[PR #42](https://github.com/zfert99/Puzzle-Generator/pull/42).
+[killer-4x4-feasibility.md](research/killer-4x4-feasibility.md).
+
+**Status:** the restructure is **live** — Step 1 process rules
+([PR #42](https://github.com/zfert99/Puzzle-Generator/pull/42)), Step 2 Killer 4×4 generator
+([PR #44](https://github.com/zfert99/Puzzle-Generator/pull/44)), Step 3a migration `0004` adding the
+stored `variant` column ([PR #45](https://github.com/zfert99/Puzzle-Generator/pull/45)), and Step 3b
+(slot-list + `(variant,size,difficulty)` profile table, the constrained cron roller with
+never-empty fallback, the read-path cutover to stored `variant`, variant-scoped personal bests, and
+the `/api/daily/slots`-driven picker + leaderboard tabs). Remaining: Step 4 UI polish (most of it
+landed early with 3b) and Step 5 archive completion counts.
 
 ### KenKen 🔜 Up next (Killer's cousin)
 

@@ -44,16 +44,26 @@ SELECT difficulty, puzzle_id, time_ms
 
 ## `getPersonalBests(db, userId)`
 
-**Why:** Backs the "your personal bests" view — the user's fastest completed time per
-difficulty across all days. Scoped to `userId` and `completed`, grouped by the puzzle's
-difficulty via a join to `daily_puzzles`.
+**Why:** Backs the "your personal bests" view — the user's fastest completed time per board across
+all days. Scoped to `userId` and `completed`, grouped via a join to `daily_puzzles`.
 
 ```text
-SELECT daily_puzzles.difficulty, MIN(time_ms)
+SELECT daily_puzzles.difficulty, daily_puzzles.variant, MIN(time_ms)
   FROM solve_attempts JOIN daily_puzzles
   WHERE user_id = userId AND completed
-  GROUP BY difficulty
+  GROUP BY difficulty, variant
 ```
+
+**Why grouped by `(difficulty, variant)`, not difficulty alone (daily restructure Risk #4).** This
+is the one genuinely **cross-date** aggregate, so it is the query the type-as-slot model can break:
+a rung key like `hard` means Classic one day and Killer the next, and grouping by the key alone
+would collapse those into a single meaningless "best hard". Including the stored `variant` keeps
+bests type-attributable and stays correct at the 5-type end state. Historical rows slot in cleanly —
+migration `0004` backfilled every one, so old classic-only `hard` rows group under `(hard, classic)`.
+
+The sibling aggregates were checked against the same risk: `getTodayCompletions` is single-date (a
+key is unambiguous within one day) and `getCurrentStreak` only counts distinct completed dates, so
+neither is key-sensitive.
 
 ## Note
 

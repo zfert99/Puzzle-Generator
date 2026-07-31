@@ -86,9 +86,16 @@ describe('getTodayCompletions', () => {
 });
 
 describe('getPersonalBests', () => {
-  it('scopes to the user and returns min time per difficulty', async () => {
+  it('scopes to the user and returns min time per (difficulty, variant)', async () => {
     let captured: unknown;
-    const groupBy = async () => [{ difficulty: 'easy', bestMs: 90_000 }];
+    let groupCols: unknown[] = [];
+    const groupBy = async (...cols: unknown[]) => {
+      groupCols = cols;
+      return [
+        { difficulty: 'hard', variant: 'classic', bestMs: 90_000 },
+        { difficulty: 'hard', variant: 'killer', bestMs: 150_000 },
+      ];
+    };
     const where = (filter: unknown) => {
       captured = filter;
       return { groupBy };
@@ -99,7 +106,13 @@ describe('getPersonalBests', () => {
 
     const bests = await getPersonalBests(db, 'user-A');
 
-    expect(bests).toEqual([{ difficulty: 'easy', bestMs: 90_000 }]);
+    // Risk #4: the same rung key holds different TYPES on different days, so bests must stay
+    // split by variant rather than collapsing Classic-hard and Killer-hard into one min.
+    expect(bests).toEqual([
+      { difficulty: 'hard', variant: 'classic', bestMs: 90_000 },
+      { difficulty: 'hard', variant: 'killer', bestMs: 150_000 },
+    ]);
+    expect(groupCols).toHaveLength(2); // grouped by BOTH difficulty and variant
     // A WHERE (user_id + completed) was applied — never an unscoped aggregate.
     expect(captured).toBeDefined();
   });

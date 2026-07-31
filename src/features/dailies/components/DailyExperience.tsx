@@ -18,7 +18,8 @@ import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
-import { DAILY_BOARDS, formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { slotLabel, type DailySlotInfo } from '../slot-display';
 import { useDaily } from '../hooks/useDaily';
 
 const noopSubscribe = () => () => {};
@@ -79,6 +80,7 @@ export default function DailyExperience() {
   const [completedToday, setCompletedToday] = useState<
     Record<string, { timeMs: number; rank: number | null }>
   >({});
+  const [slots, setSlots] = useState<DailySlotInfo[]>([]);
   const submittedRef = useRef(false);
 
   const { loading, error, fetchDaily } = useDaily();
@@ -137,6 +139,23 @@ export default function DailyExperience() {
     const id = setInterval(() => tick(), 1000);
     return () => clearInterval(id);
   }, [phase, status, tick]);
+
+  // Today's boards (type-as-slot: the type is rolled per day and stored, so the client must fetch
+  // which type each slot holds today). Seeds the selected difficulty to the first real slot.
+  useEffect(() => {
+    let active = true;
+    fetch(apiPath('/api/daily/slots'))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!active || !d?.slots?.length) return;
+        setSlots(d.slots);
+        setDifficulty((cur) => (d.slots.some((s: DailySlotInfo) => s.key === cur) ? cur : d.slots[0].key));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Which of today's dailies this user has already completed (one attempt per day).
   useEffect(() => {
@@ -249,6 +268,11 @@ export default function DailyExperience() {
     setPhase('select');
   };
 
+  // Label for the currently-selected board — the composed "Difficulty · Type" when today's slots
+  // are loaded, falling back to the bare key label (e.g. resuming before the fetch resolves).
+  const selectedSlot = slots.find((s) => s.key === difficulty);
+  const selectedLabel = selectedSlot ? slotLabel(selectedSlot) : formatDailyKey(difficulty);
+
   if (!mounted) {
     return <div className="glass-panel p-8 max-w-md md:max-w-2xl w-full mx-auto h-48" aria-hidden="true" />;
   }
@@ -271,7 +295,7 @@ export default function DailyExperience() {
           </Sticker>
           <h2 className="text-2xl font-semibold mb-1 text-center">Today&apos;s Daily</h2>
           <p className="text-xs text-ink-soft text-center mb-6">
-            One shared puzzle per difficulty · resets at 00:00 UTC
+            One puzzle per type, difficulty rolls daily · resets at 00:00 UTC
             {!session && ' · sign in to be ranked'}
           </p>
 
@@ -290,30 +314,28 @@ export default function DailyExperience() {
 
           {(
             [
-              ['classic', 'Classic 9×9'],
-              ['killer', 'Killer 9×9'],
-              ['minis', 'Minis'],
-              ['calc', 'Keisan'], // 9×9 Keisan (K7); auto-hidden while empty
+              ['standard', 'Standard'],
+              ['mini', 'Minis'],
             ] as const
           )
-            .filter(([section]) => DAILY_BOARDS.some((b) => b.section === section))
+            .filter(([section]) => slots.some((s) => s.section === section))
             .map(([section, heading]) => (
             <div key={section} className="mb-4">
               <label className="block text-sm font-medium text-ink-soft mb-2 text-center">{heading}</label>
               <div className="flex flex-wrap justify-center gap-2">
-                {DAILY_BOARDS.filter((b) => b.section === section).map((b) => (
+                {slots.filter((s) => s.section === section).map((s) => (
                   <button
-                    key={b.key}
+                    key={s.key}
                     type="button"
-                    onClick={() => setDifficulty(b.key)}
-                    className={`px-3 py-2 rounded-lg text-sm capitalize transition-all ${
-                      difficulty === b.key
+                    onClick={() => setDifficulty(s.key)}
+                    className={`px-3 py-2 rounded-lg text-sm transition-all ${
+                      difficulty === s.key
                         ? 'bg-butterscotch text-ink border-2 border-ink'
                         : 'bg-paper border-2 border-ink hover:bg-paper-2'
                     }`}
                   >
-                    {b.label}
-                    {completedToday[b.key] && <span className="ml-1 text-green-400">✓</span>}
+                    {slotLabel(s)}
+                    {completedToday[s.key] && <span className="ml-1 text-green-400">✓</span>}
                   </button>
                 ))}
               </div>
@@ -342,7 +364,7 @@ export default function DailyExperience() {
               disabled={loading}
               className="btn-primary w-full text-lg flex justify-center items-center"
             >
-              {loading ? 'Loading…' : `Play ${formatDailyKey(difficulty)}`}
+              {loading ? 'Loading…' : `Play ${selectedLabel}`}
             </button>
           )}
         </div>
@@ -373,8 +395,8 @@ export default function DailyExperience() {
           ← Difficulties
         </button>
         {dailyDate && (
-          <span className="text-xs text-ink-soft capitalize">
-            {formatDailyKey(difficulty)} · {formatUtcDate(dailyDate)}
+          <span className="text-xs text-ink-soft">
+            {selectedLabel} · {formatUtcDate(dailyDate)}
           </span>
         )}
       </div>

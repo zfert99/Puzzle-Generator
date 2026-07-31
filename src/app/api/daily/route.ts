@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { getDailyPuzzle } from '@/features/dailies/dailies.service';
-import { isDailyDifficulty, toUtcDateString, getDailyBoard } from '@/lib/db/daily-row';
+import { isDailyDifficulty, toUtcDateString } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
 // Touches the DB (Node-only driver) and reads server time — keep off the Edge runtime.
@@ -65,13 +65,13 @@ export async function GET(req: NextRequest) {
       'Served daily puzzle',
     );
 
-    // The VARIANT comes from the board's registry key, not from `cages` presence — Killer and
-    // Keisan both store cages, so a duck-type couldn't tell them apart. The board's `startNewGame`
-    // branches on this `variant` tag to interpret the cages (sum vs operator+target).
-    const board = getDailyBoard(puzzle.difficulty);
+    // The VARIANT is read from the stored column — not inferred from the key (a rung key like
+    // `hard` holds a different type each day) nor from `cages` presence (Killer and Keisan both
+    // carry cages). The board's `startNewGame` branches on this `variant` tag to interpret the
+    // cages (sum vs operator+target).
     const caged =
-      puzzle.cages && (board?.variant === 'killer' || board?.variant === 'calc')
-        ? { variant: board.variant, cages: puzzle.cages }
+      puzzle.cages && (puzzle.variant === 'killer' || puzzle.variant === 'calc')
+        ? { variant: puzzle.variant, cages: puzzle.cages }
         : {};
 
     return NextResponse.json(

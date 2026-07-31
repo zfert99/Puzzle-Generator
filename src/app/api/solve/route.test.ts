@@ -35,15 +35,20 @@ const fullGrid = (size: number): number[][] =>
  */
 describe('POST /api/solve — grid-size validation', () => {
   it('passes shape validation for a completed 4x4 mini grid', async () => {
-    const res = await POST(buildRequest({ difficulty: 'mini4-easy', grid: fullGrid(4), timeMs: 60_000 }));
+    const res = await POST(buildRequest({ difficulty: 'mini-easy', grid: fullGrid(4), timeMs: 60_000 }));
     // getDailyPuzzle is mocked to null -> 404 "no daily puzzle for ...". Getting here (rather
     // than the old 400) proves the grid-shape check itself accepted the 4x4 board.
     expect(res.status).toBe(404);
   });
 
   it('passes shape validation for a completed 6x6 mini grid', async () => {
-    const res = await POST(buildRequest({ difficulty: 'mini6-easy', grid: fullGrid(6), timeMs: 60_000 }));
+    const res = await POST(buildRequest({ difficulty: 'mini-hard', grid: fullGrid(6), timeMs: 60_000 }));
     expect(res.status).toBe(404);
+  });
+
+  it('still accepts a retired key so archived boards stay replayable', async () => {
+    const res = await POST(buildRequest({ difficulty: 'mini4-easy', grid: fullGrid(4), timeMs: 60_000 }));
+    expect(res.status).toBe(404); // reached the lookup, i.e. the key validated
   });
 
   it('still passes shape validation for a completed 9x9 classic grid', async () => {
@@ -53,7 +58,7 @@ describe('POST /api/solve — grid-size validation', () => {
 
   it('rejects digits outside a 4x4 grid\'s own 1-4 range', async () => {
     const badGrid = fullGrid(4).map((row) => row.map((v) => v + 9)); // 10-13, invalid for size 4
-    const res = await POST(buildRequest({ difficulty: 'mini4-easy', grid: badGrid, timeMs: 60_000 }));
+    const res = await POST(buildRequest({ difficulty: 'mini-easy', grid: badGrid, timeMs: 60_000 }));
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toMatch(/4x4/i);

@@ -30,21 +30,35 @@ prepends the `/puzzles` basePath — Next does not apply basePath to `fetch()`, 
 
 ```text
 effect [difficulty] -> GET /api/leaderboard -> setEntries/setMe (async)
+effect [date]       -> GET /api/daily/slots -> setSlots (the day's real boards; drives the tabs)
 effect [session]    -> if signed in, GET /api/me/streak + /api/me/bests -> setStreak/setBests (async)
 tab click           -> setLoading(true) + setDifficulty (event handler)
 render              -> tabs · (streak · your rank) · personal best (this tab only) · table (caller's row highlighted)
 ```
 
+## Tabs come from the day's boards (type-as-slot, Step 3b)
+
+**Why:** tabs used to be rendered from the static `DAILY_BOARDS` registry, grouped into four
+sections. Under type-as-slot the boards are **rolled per day and stored**, so no static table
+describes a given day — the component fetches `GET /api/daily/slots` (honouring `date`, so an
+archived day shows the boards it actually had) and renders two sections, **Standard** and **Minis**.
+Labels use `slotLabel` ("Hard · Killer"), shared with the `/daily` picker so the same board reads
+identically on both surfaces.
+
 ## Personal best is scoped to the current tab (July 2026)
 
-**Why:** `/api/me/bests` returns the caller's best time for *every* board they've ever
-completed — up to 19 rows (5 classic + 5 killer + 9 minis). The component used to render all
-of them as a wrapping row of pills on every tab, regardless of which board was actually being
-viewed — cluttered, and mostly showing bests for boards you weren't even looking at. `myBest`
-is a plain client-side `bests.find(b => b.difficulty === difficulty)`, so only the entry
-matching the currently-selected tab renders. Deliberately kept as a filter over one
-fetch-everything call (not a per-tab refetch) — the payload is small and this avoids a network
-round-trip on every tab click.
+**Why:** `/api/me/bests` returns the caller's best time for *every* board they've ever completed.
+The component used to render all of them as a wrapping row of pills on every tab, regardless of
+which board was actually being viewed — cluttered, and mostly showing bests for boards you weren't
+even looking at. Only the entry matching the currently-selected tab renders. Deliberately kept as a
+filter over one fetch-everything call (not a per-tab refetch) — the payload is small and this avoids
+a network round-trip on every tab click.
+
+**Matched on `(key, variant)`, not key alone.** Bests are now grouped by both server-side (see
+`attempts.service.md`), because a rung key holds a different type on different days — so
+`hard`+Classic and `hard`+Killer are genuinely different bests. The current tab's variant comes from
+the fetched slot list; before it resolves the match falls back to key-only, which may briefly show
+another type's best for that rung.
 
 ## "Sudoku Bot" badge (July 2026)
 

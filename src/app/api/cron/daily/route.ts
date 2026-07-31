@@ -7,8 +7,9 @@ import { logger } from '@/lib/logger';
 
 // Uses node:crypto + the DB driver — must run on the Node.js runtime, never the Edge.
 export const runtime = 'nodejs';
-// 19 boards/day; classic extreme + killer-extreme are the slow ones (~seconds each).
-export const maxDuration = 120;
+// 6 boards/day (type-as-slot roll). Worst case ≈ one 9×9 extreme (Killer-extreme ~5.5 s) plus fast
+// minis; 60 s leaves ample headroom while trimming the old 30-board budget.
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 /**
