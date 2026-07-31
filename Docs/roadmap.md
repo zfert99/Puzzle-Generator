@@ -726,6 +726,29 @@ reward-granting endpoints worth rate-limiting hardest:
   downgrades `drizzle-kit` to 0.18.1 (breaking), and the exposure is local-dev-only
   (`drizzle-kit studio` invoked while an attacker shares your network).
 
+### Solo-dev QA hardening (Stage 1–3) 🔜 Up next (recorded July 2026)
+
+The July 31 2026 addition of the `## Pre-Merge / Pre-PR Checklist` rule to `AGENTS.md` made the
+*process* explicit; making the gate **physical** (enforced by tooling, not discipline) is the
+deferred follow-up. Evidence base and staging:
+[solo-dev-ai-qa-code-review-playbook.md](research/solo-dev-ai-qa-code-review-playbook.md).
+Deferred per the pragmatic-tradeoff posture — recorded so the gap stays visible, not silent:
+
+- **Stage 1 — make the gate physical:** a `.github/pull_request_template.md` with the
+  self-review checkboxes, branch protection requiring green CI, one configured AI reviewer
+  (CodeRabbit default), and axe-in-CI + a Lighthouse INP/perf-budget assertion (the INP and
+  0-axe targets are already committed to — an unenforced budget is the failure mode being
+  removed).
+- **Stage 2 — close the AI-security gap** (gate before Phase 9's economy endpoints go live):
+  Zod `authorize → validate → mutate` on every leaderboard/economy/score write, with
+  idempotency keys + rate limiting *inside* the action; integration tests asserting each
+  economy endpoint rejects unauthorized / malformed / replayed requests; **fast-check
+  property-based tests** for the generator/solver invariants (unique solution, grid/cage
+  validity, seed determinism, difficulty-band stability) with failing-seed logging.
+- **Stage 3 — ongoing/as-needed:** Stryker mutation testing on the engine core (advisory,
+  ~80% target, not per-merge); lightweight ADRs for the already-made architectural decisions;
+  gitleaks secret scanning + a dependency-vetting habit for AI-suggested packages.
+
 ### Header "back to menu" links 🔜 Up next (attempted + reverted, July 2026)
 
 **The ask:** clicking "Daily"/"Play" in the global header while already mid-game on that page

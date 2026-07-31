@@ -35,6 +35,62 @@ Whenever a roadmap phase is started, completed, or its scope changes:
 - Update the simplified roadmap table in `README.md` (change the Status column: 📋 Planned → 🚧 In Progress → ✅ Done).
 <!-- END:roadmap-rules -->
 
+<!-- BEGIN:living-planning-docs-rules -->
+## Living Planning Docs Rules
+
+Planning and implementation docs (e.g. `Docs/daily-redesign-plan.md`) are **living,
+self-contained handoff documents** — not write-once plans. The goal: a doc that can be dropped
+into a brand-new chat with zero prior context, and someone can start the next step with the
+full history, rationale, and gotchas from every prior step.
+
+- **Keep the canonical copy in the repo** (`Docs/`), never only in an ephemeral
+  `~/.claude/plans/` scratch file — it must ship with the project and survive sessions.
+- **Front-load the background:** all necessary knowledge up front, with inline links to the
+  applicable research (`Docs/research/*`) and related plans, so the doc stands on its own.
+- **Give each plan a numbered step list**, and when a step lands, append a short **step-log**
+  entry to that step: *process* (what was done + how), *learnings*, and *blockers + how they
+  were resolved*.
+- Updating the living plan doc's step-log is part of the pre-PR **doc audit** (see Pre-Merge /
+  Pre-PR Checklist), alongside the mirrored-`.md`, roadmap, and research updates.
+<!-- END:living-planning-docs-rules -->
+
+<!-- BEGIN:devlog-rules -->
+## Build Log (Devlog) Rule
+
+When we ship something **big** — a feature, a meaningful refactor, or a genuinely new
+discovery/learning (a de-risk that overturns an assumption, a hard-won bug fix, a non-obvious
+tradeoff) — write a **build-log entry** ("devlog") for it. Not every PR: only the notable ones;
+a small fix or routine change does not need one. Craft guidance and the evidence base live in
+`Docs/research/devlog-blog-portfolio-strategy.md`; the short version:
+
+- **Show, don't announce.** Write the entry *after* there's something real to show — a working
+  feature, a measured result, a resolved bug — never a "here's what I'm about to build" post.
+- **Narrative arc, not a changelog.** Frame it as *what I set out to do → what broke / what
+  surprised me → what I changed and why*. A bare changelog is the worst-performing format;
+  always wrap it in the story. First person, human voice, scannable (`##` headings, short
+  paragraphs).
+- **Concrete over abstract.** Real numbers (yields, timings, benchmark deltas), the ugly first
+  attempt, before/after. GIFs / short clips are the single highest-impact asset for anything
+  visual or interactive — capture them *as you build* so they cost nothing later.
+- **Keep it lightweight.** Time-box and batch the writing. If devlog production ever starts
+  eating build time (rule of thumb: > ~10%), cut cadence — the feature ships first. Cadence is
+  weekly-to-biweekly at most, **never daily**.
+
+**Where it publishes — the `Biscuit-Website` repo (biscuitlab.net), NOT this one.** The build
+log lives there at `/log`:
+
+- Add one file: `src/content/log/<kebab-slug>.mdx` — the filename *is* the URL slug
+  (`/log/<slug>`), no date prefix. It is auto-discovered; there is no index or registry to edit.
+- Frontmatter is deliberately thin: `title` (required), `date: yyyy-mm-dd` (required),
+  `summary` — one sentence, reused on the index + `feed.json` + meta description (required), and
+  `project: puzzles` (optional cross-link). No tags/author/draft fields — "draft" = don't commit
+  the file yet.
+- Body is MDX. Images/GIFs go in that repo's `public/…` and are referenced via `next/image`
+  with real alt text + explicit width/height (its a11y/CLS gate enforces this).
+- Author per *that* repo's own `AGENTS.md`, then `npm run build && npm run typecheck &&
+  npm run lint` there and commit + push to `main` (Vercel deploys).
+<!-- END:devlog-rules -->
+
 <!-- BEGIN:roadblock-research-rules -->
 ## Roadblock & Research Rules
 
@@ -54,6 +110,53 @@ or silently narrowing scope.
   `keisan-9x9-feasibility-findings.md`, took in external research, re-sliced the plan, and only then
   built. Repeat that loop for any similar divergence.
 <!-- END:roadblock-research-rules -->
+
+<!-- BEGIN:pre-merge-checklist-rules -->
+## Pre-Merge / Pre-PR Checklist
+
+Every PR passes this gate before merge. It ties together rules that already live elsewhere in
+this file (docs backfill, benchmarks, tests) plus a code-review pass, in one ordered flow. The
+weighting is deliberate and evidence-based — see
+`Docs/research/solo-dev-ai-qa-code-review-playbook.md`: push **defect-finding onto tests,
+types, and automation**, and reserve the human review for the judgment calls automation can't
+make. Do not turn this into ceremony; keep it mechanical.
+
+1. **Keep the slice small.** Target a diff **< ~400 LOC**; split if larger. Review quality and
+   defect detection fall off sharply past that — vertical slices keep it in range.
+2. **Doc audit** (same PR, never a follow-up — see Documentation Rules → "Backfill docs before
+   every PR"). Verify and update, as applicable: the mirrored `.md` for every `.ts`/`.tsx`
+   touched; `Docs/roadmap.md` + the `README.md` status table (Roadmap Rules); the **living
+   plan doc's step-log** (Living Planning Docs Rules); a `Docs/research/*.md` record for any
+   roadblock (Roadblock & Research Rules); and `npx markdownlint-cli "**/*.md"` on every doc
+   changed.
+3. **Benchmarks + tests.** If core solving logic changed (`human-solver.ts`, `sudoku.ts`, or
+   any solver/generator core), run the relevant benchmark(s) —
+   `npx tsx src/features/engine/benchmarks/benchmark-human-solver.ts` and the sibling
+   `benchmark-calc.ts` / `benchmark-killer.ts` for those engines — and review
+   `benchmark-logs.md` against the tier targets (Section 3). Always run `npx vitest run` and
+   `npm run lint`.
+4. **Code review — judgment, not defect-hunting.** Tests, types, CI, and the AI reviewer own
+   mechanical defect-finding; the human pass owns what they can't:
+   - **Authorization correctness** and **business/economy invariants** (ownership `WHERE`
+     clauses, server-authoritative scores — see Section 6 BOLA rule).
+   - **Trust boundaries:** every new endpoint/action does **authorize → validate (Zod) →
+     mutate**; economy/leaderboard writes are idempotent and replay-safe.
+   - **AI-written logic is actually right:** re-derive or explain-back the risky parts; the AI
+     failure mode is plausible-but-wrong, not obviously-broken.
+   - **Generated migration safety:** read the Drizzle-generated SQL by hand; destructive
+     changes need reverse SQL + a backup; additive-only until cutover.
+   - **New dependencies exist and are reputable** before install (slopsquatting — Section 6).
+   - Run the `/code-review` skill; for any auth/authz/data-access change, also
+     `/security-review` (Section 6 "AI-generated code is unaudited by default").
+5. **Merge** only once 1–4 are green **and** CI passes (`ci.yml`: `npm run lint`,
+   `markdownlint`, `npm test`, `npm audit --audit-level=high --omit=dev`; plus `codeql.yml`).
+
+> **Deferred hardening.** Making this gate *physical* (a `.github/pull_request_template.md`,
+> branch protection requiring green CI, a configured AI reviewer, axe-in-CI + a Lighthouse INP
+> budget, fast-check property tests for generator invariants, Stryker mutation testing on the
+> engine core, gitleaks) is tracked as "Solo-dev QA hardening" in `Docs/roadmap.md`, staged per
+> the research doc. Not required per-PR today; recorded so the gap stays visible.
+<!-- END:pre-merge-checklist-rules -->
 
 <!-- BEGIN:markdown-linting-rules -->
 ## Markdown Linting Rules
@@ -185,4 +288,31 @@ cheapest, highest-value fixes live. Notable changes:
   dedicated future security pass (tracked in `Docs/roadmap.md`'s backlog) rather than
   implemented now — noted here so the gap stays visible, not silent.
 - No changes to the Documentation, Roadmap, Markdown Linting, or Git Rules sections.
+
+**July 31, 2026:** Added two new top-level rule sections and imported a supporting research
+doc, ahead of the daily restructure + next two puzzle types. Notable changes:
+
+- **New `## Pre-Merge / Pre-PR Checklist`** — a single ordered gate (small slice → doc audit →
+  benchmarks + tests → code review → merge) that consolidates rules previously scattered across
+  Documentation Rules and Sections 3–4. Its weighting is evidence-based (defect-finding onto
+  tests/types/automation; human review reserved for authz, business/economy invariants,
+  AI-logic verification, and migration safety), drawn from the new
+  `Docs/research/solo-dev-ai-qa-code-review-playbook.md`. Names a deferred "Solo-dev QA
+  hardening" track (PR template + branch protection, AI reviewer, axe/Lighthouse CI,
+  property-based tests, mutation testing, gitleaks) tracked in `Docs/roadmap.md`, not required
+  per-PR today.
+- **New `## Living Planning Docs Rules`** — planning/impl docs in `Docs/` are living,
+  self-contained handoff documents: repo-resident, background + research links front-loaded, a
+  numbered step list with a step-log (process / learnings / blockers) appended as each step
+  lands. Folded into the pre-PR doc audit.
+- **New `## Build Log (Devlog) Rule`** — when we ship something big (feature, meaningful
+  refactor, or a notable discovery/learning), write a narrative build-log entry, published to
+  the separate `Biscuit-Website` repo (biscuitlab.net) at `/log`
+  (`src/content/log/<slug>.mdx`), not this repo. Show-don't-announce, story-not-changelog,
+  GIFs/numbers, weekly-to-biweekly, kept lightweight. Evidence base:
+  `Docs/research/devlog-blog-portfolio-strategy.md`.
+- Imported two research docs: `Docs/research/solo-dev-ai-qa-code-review-playbook.md` (solo-dev,
+  heavy-AI QA/review evidence base) and `Docs/research/devlog-blog-portfolio-strategy.md`
+  (portfolio/blog/devlog writing strategy). No changes to Sections 1–7, Markdown Linting, or Git
+  Rules.
 <!-- END:update-log -->
