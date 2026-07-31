@@ -135,5 +135,21 @@ client-side only, AGENTS.md §1).
 tiers; requesting them at 6×6 throws). `DIFFICULTY_CONFIGS` is keyed by size; the 6×6 score
 cuts (16/28) sit on measured 60-sample distributions — compressed relative to 9×9 exactly as
 the plan predicted, still disjoint. Generation: 1.7 / 2.6 / 9.2 ms avg (easy/medium/hard),
-0 fails, 180-solve soundness fuzz clean. `generateKillerBatch(counts, { gridSize })` honours
-only the 3-tier ladder at 6×6.
+0 fails, 180-solve soundness fuzz clean.
+
+## 4×4 Killer (mini, easy-only)
+
+`generateKillerSudoku('easy', { gridSize: 4 })` — the mini set's beginner tier: digits 1–4,
+mandatory 2×2 boxes, **easy ONLY**. This is a de-risked scope reduction, not the assumed 4×4
+ladder — see [`killer-4x4-feasibility.md`](../../../../Docs/research/killer-4x4-feasibility.md).
+Killer's only clue is the cage sum (no givens), so on a 16-cell grid the arithmetic pins ~99% of
+uniquely-solvable layouts to trivial tier-1 logic: the de-risk spike measured **tiers 4/5 = 0,
+tier 2/3 combined < 3%**, with a narrow score range (max ~16) — there is no honest medium/hard
+band to build. The operations-graded arithmetic 4×4 niche is filled by Keisan (Calcudoku), which
+*does* keep three tiers because it grades on the operator palette, a lever Killer lacks.
+`DIFFICULTY_CONFIG_4 = { easy: { solveCap: 2, minSize: 1, maxSize: 3, maxSingles: 8 } }` — no
+score band (easy-only has no adjacent tier to stay disjoint from). Requesting medium/hard/expert/
+extreme at 4×4 throws (`not available at 4×4`). Generation is trivially cheap (~0.15 ms avg).
+
+`generateKillerBatch(counts, { gridSize })` honours only each size's real ladder: 9×9 = full 5
+tiers, 6×6 = easy/medium/hard, 4×4 = easy only (a `LADDERS` table keyed by size).
