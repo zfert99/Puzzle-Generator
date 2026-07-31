@@ -15,6 +15,20 @@ Whenever we edit an existing file, update its corresponding markdown file to ref
 current as part of that same PR — never as a follow-up. Verify and update, as applicable:
 
 - The mirrored `.md` file for every `.ts`/`.tsx` touched (per the two rules above).
+- **The reverse-reference sweep — docs you did NOT touch that describe what you changed.**
+  Mirroring only covers files whose *source* you edited; it silently misses every *other* doc
+  that names a symbol you renamed or deleted, or that describes a design you superseded. Grep
+  the whole repo for what you removed and fix each live hit:
+
+  ```bash
+  grep -rn "RemovedSymbol\|renamedThing\|old-concept" --include="*.md" . | grep -v node_modules
+  ```
+
+  Sweep for: exported symbols removed/renamed, function signatures changed, and any *plan* doc
+  that anticipates the thing you just built (its "pending" banner is now wrong — and if the
+  design changed along the way, actively misleading). **Leave genuinely historical records
+  alone** — `Docs/archive/*`, dated roadmap phase entries, and completed plans correctly state
+  what was true when written; rewriting those falsifies the record. Fix *live* docs only.
 - `Docs/roadmap.md` and the `README.md` status table when a phase's scope or status changed
   (see Roadmap Rules).
 - A `Docs/research/*.md` record for any roadblock, plan divergence, or incident hit while
@@ -24,6 +38,12 @@ current as part of that same PR — never as a follow-up. Verify and update, as 
 A PR that ships code with stale, missing, or unlinted docs is incomplete. If a fix or
 incident is discovered *after* a PR merges (e.g. during production smoke-testing), record it
 in `Docs/` and land that doc via its own quick follow-up PR rather than leaving it uncommitted.
+
+> **Why the sweep exists (July 2026).** The daily restructure passed the mirrored-doc audit and
+> still shipped three stale live docs: `bot.md` and `solve/route.md` named exports that no longer
+> existed, and `social-progression-economy-plan.md` still advertised the *superseded* daily design
+> as its plan of record — so anyone starting Phase 9 cold would have built against a rejected
+> model. None of their source files were touched, so mirroring could never have caught them.
 <!-- END:documentation-rules -->
 
 <!-- BEGIN:roadmap-rules -->
@@ -125,10 +145,12 @@ make. Do not turn this into ceremony; keep it mechanical.
    defect detection fall off sharply past that — vertical slices keep it in range.
 2. **Doc audit** (same PR, never a follow-up — see Documentation Rules → "Backfill docs before
    every PR"). Verify and update, as applicable: the mirrored `.md` for every `.ts`/`.tsx`
-   touched; `Docs/roadmap.md` + the `README.md` status table (Roadmap Rules); the **living
-   plan doc's step-log** (Living Planning Docs Rules); a `Docs/research/*.md` record for any
-   roadblock (Roadblock & Research Rules); and `npx markdownlint-cli "**/*.md"` on every doc
-   changed.
+   touched; the **reverse-reference sweep** (`grep -rn` the repo for every symbol you
+   renamed/removed and every design you superseded — mirroring cannot catch docs whose source
+   you never touched, and plan docs that "anticipate" what you just built go stale silently);
+   `Docs/roadmap.md` + the `README.md` status table (Roadmap Rules); the **living plan doc's
+   step-log** (Living Planning Docs Rules); a `Docs/research/*.md` record for any roadblock
+   (Roadblock & Research Rules); and `npx markdownlint-cli "**/*.md"` on every doc changed.
 3. **Benchmarks + tests.** If core solving logic changed (`human-solver.ts`, `sudoku.ts`, or
    any solver/generator core), run the relevant benchmark(s) —
    `npx tsx src/features/engine/benchmarks/benchmark-human-solver.ts` and the sibling
@@ -315,4 +337,14 @@ doc, ahead of the daily restructure + next two puzzle types. Notable changes:
   heavy-AI QA/review evidence base) and `Docs/research/devlog-blog-portfolio-strategy.md`
   (portfolio/blog/devlog writing strategy). No changes to Sections 1–7, Markdown Linting, or Git
   Rules.
+
+**July 31, 2026 (later):** Added the **reverse-reference sweep** to the docs-backfill rule
+(Documentation Rules) and to step 2 of the Pre-Merge / Pre-PR Checklist. Prompted by a real miss:
+the daily restructure passed the mirrored-doc audit and still shipped three stale *live* docs
+(`bot.md` and `solve/route.md` naming deleted exports; `social-progression-economy-plan.md` still
+advertising the **superseded** daily design as its plan of record). None of their source files were
+touched, so file-mirroring structurally could not catch them. The sweep closes that gap: `grep` the
+repo for every symbol renamed/removed and every design superseded — including *plan* docs that
+"anticipate" what you just built — while explicitly leaving genuinely historical records
+(`Docs/archive/*`, dated roadmap entries, completed plans) untouched. No other rules changed.
 <!-- END:update-log -->
