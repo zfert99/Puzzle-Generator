@@ -1,20 +1,58 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/lib/db/connection';
 import { generateDailyPuzzles, getDailyPuzzle } from './dailies.service';
-import { DAILY_BOARDS } from '@/lib/db/daily-row';
-import { dailyPuzzles, solveAttempts } from '@/lib/db/schema';
+import {
+  rollDailyAssignment,
+  getProfile,
+  difficultyForKey,
+  type PlannedSlot,
+  type Variant,
+  type DailySize,
+} from '@/lib/db/daily-row';
+import { dailyPuzzles, solveAttempts, type NewDailyPuzzle } from '@/lib/db/schema';
 import { user } from '@/lib/db/auth-schema';
 import { BOT_USER_ID } from '@/features/leaderboards/bot-identity';
 
 /**
- * The DB is mocked at the boundary (a stand-in Drizzle client), never by mocking
- * internal modules — the engine, row mapping, and service orchestration all run for
- * real. We assert the service builds the right rows and returns accurate counts.
- *
- * `generateDailyPuzzles` now does THREE inserts (bot user, daily puzzles, bot solves) plus
- * a select (today's puzzle rows, for bot-seeding) — the mock dispatches on the actual table
- * object identity Drizzle receives, so it doesn't depend on call order.
+ * The DB is mocked at the boundary (a stand-in Drizzle client), and the PUZZLE GENERATOR is
+ * injected via the service's `generate` seam so these tests are fast and deterministic — the roll
+ * (pure) and the row-mapping/orchestration all run for real; only the engine call is stubbed.
+ * (The roll's own invariants are covered in `daily-row.test.ts`.)
  */
+
+const SEED = 7;
+
+/** Deterministic PRNG matching daily-row's tests. */
+function mulberry32(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s |= 0;
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function grid(size: number): number[][] {
+  return Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
+}
+function solution(size: number): number[][] {
+  return Array.from({ length: size }, (_, r) => Array.from({ length: size }, (_, c) => ((r + c) % size) + 1));
+}
+
+/** A minimal engine-shaped puzzle for a slot (classic has no `variant`; killer/calc carry cages). */
+function fakePuzzle(slot: PlannedSlot) {
+  const base = { grid: grid(slot.gridSize), solution: solution(slot.gridSize) };
+  if (slot.variant === 'classic') return base as never;
+  return {
+    ...base,
+    variant: slot.variant,
+    cages: [{ id: 0, sum: 3, op: '+', target: 3, cells: [0, 1] }],
+    difficulty: slot.difficulty,
+    gridSize: slot.gridSize,
+  } as never;
+}
 
 interface BotAttemptRow {
   userId: string;
@@ -26,8 +64,9 @@ interface BotAttemptRow {
 
 /** A `db` stand-in covering every table `generateDailyPuzzles` touches this call. */
 function makeDb(options: {
-  puzzleReturning: () => Promise<{ id: string }[]>;
-  selectRows: { id: string; key: string }[];
+  puzzleReturning: (rows: NewDailyPuzzle[]) => Promise<{ id: string }[]>;
+  selectRows: { id: string; key: string; variant: string; grid: number[][] }[];
+  onPuzzleValues?: (rows: NewDailyPuzzle[]) => void;
   onAttemptsValues?: (rows: BotAttemptRow[]) => void;
 }) {
   const insert = vi.fn((table: unknown) => {
@@ -36,9 +75,10 @@ function makeDb(options: {
     }
     if (table === dailyPuzzles) {
       return {
-        values: () => ({
-          onConflictDoNothing: () => ({ returning: async () => options.puzzleReturning() }),
-        }),
+        values: (rows: NewDailyPuzzle[]) => {
+          options.onPuzzleValues?.(rows);
+          return { onConflictDoNothing: () => ({ returning: async () => options.puzzleReturning(rows) }) };
+        },
       };
     }
     if (table === solveAttempts) {
@@ -55,70 +95,92 @@ function makeDb(options: {
   return { insert, select } as unknown as Database;
 }
 
-describe('generateDailyPuzzles', () => {
-  // `rows` in the service is real puzzle generation for all 30 `DAILY_BOARDS` (killer-extreme
-  // alone runs a ~5.5s real backtracking search) — the DB mock never touches that step, so
-  // every call here pays the full cost regardless of what it's asserting. The two tests below
-  // share ONE such call (identical mock config; they just inspect different parts of its
-  // result), cutting this file's real generation work from three calls to two. That's the fix
-  // for the occasional full-suite timeout: it was never nondeterministic, just CPU contention
-  // from redundantly regenerating the same 30 real boards three times over under load.
-  describe('happy path (fresh day, no conflicts)', () => {
-    let result: Awaited<ReturnType<typeof generateDailyPuzzles>>;
-    let insertMock: ReturnType<typeof vi.fn>;
+/** The rows the seed-select would see, derived from the same seeded roll (no fallback in happy path). */
+function selectRowsForRoll(slots: PlannedSlot[]) {
+  return slots.map((s, i) => ({ id: `id-${i}`, key: s.key, variant: s.variant, grid: grid(s.gridSize) }));
+}
+
+describe('generateDailyPuzzles (type-as-slot roller)', () => {
+  it('generates one row per slot (6 today), each carrying its rolled variant', async () => {
+    const rolled = rollDailyAssignment(mulberry32(SEED));
+    let puzzleRows: NewDailyPuzzle[] = [];
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: selectRowsForRoll(rolled),
+      onPuzzleValues: (rows) => {
+        puzzleRows = rows;
+      },
+    });
+
+    const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
+
+    expect(result).toEqual({ isoDate: '2026-08-01', requested: 6, inserted: 6 });
+    expect(puzzleRows).toHaveLength(6);
+    // Keys match the roll; every row stores a real variant; classic rows carry no cages.
+    expect(puzzleRows.map((r) => r.difficulty).sort()).toEqual(rolled.map((s) => s.key).sort());
+    expect(puzzleRows.every((r) => ['classic', 'killer', 'calc'].includes(r.variant))).toBe(true);
+    for (const r of puzzleRows) {
+      if (r.variant === 'classic') expect(r.cages).toBeNull();
+      else expect(r.cages).not.toBeNull();
+    }
+  });
+
+  it("seeds Sudoku Bot on every board at that board's profile time (via variant/size, not key)", async () => {
+    const rolled = rollDailyAssignment(mulberry32(SEED));
     let attemptRows: BotAttemptRow[] = [];
-
-    beforeAll(async () => {
-      const db = makeDb({
-        puzzleReturning: async () => DAILY_BOARDS.map((_, i) => ({ id: `id-${i}` })),
-        selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
-        onAttemptsValues: (rows) => {
-          attemptRows = rows;
-        },
-      });
-      insertMock = db.insert as ReturnType<typeof vi.fn>;
-      result = await generateDailyPuzzles(db, '2026-07-11');
-    }, 60_000);
-
-    it('generates one row per daily difficulty and upserts idempotently', () => {
-      expect(result).toEqual({
-        isoDate: '2026-07-11',
-        requested: DAILY_BOARDS.length,
-        inserted: DAILY_BOARDS.length,
-      });
-
-      // The daily-puzzle insert call is the second dispatched table (bot user is first);
-      // find it by inspecting what was actually passed to insert().
-      const puzzleCall = insertMock.mock.calls.find(([t]) => t === dailyPuzzles);
-      expect(puzzleCall).toBeDefined();
+    const selectRows = selectRowsForRoll(rolled);
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows,
+      onAttemptsValues: (rows) => {
+        attemptRows = rows;
+      },
     });
 
-    it("seeds Sudoku Bot's solve on every board, at each board's tuned time", () => {
-      // The bot user row was upserted.
-      const userCall = insertMock.mock.calls.find(([t]) => t === user);
-      expect(userCall).toBeDefined();
+    await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
 
-      // One clean, completed bot solve per board, at that board's tuned botTimeMs.
-      expect(attemptRows).toHaveLength(DAILY_BOARDS.length);
-      expect(attemptRows.every((r) => r.userId === BOT_USER_ID)).toBe(true);
-      expect(attemptRows.every((r) => r.completed === true && r.mistakes === 0)).toBe(true);
-      const timeByPuzzleId = new Map(attemptRows.map((r) => [r.puzzleId, r.timeMs]));
-      DAILY_BOARDS.forEach((board, i) => {
-        expect(timeByPuzzleId.get(`id-${i}`)).toBe(board.botTimeMs);
-      });
-    });
+    expect(attemptRows).toHaveLength(6);
+    expect(attemptRows.every((r) => r.userId === BOT_USER_ID && r.completed && r.mistakes === 0)).toBe(true);
+    const timeById = new Map(attemptRows.map((r) => [r.puzzleId, r.timeMs]));
+    for (const row of selectRows) {
+      const profile = getProfile(row.variant as Variant, row.grid.length as DailySize, difficultyForKey(row.key));
+      expect(timeById.get(row.id)).toBe(profile!.botTimeMs);
+    }
   });
 
   it('reports 0 inserted when today already exists (conflict)', async () => {
+    const rolled = rollDailyAssignment(mulberry32(SEED));
     const db = makeDb({
       puzzleReturning: async () => [], // conflict: nothing inserted
-      selectRows: DAILY_BOARDS.map((b, i) => ({ id: `id-${i}`, key: b.key })),
+      selectRows: selectRowsForRoll(rolled),
     });
 
-    const result = await generateDailyPuzzles(db, '2026-07-11');
-    expect(result.inserted).toBe(0);
-    expect(result.requested).toBe(DAILY_BOARDS.length);
-  }, 60_000);
+    const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
+    expect(result).toEqual({ isoDate: '2026-08-01', requested: 6, inserted: 0 });
+  });
+
+  it('never leaves a slot empty: falls back to an eligible board when a generator throws', async () => {
+    // A generator that always fails for Killer — every Killer slot (standard always has one) must
+    // fall back to an eligible non-Killer board, still yielding 6 rows and zero Killer rows.
+    const failKiller = (slot: PlannedSlot) => {
+      if (slot.variant === 'killer') throw new Error('boom');
+      return fakePuzzle(slot);
+    };
+    let puzzleRows: NewDailyPuzzle[] = [];
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: [],
+      onPuzzleValues: (rows) => {
+        puzzleRows = rows;
+      },
+    });
+
+    const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: failKiller });
+
+    expect(result.requested).toBe(6);
+    expect(puzzleRows).toHaveLength(6);
+    expect(puzzleRows.some((r) => r.variant === 'killer')).toBe(false); // all Killer slots fell back
+  });
 });
 
 describe('getDailyPuzzle', () => {

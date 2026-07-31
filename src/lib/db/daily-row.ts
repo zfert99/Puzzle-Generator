@@ -1,124 +1,266 @@
-import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
+import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
-import type { KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
-import type { CalcPuzzle, CalcDifficulty } from '@/features/engine/calc/calc-types';
+import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { Grid, NewDailyPuzzle } from './schema';
 
 /**
- * The daily-board registry — one entry per shared puzzle generated each day. The `key` is the
- * value stored in `daily_puzzles.difficulty`, so it doubles as the API/leaderboard key and the
- * `UNIQUE(date, key)` idempotency handle. Three sections:
+ * The daily registry — **type-as-slot** model. One daily slot per puzzle TYPE with the
+ * DIFFICULTY randomized, replacing the old flat 30-board `DAILY_BOARDS` wall. See
+ * `Docs/daily-redesign-plan.md`. Two data structures:
  *
- * - **classic** — the original five 9×9 tiers. Their keys are the bare difficulty names, kept
- *   verbatim so every historical row stays valid (no migration).
- * - **killer** — the full 9×9 Killer ladder. (Replaces the single legacy `'killer'` key, which
- *   was one engine-medium puzzle per day; old rows remain readable via the legacy guard.)
- * - **minis** — the small boards: 4×4 and 6×6 classic, 6×6 Killer, and 4×4/6×6 Keisan.
- * - **calc** — the top-level **Keisan** section: the full 9×9 Keisan ladder (K7a easy/medium/hard +
- *   K7c expert + K7d extreme). Mirrors the "Classic 9×9" / "Killer 9×9" sections; auto-hidden by the
- *   pickers while it holds no boards. Expert/Extreme are 9×9-only — both need a Nishio guess; they
- *   split on the guess-step count (Expert a few, Extreme many).
+ * - **Slots** — what the cron generates each day: standard slots keyed by difficulty RUNG
+ *   (`easy…extreme`, 3 of 5 drawn/day) + mini slots keyed `mini-<tier>` (always 3). The TYPE is
+ *   rolled per day and stored in `daily_puzzles.variant` — the key no longer encodes it.
+ * - **Profile table** (`PROFILE`) — per `(variant, size, difficulty)`: `minSolveMs` (anti-cheat
+ *   plausibility floor, see `solve-rules.md`) and `botTimeMs` (Sudoku Bot's beatable time). Values
+ *   moved verbatim from the old registry + the new `(killer,4,easy)` row.
  *
- * `minSolveMs` is the anti-cheat plausibility floor (see `solve-rules.md`) — conservative
- * lower bounds per board, not records to police fast solvers.
- *
- * `botTimeMs` is "Sudoku Bot"'s daily time on this board (`features/leaderboards/bot.ts`) —
- * a hand-tuned "good, beatable" human time, not a record. Sourced from the difficulty
- * research gathered across this project (Stuart's classic-Sudoku community solve-time
- * bands; our own Killer research noting it runs slower than classic since it starts with
- * no givens; minis scale down with the smaller grid). Deliberately well above
- * `minSolveMs` (which marks "impossibly fast", not "typical") so it reads as a genuine
- * skilled solve. Retune freely — it's flavor, not a derived/anti-cheat value.
+ * The old per-string keys (`killer-*`, `calc*`, `mini4-*`, `mini6-*`, `killer6-*`, legacy `killer`)
+ * are **retired from generation** but stay valid for archive replay (see `LEGACY_KEYS` /
+ * `isDailyDifficulty`); historical rows carry their backfilled `variant` (migration `0004`).
  */
-export interface DailyBoard {
+
+/** Puzzle type. Mirrors the engine variants and the stored `daily_puzzles.variant`. */
+export type Variant = 'classic' | 'killer' | 'calc';
+/** The five 9×9 difficulty rungs. Standard slots are keyed by these. */
+export type StandardRung = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
+/** Mini difficulties — the 3-tier ladder (no expert/extreme minis). */
+export type MiniTier = 'easy' | 'medium' | 'hard';
+/** A supported daily grid size. */
+export type DailySize = 4 | 6 | 9;
+
+/**
+ * Any daily key routes accept. Kept as `string` because keys are now data-driven (slot keys +
+ * retired legacy keys for archive); `isDailyDifficulty` is the runtime validator.
+ */
+export type DailyDifficulty = string;
+
+export const VARIANTS: readonly Variant[] = ['classic', 'killer', 'calc'];
+export const STANDARD_RUNGS: readonly StandardRung[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
+const MINI_TIERS: readonly MiniTier[] = ['easy', 'medium', 'hard'];
+/** Mini slot keys, one per tier. The type they hold is rolled per day. */
+export const MINI_KEYS: Record<MiniTier, string> = {
+  easy: 'mini-easy',
+  medium: 'mini-medium',
+  hard: 'mini-hard',
+};
+
+/** One resolved daily slot for a given day — what the cron generates and stores. */
+export interface PlannedSlot {
+  /** The `daily_puzzles.difficulty` value: a rung (standard) or `mini-<tier>` (mini). */
   key: string;
-  section: 'classic' | 'killer' | 'minis' | 'calc';
-  /** Short chip label for pickers/leaderboards. */
-  label: string;
-  variant: 'classic' | 'killer' | 'calc';
-  gridSize: GridSize;
-  /** The engine difficulty used to generate this board. */
-  difficulty: Difficulty | KillerDifficulty | CalcDifficulty;
+  section: 'standard' | 'mini';
+  variant: Variant;
+  gridSize: DailySize;
+  /** The engine difficulty to generate at (a rung; minis only use easy/medium/hard). */
+  difficulty: StandardRung;
+}
+
+interface ProfileEntry {
+  /** Anti-cheat plausibility floor (ms) — conservative lower bound, not a record. */
   minSolveMs: number;
+  /** Sudoku Bot's hand-tuned "good, beatable" time (ms) on this board — flavor, not derived. */
   botTimeMs: number;
 }
 
-export const DAILY_BOARDS = [
-  // ---- Classic 9×9 (legacy keys — never rename; historical rows depend on them) ----
-  { key: 'easy', section: 'classic', label: 'easy', variant: 'classic', gridSize: 9, difficulty: 'easy', minSolveMs: 15_000, botTimeMs: 210_000 },
-  { key: 'medium', section: 'classic', label: 'medium', variant: 'classic', gridSize: 9, difficulty: 'medium', minSolveMs: 20_000, botTimeMs: 360_000 },
-  { key: 'hard', section: 'classic', label: 'hard', variant: 'classic', gridSize: 9, difficulty: 'hard', minSolveMs: 25_000, botTimeMs: 600_000 },
-  { key: 'expert', section: 'classic', label: 'expert', variant: 'classic', gridSize: 9, difficulty: 'expert', minSolveMs: 30_000, botTimeMs: 960_000 },
-  { key: 'extreme', section: 'classic', label: 'extreme', variant: 'classic', gridSize: 9, difficulty: 'extreme', minSolveMs: 45_000, botTimeMs: 1_500_000 },
-  // ---- Killer 9×9 (full ladder) ----
-  { key: 'killer-easy', section: 'killer', label: 'easy', variant: 'killer', gridSize: 9, difficulty: 'easy', minSolveMs: 20_000, botTimeMs: 330_000 },
-  { key: 'killer-medium', section: 'killer', label: 'medium', variant: 'killer', gridSize: 9, difficulty: 'medium', minSolveMs: 30_000, botTimeMs: 540_000 },
-  { key: 'killer-hard', section: 'killer', label: 'hard', variant: 'killer', gridSize: 9, difficulty: 'hard', minSolveMs: 40_000, botTimeMs: 840_000 },
-  { key: 'killer-expert', section: 'killer', label: 'expert', variant: 'killer', gridSize: 9, difficulty: 'expert', minSolveMs: 50_000, botTimeMs: 1_200_000 },
-  { key: 'killer-extreme', section: 'killer', label: 'extreme', variant: 'killer', gridSize: 9, difficulty: 'extreme', minSolveMs: 60_000, botTimeMs: 1_800_000 },
-  // ---- Minis (4×4 / 6×6 classic, 6×6 Killer) ----
-  { key: 'mini4-easy', section: 'minis', label: '4×4 easy', variant: 'classic', gridSize: 4, difficulty: 'easy', minSolveMs: 3_000, botTimeMs: 40_000 },
-  { key: 'mini4-medium', section: 'minis', label: '4×4 medium', variant: 'classic', gridSize: 4, difficulty: 'medium', minSolveMs: 4_000, botTimeMs: 60_000 },
-  { key: 'mini4-hard', section: 'minis', label: '4×4 hard', variant: 'classic', gridSize: 4, difficulty: 'hard', minSolveMs: 5_000, botTimeMs: 90_000 },
-  { key: 'mini6-easy', section: 'minis', label: '6×6 easy', variant: 'classic', gridSize: 6, difficulty: 'easy', minSolveMs: 8_000, botTimeMs: 75_000 },
-  { key: 'mini6-medium', section: 'minis', label: '6×6 medium', variant: 'classic', gridSize: 6, difficulty: 'medium', minSolveMs: 10_000, botTimeMs: 120_000 },
-  { key: 'mini6-hard', section: 'minis', label: '6×6 hard', variant: 'classic', gridSize: 6, difficulty: 'hard', minSolveMs: 12_000, botTimeMs: 180_000 },
-  { key: 'killer6-easy', section: 'minis', label: 'killer 6×6 easy', variant: 'killer', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 120_000 },
-  { key: 'killer6-medium', section: 'minis', label: 'killer 6×6 medium', variant: 'killer', gridSize: 6, difficulty: 'medium', minSolveMs: 12_000, botTimeMs: 195_000 },
-  { key: 'killer6-hard', section: 'minis', label: 'killer 6×6 hard', variant: 'killer', gridSize: 6, difficulty: 'hard', minSolveMs: 15_000, botTimeMs: 270_000 },
-  // ---- Keisan (Calcudoku) minis: 4×4 + 6×6. These live in the MINIS section alongside the other
-  // small boards (matching classic/killer minis); the top-level `calc` section is reserved for 9×9
-  // Keisan (K7 — "Keisan" mirrors "Classic 9×9" / "Killer 9×9"). Boxless arithmetic cages solve
-  // slower than classic of the same size, so bot times run a touch higher. clue_count = cage count.
-  { key: 'calc4-easy', section: 'minis', label: 'keisan 4×4 easy', variant: 'calc', gridSize: 4, difficulty: 'easy', minSolveMs: 4_000, botTimeMs: 55_000 },
-  { key: 'calc4-medium', section: 'minis', label: 'keisan 4×4 medium', variant: 'calc', gridSize: 4, difficulty: 'medium', minSolveMs: 5_000, botTimeMs: 85_000 },
-  { key: 'calc4-hard', section: 'minis', label: 'keisan 4×4 hard', variant: 'calc', gridSize: 4, difficulty: 'hard', minSolveMs: 6_000, botTimeMs: 130_000 },
-  { key: 'calc6-easy', section: 'minis', label: 'keisan 6×6 easy', variant: 'calc', gridSize: 6, difficulty: 'easy', minSolveMs: 10_000, botTimeMs: 150_000 },
-  { key: 'calc6-medium', section: 'minis', label: 'keisan 6×6 medium', variant: 'calc', gridSize: 6, difficulty: 'medium', minSolveMs: 14_000, botTimeMs: 240_000 },
-  { key: 'calc6-hard', section: 'minis', label: 'keisan 6×6 hard', variant: 'calc', gridSize: 6, difficulty: 'hard', minSolveMs: 20_000, botTimeMs: 390_000 },
-  // ---- Keisan 9×9 (K7a: 3 tiers). The top-level `calc`/Keisan section — mirrors "Classic 9×9" /
-  // "Killer 9×9". Tiers separate on givens (~17 → ~10 → ~2) + operators; boxless arithmetic on a full
-  // 81-cell grid runs slower than Killer 9×9, so bot times sit a notch above the Killer ladder.
-  // Expert/Extreme arrive with K7b/K7c (bounded-recursion "T5" + offline pool).
-  { key: 'calc9-easy', section: 'calc', label: 'easy', variant: 'calc', gridSize: 9, difficulty: 'easy', minSolveMs: 25_000, botTimeMs: 420_000 },
-  { key: 'calc9-medium', section: 'calc', label: 'medium', variant: 'calc', gridSize: 9, difficulty: 'medium', minSolveMs: 35_000, botTimeMs: 660_000 },
-  { key: 'calc9-hard', section: 'calc', label: 'hard', variant: 'calc', gridSize: 9, difficulty: 'hard', minSolveMs: 50_000, botTimeMs: 1_080_000 },
-  // Expert (K7c): 0-given 9×9 needing a depth-1 Nishio guess (≤5 hypothesis steps). Extreme (K7d):
-  // needs MANY (≥6) — the guess-step count is a measured, monotone difficulty axis. Both are the
-  // slowest dailies; bot times climb past hard.
-  { key: 'calc9-expert', section: 'calc', label: 'expert', variant: 'calc', gridSize: 9, difficulty: 'expert', minSolveMs: 70_000, botTimeMs: 1_500_000 },
-  { key: 'calc9-extreme', section: 'calc', label: 'extreme', variant: 'calc', gridSize: 9, difficulty: 'extreme', minSolveMs: 90_000, botTimeMs: 1_920_000 },
-] as const satisfies readonly DailyBoard[];
+/**
+ * Per-`(variant, size, difficulty)` tuning. Values moved verbatim from the pre-restructure
+ * registry; `killer-4-easy` is new (Step 2 de-risk — a beginner tier a notch above Keisan 4×4
+ * since Killer starts with no givens). Every ELIGIBLE combo has an entry — the coverage test
+ * asserts `isEligible ⟺ getProfile` so a rolled slot can never miss its floor/bot time.
+ */
+const PROFILE: Record<string, ProfileEntry> = {
+  // ---- Standard 9×9 ----
+  'classic-9-easy': { minSolveMs: 15_000, botTimeMs: 210_000 },
+  'classic-9-medium': { minSolveMs: 20_000, botTimeMs: 360_000 },
+  'classic-9-hard': { minSolveMs: 25_000, botTimeMs: 600_000 },
+  'classic-9-expert': { minSolveMs: 30_000, botTimeMs: 960_000 },
+  'classic-9-extreme': { minSolveMs: 45_000, botTimeMs: 1_500_000 },
+  'killer-9-easy': { minSolveMs: 20_000, botTimeMs: 330_000 },
+  'killer-9-medium': { minSolveMs: 30_000, botTimeMs: 540_000 },
+  'killer-9-hard': { minSolveMs: 40_000, botTimeMs: 840_000 },
+  'killer-9-expert': { minSolveMs: 50_000, botTimeMs: 1_200_000 },
+  'killer-9-extreme': { minSolveMs: 60_000, botTimeMs: 1_800_000 },
+  'calc-9-easy': { minSolveMs: 25_000, botTimeMs: 420_000 },
+  'calc-9-medium': { minSolveMs: 35_000, botTimeMs: 660_000 },
+  'calc-9-hard': { minSolveMs: 50_000, botTimeMs: 1_080_000 },
+  'calc-9-expert': { minSolveMs: 70_000, botTimeMs: 1_500_000 },
+  'calc-9-extreme': { minSolveMs: 90_000, botTimeMs: 1_920_000 },
+  // ---- Minis (4×4 / 6×6) ----
+  'classic-4-easy': { minSolveMs: 3_000, botTimeMs: 40_000 },
+  'classic-4-medium': { minSolveMs: 4_000, botTimeMs: 60_000 },
+  'classic-4-hard': { minSolveMs: 5_000, botTimeMs: 90_000 },
+  'classic-6-easy': { minSolveMs: 8_000, botTimeMs: 75_000 },
+  'classic-6-medium': { minSolveMs: 10_000, botTimeMs: 120_000 },
+  'classic-6-hard': { minSolveMs: 12_000, botTimeMs: 180_000 },
+  'killer-4-easy': { minSolveMs: 4_000, botTimeMs: 60_000 },
+  'killer-6-easy': { minSolveMs: 10_000, botTimeMs: 120_000 },
+  'killer-6-medium': { minSolveMs: 12_000, botTimeMs: 195_000 },
+  'killer-6-hard': { minSolveMs: 15_000, botTimeMs: 270_000 },
+  'calc-4-easy': { minSolveMs: 4_000, botTimeMs: 55_000 },
+  'calc-4-medium': { minSolveMs: 5_000, botTimeMs: 85_000 },
+  'calc-4-hard': { minSolveMs: 6_000, botTimeMs: 130_000 },
+  'calc-6-easy': { minSolveMs: 10_000, botTimeMs: 150_000 },
+  'calc-6-medium': { minSolveMs: 14_000, botTimeMs: 240_000 },
+  'calc-6-hard': { minSolveMs: 20_000, botTimeMs: 390_000 },
+};
 
-export type DailyBoardKey = (typeof DAILY_BOARDS)[number]['key'];
+/** The tuning for a `(variant, size, difficulty)`, or `undefined` if not an eligible combo. */
+export function getProfile(
+  variant: Variant,
+  gridSize: DailySize,
+  difficulty: StandardRung,
+): ProfileEntry | undefined {
+  return PROFILE[`${variant}-${gridSize}-${difficulty}`];
+}
 
 /**
- * Every key routes accept. Includes the legacy `'killer'` key (the pre-ladder single Killer
- * daily) so archived rows stay replayable; it is never generated anymore.
+ * Whether a `(variant, size, difficulty)` is a real daily board. Standard = every type at 9×9 on
+ * all five rungs. Minis = 3-tier only; classic/calc at 4×4 and 6×6; **Killer is easy-only at 4×4**
+ * (de-risked — tiers collapse to tier-1 on a 16-cell no-givens grid) but full e/m/h at 6×6.
  */
-export type DailyDifficulty = DailyBoardKey | 'killer';
-
-const BOARD_BY_KEY = new Map<string, DailyBoard>(DAILY_BOARDS.map((board) => [board.key, board]));
-
-/** The registry entry for a key — `undefined` for unknown/legacy keys. */
-export function getDailyBoard(key: string): DailyBoard | undefined {
-  return BOARD_BY_KEY.get(key);
+export function isEligible(variant: Variant, gridSize: DailySize, difficulty: StandardRung): boolean {
+  if (gridSize === 9) return true;
+  if (difficulty === 'expert' || difficulty === 'extreme') return false; // no expert/extreme minis
+  if (variant === 'killer') return gridSize === 4 ? difficulty === 'easy' : true;
+  return true; // classic / calc: any 4×4 or 6×6 e/m/h
 }
 
-/** Narrowing guard for route input — a registry key or the legacy `'killer'`. */
+/**
+ * The difficulty RUNG a key refers to. Handles every key shape, active and retired, because the
+ * anti-cheat floor and the bot time are looked up by rung — a retired key that resolved to no rung
+ * would silently fall back to the permissive default floor, and archived keys are still solvable on
+ * the cutover date (that day holds both old and new rows).
+ *
+ * ```text
+ * hard            -> hard      (active standard: the key IS the rung)
+ * mini-hard       -> hard      (active mini)
+ * killer-extreme  -> extreme   (retired: rung is the trailing segment)
+ * calc9-expert    -> expert
+ * mini4-easy      -> easy
+ * killer          -> medium    (the pre-ladder single Killer daily was engine-medium — this
+ *                               reproduces its historical 30 s floor exactly)
+ * ```
+ */
+export function difficultyForKey(key: string): StandardRung {
+  if ((STANDARD_RUNGS as readonly string[]).includes(key)) return key as StandardRung;
+  const tail = key.slice(key.lastIndexOf('-') + 1);
+  if ((STANDARD_RUNGS as readonly string[]).includes(tail)) return tail as StandardRung;
+  return 'medium'; // legacy 'killer' (and any unknown key): the historical engine difficulty
+}
+
+/** Fisher–Yates copy shuffle driven by an injectable RNG (deterministic in tests). */
+function shuffle<T>(items: readonly T[], rng: () => number): T[] {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/** The 6 permutations of three indices — used to assign the 3 types to the 3 mini slots. */
+const PERMS_3: readonly (readonly [number, number, number])[] = [
+  [0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0],
+];
+
+/**
+ * Roll one day's assignment: a valid, distinct set of daily slots. Pure (RNG injected) so the
+ * cron and tests share it. Returns 3 standard + 3 mini slots (6 total, scaling to 5+5 at 5 types).
+ *
+ * - **Standard:** draw 3 distinct rungs of the 5, assign one to each type (a random injection). All
+ *   types cover the full 9×9 ladder, so any pairing is valid; keys are the rungs → distinct.
+ * - **Minis:** enumerate every valid `(type→slot permutation × hard-slot size ∈ {4,6})` under
+ *   `isEligible`, then pick one uniformly. This guarantees Killer only ever lands on easy-4×4 or a
+ *   6×6 hard slot; a valid config always exists (classic/Keisan cover medium/hard-4×4).
+ */
+export function rollDailyAssignment(rng: () => number = Math.random): PlannedSlot[] {
+  const rungs = shuffle(STANDARD_RUNGS, rng).slice(0, VARIANTS.length);
+  const types = shuffle(VARIANTS, rng);
+  const standard: PlannedSlot[] = rungs.map((difficulty, i) => ({
+    key: difficulty,
+    section: 'standard',
+    variant: types[i],
+    gridSize: 9,
+    difficulty,
+  }));
+
+  const miniSizes = [4, 4, 0] as const; // easy/medium always 4×4; hard size rolled below
+  const configs: { variant: Variant; gridSize: DailySize; difficulty: MiniTier }[][] = [];
+  for (const hardSize of [4, 6] as const) {
+    for (const perm of PERMS_3) {
+      const assignment = perm.map((typeIdx, slotIdx) => ({
+        variant: VARIANTS[typeIdx],
+        gridSize: (slotIdx === 2 ? hardSize : miniSizes[slotIdx]) as DailySize,
+        difficulty: MINI_TIERS[slotIdx],
+      }));
+      if (assignment.every((a) => isEligible(a.variant, a.gridSize, a.difficulty))) {
+        configs.push(assignment);
+      }
+    }
+  }
+  const chosen = configs[Math.floor(rng() * configs.length)];
+  const minis: PlannedSlot[] = chosen.map((a) => ({
+    key: MINI_KEYS[a.difficulty],
+    section: 'mini',
+    variant: a.variant,
+    gridSize: a.gridSize,
+    difficulty: a.difficulty,
+  }));
+
+  return [...standard, ...minis];
+}
+
+/** Active slot keys (generated today). */
+const ACTIVE_KEYS: readonly string[] = [...STANDARD_RUNGS, ...Object.values(MINI_KEYS)];
+
+/**
+ * Retired keys — no longer generated, but still accepted so archived rows replay. The bare rungs
+ * (`easy…extreme`) are active AND historically classic, so they live in `ACTIVE_KEYS` above.
+ */
+const LEGACY_KEYS: readonly string[] = [
+  'killer', // pre-ladder single Killer daily
+  'killer-easy', 'killer-medium', 'killer-hard', 'killer-expert', 'killer-extreme',
+  'killer6-easy', 'killer6-medium', 'killer6-hard',
+  'mini4-easy', 'mini4-medium', 'mini4-hard',
+  'mini6-easy', 'mini6-medium', 'mini6-hard',
+  'calc4-easy', 'calc4-medium', 'calc4-hard',
+  'calc6-easy', 'calc6-medium', 'calc6-hard',
+  'calc9-easy', 'calc9-medium', 'calc9-hard', 'calc9-expert', 'calc9-extreme',
+];
+
+const ALL_KEYS = new Set<string>([...ACTIVE_KEYS, ...LEGACY_KEYS]);
+
+/** Narrowing guard for route input — an active slot key or a retired key (archive replay). */
 export function isDailyDifficulty(value: unknown): value is DailyDifficulty {
-  return typeof value === 'string' && (value === 'killer' || BOARD_BY_KEY.has(value));
+  return typeof value === 'string' && ALL_KEYS.has(value);
 }
 
-/** Human label for any daily key (legacy `'killer'` included) or plain difficulty string. */
+const LEGACY_LABELS: readonly [RegExp, (tier: string) => string][] = [
+  [/^killer6-(.+)$/, (t) => `killer 6×6 ${t}`],
+  [/^killer-(.+)$/, (t) => `killer ${t}`],
+  [/^mini4-(.+)$/, (t) => `4×4 ${t}`],
+  [/^mini6-(.+)$/, (t) => `6×6 ${t}`],
+  [/^calc4-(.+)$/, (t) => `keisan 4×4 ${t}`],
+  [/^calc6-(.+)$/, (t) => `keisan 6×6 ${t}`],
+  [/^calc9-(.+)$/, (t) => `keisan ${t}`],
+];
+
+/**
+ * Human label for a daily KEY alone (no variant context) — used for saved-game banners, archived
+ * rows, and bests. Active standard keys are the bare rung; minis read `mini <tier>`; retired keys
+ * keep their old prettified form. The "Difficulty · Type" composition (which needs the row's stored
+ * `variant`) is Step 4 UI work, not this function.
+ */
 export function formatDailyKey(key: string): string {
+  if ((STANDARD_RUNGS as readonly string[]).includes(key)) return key;
+  if (key.startsWith('mini-')) return `mini ${key.slice(5)}`;
   if (key === 'killer') return 'killer';
-  const board = getDailyBoard(key);
-  if (!board) return key;
-  if (board.section === 'classic') return board.label;
-  if (board.section === 'killer') return `killer ${board.label}`;
-  if (board.section === 'calc') return `keisan ${board.label}`;
-  return board.label;
+  for (const [re, fmt] of LEGACY_LABELS) {
+    const m = re.exec(key);
+    if (m) return fmt(m[1]);
+  }
+  return key;
 }
 
 /** Count the given (non-empty) clues in a grid — a 0 cell is empty. */
@@ -134,12 +276,13 @@ export function countClues(grid: Grid): number {
 
 /**
  * Map an engine-generated puzzle to a `daily_puzzles` insert row for a given UTC date under a
- * registry key. Kept pure (no DB, no clock) so both the seed script and the cron can reuse it
- * and so it is unit-testable at the boundary; the caller owns the clock AND the key (the same
- * engine difficulty generates under different keys — e.g. `medium` vs `mini6-medium`).
+ * slot key. Kept pure (no DB, no clock) so both the seed script and the cron can reuse it and so
+ * it is unit-testable at the boundary; the caller owns the clock AND the key (the same engine
+ * difficulty generates under different keys — e.g. `hard` standard vs. `mini-hard`).
  *
- * Killer rows store cages and use the cage count as `clue_count` (Killer has no givens; the
- * cage count is the analogous display stat).
+ * Killer/Keisan rows store cages and use the cage count as `clue_count` (they have no givens; the
+ * cage count is the analogous display stat). `variant` is derived from the puzzle itself (not the
+ * registry), so it is correct even though the roller assigns types to rung-keyed slots.
  */
 export function toDailyPuzzleRow(
   puzzle: SudokuPuzzle | KillerPuzzle | CalcPuzzle,
@@ -152,8 +295,6 @@ export function toDailyPuzzleRow(
   return {
     date: isoDate,
     difficulty: key,
-    // Stored so readers stop inferring type from the key. Derived from the puzzle itself (not the
-    // registry), so this is correct even once the roller assigns types to rung-keyed slots.
     variant: hasCages ? puzzle.variant : 'classic',
     grid: puzzle.grid,
     solution: puzzle.solution,

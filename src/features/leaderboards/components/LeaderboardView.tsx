@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DAILY_BOARDS, formatDailyKey, type DailyDifficulty } from '@/lib/db/daily-row';
+import { formatDailyKey, type DailyDifficulty } from '@/lib/db/daily-row';
+import { slotLabel, type DailySlotInfo } from '@/features/dailies/slot-display';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
 import { useCountUp } from '@/features/juice/useCountUp';
@@ -58,7 +59,8 @@ export function LeaderboardView({
   const [me, setMe] = useState<Me | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
   const shownStreak = useCountUp(streak); // rolls up from 0 when the streak loads
-  const [bests, setBests] = useState<{ difficulty: string; bestMs: number }[]>([]);
+  const [bests, setBests] = useState<{ difficulty: string; variant: string; bestMs: number }[]>([]);
+  const [slots, setSlots] = useState<DailySlotInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -115,11 +117,33 @@ export function LeaderboardView({
     };
   }, [session, date]);
 
-  // Scoped to the currently-viewed board, not every board the player has ever completed —
-  // with 19 possible boards, showing all of them unconditionally on every tab would be a
-  // long, mostly-irrelevant wall of pills (fetched once above; this is just a client-side
-  // filter, so switching tabs doesn't need a re-fetch).
-  const myBest = bests.find((b) => b.difficulty === difficulty);
+  // The day's boards (type rolled per day → fetched, not static). Drives the tabs. For an
+  // uncontrolled view, seed the selected tab to the first real board once loaded.
+  useEffect(() => {
+    let active = true;
+    fetch(apiPath(`/api/daily/slots${date ? `?date=${date}` : ''}`))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!active || !d?.slots?.length) return;
+        setSlots(d.slots);
+        if (!onDifficultyChange) {
+          setInternalDifficulty((cur) => (d.slots.some((s: DailySlotInfo) => s.key === cur) ? cur : d.slots[0].key));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [date, onDifficultyChange]);
+
+  // Personal best for the CURRENT board — matched on (key, variant), since bests are now grouped by
+  // both (a rung key holds a different type each day, so 'hard'+killer and 'hard'+classic are
+  // distinct bests). The current board's variant comes from today's slot list; before slots load we
+  // match on key alone (may briefly show a different type's best until the fetch resolves).
+  const currentVariant = slots.find((s) => s.key === difficulty)?.variant;
+  const myBest = bests.find(
+    (b) => b.difficulty === difficulty && (currentVariant === undefined || b.variant === currentVariant),
+  );
 
   const selectDifficulty = (d: DailyDifficulty) => {
     if (d === difficulty) return;
@@ -133,26 +157,24 @@ export function LeaderboardView({
       <div className="mb-5 space-y-2">
         {(
           [
-            ['classic', 'Classic'],
-            ['killer', 'Killer'],
-            ['minis', 'Minis'],
-            ['calc', 'Keisan'], // 9×9 Keisan (K7); auto-hidden while empty
+            ['standard', 'Standard'],
+            ['mini', 'Minis'],
           ] as const
         )
-          .filter(([section]) => DAILY_BOARDS.some((b) => b.section === section))
+          .filter(([section]) => slots.some((s) => s.section === section))
           .map(([section, heading]) => (
           <div key={section} className="flex flex-wrap items-center justify-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-ink-soft w-14 text-right">{heading}</span>
-            {DAILY_BOARDS.filter((b) => b.section === section).map((b) => (
+            <span className="text-[11px] uppercase tracking-wide text-ink-soft w-16 text-right">{heading}</span>
+            {slots.filter((s) => s.section === section).map((s) => (
               <button
-                key={b.key}
+                key={s.key}
                 type="button"
-                onClick={() => selectDifficulty(b.key)}
-                className={`px-2.5 py-1 rounded-lg text-xs capitalize transition-all ${
-                  difficulty === b.key ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
+                onClick={() => selectDifficulty(s.key)}
+                className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
+                  difficulty === s.key ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
                 }`}
               >
-                {b.label}
+                {slotLabel(s)}
               </button>
             ))}
           </div>

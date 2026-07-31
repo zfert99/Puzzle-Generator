@@ -13,22 +13,37 @@ imported by the API routes (which pass the guarded client) **and** by the `tsx` 
 Neon driver in at import time. It also makes the service trivially testable: a stand-in db
 object mocks the boundary without touching the network.
 
-## `generateDailyPuzzles(db, isoDate)`
+## `generateDailyPuzzles(db, isoDate, { rng?, generate? })`
 
-**Why:** One call generates today's whole set (one puzzle per eligible difficulty) and
-upserts it. It is **idempotent** — the `UNIQUE(date, difficulty)` constraint plus
-`onConflictDoNothing` turn a retry or an accidental double-fire into a no-op, which is
-exactly what a scheduled job needs. Seed and cron both go through here so they can never
-drift apart.
+**Why:** One call rolls and generates today's whole set (**the type-as-slot roll** — 3 standard +
+3 mini; see `daily-row.md`) and upserts it. It is **idempotent** — the `UNIQUE(date, difficulty)`
+constraint plus `onConflictDoNothing` turn a retry or an accidental double-fire into a no-op, which
+is exactly what a scheduled job needs. Seed and cron both go through here so they can never drift
+apart.
 
 ```text
 Ensure "Sudoku Bot"'s user row exists (idempotent; features/leaderboards/bot.ts).
-For each daily difficulty (easy, medium, hard, expert):
-  Generate a puzzle and map it to an insert row for isoDate.
+Roll the day's assignment (rollDailyAssignment) -> 6 planned slots.
+For each slot:
+  Generate its puzzle with a never-empty fallback (below), then map it to an insert row.
 Insert all rows in one statement; skip any that collide on (date, difficulty).
 Seed Sudoku Bot's solve on every one of today's boards (see below).
 Return { isoDate, requested, inserted } (inserted = how many were actually new).
 ```
+
+`rng` and `generate` are **injected seams**: `rng` makes the roll deterministic, and `generate`
+stubs the engine call. Tests use both so the orchestration, fallback, and row-mapping are exercised
+in milliseconds rather than paying real generation (a rolled 9×9 Killer-extreme alone is ~5.5 s).
+
+### Never leave a slot empty (plan Risk #2)
+
+**Why:** the roll is random, so a slot could in principle land on a generator that fails — and a
+blank slot means a missing daily for the whole day, with a dead leaderboard tab. `generateSlotWithFallback`
+retries the rolled board a few times, then falls back to **another eligible board for the same
+slot** — the key and difficulty stay fixed (preserving leaderboard identity and the day's distinct
+key set), only the variant (and, for minis, the size) changes. Each retry and every fallback is
+`logger.warn`-ed so a silent degradation is visible in production logs. At the tuned generator
+settings this is belt-and-braces: the real failure mode is slowness, not throwing.
 
 ## Sudoku Bot seeding (July 2026)
 
@@ -47,13 +62,19 @@ shipped.
 
 ```text
 seedBotSolves(db, isoDate):
-  Select every daily_puzzles row for isoDate (id, difficulty/key).
-  For each row whose key has a tuned botTimeMs (DAILY_BOARDS):
-    Build a solve_attempts row: bot's userId, that puzzle's id, botTimeMs,
-      completed = true, mistakes = 0.
+  Select every daily_puzzles row for isoDate (id, key, variant, grid).
+  For each row:
+    Look up botTimeMs in the PROFILE table by (variant, grid.length, difficultyForKey(key)).
+    If a profile exists, build a solve_attempts row: bot's userId, that puzzle's id,
+      botTimeMs, completed = true, mistakes = 0.
   Insert all such rows in one statement; skip any that collide on (userId, puzzleId) —
     the same uniqueness a real player's attempt is already constrained by.
 ```
+
+**Why the profile lookup, not a key map:** the bot's time used to come from a `botTimeByKey` map
+built off the flat registry. A rung key now holds a different type/size each day, so the time has to
+follow the actual board — hence the row's stored `variant` plus its grid size. Rows whose board has
+no profile entry (only archived/retired boards) are skipped rather than mis-timed.
 
 ## `getDailyPuzzle(db, isoDate, difficulty)`
 

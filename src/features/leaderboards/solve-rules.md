@@ -16,24 +16,25 @@ rather than hiding the solution — a sudoku is externally solvable anyway.
 **Why:** The server verifies a submitted grid against the stored solution before recording
 any time — you can't rank without actually solving it. Deep cell-by-cell equality.
 
-## `MIN_SOLVE_MS` / `isImplausiblyFast(difficulty, timeMs)`
+## `isImplausiblyFast(variant, gridSize, difficulty, timeMs)`
 
 **Why:** Rejects a submission faster than any human could solve (i.e. instant autofill).
 The floor only needs to exclude the impossible, not police fast solvers, so it is set
 conservatively below real human records and rises with difficulty.
 
 ```text
-MIN_SOLVE_MS: easy 15s · medium 20s · hard 25s · expert 30s · extreme 45s
-isImplausiblyFast(d, t) -> t < MIN_SOLVE_MS[d]
+floor = getProfile(variant, gridSize, difficulty).minSolveMs   (daily-row.ts PROFILE table)
+isImplausiblyFast(...) -> timeMs < floor
 ```
 
-## Killer floor
+**Why keyed on the board, not the slot key (daily restructure Step 3b).** Floors used to be a
+`MIN_SOLVE_MS[key]` map built from the flat board registry. Under type-as-slot a rung key like
+`hard` holds a **different type and size each day**, so a key-indexed floor would validate a Keisan
+9×9 solve against a Classic 9×9 floor (and the new `mini-*` keys wouldn't be in the map at all).
+Deriving from the puzzle's stored `(variant, size, difficulty)` keeps the floor attached to the
+board a player actually solved. Killer floors sit above classic at the same tier — Killer starts
+from an empty grid (no givens), so it takes longer.
 
-`MIN_SOLVE_MS.killer` is 30 s — between classic hard and expert. Killer starts from an empty
-grid (no givens), so even the engine-medium daily takes longer than a classic medium; the
-floor only needs to exclude instant autofill, not police fast solvers.
-
-## Registry floors (July 2026)
-
-`MIN_SOLVE_MS` is now built from the daily-board registry (each board carries its own floor)
-plus the legacy `'killer'` key for archived replays.
+A `DEFAULT_MIN_SOLVE_MS` (3 s) covers the unreachable case of a board with no profile row — the
+`isEligible ⟺ getProfile` coverage test guarantees every rolled board has one. It sits below every
+real floor, so it never wrongly rejects a genuine solve.

@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts, type DailyPuzzle, type SolveAttempt } from '@/lib/db/schema';
-import type { DailyDifficulty } from '@/lib/db/daily-row';
+import { difficultyForKey, type Variant, type DailySize } from '@/lib/db/daily-row';
 import { getUserAttemptForPuzzle } from './attempts.service';
 import { gridsMatch, isImplausiblyFast } from './solve-rules';
 import type { Grid } from '@/lib/db/schema';
@@ -70,14 +70,13 @@ export async function recordSolve(
   args: {
     userId: string;
     puzzle: DailyPuzzle;
-    difficulty: DailyDifficulty;
     submittedGrid: Grid;
     mistakes: number;
     /** Client-reported in-game elapsed time in ms (the board timer). */
     clientTimeMs: number;
   },
 ): Promise<SolveAttempt> {
-  const { userId, puzzle, difficulty, submittedGrid, mistakes, clientTimeMs } = args;
+  const { userId, puzzle, submittedGrid, mistakes, clientTimeMs } = args;
 
   const attempt = await getUserAttemptForPuzzle(db, userId, puzzle.id);
   if (!attempt) {
@@ -91,7 +90,15 @@ export async function recordSolve(
   }
 
   const timeMs = Math.max(0, Math.trunc(clientTimeMs));
-  if (isImplausiblyFast(difficulty, timeMs)) {
+  // Floor is derived from the puzzle's stored (variant, size, difficulty) — not the slot key, whose
+  // type varies per day. `puzzle.difficulty` is the slot key; `difficultyForKey` maps it to the rung.
+  const isTooFast = isImplausiblyFast(
+    puzzle.variant as Variant,
+    puzzle.grid.length as DailySize,
+    difficultyForKey(puzzle.difficulty),
+    timeMs,
+  );
+  if (isTooFast) {
     throw new SolveError('TOO_FAST', 400, 'Solve time is implausibly fast');
   }
 

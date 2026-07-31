@@ -1,5 +1,5 @@
 import type { Grid } from '@/lib/db/schema';
-import { DAILY_BOARDS, type DailyDifficulty } from '@/lib/db/daily-row';
+import { getProfile, type Variant, type DailySize, type StandardRung } from '@/lib/db/daily-row';
 
 /**
  * Pure anti-cheat rules for a daily solve — no DB, no clock — so they are unit-testable
@@ -27,18 +27,26 @@ export function gridsMatch(a: Grid, b: Grid): boolean {
 }
 
 /**
- * Minimum plausible solve time per difficulty (ms). A submission faster than this is
- * rejected as impossible for a human — the floor only needs to exclude instant autofill,
- * not police fast solvers, so it is set conservatively below real human records.
+ * Conservative default floor (ms) when a board somehow has no profile entry — should be
+ * unreachable for a rolled slot (the profile-coverage test guarantees every eligible board has
+ * one), so this only guards a pathological/legacy edge. Below any real board's floor, so it never
+ * wrongly rejects a genuine solve; it just declines to add extra protection it can't derive.
  */
-export const MIN_SOLVE_MS: Record<DailyDifficulty, number> = {
-  // Per-board floors live in the daily-board registry (single source of truth); the legacy
-  // 'killer' key (pre-ladder single daily) keeps its original floor for archived replays.
-  ...(Object.fromEntries(DAILY_BOARDS.map((b) => [b.key, b.minSolveMs])) as Record<DailyDifficulty, number>),
-  killer: 30_000,
-};
+const DEFAULT_MIN_SOLVE_MS = 3_000;
 
-/** True if a solve time is implausibly fast for the difficulty (i.e. below the floor). */
-export function isImplausiblyFast(difficulty: DailyDifficulty, timeMs: number): boolean {
-  return timeMs < MIN_SOLVE_MS[difficulty];
+/**
+ * True if a solve time is implausibly fast for this board (below its plausibility floor). The
+ * floor now comes from the `(variant, size, difficulty)` profile — not the slot key — because a
+ * rung key like `hard` holds a different type/size each day, each with its own floor. The floor
+ * only needs to exclude instant autofill, not police fast solvers, so it sits well below real
+ * human records.
+ */
+export function isImplausiblyFast(
+  variant: Variant,
+  gridSize: DailySize,
+  difficulty: StandardRung,
+  timeMs: number,
+): boolean {
+  const floor = getProfile(variant, gridSize, difficulty)?.minSolveMs ?? DEFAULT_MIN_SOLVE_MS;
+  return timeMs < floor;
 }

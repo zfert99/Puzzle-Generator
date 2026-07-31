@@ -87,9 +87,19 @@ competitive daily (they'd hand out answers), while free play keeps them.
 
 ## Sectioned picker (July 2026)
 
-The single chip row became three sections — Classic 9×9, Killer 9×9, Minis — rendered from
-`DAILY_BOARDS`. Selection state holds the board KEY; labels go through `formatDailyKey`
-(header, Play button, Continue).
+The single chip row became sections rendered from the day's boards. Selection state holds the board
+KEY.
+
+**Type-as-slot rework (daily restructure Step 3b).** The picker used to render the static
+`DAILY_BOARDS` registry grouped into four sections (Classic 9×9 / Killer 9×9 / Minis / Keisan) — a
+30-pill wall. It now fetches **`GET /api/daily/slots`** and renders that day's real boards in two
+sections, **Standard** and **Minis** (6 pills today). The fetch is required, not a nicety: the type
+is rolled per day and stored, so the client cannot derive today's line-up from any static table.
+
+Pills are labelled via `slotLabel` ("Hard · Killer") rather than `formatDailyKey`, since a bare rung
+key is ambiguous once the type varies by day. `formatDailyKey` remains the fallback for the header
+and Play button before the slot list resolves (and for the Continue banner, which restores a saved
+key with no variant context).
 
 ## Desktop width (July 2026)
 

@@ -27,3 +27,16 @@ On any thrown error -> log server-side, return a generic 500.
 generation upserts on `UNIQUE(date, difficulty)`, a second same-day run simply reports
 `inserted: 0` instead of duplicating the day's puzzles. Runs on the Node.js runtime
 (`node:crypto` + the DB driver are Node-only, never Edge).
+
+Note this makes the day's roll **first-write-wins**: if rows already exist for the date, a re-run's
+freshly-rolled slots collide and are skipped rather than replacing them. That is the desired
+behaviour (a player's board never changes under them mid-day), and it is what makes the
+restructure's cutover day safe — the pre-existing rows simply stand.
+
+## `maxDuration` (daily restructure Step 3b)
+
+Lowered **120 s → 60 s**. The old budget covered generating all 30 registry boards including every
+slow tier; the roll now produces **6** boards, of which at most one standard slot can be a 9×9
+extreme (the ~5.5 s Killer-extreme being the worst case) alongside millisecond-scale minis. 60 s
+keeps a wide margin over the realistic worst case while trimming a function budget that no longer
+reflected the work.

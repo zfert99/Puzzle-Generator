@@ -75,21 +75,30 @@ export function getTodayCompletions(
 
 export interface PersonalBest {
   difficulty: string;
+  variant: string;
   bestMs: number;
 }
 
 /**
- * A user's best (fastest) completed time per difficulty, across all days — their all-time
- * personal bests. Scoped to `userId` (BOLA); grouped by the puzzle's difficulty via a join.
+ * A user's best (fastest) completed time per `(difficulty, variant)`, across all days — their
+ * all-time personal bests. Scoped to `userId` (BOLA); grouped via a join to `daily_puzzles`.
+ *
+ * **Grouped by `(difficulty, variant)`, not `difficulty` alone (Risk #4):** a rung key like `hard`
+ * now holds a different TYPE each day (Classic one day, Killer the next), so grouping by the key
+ * alone would collapse distinct types under one "best". Including the stored `variant` keeps bests
+ * type-attributable and stays correct at the 5-type end state. Historical rows (all `variant`
+ * backfilled by migration `0004`) slot in cleanly — old classic-only `hard` rows group under
+ * `(hard, classic)`.
  */
 export function getPersonalBests(db: Database, userId: string): Promise<PersonalBest[]> {
   return db
     .select({
       difficulty: dailyPuzzles.difficulty,
+      variant: dailyPuzzles.variant,
       bestMs: sql<number>`min(${solveAttempts.timeMs})`.mapWith(Number),
     })
     .from(solveAttempts)
     .innerJoin(dailyPuzzles, eq(solveAttempts.puzzleId, dailyPuzzles.id))
     .where(and(eq(solveAttempts.userId, userId), eq(solveAttempts.completed, true)))
-    .groupBy(dailyPuzzles.difficulty);
+    .groupBy(dailyPuzzles.difficulty, dailyPuzzles.variant);
 }

@@ -29,7 +29,13 @@ explicitly from the **app** clock (not the DB's `now()`) so the *same* clock mea
 ends of the solve — mixing app-clock-at-submit with DB-clock-at-start would skew every
 recorded time by the app↔DB clock offset (a real bug caught during verification).
 
-## `recordSolve(db, { userId, puzzle, difficulty, submittedGrid, mistakes, clientTimeMs })`
+## `recordSolve(db, { userId, puzzle, submittedGrid, mistakes, clientTimeMs })`
+
+**Why no `difficulty` argument any more (daily restructure Step 3b):** it was only ever used to look
+up the plausibility floor. The floor now comes from the puzzle's own stored `(variant, grid size,
+difficulty)` — a rung key like `hard` holds a different type/size each day, so the key alone can't
+identify the right floor. `puzzle` already carries everything needed, so the redundant (and now
+misleading) parameter is gone.
 
 **Why it throws typed `SolveError`s:** Each rejection is an expected 4xx (not a 500), so the
 route can map `code`/`status` directly. Order matters: cheap checks first, grid check before
