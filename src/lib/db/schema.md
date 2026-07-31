@@ -24,13 +24,24 @@ duplicating.
 ```text
 id          uuid, generated
 date        the UTC calendar day this puzzle belongs to
-difficulty  easy | medium | hard | expert | extreme
+difficulty  the daily-board KEY (idempotency handle + API/leaderboard identity)
+variant     puzzle TYPE: classic | killer | calc (stored, not inferred from the key)
 grid        the unsolved puzzle (JSON) sent to clients
 solution    the solved grid (JSON) — SERVER-ONLY, never sent for an unsolved daily
-clue_count  denormalized count of givens, for cheap display/sorting
+clue_count  denormalized count of givens (cage count for Killer/Keisan)
 created_at  timestamptz
 UNIQUE (date, difficulty)
 ```
+
+**Why `variant` (July 2026, daily restructure — Step 3a).** The `difficulty` key historically
+encoded the puzzle type (`killer-easy`, `calc9-hard`). The type-as-slot restructure keys standard
+slots by rung (`easy…extreme`) and minis by `mini-<tier>`, with the TYPE rolled per day — so the key
+no longer tells you the type. `variant` stores it explicitly. Added by migration `0004` as
+**additive + backfill**: `ADD COLUMN` nullable → backfill every historical key to its type (classic /
+killer / calc, by key pattern) → `SET NOT NULL` (which doubles as the no-null exhaustiveness gate).
+`toDailyPuzzleRow` derives it from the generated puzzle, not the registry, so it stays correct once
+the roller assigns types to rung-keyed slots. Readers (serve route, solve-time floor, bot-seed)
+switch to this column in Step 3b.
 
 > Users are no longer defined here — see [auth-schema.ts](./auth-schema.ts) for the
 > canonical `user` table (better-auth).
@@ -50,14 +61,15 @@ UNIQUE (user_id, puzzle_id)
 INDEX (puzzle_id, time_ms)
 ```
 
-## Killer dailies (July 2026)
+## Caged dailies (Killer / Keisan)
 
-`daily_puzzles.cages` (nullable jsonb) carries the cage partition for a **Killer daily** —
-one per day, stored with the literal difficulty `'killer'`. Reusing the difficulty column as
-the variant key keeps the `UNIQUE(date, difficulty)` idempotency constraint and the entire
-difficulty-keyed solve/leaderboard/streak flow working with **no new tables or keys**; a
-classic row simply has `cages = NULL`. `clue_count` holds the cage count for Killer (it has
-no given clues — the cages are the clue). Migration `0003_killer_daily_cages.sql`.
+`daily_puzzles.cages` (nullable jsonb) carries the cage partition for a **caged daily** (Killer or
+Keisan); a classic row has `cages = NULL`. `clue_count` holds the cage count for these (they ship no
+given clues — the cages are the clue). Which cage interpretation applies (Killer sum vs. Keisan
+operator+target) is told by the row's **`variant`** column. Historically the type was inferred from
+the `difficulty` key (`killer-*`, `calc*`, or the legacy single `'killer'` key); that inference is
+being retired in favor of stored `variant` (see above). Migrations: `0003_killer_daily_cages.sql`
+(added `cages`), `0004_safe_pyro.sql` (added `variant`).
 
 ## Security note
 

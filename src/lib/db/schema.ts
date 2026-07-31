@@ -69,19 +69,29 @@ export const dailyPuzzles = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     /** Calendar day this puzzle belongs to, at 00:00 UTC rollover. */
     date: date('date').notNull(),
-    /** easy | medium | hard | expert | extreme. */
+    /**
+     * The daily-board KEY (`daily-row.ts`) — the `UNIQUE(date, difficulty)` idempotency handle,
+     * API param, and leaderboard identity. Historically it encoded the puzzle TYPE too
+     * (`killer-easy`, `calc9-hard`); the type-as-slot restructure moves type into `variant` and
+     * keys standard slots by rung (`easy…extreme`), minis by `mini-<tier>`.
+     */
     difficulty: text('difficulty').notNull(),
+    /**
+     * Puzzle TYPE, stored so readers no longer infer it from the `difficulty` key (the key's type
+     * encoding is being retired). Backfilled from historical keys by migration `0004`.
+     */
+    variant: text('variant').$type<'classic' | 'killer' | 'calc'>().notNull(),
     /** Unsolved puzzle sent to the client. */
     grid: jsonb('grid').$type<Grid>().notNull(),
     /** Solved grid — SERVER-ONLY. Never returned for an unsolved daily (anti-cheat). */
     solution: jsonb('solution').$type<Grid>().notNull(),
-    /** Number of given clues — denormalized for cheap display/sorting. Cage count for Killer. */
+    /** Number of given clues — denormalized for cheap display/sorting. Cage count for Killer/Keisan. */
     clueCount: integer('clue_count').notNull(),
     /**
-     * Killer cages, or NULL for classic dailies. A row with cages is a Killer daily — its
-     * `difficulty` is the literal `'killer'` (one Killer daily per day), which keeps the
-     * `UNIQUE(date, difficulty)` idempotency key and the difficulty-keyed solve/leaderboard
-     * flow working without a separate variant column.
+     * Cages for a caged daily (Killer sum, or Keisan operator+target), or NULL for classic. Which
+     * interpretation applies is told by the row's `variant` column (Killer and Keisan both carry
+     * cages, so cage presence alone can't distinguish them). The column is untyped jsonb, so adding
+     * the Keisan variant needed no migration.
      */
     cages: jsonb('cages').$type<StoredCage[]>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
