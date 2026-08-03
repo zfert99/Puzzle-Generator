@@ -168,8 +168,13 @@ make. Do not turn this into ceremony; keep it mechanical.
    - **Generated migration safety:** read the Drizzle-generated SQL by hand; destructive
      changes need reverse SQL + a backup; additive-only until cutover.
    - **New dependencies exist and are reputable** before install (slopsquatting — Section 6).
-   - Run the `/code-review` skill; for any auth/authz/data-access change, also
-     `/security-review` (Section 6 "AI-generated code is unaudited by default").
+   - **Who runs what.** `/code-review` (and `/code-review ultra`) is **user-triggered and billed** —
+     an agent cannot launch it, so an agent must never treat this step as "run the command". An
+     agent runs `/pre-merge` (`.claude/commands/pre-merge.md`), which walks steps 1–3 plus the
+     project-specific judgment prompts, and then **states plainly that the hosted review has not
+     been run** so the owner can decide whether to trigger it. `/security-review` *is*
+     agent-invocable and is required for any auth/authz/data-access change (Section 6, "AI-generated
+     code is unaudited by default").
 5. **Merge** only once 1–4 are green **and** CI passes (`ci.yml`: `npm run lint`,
    `markdownlint`, `npm test`, `npm audit --audit-level=high --omit=dev`; plus `codeql.yml`).
 
@@ -347,4 +352,25 @@ touched, so file-mirroring structurally could not catch them. The sweep closes t
 repo for every symbol renamed/removed and every design superseded — including *plan* docs that
 "anticipate" what you just built — while explicitly leaving genuinely historical records
 (`Docs/archive/*`, dated roadmap entries, completed plans) untouched. No other rules changed.
+
+**August 3, 2026:** Made the pre-merge gate partly *physical*, and fixed the rule that made it
+unfollowable. Notable changes:
+
+- **Corrected step 4 of the Pre-Merge / Pre-PR Checklist.** It instructed the agent to "Run the
+  `/code-review` skill" — but `/code-review` is **user-triggered and billed**, so an agent cannot
+  launch it. An instruction no agent can follow is the likeliest reason that step kept getting
+  skipped in practice. Step 4 now names who runs what: an agent runs `/pre-merge` and must state
+  outright that the hosted review was NOT run; `/security-review` is agent-invocable and stays
+  required for auth/authz/data-access changes.
+- **Added `.github/pull_request_template.md`** (Stage 1 of the Solo-dev QA hardening track). Based
+  on the draft in `solo-dev-ai-qa-code-review-playbook.md`, extended with the traps this repo has
+  actually hit: the Drizzle bare `ADD COLUMN … NOT NULL` migration shape, `npm run build` as a
+  separate gate because eslint does not type-check, the reverse-reference doc sweep, and an explicit
+  "an agent cannot run `/code-review`" line.
+- **Added `/pre-merge`** (`.claude/commands/pre-merge.md`) — an agent-runnable pass over checklist
+  steps 1–3 plus this project's own invariants (a slot key is not an identity; randomised inputs
+  void `ON CONFLICT DO NOTHING`; retired keys stay readable). Kept deliberately short: the playbook
+  cites Braz et al. that *pointing* a reviewer at where to look moves detection, while checklist
+  length does not.
+- No changes to Sections 1–7, Documentation, Roadmap, Markdown Linting, or Git Rules.
 <!-- END:update-log -->

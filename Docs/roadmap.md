@@ -748,11 +748,24 @@ deferred follow-up. Evidence base and staging:
 [solo-dev-ai-qa-code-review-playbook.md](research/solo-dev-ai-qa-code-review-playbook.md).
 Deferred per the pragmatic-tradeoff posture — recorded so the gap stays visible, not silent:
 
-- **Stage 1 — make the gate physical:** a `.github/pull_request_template.md` with the
-  self-review checkboxes, branch protection requiring green CI, one configured AI reviewer
-  (CodeRabbit default), and axe-in-CI + a Lighthouse INP/perf-budget assertion (the INP and
-  0-axe targets are already committed to — an unenforced budget is the failure mode being
-  removed).
+- **Stage 1 — make the gate physical:** 🚧 *partly done, August 2026.*
+  - ✅ **`.github/pull_request_template.md`** — the self-review checkboxes, extended past the
+    research draft with the traps this repo has actually hit (the Drizzle `NOT NULL` migration
+    shape; `npm run build` because eslint does not type-check; the reverse-reference doc sweep;
+    an explicit "an agent cannot run `/code-review`" line).
+  - ✅ **`/pre-merge`** (`.claude/commands/pre-merge.md`) — an agent-runnable pass over checklist
+    steps 1–3 plus this project's own invariants (a slot key is not an identity; randomised inputs
+    void `ON CONFLICT DO NOTHING`; retired keys stay readable). Deliberately short: Braz et al. find
+    that *pointing* a reviewer moves detection while checklist length does not. It exists because
+    `AGENTS.md` step 4 used to instruct an agent to "run `/code-review`", which is user-triggered
+    and billed — an instruction no agent could follow, and the likeliest reason that step kept being
+    skipped. Wording fixed in the same change.
+  - ⏳ **Still to do:** branch protection requiring green CI, one configured AI reviewer
+    (CodeRabbit default), and axe-in-CI + a Lighthouse INP/perf-budget assertion (the INP and
+    0-axe targets are already committed to — an unenforced budget is the failure mode being
+    removed).
+  - Note the residual honestly: a template and a command are still *discipline*, just cheaper to
+    follow. Branch protection is the first item on this list that a human cannot skip.
 - **Stage 2 — close the AI-security gap** (gate before Phase 9's economy endpoints go live):
   Zod `authorize → validate → mutate` on every leaderboard/economy/score write, with
   idempotency keys + rate limiting *inside* the action; integration tests asserting each
