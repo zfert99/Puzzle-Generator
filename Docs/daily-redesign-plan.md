@@ -1,12 +1,13 @@
 # Daily Restructure — Type-as-Slot (one daily per puzzle type) + Killer 4×4
 
-> **Status:** 🚧 In progress (living document — the canonical plan for this initiative; the
+> **Status:** ✅ Steps 1–5 done (living document — the canonical plan for this initiative; the
 > `~/.claude/plans` scratch file is superseded by this doc). Each **Step** below carries its spec
 > *and* its progress/step-log. **The restructure is live:** Step 1 (process rules), Step 2 (Killer
-> 4×4 generator), Step 3a (migration `0004` — stored `variant`), and Step 3b (registry reshape +
-> cron roller + read-path cutover + the functional picker/tabs) are all done — `/daily` now rolls
-> **6 boards/day** (3 standard + 3 mini) instead of 30. Remaining: Step 4 (UI polish — most of it
-> landed early with 3b) and Step 5 (archive X/N counts).
+> 4×4 generator), Step 3a (migration `0004` — stored `variant`), Step 3b (registry reshape + cron
+> roller + read-path cutover + the functional picker/tabs) with its 3c/3d follow-ups, and Step 5
+> (archive X/N counts) are all done — `/daily` now rolls **6 boards/day** (3 standard + 3 mini)
+> instead of 30. Remaining: only the Step 4 tail of **true UI polish** (desktop picker sizing, a
+> one-time "the daily changed" note, the Continue banner's label) — nothing blocking.
 >
 > **This supersedes the earlier "11-slot random-type ladder + medals" design.** That model fixed a
 > *difficulty* ladder and rolled *type* per slot; the owner chose the **inverse, simpler** model
@@ -439,14 +440,56 @@ currently falls back to `formatDailyKey`, since a saved key carries no variant c
 
 **Progress —** *(core landed with 3b; polish not started)*
 
-### Step 5 — Archive completion counts (X/N) — ⏳ Not started
+### Step 5 — Archive completion counts (X/N) — ✅ Done 2026-08-03
 
 **Spec.** Archive shows **X/N completed** per day for the Standard set and the Mini set (N = that
 day's slot count — 3 now, 5 later; dynamic denominator, which the economy plan's S3 per-date snapshot
 anticipates). Source completions from the existing `getTodayCompletions` / attempts services; **no
 new badge/star/economy state.** `ArchiveExperience.tsx`, `Calendar.tsx`. Update mirrored `.md`s.
 
-**Progress —** *(not started)*
+**Progress — ✅ Done 2026-08-03 (branch `feat/daily-step5-archive-counts`).**
+
+- *Process:* Added `getDailyProgress(db, userId, from, to)` to `attempts.service.ts` — one grouped
+  query returning `(date, gridSize, total, done)` — behind a new authed `GET
+  /api/me/progress?month=YYYY-MM`, which folds grid size < 9 into the Mini set and everything else
+  into Standard. `Calendar.tsx` gained an optional per-day completion dot (+ `onMonthChange`), and
+  `ArchiveExperience.tsx` shows **"Standard 2/3 · Minis 1/3"** for the viewed date. 398 tests green;
+  build, lint and markdownlint clean.
+- *Learnings:*
+  - **`getTodayCompletions` was the wrong thing to extend, despite the spec naming it.** It answers
+    "which boards did I finish?" — a numerator. X/N needs the *denominator* too, and the
+    denominator belongs to the **day**, not the user: a day the player never touched must read
+    `0/3`, not vanish. So the query drives from `daily_puzzles` and **LEFT-joins** the user's
+    completed attempts, which puts the ownership predicate in the `ON` clause instead of the
+    `WHERE` — the one deliberate deviation from every other read in that service. It inverts the
+    BOLA failure mode (a dropped id counts *everyone's* solves rather than leaking a row), so the
+    usual "the WHERE is scoped" test can't see it; a test asserting the join condition varies with
+    the caller covers it instead.
+  - **The set split has to be by grid size, not the key prefix** — the same lesson Step 3b's slots
+    endpoint learned the hard way. Archived dates are full of retired keys (`mini4-*`, `killer6-*`,
+    `calc4-*`) whose prefixes lie about the section, and the archive is precisely where they live.
+  - **N is counted, never assumed.** A pre-cutover date holds 30 boards, today holds 6, and 5 types
+    will make it 10 — a hardcoded 3 would misreport all three. Days with no stored dailies are
+    omitted entirely rather than rendered `0/0`.
+  - **Fetch keys off the calendar's visible month, not the selected date.** Paging months doesn't
+    move the selection, so a selected-date-keyed fetch would leave one month's markers sitting on
+    another month's grid; `Calendar` reports paging up through `onMonthChange` (from the click
+    handlers — an effect on view state would be the same thing with more re-renders).
+  - Counts are **signed-in-only**, like streak and personal bests — a signed-out visitor sees the
+    archive exactly as before rather than a calendar of "0/3".
+- *Review-pass fix:* the 401 test's BOLA assertion was **vacuous**. It used
+  `toHaveBeenLastCalledWith` against a module-level `vi.fn()` that nothing cleared between tests,
+  so it inspected a call made by an *earlier* test and passed no matter what the route did — the
+  regression it exists to catch (reading `userId` from the request) would have shipped green.
+  Replaced with `mockClear()` in `beforeEach` plus two assertions that bite: signed-out never
+  reaches the data layer, and the signed-in call carries the session id. **Verified by injecting
+  the regression** (`searchParams.get('userId') ?? await requireUserId()`) and watching both fail.
+  Generalizable: a call-history assertion in a file with no `mockClear` is presumed vacuous until
+  a deliberately-broken run proves otherwise.
+- *Reverse-reference sweep:* found one live doc still carrying the pre-3d rule —
+  `social-progression-economy-plan.md` told Phase 9 to group cross-date aggregates by `(key,
+  variant)`, which Step 3d amended to `(key, variant, size)`. Fixed there.
+- *Blockers:* None.
 
 ---
 

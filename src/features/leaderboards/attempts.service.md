@@ -42,6 +42,40 @@ SELECT difficulty, puzzle_id, time_ms
   WHERE user_id = userId AND completed AND date = isoDate
 ```
 
+## `getDailyProgress(db, userId, fromIso, toIso)`
+
+**Why:** Backs the archive's **X/N** counts ("Standard 2/3 · Minis 1/3"). Returns, for every day in
+the range, how many boards of each grid size the day held and how many the caller completed. A
+month at a time, because the archive calendar shows a month and per-day fetching would fire on
+every click.
+
+```text
+SELECT date, jsonb_array_length(grid) AS grid_size, COUNT(*) AS total, COUNT(a.id) AS done
+  FROM daily_puzzles p
+  LEFT JOIN solve_attempts a
+    ON a.puzzle_id = p.id AND a.user_id = userId AND a.completed
+  WHERE p.date BETWEEN fromIso AND toIso
+  GROUP BY date, grid_size
+```
+
+**Why the ownership predicate is in the JOIN, not the WHERE** — the one deliberate deviation from
+every other read in this file. The denominator belongs to the **day**, not the user: a day the user
+never touched must still report `0/3` rather than disappear. Driving from `daily_puzzles` and
+LEFT-joining the caller's completed attempts keeps every day in the result; moving `user_id = …`
+into the `WHERE` would filter the joined NULLs back out and silently drop exactly those days. The
+filter is still applied **in SQL** against a server-supplied id, so the BOLA guarantee holds — but
+the failure mode is inverted: dropping the id from the `ON` clause would count *everyone's*
+completions as the caller's, so the unit test asserts the join condition varies with the caller
+(the usual "the WHERE is scoped" assertion cannot see it).
+
+`done ≤ total` is structural, not checked: `UNIQUE(user_id, puzzle_id)` means at most one attempt
+row can join per puzzle.
+
+**Why it groups by size rather than returning a section.** A board is a mini **iff its grid is
+smaller than 9×9** — the same rule `/api/daily/slots` derives `section` from, and the only one that
+survives archived dates, whose retired keys (`mini4-*`, `killer6-*`, `calc4-*`) have prefixes that
+lie about the section. Folding size → set is left to the route so this stays a plain aggregate.
+
 ## `getPersonalBests(db, userId)`
 
 **Why:** Backs the "your personal bests" view — the user's fastest completed time per board across
