@@ -54,7 +54,7 @@ rotation alongside classic Sudoku.
 | **QoL** | Save & continue — one saved-game slot, puzzle archive, deep-linkable "Continue" banners | ✅ Shipped |
 | **Testing** | Vitest unit suite (335 tests) + Playwright E2E + benchmark scripts with auto-logging (Sudoku solver + pipeline, plus Keisan & Killer generation) | ✅ Shipped |
 | **Infra** | Structured Pino logging (`instrumentation.ts`) + CI security scanning (CodeQL, Dependabot, `npm audit`) + baseline security headers | ✅ Shipped |
-| **Leaderboards** | "Sudoku Bot" — a transparent, 🤖-badged system account posting a tuned, beatable time on every daily board | ✅ Shipped |
+| **Leaderboards** | "Puzzle Bot" — a transparent, 🤖-badged system account posting a tuned, beatable time on every daily board | ✅ Shipped |
 
 > **Hardening pass (landed):** a full audit against `AGENTS.md` plus remediation —
 > Jest→Vitest migration, an API stack-trace-leak fix, the bitmask/MRV engine rework,
@@ -391,7 +391,7 @@ CREATE TABLE solve_attempts (
 - Ranked = signed in; anonymous play stays unranked. All writes ownership-scoped (4.3.1).
 - **UI shipped:** auth UI ([AuthPanel](../src/features/auth/components/AuthPanel.tsx) at `/signin`, [AccountBadge](../src/features/auth/components/AccountBadge.tsx)), ranked wiring in the [daily board](../src/features/dailies/components/DailyExperience.tsx), and the [leaderboard page](../src/app/leaderboard/page.tsx). Verified via headless Chromium.
 - **Polish done:** animated rank reveal, all-time personal bests ([`/api/me/bests`](../src/app/api/me/bests/route.ts)), and the `bg-pattern.svg` background asset.
-- **"Sudoku Bot" (July 2026):** a transparent, non-loginable system account
+- **"Sudoku Bot" (July 2026 — renamed "Puzzle Bot" in August 2026):** a transparent, non-loginable system account
   ([bot.ts](../src/features/leaderboards/bot.ts)) that posts a hand-tuned, beatable time on
   every one of the (currently 30) daily boards — a visible "time to beat" while the real player base is
   small. Seeded idempotently inside the existing `generateDailyPuzzles` pipeline (no new
@@ -533,7 +533,7 @@ type SolveStep = {
   - Lesson 6: Almost Locked Sets (after Phase 1)
 - Each lesson has a "Try It Yourself" mode where the board pauses and lets the user attempt the deduction before revealing the answer
 
-**Narrative idea (not yet designed):** the user floated "Sudoku Bot" — currently just a
+**Narrative idea (not yet designed):** the user floated "Puzzle Bot" — currently just a
 leaderboard "time to beat" ghost account shipped in Phase 4.4 (see
 `features/leaderboards/bot.md`) — as a recurring character who could narrate these lessons,
 Clippy-style, and act as the in-universe "teacher": the framing being that beating the bot's

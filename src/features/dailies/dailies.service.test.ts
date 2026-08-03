@@ -66,12 +66,15 @@ interface BotAttemptRow {
 function makeDb(options: {
   puzzleReturning: (rows: NewDailyPuzzle[]) => Promise<{ id: string }[]>;
   selectRows: { id: string; key: string; variant: string; grid: number[][] }[];
+  /** Rows the idempotency guard's existence probe sees. Empty (default) = a fresh, unrolled day. */
+  existingRows?: { id: string }[];
   onPuzzleValues?: (rows: NewDailyPuzzle[]) => void;
   onAttemptsValues?: (rows: BotAttemptRow[]) => void;
 }) {
   const insert = vi.fn((table: unknown) => {
     if (table === user) {
-      return { values: () => ({ onConflictDoNothing: async () => undefined }) };
+      // The bot row is upserted (a rename must reach an existing row), not do-nothing.
+      return { values: () => ({ onConflictDoUpdate: async () => undefined }) };
     }
     if (table === dailyPuzzles) {
       return {
@@ -91,7 +94,17 @@ function makeDb(options: {
     }
     throw new Error('unexpected table in insert()');
   });
-  const select = vi.fn(() => ({ from: () => ({ where: async () => options.selectRows }) }));
+  // Two different selects run here: the idempotency guard's existence probe (`.where().limit(1)`)
+  // and the bot-seeding fetch (`.where()` awaited directly). The `where` result serves both — it is
+  // awaitable AND carries `.limit`.
+  const select = vi.fn(() => ({
+    from: () => ({
+      where: () => ({
+        limit: async () => options.existingRows ?? [],
+        then: (resolve: (rows: typeof options.selectRows) => unknown) => Promise.resolve(options.selectRows).then(resolve),
+      }),
+    }),
+  }));
   return { insert, select } as unknown as Database;
 }
 
@@ -101,6 +114,38 @@ function selectRowsForRoll(slots: PlannedSlot[]) {
 }
 
 describe('generateDailyPuzzles (type-as-slot roller)', () => {
+  /**
+   * Regression: the roll is RANDOM, so `UNIQUE(date, difficulty)` + `onConflictDoNothing` no longer
+   * makes a re-run a no-op the way the old fixed registry did — a second run draws different rungs,
+   * which don't collide and get inserted ALONGSIDE the existing ones, turning a 6-board day into 8+.
+   * This already happened once in production (2026-07-31 ended up with 33 rows). A cron retry or a
+   * manual seed must therefore leave a populated day completely untouched.
+   */
+  it('never re-rolls a day that already has boards (idempotency guard)', async () => {
+    const rolled = rollDailyAssignment(mulberry32(SEED));
+    let puzzleInsertHappened = false;
+    let attemptRows: BotAttemptRow[] = [];
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: selectRowsForRoll(rolled),
+      existingRows: [{ id: 'already-here' }], // the day is already populated
+      onPuzzleValues: () => {
+        puzzleInsertHappened = true;
+      },
+      onAttemptsValues: (rows) => {
+        attemptRows = rows;
+      },
+    });
+
+    const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
+
+    expect(result).toEqual({ isoDate: '2026-08-01', requested: 0, inserted: 0, skipped: true });
+    expect(puzzleInsertHappened).toBe(false); // no extra boards written
+    // Bot seeding still runs — it IS idempotent, and backfilling a missing bot row is the useful
+    // half of a re-run.
+    expect(attemptRows.length).toBeGreaterThan(0);
+  });
+
   it('generates one row per slot (6 today), each carrying its rolled variant', async () => {
     const rolled = rollDailyAssignment(mulberry32(SEED));
     let puzzleRows: NewDailyPuzzle[] = [];
@@ -114,7 +159,7 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
 
     const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
 
-    expect(result).toEqual({ isoDate: '2026-08-01', requested: 6, inserted: 6 });
+    expect(result).toEqual({ isoDate: '2026-08-01', requested: 6, inserted: 6, skipped: false });
     expect(puzzleRows).toHaveLength(6);
     // Keys match the roll; every row stores a real variant; classic rows carry no cages.
     expect(puzzleRows.map((r) => r.difficulty).sort()).toEqual(rolled.map((s) => s.key).sort());
@@ -125,7 +170,7 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
     }
   });
 
-  it("seeds Sudoku Bot on every board at that board's profile time (via variant/size, not key)", async () => {
+  it("seeds Puzzle Bot on every board at that board's profile time (via variant/size, not key)", async () => {
     const rolled = rollDailyAssignment(mulberry32(SEED));
     let attemptRows: BotAttemptRow[] = [];
     const selectRows = selectRowsForRoll(rolled);
@@ -156,7 +201,7 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
     });
 
     const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
-    expect(result).toEqual({ isoDate: '2026-08-01', requested: 6, inserted: 0 });
+    expect(result).toEqual({ isoDate: '2026-08-01', requested: 6, inserted: 0, skipped: false });
   });
 
   it('never leaves a slot empty: falls back to an eligible board when a generator throws', async () => {

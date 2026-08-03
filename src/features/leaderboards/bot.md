@@ -1,4 +1,4 @@
-# Sudoku Bot (`bot.ts` + `bot-identity.ts`)
+# Puzzle Bot (`bot.ts` + `bot-identity.ts`)
 
 A transparent, clearly-labeled system account that posts a good-but-beatable time on every
 daily board — a visible "time to beat" while the real player base is small.
@@ -57,7 +57,7 @@ follow the actual board.)
 
 ## Narrative thread for later phases (not built here)
 
-The user has floated Sudoku Bot as a recurring character beyond the leaderboard: a
+The user has floated Puzzle Bot as a recurring character beyond the leaderboard: a
 Clippy-esque tip-giver, and the "teacher" for the planned Phase 7 strategy courses — framed
 as "the student has become the master" the first time a player beats it. Also floated: a
 small crumbs bonus (Phase 9 economy) for finishing faster than the bot's time on a board.

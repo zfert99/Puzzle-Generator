@@ -338,6 +338,37 @@ its tests (low-risk LOC). Files/lines per the ripple map.
   errors; the leaderboard's bot time read **3:30 = 210 000 ms**, exactly `classic-9-easy`'s
   `botTimeMs` — end-to-end proof the profile-driven bot seeding is keyed correctly.
 
+### Step 3c — Post-rollout fixes (found by verifying the live rolls) — ✅ Done 2026-08-03
+
+Three defects surfaced only once real cron rolls existed to inspect. Recorded because two are the
+kind the *design* invited, not typos.
+
+- **The roller was no longer idempotent (the serious one).** `UNIQUE(date, difficulty)` +
+  `onConflictDoNothing` made a re-run a no-op only because the old registry emitted a FIXED key
+  set. The roll is random, so a second run on a populated day draws *different* rungs, which don't
+  collide and get inserted **alongside** the existing ones — an 8+ board day, two boards of one
+  type, and a wrong archive denominator (Step 5's whole premise). **It had already fired:**
+  2026-07-31 holds 33 rows because the first post-restructure run added its 3 new `mini-*` keys to a
+  day that still had the old 30. Fixed with an explicit "does this date already have boards?" guard
+  returning `skipped: true`; bot-solve seeding still runs, since that half genuinely is idempotent.
+  Cron retries and manual `db:seed` both depend on it.
+- **The archive opened on a board that didn't exist.** It seeded its selection to `'easy'` and never
+  reconciled against the viewed date — but only 3 of 5 rungs are drawn per day, so it showed
+  "No daily puzzle for &lt;date&gt; (easy)" whenever easy didn't roll. `LeaderboardView` now reports the
+  day's boards up via `onSlotsLoaded`, and the shared `reconcileSelectedKey` keeps a still-valid key
+  or falls back to the day's first. (Self-heals at 5 types, where the standard set becomes a full
+  5-rung bijection — but it is a real bug until then, and the guard stays correct after.)
+- **The bot rename couldn't reach production.** `ensureBotUser` used `onConflictDoNothing`, so the
+  row is written once and never touched again — changing `BOT_NAME` would have left the old display
+  name in the database forever. Now an upsert of the display fields only; `BOT_USER_ID` stays
+  `bot-sudoku` permanently, since it is the FK target of every historical bot solve.
+
+**Progress — ✅ Done 2026-08-03.** Renamed "Sudoku Bot" → **"Puzzle Bot"** across live code and docs
+(historical records left as written). Regression coverage added for the idempotency guard,
+`reconcileSelectedKey`, and the bot upsert — 384 tests green. Verified against production: three
+consecutive rolls (Aug 1–3) each hold exactly 6 boards with distinct rungs, distinct types, correct
+mini sizes, non-null variants, and bot times matching their profile rows exactly.
+
 ### Step 4 — UI polish: section collapse + "Difficulty · Type" labels — ⏳ Mostly landed in 3b
 
 **Spec.** (The serve-route `variant` read moved into Step 3b.) Pure presentation — and most of it

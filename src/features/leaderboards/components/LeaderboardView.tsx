@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { formatDailyKey, type DailyDifficulty } from '@/lib/db/daily-row';
-import { slotLabel, type DailySlotInfo } from '@/features/dailies/slot-display';
+import { slotLabel, reconcileSelectedKey, type DailySlotInfo } from '@/features/dailies/slot-display';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
 import { useCountUp } from '@/features/juice/useCountUp';
@@ -44,6 +44,7 @@ export function LeaderboardView({
   difficulty: controlledDifficulty,
   onDifficultyChange,
   initialDifficulty,
+  onSlotsLoaded,
 }: {
   date?: string;
   /** Control the difficulty externally (the archive drives one selector for board + play). */
@@ -51,6 +52,13 @@ export function LeaderboardView({
   onDifficultyChange?: (d: DailyDifficulty) => void;
   /** Seed the (uncontrolled) initial tab — e.g. deep-linking from "just solved X" to X's board. */
   initialDifficulty?: DailyDifficulty;
+  /**
+   * Fires with the day's actual boards whenever they load. A CONTROLLED parent must use this to
+   * reconcile its own selection: only 3 of the 5 standard rungs are drawn on any given day, so a
+   * parent holding a fixed default (or a key carried over from another date) can otherwise sit on
+   * a board that doesn't exist for this date.
+   */
+  onSlotsLoaded?: (slots: DailySlotInfo[]) => void;
 } = {}) {
   const { data: session } = useSession();
   const [internalDifficulty, setInternalDifficulty] = useState<DailyDifficulty>(initialDifficulty ?? 'easy');
@@ -117,8 +125,9 @@ export function LeaderboardView({
     };
   }, [session, date]);
 
-  // The day's boards (type rolled per day → fetched, not static). Drives the tabs. For an
-  // uncontrolled view, seed the selected tab to the first real board once loaded.
+  // The day's boards (type rolled per day → fetched, not static). Drives the tabs. An UNCONTROLLED
+  // view seeds its own tab to the first real board; a CONTROLLED one is handed the list via
+  // `onSlotsLoaded` so its parent can do the same (only 3 of 5 rungs exist on a given day).
   useEffect(() => {
     let active = true;
     fetch(apiPath(`/api/daily/slots${date ? `?date=${date}` : ''}`))
@@ -126,15 +135,16 @@ export function LeaderboardView({
       .then((d) => {
         if (!active || !d?.slots?.length) return;
         setSlots(d.slots);
+        onSlotsLoaded?.(d.slots);
         if (!onDifficultyChange) {
-          setInternalDifficulty((cur) => (d.slots.some((s: DailySlotInfo) => s.key === cur) ? cur : d.slots[0].key));
+          setInternalDifficulty((cur) => reconcileSelectedKey(d.slots, cur));
         }
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, [date, onDifficultyChange]);
+  }, [date, onDifficultyChange, onSlotsLoaded]);
 
   // Personal best for the CURRENT board — matched on (key, variant), since bests are now grouped by
   // both (a rung key holds a different type each day, so 'hard'+killer and 'hard'+classic are

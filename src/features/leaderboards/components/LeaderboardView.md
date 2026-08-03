@@ -60,7 +60,7 @@ a network round-trip on every tab click.
 the fetched slot list; before it resolves the match falls back to key-only, which may briefly show
 another type's best for that rung.
 
-## "Sudoku Bot" badge (July 2026)
+## "Puzzle Bot" badge (July 2026)
 
 **Why not color alone:** Any entry whose `userId` matches `BOT_USER_ID`
 (`features/leaderboards/bot-identity.ts`) gets a 🤖 emoji plus explicit

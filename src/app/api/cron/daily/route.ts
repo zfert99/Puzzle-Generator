@@ -57,6 +57,9 @@ export async function GET(req: NextRequest) {
         date: result.isoDate,
         requested: result.requested,
         inserted: result.inserted,
+        // True when the date already had boards, so the roll was skipped — the expected shape of a
+        // retry or a double-fire, not an error.
+        skipped: result.skipped,
         durationMs: Math.round(performance.now() - startTime),
       },
       'Generated daily puzzles',
