@@ -12,7 +12,7 @@ import type { Grid, NewDailyPuzzle } from './schema';
  *   (`easy…extreme`, 3 of 5 drawn/day) + mini slots keyed `mini-<tier>` (always 3). The TYPE is
  *   rolled per day and stored in `daily_puzzles.variant` — the key no longer encodes it.
  * - **Profile table** (`PROFILE`) — per `(variant, size, difficulty)`: `minSolveMs` (anti-cheat
- *   plausibility floor, see `solve-rules.md`) and `botTimeMs` (Sudoku Bot's beatable time). Values
+ *   plausibility floor, see `solve-rules.md`) and `botTimeMs` (Puzzle Bot's beatable time). Values
  *   moved verbatim from the old registry + the new `(killer,4,easy)` row.
  *
  * The old per-string keys (`killer-*`, `calc*`, `mini4-*`, `mini6-*`, `killer6-*`, legacy `killer`)
@@ -59,7 +59,7 @@ export interface PlannedSlot {
 interface ProfileEntry {
   /** Anti-cheat plausibility floor (ms) — conservative lower bound, not a record. */
   minSolveMs: number;
-  /** Sudoku Bot's hand-tuned "good, beatable" time (ms) on this board — flavor, not derived. */
+  /** Puzzle Bot's hand-tuned "good, beatable" time (ms) on this board — flavor, not derived. */
   botTimeMs: number;
 }
 
@@ -185,13 +185,13 @@ export function rollDailyAssignment(rng: () => number = Math.random): PlannedSlo
     difficulty,
   }));
 
-  const miniSizes = [4, 4, 0] as const; // easy/medium always 4×4; hard size rolled below
+  // Easy and medium minis are always 4×4; only the hard slot's size is rolled (below).
   const configs: { variant: Variant; gridSize: DailySize; difficulty: MiniTier }[][] = [];
   for (const hardSize of [4, 6] as const) {
     for (const perm of PERMS_3) {
       const assignment = perm.map((typeIdx, slotIdx) => ({
         variant: VARIANTS[typeIdx],
-        gridSize: (slotIdx === 2 ? hardSize : miniSizes[slotIdx]) as DailySize,
+        gridSize: (slotIdx === 2 ? hardSize : 4) as DailySize,
         difficulty: MINI_TIERS[slotIdx],
       }));
       if (assignment.every((a) => isEligible(a.variant, a.gridSize, a.difficulty))) {

@@ -48,18 +48,28 @@ SELECT difficulty, puzzle_id, time_ms
 all days. Scoped to `userId` and `completed`, grouped via a join to `daily_puzzles`.
 
 ```text
-SELECT daily_puzzles.difficulty, daily_puzzles.variant, MIN(time_ms)
+SELECT difficulty, variant, jsonb_array_length(grid) AS grid_size, MIN(time_ms)
   FROM solve_attempts JOIN daily_puzzles
   WHERE user_id = userId AND completed
-  GROUP BY difficulty, variant
+  GROUP BY difficulty, variant, grid_size
 ```
 
-**Why grouped by `(difficulty, variant)`, not difficulty alone (daily restructure Risk #4).** This
-is the one genuinely **cross-date** aggregate, so it is the query the type-as-slot model can break:
-a rung key like `hard` means Classic one day and Killer the next, and grouping by the key alone
-would collapse those into a single meaningless "best hard". Including the stored `variant` keeps
-bests type-attributable and stays correct at the 5-type end state. Historical rows slot in cleanly —
-migration `0004` backfilled every one, so old classic-only `hard` rows group under `(hard, classic)`.
+**Why grouped by every axis the slot rolls (daily restructure Risk #4).** This is the one genuinely
+**cross-date** aggregate, so it is the query the type-as-slot model can break — a slot key no longer
+identifies a board on its own:
+
+- **Type.** A rung key like `hard` means Classic one day and Killer the next; grouping by the key
+  alone collapses those into a single meaningless "best hard".
+- **Size.** The `mini-hard` slot *also* rolls its size (4×4 or 6×6), so `(mini-hard, classic)` still
+  spans two different boards. Because the 4×4 is much faster — a 5 s plausibility floor against the
+  6×6's 12 s — its time always wins the `MIN()`, permanently hiding the 6×6 best and showing a
+  target no 6×6 solve can beat. Caught in the Step 3b review pass, after the type axis was already
+  fixed.
+
+Size comes from `jsonb_array_length(grid)` because there is no `grid_size` column; the stored grid is
+the same source `seedBotSolves` and the solve floor already use. Historical rows slot in cleanly —
+migration `0004` backfilled every `variant`, so old classic-only `hard` rows group under
+`(hard, classic, 9)`.
 
 The sibling aggregates were checked against the same risk: `getTodayCompletions` is single-date (a
 key is unambiguous within one day) and `getCurrentStreak` only counts distinct completed dates, so

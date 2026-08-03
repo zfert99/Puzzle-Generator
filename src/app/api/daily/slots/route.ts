@@ -11,11 +11,18 @@ export const dynamic = 'force-dynamic';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Standard rungs first (in ladder order), then minis (easy→medium→hard) — a stable picker order.
+// Stable picker order: standard rungs in ladder order, then the mini tiers, then anything else
+// (retired keys on archived dates, which have no defined position). The parentheses are load-bearing
+// for readability — `??` binds looser than `+`, so the unparenthesised form grouped as
+// `RUNG_ORDER.get(key) ?? (100 + …)`, which happens to be equivalent here but reads like a bug.
 const RUNG_ORDER = new Map(STANDARD_RUNGS.map((r, i) => [r as string, i]));
 const MINI_ORDER = new Map([['mini-easy', 0], ['mini-medium', 1], ['mini-hard', 2]]);
 function sortIndex(key: string): number {
-  return RUNG_ORDER.get(key) ?? 100 + (MINI_ORDER.get(key) ?? 99);
+  const rung = RUNG_ORDER.get(key);
+  if (rung !== undefined) return rung;
+  const mini = MINI_ORDER.get(key);
+  if (mini !== undefined) return 100 + mini;
+  return 200; // retired/legacy keys — archive-only, order among themselves is not meaningful
 }
 
 /**

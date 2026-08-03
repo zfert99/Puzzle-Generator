@@ -60,6 +60,18 @@ key set), only the variant (and, for minis, the size) changes. Each retry and ev
 `logger.warn`-ed so a silent degradation is visible in production logs. At the tuned generator
 settings this is belt-and-braces: the real failure mode is slowness, not throwing.
 
+**The fallback pool is ordered closest-substitute-first, which in practice means keeping the rolled
+SIZE.** Size is the bigger difficulty lever: an early implementation iterated variant-outer over
+`[4, 6]` and so replaced a failed 6×6 `mini-hard` with a **4×4** — the same leaderboard key handed a
+far easier board (a 5 s plausibility floor against 12 s). It now tries the rolled size first.
+
+There is deliberately **no** "prefer a type this section doesn't have yet" rule. The plan originally
+called for one, but it cannot fire: `rollDailyAssignment` gives each section a *permutation* of the
+type list, so every type is already used exactly once before any fallback runs, and a substitute
+always duplicates one. The day still gets its full set of distinctly-keyed boards; one type simply
+appears twice and another not at all. The plan text was corrected rather than shipping a preference
+that can never apply.
+
 ## Puzzle Bot seeding (July 2026)
 
 **Why:** After the day's boards exist, `generateDailyPuzzles` gives "Puzzle Bot"

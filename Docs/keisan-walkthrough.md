@@ -387,12 +387,24 @@ Keisan is now in the daily rotation, and the daily path was made **variant-safe*
   and killer minis), and the top-level **Keisan** section mirrors "Classic 9×9" / "Killer 9×9" — it's
   reserved for **9×9 Keisan (K7)** and auto-hidden while empty (the picker/leaderboard skip
   zero-board sections).
+  > **Superseded (August 2026).** Those six `calc4-*`/`calc6-*` keys are retired from generation
+  > (still readable for archive replay), and the four-section picker collapsed to **Standard** +
+  > **Minis**. The daily is now one slot per puzzle *type* with the difficulty rolled per day — see
+  > [daily-redesign-plan.md](daily-redesign-plan.md). The per-board `minSolveMs`/`botTimeMs` values
+  > survive unchanged; they moved into the `(variant, size, difficulty)` profile table. The bot is
+  > now "Puzzle Bot".
 - **Variant-safe discriminants** (replacing `'cages' in puzzle`, which couldn't tell Killer from
   Keisan — both carry cages):
   - `toDailyPuzzleRow` now keys off the explicit `variant` tag.
   - `dailies.service` generation dispatch is a real 3-way (`killer`/`calc`/classic).
   - `/api/daily` serving derives the variant from the board's **registry key** (`getDailyBoard`), not
     from cages presence, and returns `variant: 'calc'` + the operator+target cages.
+    > **Superseded (August 2026).** `getDailyBoard` no longer exists. The
+    > [daily restructure](daily-redesign-plan.md) moved the type into a stored
+    > `daily_puzzles.variant` column (migration `0004`), and `/api/daily` reads that column — a key
+    > like `hard` holds a different type each day, so it can no longer be parsed for one. The point
+    > this bullet records still stands: cage *presence* was never a safe discriminant, because
+    > Killer and Keisan both have cages.
 - **Storage:** `StoredCage` is now `StoredKillerCage | StoredCalcCage` — the jsonb column already
   accepted either shape, so **no DB migration** was needed.
 - **Board + UI:** `useDaily`'s response union gains a `calc` arm; the served daily flows straight

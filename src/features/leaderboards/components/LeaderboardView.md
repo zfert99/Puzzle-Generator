@@ -33,7 +33,7 @@ effect [difficulty] -> GET /api/leaderboard -> setEntries/setMe (async)
 effect [date]       -> GET /api/daily/slots -> setSlots (the day's real boards; drives the tabs)
 effect [session]    -> if signed in, GET /api/me/streak + /api/me/bests -> setStreak/setBests (async)
 tab click           -> setLoading(true) + setDifficulty (event handler)
-render              -> tabs · (streak · your rank) · personal best (this tab only) · table (caller's row highlighted)
+render              -> tabs · (streak · your rank) · personal best (this board only) · table (caller's row highlighted)
 ```
 
 ## Tabs come from the day's boards (type-as-slot, Step 3b)
@@ -73,3 +73,12 @@ compare against — importing it from `bot.ts` directly would pull that file's l
 `user` table and `db.insert` calls into the client bundle. `bot-identity.ts` has zero
 imports, so it's safe to reference from client code (see `bot.md`'s bundling note, and
 AGENTS.md's App Router Purity rule).
+
+## Personal best is matched on all three axes
+
+The PB shown under the tabs is filtered to the board being viewed, matched on
+`(key, variant, gridSize)` — the same three axes the server groups by (`attempts.service.md`). Key
+alone is not an identity under type-as-slot: a rung holds a different TYPE each day, and `mini-hard`
+also rolls its SIZE, so `mini-hard`+classic+4×4 and `mini-hard`+classic+6×6 are separate bests.
+Variant and size both come from the day's fetched slot list; until that resolves the match falls
+back to key alone, which can briefly show a neighbouring board's best.
