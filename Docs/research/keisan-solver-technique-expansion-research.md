@@ -8,7 +8,7 @@
 > multi-cage elimination, region-parity/bounds-based region-sum) were **deferred, not built**. This
 > brief is retained as the durable record + a ready starting point if a future need (e.g. a 6th tier,
 > or richer grading) revives them. See the K7d section in
-> [keisan-walkthrough.md](../keisan-walkthrough.md) and the plan.
+> [keisan-walkthrough.md](../archive/keisan-walkthrough.md) and the plan.
 
 **Purpose.** A research brief, not a plan. K7b established that bounded-recursion guess-*depth* gives
 only one new tier (depth-1 Nishio; depth-2 never fires), so it can't separate Expert from Extreme on

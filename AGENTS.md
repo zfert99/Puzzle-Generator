@@ -285,10 +285,23 @@ When operating within this codebase, AI agents MUST adhere to the following work
 ### 7. Documentation Standards
 
 - **Naming Convention:** All documentation files must explicitly use `lowercase-kebab-case.md` for their filenames.
-- **Organization:**
-  - Root `Docs/` directory: Active, living documents (e.g., `roadmap.md`, `architectural-analysis.md`).
+- **Organization:** `Docs/README.md` is the index — it lists every active doc and where a new one
+  goes. Keep it current when adding, archiving, or retitling a doc.
+  - Root `Docs/` directory: Active, living documents (e.g., `roadmap.md`, `pre-merge-log.md`).
   - `Docs/archive/` directory: Historical logs, past implementation plans, and phase walkthroughs.
   - `Docs/research/` directory: Standardized, deeply-researched topic documents.
+- **Live source rationale outranks "completed" (AI Pitfall).** A finished plan normally moves to
+  `archive/` — **but not if live source code cites it as the reason current code looks the way it
+  does.** Archiving such a doc breaks the code's own explanatory links, which are how a reader gets
+  from a puzzling line to its rationale. `kenken-implementation-plan.md` (cited by `sudoku.ts` /
+  `human-solver.ts` for K0) and `multi-zone-migration-plan.md` (cited by `next.config.ts`,
+  `auth.ts`, `base-path.ts`) stay in the root for exactly this reason. **Before archiving anything,
+  grep for it in `src/` and `*.config.ts`, not just in `*.md`** — the doc-only sweep misses code
+  comments entirely.
+- **Never rewrite an archived doc to match today.** It correctly records what was true when
+  written; editing it falsifies the record. Add a dated **Archived** / **Superseded** note at the
+  top instead, and say what superseded it. When moving a doc, fix the relative links *inside* it
+  (its depth changed) as well as every inbound link to it.
 <!-- END:codebase-management-rules -->
 
 <!-- BEGIN:git-rules -->
@@ -403,4 +416,23 @@ unfollowable. Notable changes:
   otherwise", which came from a real vacuous BOLA assertion caught in the Step 5 review pass.
 - Entries are deliberately short (a finding fixed in the same PR gets one line; "lint passed" is not
   worth writing). No changes to Sections 1–7, Documentation, Roadmap, Markdown Linting, or Git Rules.
+
+**August 3, 2026 (docs tidy):** Organized `Docs/` and hardened Section 7 with what the pass taught.
+
+- **Added `Docs/README.md`** as the index — the three-folder rule, every active doc with its status,
+  and where a new doc goes. Section 7 now points at it.
+- **Archived three completed docs** (`architectural-analysis.md`, `keisan-walkthrough.md`,
+  `multi-zone-cutover-fix-summary.md`), each with a dated **Archived** banner rather than a rewrite.
+  `architectural-analysis.md` had gone actively misleading: it argued *for* the `src/features/`
+  layout, so its "Current State" section described the root-level `app/`/`components/`/`lib/`
+  structure it replaced — and Section 7 was still citing it as the example of an *active* doc.
+- **New Section 7 rule — live source rationale outranks "completed".** Two finished plans
+  (`kenken-implementation-plan.md`, `multi-zone-migration-plan.md`) are cited by live code comments
+  in `sudoku.ts`, `human-solver.ts`, `next.config.ts`, `auth.ts` and `base-path.ts` as the reason
+  that code looks the way it does. Archiving them would have broken those links, and a docs-only
+  grep would never have revealed it — hence the rule to grep `src/` and `*.config.ts` before
+  archiving. Also codified: never rewrite an archived doc, and fix a moved doc's *internal* links
+  (its depth changed) as well as inbound ones.
+- Fixed a stale banner: `multi-zone-migration-plan.md` still read "draft / not yet applied" months
+  after it shipped. Original text preserved inline.
 <!-- END:update-log -->

@@ -30,6 +30,62 @@ the diff under review.
 
 ---
 
+## 2026-08-03 — Docs folder organization + `Docs/README.md`
+
+Branch `chore/pre-merge-log` on `341b987` · docs only, no source touched.
+
+### Mechanical
+
+`npx markdownlint-cli` clean on every file this branch touches. **Vitest / lint / build skipped —
+no `.ts`/`.tsx` changed.** A repo-wide relative-link checker was run instead, since moving docs is
+exactly the change a test suite cannot catch.
+
+### Findings
+
+1. **Archiving a "completed" doc can break live code comments** — caught before doing damage.
+   `kenken-implementation-plan.md` and `multi-zone-migration-plan.md` both read as finished plans,
+   but `sudoku.ts`, `human-solver.ts`, `next.config.ts`, `auth.ts` and `base-path.ts` cite them as
+   the rationale for current behavior. Both kept in the active root; now a Section 7 rule.
+2. **`architectural-analysis.md` had inverted into a lie.** It *argued for* the `src/features/`
+   layout, so its "Current State" section describes the root-level `app/`/`components/`/`lib/`
+   structure that no longer exists — and AGENTS.md §7 was citing it as *the example* of an active
+   doc. Archived with a dated banner; the §7 example replaced.
+3. **`multi-zone-migration-plan.md` still said "draft / not yet applied"** months after it shipped
+   to production. Banner corrected, original text preserved inline.
+4. *(pre-existing, not this branch)* Three mirrored source docs have broken links —
+   `src/app/page.md` → `../../features/hub/PuzzleHub.md`, `src/app/globals.md` →
+   `../../features/juice/SolvedStamp.md`, `src/app/api/auth/[...all]/route.md` →
+   `../../../features/auth/auth.md`. **Confirmed broken on `main`** by checking out and re-running
+   the link check there. Not fixed here — out of scope for a docs-organization slice.
+5. *(pre-existing, untracked)* `Docs/research/compass_artifact_wf-e8ed3fd9-…_text_markdown.md` —
+   an auto-generated filename that violates the kebab-case rule and fails markdownlint. Left alone:
+   it is uncommitted and not this branch's to adopt.
+
+### Rules this run produced
+
+- **Live source rationale outranks "completed."** Before archiving a doc, grep for it in `src/` and
+  `*.config.ts` — **not just `*.md`**. The doc-only reverse-reference sweep structurally cannot see
+  a code comment, and code comments are how a reader gets from a puzzling line to its reason.
+- **Moving a doc breaks links in two directions.** Every inbound link *and* every relative link
+  *inside* the moved file (its depth changed by a level). Verify with a resolver that walks every
+  `](…md)` in the repo, not by eye.
+
+### Docs
+
+`Docs/README.md` added as the index (three-folder rule, active-doc table with statuses, where a new
+doc goes); AGENTS.md §7 updated with both rules above plus "never rewrite an archived doc"; Update
+Log entry added. Three docs moved to `archive/`, each with a dated **Archived** banner rather than a
+rewrite.
+
+### Reviews
+
+`/security-review` **not run — not applicable**: zero source files, no auth/authz/data-access change.
+**`/code-review` NOT run** — user-triggered and billed; an agent cannot launch it.
+
+**Verdict:** gate green, not merged.
+
+---
+
 ## 2026-08-03 — Step 5: archive completion counts (X/N)
 
 Branch `feat/daily-step5-archive-counts` on `341b987` · working tree, uncommitted · ~282 LOC of

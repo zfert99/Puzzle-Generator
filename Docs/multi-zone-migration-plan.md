@@ -7,9 +7,17 @@ subdomain. The hub side and the rationale live in the hub repo
 `Docs/multi-zone-migration-runbook.md`. This doc is the Puzzle-Generator-side
 changes only.
 
-> **Status: draft / not yet applied.** Nothing here is wired up. Apply in the
-> ordered sequence in the runbook, and only after PR #25 (security hardening)
-> merges. The rpID step is disruptive to existing passkeys — read §1 first.
+> **Status: ✅ APPLIED (July 2026) — this is now live reference, not a plan.** The app serves
+> from `biscuitlab.net/puzzles`; `basePath`, rpID and the 301s are all wired up. It stays in the
+> active `Docs/` root rather than moving to `archive/` because **live source code cites it as the
+> rationale for current behavior** — `next.config.ts`, `src/features/auth/auth.ts` (rpID binding),
+> and `src/lib/base-path.ts` all point here to explain why they look the way they do. Archiving it
+> would break the code's own explanatory links. The cutover regression it caused and the fix are in
+> [archive/multi-zone-cutover-fix-summary.md](archive/multi-zone-cutover-fix-summary.md).
+>
+> *(Original banner, preserved: "draft / not yet applied. Nothing here is wired up. Apply in the
+> ordered sequence in the runbook, and only after PR #25 (security hardening) merges. The rpID step
+> is disruptive to existing passkeys — read §1 first.")*
 >
 > **Validated & corrected** against `Docs/research/multi-zone-migration-validation.md`.
 > Corrections from the first draft: the Host-based origin `noindex` is removed

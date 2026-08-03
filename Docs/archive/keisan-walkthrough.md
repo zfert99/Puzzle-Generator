@@ -1,8 +1,17 @@
 # Keisan — Feature Walkthrough
 
+> **📦 Archived 2026-08-03 — completed phase walkthrough.** Keisan (Phase 8) is feature-complete,
+> so this build log is closed; the "🚧 In Progress" status below is frozen as written mid-build.
+> Its content is still accurate about *what was built and why* — including the dated **Superseded**
+> notes added when the daily restructure changed the read path. The live design doc is
+> [kenken-implementation-plan.md](../kenken-implementation-plan.md), which stays in the active
+> `Docs/` root because engine source cites its K0 section.
+
+<!-- -->
+
 > **What this is:** the running build log for the Keisan puzzle type (Phase 8), one section
 > per slice as it lands. The forward-looking design lives in the
-> [implementation plan](kenken-implementation-plan.md); this doc records *what was actually built*
+> [implementation plan](../kenken-implementation-plan.md); this doc records *what was actually built*
 > and the judgment calls made along the way. Append a new section as each slice (K2…) ships.
 >
 > **Status:** 🚧 In Progress — engine K0–K4 ✅ · surfaces K5 core ✅ (play/PDF/hub) · difficulty
@@ -44,7 +53,7 @@ module-local one.
 
 ### Engine / types (K0)
 
-- **`GridSize` widened `4|6|9` → `4|5|6|7|9`** ([sudoku.ts](../src/features/engine/sudoku.ts)). 5/7
+- **`GridSize` widened `4|6|9` → `4|5|6|7|9`** ([sudoku.ts](../../src/features/engine/sudoku.ts)). 5/7
   are *boxless* (prime → no rectangular box tiling — the structural reason box-Sudoku can't offer
   them and Keisan can).
 - **`GridConfig` gained `hasBoxes: boolean`.** `getGridConfig` returns `hasBoxes: false` for 5/7
@@ -52,14 +61,14 @@ module-local one.
   dims without checking `hasBoxes` degenerates the box constraint to the row constraint it already
   enforces — harmless, never corrupting a Latin square. Real box consumers branch on `hasBoxes`.
 - **`isValid` short-circuits after the row/column scan when `!hasBoxes`**
-  ([grid-utils.ts](../src/features/engine/grid-utils.ts)).
+  ([grid-utils.ts](../../src/features/engine/grid-utils.ts)).
 - **`fillGrid` needs no change** — the sentinel makes `boxOf(r, c)` collapse to `r`, so `boxMask[r]`
   mirrors `rowMask[r]` and the box term is a redundant no-op. Deliberately **no branch added to the
   hot loop** (AGENTS.md §3). The K0 Latin-square test at 5/7 guards the sentinel.
 - **`applyQuotaDigger`'s quota map is now `Partial<Record<GridSize, …>>`**
-  ([diggers.ts](../src/features/engine/diggers.ts)) — no fake quotas for classic puzzles that can't
+  ([diggers.ts](../../src/features/engine/diggers.ts)) — no fake quotas for classic puzzles that can't
   exist at 5/7.
-- **`HumanSolver` throws on any size other than 4/6/9** ([human-solver.ts](../src/features/engine/human-solver.ts)).
+- **`HumanSolver` throws on any size other than 4/6/9** ([human-solver.ts](../../src/features/engine/human-solver.ts)).
   The old catch-all `else` silently assumed 3×3 boxes; that would quietly mis-solve a boxless grid.
   HumanSolver is box-Sudoku-only; Keisan writes its own row/col techniques and never routes
   through it, so an unsupported size is now a loud programming error.
@@ -98,9 +107,9 @@ Advanced **0.18 ms** at historical best (no hot-path branch added).
 ## K1 — Multiset cage-combination tables + operator model ✅
 
 The arithmetic foundation the solver/generator prune against. New module
-[`src/features/engine/calc/`](../src/features/engine/calc/); nothing calls it yet.
+[`src/features/engine/calc/`](../../src/features/engine/calc/); nothing calls it yet.
 
-### Operator model — [`calc-types.ts`](../src/features/engine/calc/calc-types.ts)
+### Operator model — [`calc-types.ts`](../../src/features/engine/calc/calc-types.ts)
 
 - **`CalcOperator = 'add' | 'sub' | 'mul' | 'div'`** (named, not symbol-keyed, so `'div'` never
   collides with `/`) + `OPERATOR_SYMBOL` display glyphs (`+ − × ÷`). No-Op / "Mystery" mode is a
@@ -114,7 +123,7 @@ The arithmetic foundation the solver/generator prune against. New module
   unsatisfiable for big cages).
 - **`CalcCage`** — `{ id, op, target, cells }`, flat-index cells like Killer's `Cage`.
 
-### Combination tables — [`calc-combinations.ts`](../src/features/engine/calc/calc-combinations.ts)
+### Combination tables — [`calc-combinations.ts`](../../src/features/engine/calc/calc-combinations.ts)
 
 - **Per-`(op, size, target, N)` multiset enumerator** — repeats allowed (the defining Keisan
   divergence), each a pruned non-decreasing walk per operator. `sub`/`div` empty for any size ≠ 2 by
@@ -148,8 +157,8 @@ multisets, the two-cell restriction, and memo/freeze behaviour. Full suite **275
 ## K2 — Exact solver + Latin-square generator ✅
 
 The exact solver + the ungraded unique-puzzle generator. New files
-[`calc-solver.ts`](../src/features/engine/calc/calc-solver.ts) and
-[`calc-generator.ts`](../src/features/engine/calc/calc-generator.ts).
+[`calc-solver.ts`](../../src/features/engine/calc/calc-solver.ts) and
+[`calc-generator.ts`](../../src/features/engine/calc/calc-generator.ts).
 
 ### The exact solver — `calc-solver.ts`
 
@@ -193,7 +202,7 @@ up.
 ## K3 — Logical solver + difficulty tiers ✅
 
 The human-style solver that grades a puzzle by hardest-required technique. New file
-[`calc-logical-solver.ts`](../src/features/engine/calc/calc-logical-solver.ts).
+[`calc-logical-solver.ts`](../../src/features/engine/calc/calc-logical-solver.ts).
 
 - **Its own candidate grid + techniques** — it does NOT compose `HumanSolver` (box-Sudoku-only;
   throws on 5/7 per the K0 guard). Every technique scans rows and columns only, no box units.
@@ -222,8 +231,8 @@ full suite **291 green**.
 ## K4 — Difficulty configs + generation ✅
 
 The two-factor scorer + the graded generation pipeline. New files
-[`calc-score.ts`](../src/features/engine/calc/calc-score.ts) and
-[`calc-sudoku.ts`](../src/features/engine/calc/calc-sudoku.ts); `CalcPuzzle`/`CalcDifficulty` added
+[`calc-score.ts`](../../src/features/engine/calc/calc-score.ts) and
+[`calc-sudoku.ts`](../../src/features/engine/calc/calc-sudoku.ts); `CalcPuzzle`/`CalcDifficulty` added
 to `calc-types.ts`.
 
 - **`calc-score.ts`** — `final = raw × densityFactor`, mirroring Killer's scorer with Keisan
@@ -307,7 +316,7 @@ running dev server. Board/generate/hub handed off for a visual check (both theme
 ## Difficulty rebalance ✅
 
 Playtesting flagged that even "hard" was givens-heavy and small-caged (the exact problem we hit with
-Killer). A new research doc ([kenken-difficulty-calibration.md](research/kenken-difficulty-calibration.md),
+Killer). A new research doc ([kenken-difficulty-calibration.md](../research/kenken-difficulty-calibration.md),
 `keen.c` + KSudoku + billabob) confirmed it and quantified the fix: single-cell givens are "the
 single strongest lever," cage size and combo-count next. K4's first cut leaned almost entirely on the
 score band, so the shapes never changed across tiers.
@@ -333,7 +342,7 @@ first: Keisan's multiset pruning verifies maxSize-4 6×6 in **~0.2 ms avg** — 
 
 ### Full lever spec (second pass)
 
-A companion doc ([keisan-difficulty-levers.md](research/keisan-difficulty-levers.md)) gave the
+A companion doc ([keisan-difficulty-levers.md](../research/keisan-difficulty-levers.md)) gave the
 implementable per-(size × tier) tables, so the rebalance was extended to the full lever set (4×4 +
 6×6; 5×5/7×7 deferred by choice):
 
@@ -390,7 +399,7 @@ Keisan is now in the daily rotation, and the daily path was made **variant-safe*
   > **Superseded (August 2026).** Those six `calc4-*`/`calc6-*` keys are retired from generation
   > (still readable for archive replay), and the four-section picker collapsed to **Standard** +
   > **Minis**. The daily is now one slot per puzzle *type* with the difficulty rolled per day — see
-  > [daily-redesign-plan.md](daily-redesign-plan.md). The per-board `minSolveMs`/`botTimeMs` values
+  > [daily-redesign-plan.md](../daily-redesign-plan.md). The per-board `minSolveMs`/`botTimeMs` values
   > survive unchanged; they moved into the `(variant, size, difficulty)` profile table. The bot is
   > now "Puzzle Bot".
 - **Variant-safe discriminants** (replacing `'cages' in puzzle`, which couldn't tell Killer from
@@ -400,7 +409,7 @@ Keisan is now in the daily rotation, and the daily path was made **variant-safe*
   - `/api/daily` serving derives the variant from the board's **registry key** (`getDailyBoard`), not
     from cages presence, and returns `variant: 'calc'` + the operator+target cages.
     > **Superseded (August 2026).** `getDailyBoard` no longer exists. The
-    > [daily restructure](daily-redesign-plan.md) moved the type into a stored
+    > [daily restructure](../daily-redesign-plan.md) moved the type into a stored
     > `daily_puzzles.variant` column (migration `0004`), and `/api/daily` reads that column — a key
     > like `hard` holds a different type each day, so it can no longer be parsed for one. The point
     > this bullet records still stands: cage *presence* was never a safe discriminant, because
@@ -426,8 +435,8 @@ on each (DB mocked at the boundary). Typecheck / lint / `next build` clean. The 
 The first slice of the re-sliced K7. A 9×9 de-risk killed the original "just add a 5-tier ladder"
 plan, so K7a ships the honest, cheap part: **9×9 easy/medium/hard**, interactive-fast, in the daily
 rotation's top-level **Keisan** section (mirroring "Classic 9×9" / "Killer 9×9"). Expert/Extreme wait
-for K7b/K7c. Full rationale: [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md)
-and the [honest-ladder research](research/keisan-9x9-honest-ladder.md).
+for K7b/K7c. Full rationale: [keisan-9x9-feasibility-findings.md](../research/keisan-9x9-feasibility-findings.md)
+and the [honest-ladder research](../research/keisan-9x9-honest-ladder.md).
 
 ### What the de-risk forced
 
@@ -506,7 +515,7 @@ depth-1 only.
 K7c planned to split Expert↔Extreme by guess-depth. Depth-2 doesn't exist, so depth gives **one**
 guess-gated tier, not two — K7c can't be built as specified. Following the new *Roadblock & Research
 Rules*, I stopped and wrote the fork up (options 1–4) in
-[keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) §6b + the plan's
+[keisan-9x9-feasibility-findings.md](../research/keisan-9x9-feasibility-findings.md) §6b + the plan's
 K7c entry, rather than improvising an Extreme tier the data doesn't support. K7b itself is complete
 and committed; K7c awaits a tier-shape decision.
 
@@ -520,8 +529,8 @@ only — Expert/Extreme configs land in K7c once the tier shape is decided).
 ## K7c — 9×9 Expert (4-tier ladder) ✅
 
 The tier-shape decision resolved via an external research pass (chosen: research option 4). The
-verdict — [full doc](research/keisan-9x9-option4-validation.md),
-folded into the [technique-expansion brief](research/keisan-solver-technique-expansion-research.md#-research-verdict-external-pass-complete-2026-07-27)
+verdict — [full doc](../research/keisan-9x9-option4-validation.md),
+folded into the [technique-expansion brief](../research/keisan-solver-technique-expansion-research.md#-research-verdict-external-pass-complete-2026-07-27)
 — was blunt: **ship the 4-tier ladder now; don't block on a fifth tier** (uneven tier counts across
 variants are normal and low-confusion; a *dishonest* Extreme is worse than none). The would-be
 Extreme (a real technique-separated tier) became **K7d** — instrumented and gated, may not land, with
@@ -581,7 +590,7 @@ Added `guessSteps` to `CalcSolveResult` (the *count* of bounded-recursion elimin
 That's a clean, honest fifth-tier axis with **zero solver expansion** — the research's revived
 "Option 2" (Pelánek: *count of hard steps* is signal). So Slices 1-2 (cage-line intersection, pairwise
 multi-cage elimination) were **deferred** — the step-count gave a cheaper, cleaner tier. They remain
-written up in the [technique-expansion brief](research/keisan-solver-technique-expansion-research.md)
+written up in the [technique-expansion brief](../research/keisan-solver-technique-expansion-research.md)
 if a future need arises.
 
 ### Extreme = many Nishio steps
