@@ -45,3 +45,11 @@ the pre-restructure 30-board registry (`killer-hard`, `calc9-easy`, …). That i
 archived day should render the boards it really contained. The one transitional oddity is the
 **cutover date itself**, which holds both old-registry rows and the first rolled slots; it
 self-heals the next day, when the cron produces only the 6 rolled boards.
+
+## Ordering
+
+`sortIndex` puts the standard rungs first (in ladder order), then the three mini tiers, then anything
+else — retired keys, which only appear on archived dates and have no meaningful order among
+themselves. It is written as explicit early returns rather than a chain of `??`: `??` binds looser
+than `+`, so the compact form grouped as `rung ?? (100 + mini)`, which happened to be equivalent but
+read like a precedence bug.

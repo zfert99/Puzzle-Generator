@@ -58,15 +58,30 @@ function generatePuzzleFor(slot: PlannedSlot): EnginePuzzle {
 }
 
 /**
- * Other boards eligible for this slot — the fallback pool. The slot KEY and difficulty stay fixed
- * (so leaderboard identity and the day's distinct key set are preserved); only the variant (and, for
- * minis, the size) changes. Standard slots are 9×9-only; mini slots may swap between 4×4 and 6×6.
+ * Other boards eligible for this slot — the fallback pool, **closest substitute first**. The slot
+ * KEY and difficulty stay fixed (so leaderboard identity and the day's distinct key set survive);
+ * only the variant and, for minis, the size can change.
+ *
+ * **Ordered to keep the rolled SIZE.** Size is the bigger difficulty lever of the two: swapping a
+ * 6×6 `mini-hard` for a 4×4 hands the same leaderboard a markedly easier board (plausibility floors
+ * of 12 s vs 5 s). Iterating size-outer with the rolled size first keeps every same-size substitute
+ * ahead of any size change. The previous variant-outer order picked a 4×4 Classic for a failed 6×6
+ * Killer — same key, far easier puzzle.
+ *
+ * **Why there is no "prefer a type this section doesn't have yet" rule.** The plan originally
+ * specified falling back to an option "not colliding with placed slots", but that is unachievable
+ * by construction: `rollDailyAssignment` gives each section a permutation of the type list, so
+ * every type is already used exactly once before any fallback runs. A substitute therefore always
+ * duplicates some type within its section — the day still has its full set of distinctly-keyed
+ * boards, one type just appears twice and another not at all. Encoding a preference that can never
+ * fire would be inert complexity, so the plan text was corrected instead.
  */
 function eligibleAlternatives(slot: PlannedSlot): PlannedSlot[] {
-  const sizes: DailySize[] = slot.section === 'standard' ? [9] : [4, 6];
+  const sizes: DailySize[] =
+    slot.section === 'standard' ? [9] : slot.gridSize === 4 ? [4, 6] : [6, 4]; // rolled size first
   const alts: PlannedSlot[] = [];
-  for (const variant of VARIANTS) {
-    for (const gridSize of sizes) {
+  for (const gridSize of sizes) {
+    for (const variant of VARIANTS) {
       if (variant === slot.variant && gridSize === slot.gridSize) continue;
       if (isEligible(variant, gridSize, slot.difficulty)) alts.push({ ...slot, variant, gridSize });
     }
@@ -148,6 +163,17 @@ export async function generateDailyPuzzles(
    * statement, so a day is always either empty or complete — checking for ANY row is sufficient.
    * Bot solves are still re-seeded, since that part IS idempotent and is the useful half of a
    * re-run (it backfills boards whose bot row is missing).
+   *
+   * **Known limitation — this is check-then-act, not atomic.** Two runs overlapping *in time* can
+   * both see an empty date, both roll, and insert differing rungs that don't collide — the same
+   * duplicate-boards outcome this guard exists to prevent. It closes the sequential replay that
+   * actually happened; it does not close a genuine race. Not fixed here because the driver is
+   * `neon-http` (stateless: no interactive transaction, no session advisory lock), so the real fix
+   * is a `daily_generation_log` table with the date as its primary key, claimed by an
+   * `INSERT … ON CONFLICT DO NOTHING RETURNING` — a migration. Deferred deliberately: the route is
+   * `CRON_SECRET`-gated so it isn't attacker-triggerable, Vercel schedules a single nightly
+   * invocation, and reaching it needs a manual `db:seed` racing that cron. Tracked in
+   * `Docs/daily-redesign-plan.md`.
    */
   const [alreadyPresent] = await db
     .select({ id: dailyPuzzles.id })

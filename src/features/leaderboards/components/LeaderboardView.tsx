@@ -67,7 +67,7 @@ export function LeaderboardView({
   const [me, setMe] = useState<Me | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
   const shownStreak = useCountUp(streak); // rolls up from 0 when the streak loads
-  const [bests, setBests] = useState<{ difficulty: string; variant: string; bestMs: number }[]>([]);
+  const [bests, setBests] = useState<{ difficulty: string; variant: string; gridSize: number; bestMs: number }[]>([]);
   const [slots, setSlots] = useState<DailySlotInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -146,13 +146,16 @@ export function LeaderboardView({
     };
   }, [date, onDifficultyChange, onSlotsLoaded]);
 
-  // Personal best for the CURRENT board — matched on (key, variant), since bests are now grouped by
-  // both (a rung key holds a different type each day, so 'hard'+killer and 'hard'+classic are
-  // distinct bests). The current board's variant comes from today's slot list; before slots load we
-  // match on key alone (may briefly show a different type's best until the fetch resolves).
-  const currentVariant = slots.find((s) => s.key === difficulty)?.variant;
+  // Personal best for the CURRENT board — matched on (key, variant, size), the same three axes the
+  // server groups by. A rung key holds a different type each day, and `mini-hard` also rolls its
+  // size, so 'mini-hard'+classic+4 and 'mini-hard'+classic+6 are genuinely different boards with
+  // separate bests. Both come from today's slot list; before it loads we match on key alone (which
+  // may briefly show another board's best until the fetch resolves).
+  const currentSlot = slots.find((s) => s.key === difficulty);
   const myBest = bests.find(
-    (b) => b.difficulty === difficulty && (currentVariant === undefined || b.variant === currentVariant),
+    (b) =>
+      b.difficulty === difficulty &&
+      (currentSlot === undefined || (b.variant === currentSlot.variant && b.gridSize === currentSlot.gridSize)),
   );
 
   const selectDifficulty = (d: DailyDifficulty) => {

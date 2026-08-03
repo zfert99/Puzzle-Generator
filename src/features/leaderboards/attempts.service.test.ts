@@ -86,34 +86,59 @@ describe('getTodayCompletions', () => {
 });
 
 describe('getPersonalBests', () => {
-  it('scopes to the user and returns min time per (difficulty, variant)', async () => {
-    let captured: unknown;
-    let groupCols: unknown[] = [];
+  /** Captures the ownership filter, the selected columns, and the GROUP BY actually requested. */
+  function bestsStub(rows: unknown[]) {
+    const captured: { filter?: unknown; groupCols: unknown[]; cols?: Record<string, unknown> } = { groupCols: [] };
     const groupBy = async (...cols: unknown[]) => {
-      groupCols = cols;
-      return [
-        { difficulty: 'hard', variant: 'classic', bestMs: 90_000 },
-        { difficulty: 'hard', variant: 'killer', bestMs: 150_000 },
-      ];
+      captured.groupCols = cols;
+      return rows;
     };
     const where = (filter: unknown) => {
-      captured = filter;
+      captured.filter = filter;
       return { groupBy };
     };
     const db = {
-      select: () => ({ from: () => ({ innerJoin: () => ({ where }) }) }),
+      select: (cols: Record<string, unknown>) => {
+        captured.cols = cols;
+        return { from: () => ({ innerJoin: () => ({ where }) }) };
+      },
     } as unknown as Database;
+    return { db, captured };
+  }
+
+  it('scopes to the user and keeps types apart (Risk #4, type axis)', async () => {
+    const rows = [
+      { difficulty: 'hard', variant: 'classic', gridSize: 9, bestMs: 90_000 },
+      { difficulty: 'hard', variant: 'killer', gridSize: 9, bestMs: 150_000 },
+    ];
+    const { db, captured } = bestsStub(rows);
 
     const bests = await getPersonalBests(db, 'user-A');
 
-    // Risk #4: the same rung key holds different TYPES on different days, so bests must stay
-    // split by variant rather than collapsing Classic-hard and Killer-hard into one min.
-    expect(bests).toEqual([
-      { difficulty: 'hard', variant: 'classic', bestMs: 90_000 },
-      { difficulty: 'hard', variant: 'killer', bestMs: 150_000 },
-    ]);
-    expect(groupCols).toHaveLength(2); // grouped by BOTH difficulty and variant
+    // The same rung key holds different TYPES on different days, so bests must stay split by
+    // variant rather than collapsing Classic-hard and Killer-hard into one min.
+    expect(bests).toEqual(rows);
     // A WHERE (user_id + completed) was applied — never an unscoped aggregate.
-    expect(captured).toBeDefined();
+    expect(captured.filter).toBeDefined();
+  });
+
+  /**
+   * Regression (Risk #4, SIZE axis): `(difficulty, variant)` alone still collapses the two boards
+   * the `mini-hard` slot rolls between. Classic can hold `mini-hard` at 4×4 or 6×6, and the 4×4 is
+   * far faster (a 5 s plausibility floor against the 6×6's 12 s), so its time would always win the
+   * `min()` — permanently hiding the 6×6 best and showing an unbeatable target on 6×6 days.
+   */
+  it('also keeps SIZES apart, so mini-hard 4×4 and 6×6 are distinct bests', async () => {
+    const rows = [
+      { difficulty: 'mini-hard', variant: 'classic', gridSize: 4, bestMs: 45_000 },
+      { difficulty: 'mini-hard', variant: 'classic', gridSize: 6, bestMs: 130_000 },
+    ];
+    const { db, captured } = bestsStub(rows);
+
+    const bests = await getPersonalBests(db, 'user-A');
+
+    expect(bests).toEqual(rows); // both survive; the 4×4 does not swallow the 6×6
+    expect(captured.cols).toHaveProperty('gridSize'); // size is selected, not merely filtered on
+    expect(captured.groupCols).toHaveLength(3); // difficulty + variant + size
   });
 });

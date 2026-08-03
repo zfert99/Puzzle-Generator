@@ -76,6 +76,8 @@ export function getTodayCompletions(
 export interface PersonalBest {
   difficulty: string;
   variant: string;
+  /** Board size (4/6/9), derived from the stored grid — there is no `grid_size` column. */
+  gridSize: number;
   bestMs: number;
 }
 
@@ -83,22 +85,31 @@ export interface PersonalBest {
  * A user's best (fastest) completed time per `(difficulty, variant)`, across all days — their
  * all-time personal bests. Scoped to `userId` (BOLA); grouped via a join to `daily_puzzles`.
  *
- * **Grouped by `(difficulty, variant)`, not `difficulty` alone (Risk #4):** a rung key like `hard`
- * now holds a different TYPE each day (Classic one day, Killer the next), so grouping by the key
- * alone would collapse distinct types under one "best". Including the stored `variant` keeps bests
- * type-attributable and stays correct at the 5-type end state. Historical rows (all `variant`
- * backfilled by migration `0004`) slot in cleanly — old classic-only `hard` rows group under
- * `(hard, classic)`.
+ * **Grouped by `(difficulty, variant, gridSize)` — all three axes a slot key rolls (Risk #4):**
+ *
+ * - *Type:* a rung key like `hard` holds a different TYPE each day (Classic one day, Killer the
+ *   next), so grouping by the key alone would collapse distinct types under one "best".
+ * - *Size:* the `mini-hard` slot also rolls its SIZE (4×4 or 6×6 — see `rollDailyAssignment`). So
+ *   `(mini-hard, classic)` alone spans two genuinely different boards, and because the 4×4 is much
+ *   faster (its plausibility floor is 5 s against the 6×6's 12 s) the 4×4 time would always win the
+ *   `min()` — permanently hiding the 6×6 best and showing an unbeatable target on 6×6 days.
+ *
+ * Size comes from `jsonb_array_length(grid)` because there is no `grid_size` column; the grid is the
+ * same source `seedBotSolves` and the solve floor already derive size from. Historical rows (all
+ * `variant` backfilled by migration `0004`) slot in cleanly — old classic-only `hard` rows group
+ * under `(hard, classic, 9)`.
  */
 export function getPersonalBests(db: Database, userId: string): Promise<PersonalBest[]> {
+  const gridSize = sql<number>`jsonb_array_length(${dailyPuzzles.grid})`;
   return db
     .select({
       difficulty: dailyPuzzles.difficulty,
       variant: dailyPuzzles.variant,
+      gridSize: gridSize.mapWith(Number),
       bestMs: sql<number>`min(${solveAttempts.timeMs})`.mapWith(Number),
     })
     .from(solveAttempts)
     .innerJoin(dailyPuzzles, eq(solveAttempts.puzzleId, dailyPuzzles.id))
     .where(and(eq(solveAttempts.userId, userId), eq(solveAttempts.completed, true)))
-    .groupBy(dailyPuzzles.difficulty, dailyPuzzles.variant);
+    .groupBy(dailyPuzzles.difficulty, dailyPuzzles.variant, gridSize);
 }

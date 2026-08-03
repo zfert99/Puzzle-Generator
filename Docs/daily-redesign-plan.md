@@ -258,8 +258,17 @@ its tests (low-risk LOC). Files/lines per the ripple map.
     valid config always exists (classic/calc cover medium/hard-4×4). Store `key = mini-<diff>`,
     `variant = type`, `size = rolled`.
   - **Generate + fallback** — per slot: generate; on throw, bounded retry, then fall back to another
-    `eligible` option not colliding with placed slots; `logger.warn` on fallback (Risk #2 — never
-    empty). Realistically only the slow extreme tiers are at risk (timeout, not throw).
+    `eligible` option for the same slot, **preferring the rolled size**; `logger.warn` on fallback
+    (Risk #2 — never empty). Realistically only the slow extreme tiers are at risk (timeout, not
+    throw).
+    > **Corrected 2026-08-03.** This step originally said the fallback picks an option "not
+    > colliding with placed slots". That is **unachievable by construction** — `rollDailyAssignment`
+    > hands each section a *permutation* of the type list, so every type is already used exactly once
+    > before any fallback can run, and a substitute necessarily duplicates one. (The day still gets
+    > its full set of distinctly-keyed boards; one type simply appears twice and another not at all.)
+    > What the ordering *can* protect is the **size**: an early implementation iterated
+    > variant-outer over `[4, 6]` and so replaced a failed 6×6 `mini-hard` with a **4×4** — same
+    > leaderboard, far easier board (5 s floor vs 12 s). It now tries the rolled size first.
   - **`seedBotSolves`** — SELECT today's rows (`id`, key, `variant`, `grid`); derive `size =
     grid.length`, `difficulty = key` (standard) or `key.slice(5)` (mini) → `getProfile(...).botTimeMs`.
     Drop `botTimeByKey`.
@@ -369,6 +378,46 @@ kind the *design* invited, not typos.
 consecutive rolls (Aug 1–3) each hold exactly 6 boards with distinct rungs, distinct types, correct
 mini sizes, non-null variants, and bot times matching their profile rows exactly.
 
+### Step 3d — Review-pass fixes — ✅ Done 2026-08-03
+
+A judgment pass over Step 3b's 31 files (the pre-merge checklist item that never got its automated
+run) turned up four real defects plus one accepted limitation.
+
+- **Personal bests collapsed two different boards (Risk #4, *size* axis).** `getPersonalBests`
+  grouped by `(difficulty, variant)`, which fixes the type axis — but `mini-hard` also rolls its
+  **size**, so `(mini-hard, classic)` spanned both 4×4 and 6×6. The 4×4 is far faster (5 s floor vs
+  12 s), so its time always won the `min()`: the 6×6 best was permanently invisible and the target
+  shown on a 6×6 day was unbeatable. Now groups by `(difficulty, variant, gridSize)` via
+  `jsonb_array_length(grid)`, matched the same way in `LeaderboardView`. **Risk #4's "`(key,
+  variant)` is the safe default for any other cross-date aggregate" is amended: it's `(key, variant,
+  size)` — every axis the slot rolls.**
+- **A fallback could downgrade a mini's size.** See the corrected Step 3b bullet above.
+- **The fallback spec was unachievable.** Also corrected above — the plan, not the code, was wrong.
+- **A live doc still described the superseded design.** `keisan-walkthrough.md` stated that
+  `/api/daily` derives the variant from the registry key via `getDailyBoard` (an export that no
+  longer exists) and described the retired flat registry. It is a self-declared build log, so the
+  statements are left intact with dated **Superseded** notes rather than rewritten — the record of
+  what was true then survives, without reading as current.
+
+**Accepted limitation — the idempotency guard is check-then-act, not atomic.** Two runs overlapping
+*in time* can both observe an empty date, both roll, and insert differing rungs that don't collide —
+the same duplicate-boards outcome the guard exists to prevent. It closes the **sequential** replay
+that actually happened; it does not close a genuine race. Not fixed because the driver is
+`neon-http` (stateless: no interactive transaction, no session advisory lock), so the real fix is a
+`daily_generation_log` table keyed by date, claimed via `INSERT … ON CONFLICT DO NOTHING RETURNING`
+— i.e. a migration. Deferred deliberately: the route is `CRON_SECRET`-gated so it is not
+attacker-triggerable, Vercel schedules a single nightly invocation, and reaching it needs a manual
+`db:seed` racing that cron. Revisit if generation ever gains a second trigger.
+
+Two nits also fixed: `sortIndex` in `daily/slots/route.ts` relied on `??`/`+` precedence and read
+like a bug (now explicit, with retired keys sorting last), and `rollDailyAssignment`'s `miniSizes`
+carried a dead third element that `hardSize` always overrode.
+
+**Progress — ✅ Done 2026-08-03.** Regression coverage for the size-axis bests grouping and the
+size-preserving fallback. Authorization re-checked and held: `/api/me/bests` and the attempts
+service are session-scoped with no `userId` parameter, the solve floor derives size from
+`puzzle.grid.length`, and the cron secret compare is constant-time.
+
 ### Step 4 — UI polish: section collapse + "Difficulty · Type" labels — ⏳ Mostly landed in 3b
 
 **Spec.** (The serve-route `variant` read moved into Step 3b.) Pure presentation — and most of it
@@ -417,8 +466,12 @@ new badge/star/economy state.** `ArchiveExperience.tsx`, `Calendar.tsx`. Update 
    `(difficulty, variant)` (Step 3b), which the stored `variant` column enables. This keeps bests
    type-attributable and stays correct at the 5-type end state; the rejected alternative
    (segment-at-cutover-date) needed a magic date constant and still blended types within a segment.
-   The same `(key, variant)` shape is the safe default for any other cross-date aggregate;
-   `getTodayCompletions` is single-date (low risk) and `getCurrentStreak` is key-agnostic (safe).
+   **Amended 2026-08-03 — it is `(key, variant, size)`, not `(key, variant)`.** The review pass
+   found that `variant` alone still collapses two boards, because the `mini-hard` slot rolls its
+   **size** as well: `(mini-hard, classic)` spans 4×4 and 6×6, and the faster 4×4 always won the
+   `min()`. The safe default for any cross-date aggregate is therefore **every axis the slot rolls**
+   — key, variant *and* size. `getTodayCompletions` is single-date (low risk) and `getCurrentStreak`
+   is key-agnostic (safe).
 5. **Product trade (accepted):** less per-type daily choice + noisier within-day leaderboards. Free
    play (`/play`) still offers any type/size/difficulty (unranked); a one-time "the daily changed"
    note softens the cutover.

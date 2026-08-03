@@ -226,6 +226,80 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
     expect(puzzleRows).toHaveLength(6);
     expect(puzzleRows.some((r) => r.variant === 'killer')).toBe(false); // all Killer slots fell back
   });
+
+  /**
+   * Regression: the fallback pool was ordered variant-outer / size-inner over `[4, 6]`, with no
+   * preference for the size that was actually rolled — so a failing 6×6 mini handed the same
+   * leaderboard key a 4×4 board, a far easier puzzle (5 s plausibility floor against 12 s). Size is
+   * the bigger difficulty lever, so a same-size substitute must be tried before any size change.
+   */
+  it('keeps the rolled SIZE when falling back a mini', async () => {
+    // Find a seed whose mini-hard slot rolled 6×6, so a fallback has a size to preserve.
+    let seed = 0;
+    let rolled = rollDailyAssignment(mulberry32(seed));
+    let miniHard = rolled.find((s) => s.key === 'mini-hard')!;
+    while (miniHard.gridSize !== 6 && seed < 500) {
+      seed += 1;
+      rolled = rollDailyAssignment(mulberry32(seed));
+      miniHard = rolled.find((s) => s.key === 'mini-hard')!;
+    }
+    expect(miniHard.gridSize).toBe(6); // a 6×6 mini-hard exists to test against
+
+    let puzzleRows: NewDailyPuzzle[] = [];
+    const failThatBoard = (slot: PlannedSlot) => {
+      if (slot.key === 'mini-hard' && slot.variant === miniHard.variant && slot.gridSize === 6) {
+        throw new Error('boom');
+      }
+      return fakePuzzle(slot);
+    };
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: [],
+      onPuzzleValues: (rows) => {
+        puzzleRows = rows;
+      },
+    });
+
+    await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(seed), generate: failThatBoard });
+
+    // The substitute is a DIFFERENT type at the SAME 6×6 size, not a 4×4 downgrade.
+    const substitute = puzzleRows.find((r) => r.difficulty === 'mini-hard')!;
+    expect(substitute.grid).toHaveLength(6);
+    expect(substitute.variant).not.toBe(miniHard.variant);
+  });
+
+  /**
+   * A fallback necessarily DUPLICATES a type within its section — `rollDailyAssignment` hands each
+   * section a permutation of the type list, so every type is already used once before any fallback
+   * runs. (The plan originally specified "not colliding with placed slots", which is unachievable;
+   * the plan was corrected.) What must hold is that the day still gets its full set of
+   * distinctly-KEYED boards, since the key is the leaderboard identity and the idempotency handle.
+   */
+  it('still yields 6 distinctly-keyed boards when a fallback duplicates a type', async () => {
+    const rolled = rollDailyAssignment(mulberry32(SEED));
+    const firstStandard = rolled.find((s) => s.section === 'standard')!;
+    let puzzleRows: NewDailyPuzzle[] = [];
+    const failFirstStandard = (slot: PlannedSlot) => {
+      if (slot.key === firstStandard.key && slot.variant === firstStandard.variant) throw new Error('boom');
+      return fakePuzzle(slot);
+    };
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: [],
+      onPuzzleValues: (rows) => {
+        puzzleRows = rows;
+      },
+    });
+
+    await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: failFirstStandard });
+
+    expect(puzzleRows).toHaveLength(6);
+    expect(new Set(puzzleRows.map((r) => r.difficulty)).size).toBe(6); // keys stay unique
+    // The substituted standard slot kept 9×9 — only the type changed.
+    const substituted = puzzleRows.find((r) => r.difficulty === firstStandard.key)!;
+    expect(substituted.grid).toHaveLength(9);
+    expect(substituted.variant).not.toBe(firstStandard.variant);
+  });
 });
 
 describe('getDailyPuzzle', () => {

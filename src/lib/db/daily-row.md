@@ -24,6 +24,9 @@ The consequence that drives everything else here: **the key no longer encodes th
   9×9 ladder, so no eligibility gaps.
 - **Mini** — keyed `mini-easy` / `mini-medium` / `mini-hard`. Minis are **3-tier only** (no
   expert/extreme minis) and **size follows difficulty**: easy/medium = 4×4, hard = random(4×4/6×6).
+  That hard slot is the *only* rolled size, and it has two consequences elsewhere: cross-date
+  aggregates must group by size as well as key and variant (`attempts.service.md`), and a generation
+  fallback must try the rolled size before any other (`dailies.service.md`).
 
 No anti-monotony cap is needed — one-slot-per-type makes the types distinct by construction.
 
@@ -34,7 +37,7 @@ profile table is keyed on what actually determines a board's character:
 
 - `minSolveMs` — the anti-cheat plausibility floor (see `solve-rules.md`). Conservative lower
   bounds, not records to police fast solvers.
-- `botTimeMs` — "Sudoku Bot"'s time on that board (`features/leaderboards/bot.ts`): a hand-tuned
+- `botTimeMs` — "Puzzle Bot"'s time on that board (`features/leaderboards/bot.ts`): a hand-tuned
   "good, beatable" human time. Sourced from the difficulty research across this project (community
   classic solve-time bands; Killer runs slower than classic since it starts with no givens; minis
   scale down with the grid). Deliberately well above `minSolveMs` ("impossibly fast", not
