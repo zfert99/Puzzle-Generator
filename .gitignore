@@ -49,5 +49,9 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 
-# Claude Code local tooling
-.claude/
+# Claude Code local tooling — settings, launch config and machine-local overrides stay out of the
+# repo. Project COMMANDS are the exception: they are shared tooling (a `/pre-merge` that only
+# exists on one machine is not a gate), so they are version-controlled like any other script.
+# `.claude/*` rather than `.claude/` so git still descends into the directory to find the negation.
+.claude/*
+!.claude/commands/
