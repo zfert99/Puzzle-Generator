@@ -16,20 +16,35 @@ object mocks the boundary without touching the network.
 ## `generateDailyPuzzles(db, isoDate, { rng?, generate? })`
 
 **Why:** One call rolls and generates today's whole set (**the type-as-slot roll** — 3 standard +
-3 mini; see `daily-row.md`) and upserts it. It is **idempotent** — the `UNIQUE(date, difficulty)`
-constraint plus `onConflictDoNothing` turn a retry or an accidental double-fire into a no-op, which
-is exactly what a scheduled job needs. Seed and cron both go through here so they can never drift
-apart.
+3 mini; see `daily-row.md`) and stores it, which is exactly what a scheduled job needs. Seed and
+cron both go through here so they can never drift apart.
 
 ```text
-Ensure "Sudoku Bot"'s user row exists (idempotent; features/leaderboards/bot.ts).
+Ensure "Puzzle Bot"'s user row exists (upserted; features/leaderboards/bot.ts).
+If this date ALREADY has any board:          <- the idempotency guard
+  Re-seed bot solves (that part is idempotent) and return { requested: 0, skipped: true }.
 Roll the day's assignment (rollDailyAssignment) -> 6 planned slots.
 For each slot:
   Generate its puzzle with a never-empty fallback (below), then map it to an insert row.
 Insert all rows in one statement; skip any that collide on (date, difficulty).
-Seed Sudoku Bot's solve on every one of today's boards (see below).
-Return { isoDate, requested, inserted } (inserted = how many were actually new).
+Seed Puzzle Bot's solve on every one of today's boards (see below).
+Return { isoDate, requested, inserted, skipped: false }.
 ```
+
+### Why idempotency needs an explicit guard now
+
+**A re-run used to be free.** The old flat registry emitted the SAME 30 keys every time, so
+`UNIQUE(date, difficulty)` + `onConflictDoNothing` made a second run a true no-op.
+
+**The roll is random**, so the unique index can no longer recognise a re-run: a second call draws
+*different* rungs, which don't collide and are therefore inserted **alongside** the existing ones —
+silently turning a 6-board day into 8+, with two boards of one type and a wrong archive denominator.
+This is not theoretical: 2026-07-31 holds 33 rows because the first post-restructure run added its 3
+new `mini-*` keys to a day that already had the old 30.
+
+So the service checks the date first and returns early. Cron retries, redeploy-triggered runs and
+manual `db:seed` all rely on it. The batch insert is a single statement, so a day is always either
+empty or complete — probing for any one row is enough.
 
 `rng` and `generate` are **injected seams**: `rng` makes the roll deterministic, and `generate`
 stubs the engine call. Tests use both so the orchestration, fallback, and row-mapping are exercised
@@ -45,9 +60,9 @@ key set), only the variant (and, for minis, the size) changes. Each retry and ev
 `logger.warn`-ed so a silent degradation is visible in production logs. At the tuned generator
 settings this is belt-and-braces: the real failure mode is slowness, not throwing.
 
-## Sudoku Bot seeding (July 2026)
+## Puzzle Bot seeding (July 2026)
 
-**Why:** After the day's boards exist, `generateDailyPuzzles` gives "Sudoku Bot"
+**Why:** After the day's boards exist, `generateDailyPuzzles` gives "Puzzle Bot"
 (`features/leaderboards/bot.ts`) a clean, completed solve on each one — a visible "time to
 beat" for a small player base, without any separate cron or infra. It runs as a step inside
 the *existing* idempotent pipeline (already called by both the Vercel cron and the local seed
@@ -94,18 +109,16 @@ All access is parameterized through Drizzle (AGENTS.md §6). Daily puzzles are s
 public, read-only to clients — no ownership check applies here. The BOLA-sensitive writes
 (a user's solve attempt) live in the leaderboard/solve service (4.3.1 / 4.4).
 
-## Killer daily generation
+## Superseded designs (kept for orientation, no longer how this works)
 
-`generateDailyPuzzles` special-cases the `'killer'` entry: it calls
-`generateKillerSudoku('medium')` (the score-banded graded generator) instead of
-`generateSudoku`. Generation cost is ~120 ms — negligible next to the classic Extreme digger
-the cron already pays for. Idempotency is unchanged: the `'killer'` row rides the same
-`UNIQUE(date, difficulty)` + `onConflictDoNothing` upsert.
+Two earlier shapes of this service are described here only so an older commit or doc reference
+makes sense. **Neither is current** — see `generateDailyPuzzles` above for what the code does now.
 
-## Registry-driven generation (July 2026)
-
-`generateDailyPuzzles` loops `DAILY_BOARDS` (19/day): classic via
-`generateSudoku(difficulty, gridSize)`, killer via `generateKillerSudoku(difficulty,
-{ gridSize })`. The slow ones are classic extreme (digger) and killer-extreme (~5.5 s
-tier-5 search); the cron route declares `maxDuration = 120` for headroom. Idempotency
-unchanged — same `UNIQUE(date, difficulty)` + `onConflictDoNothing`.
+- **Single Killer daily.** `'killer'` was once a literal difficulty key generated at engine-medium,
+  special-cased inside the loop. The key is now retired-but-readable (archive replay only), and
+  the type is stored in `daily_puzzles.variant` rather than encoded in the key.
+- **Registry-driven generation (July 2026).** The service looped a flat `DAILY_BOARDS` array of 30
+  fixed boards and declared `maxDuration = 120`. The type-as-slot restructure replaced that with a
+  per-day roll over 6 slots and dropped `maxDuration` to 60. Critically, the old loop's idempotency
+  came free from the fixed key set; the roll is random, so it needs the explicit guard documented
+  above.

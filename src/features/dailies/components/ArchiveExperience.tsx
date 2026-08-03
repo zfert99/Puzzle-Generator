@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
@@ -13,6 +13,7 @@ import { ConfirmModal } from '@/features/interactive-board/components/ConfirmMod
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { LeaderboardView } from '@/features/leaderboards/components/LeaderboardView';
 import { formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { slotLabel, reconcileSelectedKey, type DailySlotInfo } from '../slot-display';
 import { useDaily } from '../hooks/useDaily';
 import { Calendar } from './Calendar';
 
@@ -44,9 +45,27 @@ export default function ArchiveExperience() {
 
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [difficulty, setDifficulty] = useState<DailyDifficulty>('easy');
+  const [slots, setSlots] = useState<DailySlotInfo[]>([]);
   const [view, setView] = useState<'browse' | 'playing'>('browse');
   const [playedDate, setPlayedDate] = useState('');
   const [warnOpen, setWarnOpen] = useState(false);
+
+  /**
+   * Reconcile the selected board against the day actually being viewed. Only 3 of the 5 standard
+   * rungs are drawn per day, so neither the initial `'easy'` default nor a key carried over from a
+   * previously-viewed date is guaranteed to exist here — leaving it unchecked showed a bare
+   * "No daily puzzle for <date> (easy)". `LeaderboardView` already fetches the day's boards, so it
+   * hands them over rather than us fetching the same endpoint twice.
+   */
+  const handleSlotsLoaded = useCallback((loaded: DailySlotInfo[]) => {
+    setSlots(loaded);
+    setDifficulty((cur) => reconcileSelectedKey(loaded, cur));
+  }, []);
+
+  // "Hard · Killer" once the day's boards are known; the bare key label until then (and for a
+  // date whose boards predate the restructure, where the key still carries its own type).
+  const selectedSlot = slots.find((s) => s.key === difficulty);
+  const selectedLabel = selectedSlot ? slotLabel(selectedSlot) : formatDailyKey(difficulty);
 
   const { loading, error, fetchDaily } = useDaily();
   const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
@@ -103,8 +122,8 @@ export default function ArchiveExperience() {
             ← Archive
           </button>
           {playedDate && (
-            <span className="text-xs text-ink-soft capitalize">
-              {difficulty} · {formatUtcDate(playedDate)} · practice
+            <span className="text-xs text-ink-soft">
+              {selectedLabel} · {formatUtcDate(playedDate)} · practice
             </span>
           )}
         </div>
@@ -172,7 +191,7 @@ export default function ArchiveExperience() {
             disabled={loading}
             className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
           >
-            {loading ? 'Loading…' : `Play ${formatDailyKey(difficulty)} (practice)`}
+            {loading ? 'Loading…' : `Play ${selectedLabel} (practice)`}
           </button>
         </div>
 
@@ -180,6 +199,7 @@ export default function ArchiveExperience() {
           date={selectedDate}
           difficulty={difficulty}
           onDifficultyChange={setDifficulty}
+          onSlotsLoaded={handleSlotsLoaded}
         />
       </div>
 

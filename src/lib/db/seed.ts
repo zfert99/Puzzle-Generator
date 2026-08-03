@@ -9,8 +9,10 @@ import { generateDailyPuzzles } from '@/features/dailies/dailies.service';
  * route to load before the 4.2 cron fires (or when developing without cron).
  *
  * Delegates to the same `generateDailyPuzzles` service the cron uses, so seed and cron
- * can never drift. Idempotent: the `UNIQUE(date, difficulty)` constraint plus
- * `onConflictDoNothing` make a re-run a no-op. Run with: npm run db:seed
+ * can never drift. Idempotent: the service returns early if the date already has boards, so a
+ * re-run is a no-op. That guard (not the unique index) is what makes this safe — the assignment is
+ * ROLLED, so re-running without it would draw different rungs and add extra boards to the day.
+ * Run with: npm run db:seed
  */
 async function seed() {
   const databaseUrl = process.env.DATABASE_URL;

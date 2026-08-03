@@ -190,7 +190,7 @@ Design principles locked for v1:
 Shop anchors: common 150–300, rare 600–1200, legendary 2500+ — a daily-ish player earning
 ~100/day reaches a rare in ~1–2 weeks, legendary in ~a month. Watch and retune (Risk 1).
 
-**Future idea (not yet designed): a small crumbs bonus for beating "Sudoku Bot"'s time**
+**Future idea (not yet designed): a small crumbs bonus for beating "Puzzle Bot"'s time**
 (the bot's identity and per-board target times live in `features/leaderboards/bot.ts` /
 `bot.md`, shipped July 2026 as a leaderboard-only "time to beat"). The user's own suggestion
 was something like "+5 crumbs" for finishing faster than the bot on a board. Flagging the

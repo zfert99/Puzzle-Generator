@@ -62,7 +62,7 @@ hard, high-risk part is instrumenting the solver to explain itself without slowi
 | `Docs/design/design-system.md`'s "never color-only" rule | Directly enforced, not just referenced — every new highlight role needs a shape/icon/text pairing from day one, per that doc's own §5 rule. |
 | Daily-board registry / anti-cheat / leaderboard infra | **Does NOT apply.** A lesson curriculum is a fixed, authored sequence, not a daily-generated puzzle — this needs a new content shape (lesson definitions + curated example grids), not a registry row. |
 | Phase 9 achievements/streaks (`social-progression-economy-plan.md`) | Not built yet. Soft integration point only (reward mastery events once the crumbs ledger exists) — see Risks. |
-| Sudoku Bot (`features/leaderboards/bot.md`) | Narrative-only tie-in already recorded in `roadmap.md`'s Phase 7 section: floated as the course's "teacher" character. Not a mechanic here — see L6. |
+| Puzzle Bot (`features/leaderboards/bot.md`) | Narrative-only tie-in already recorded in `roadmap.md`'s Phase 7 section: floated as the course's "teacher" character. Not a mechanic here — see L6. |
 
 ## 3. Slices
 
@@ -162,7 +162,7 @@ hard, high-risk part is instrumenting the solver to explain itself without slowi
   patterns) and the lowest-value slice to ship first — deliberately last, and the one most
   likely to get re-scoped once L1–L5 are live and real usage data exists.
 - Narrative payoff (recorded earlier in `roadmap.md`'s Phase 7 section, not a mechanic to
-  build here): Sudoku Bot as the course's "teacher" — beating its leaderboard time after
+  build here): Puzzle Bot as the course's "teacher" — beating its leaderboard time after
   finishing the relevant lesson reads as "the student has become the master." Flavor only.
 
 ## 4. Risks
