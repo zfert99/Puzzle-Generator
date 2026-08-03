@@ -23,15 +23,19 @@ On any thrown error -> log server-side, return a generic 500.
 
 ## Why idempotent matters here
 
-**Why:** A cron can fire twice, or be retried after a transient failure. Because
-generation upserts on `UNIQUE(date, difficulty)`, a second same-day run simply reports
-`inserted: 0` instead of duplicating the day's puzzles. Runs on the Node.js runtime
-(`node:crypto` + the DB driver are Node-only, never Edge).
+**Why:** A cron can fire twice, or be retried after a transient failure. `generateDailyPuzzles`
+returns early when the date already has boards, reporting `skipped: true` (and `inserted: 0`)
+instead of touching the day. Runs on the Node.js runtime (`node:crypto` + the DB driver are
+Node-only, never Edge).
 
-Note this makes the day's roll **first-write-wins**: if rows already exist for the date, a re-run's
-freshly-rolled slots collide and are skipped rather than replacing them. That is the desired
-behaviour (a player's board never changes under them mid-day), and it is what makes the
-restructure's cutover day safe — the pre-existing rows simply stand.
+The day's roll is therefore **first-write-wins**: once a date has boards, a re-run leaves them
+exactly as they are. A player's board never changes under them mid-day.
+
+> **This used to be wrong, and it mattered.** An earlier version of this note claimed a re-run's
+> freshly-rolled slots would "collide and be skipped" on `UNIQUE(date, difficulty)`. They don't —
+> the roll is **random**, so a second run draws *different* rungs, which have nothing to collide
+> with and insert cleanly alongside the first run's. That is how 2026-07-31 ended up with 33 rows.
+> The unique index dedupes identical keys; only the explicit date guard dedupes *runs*.
 
 ## `maxDuration` (daily restructure Step 3b)
 

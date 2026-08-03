@@ -19,6 +19,19 @@ passed to `LeaderboardView` as a controlled prop (`difficulty` + `onDifficultyCh
 Play button reads the same value. `Calendar` picks the date, which drives both the leaderboard
 (`date` prop) and the puzzle fetch (`useDaily(difficulty, date)`).
 
+## Why the selected board is reconciled against the date
+
+**Why:** the difficulty owned here started as a hardcoded `'easy'` and was never checked against the
+day being viewed. Under type-as-slot only **3 of the 5** standard rungs are drawn per day, so on any
+day easy didn't roll the archive opened straight onto `No daily puzzle for <date> (easy)` — and the
+same happened when a key was carried across a date change.
+
+`LeaderboardView` already fetches the day's boards for its tabs, so rather than fetching the same
+endpoint twice it reports them up through `onSlotsLoaded`; this component applies the shared
+`reconcileSelectedKey` (see `slot-display.md`) — keep the current key if that day has it, otherwise
+fall back to the day's first board. The slot list is also kept in state so the Play button and the
+replay header can show the composed **"Hard · Killer"** label instead of a bare key.
+
 ## Shared-slot note
 
 The board store holds one game, so starting a replay erases any parked game — hence the same

@@ -7,9 +7,15 @@ the `/daily` route to load before the 4.2 generation cron exists.
 
 **Why:** During local development there is no cron firing at 00:00 UTC, so a freshly
 migrated database has zero daily puzzles and the `/daily` route would have nothing to
-show. This script generates today's set on demand. It is written to be **idempotent** —
-running it twice does not create duplicate rows — because the `UNIQUE(date, difficulty)`
-constraint plus `onConflictDoNothing` turn a repeat run into a no-op.
+show. This script generates today's set on demand. It is **idempotent** — running it twice does not
+create duplicate rows — because `generateDailyPuzzles` returns early when the date already has
+boards.
+
+That early return, **not** the `UNIQUE(date, difficulty)` index, is what makes this safe. The index
+only dedupes *identical keys*, which was enough while the registry emitted a fixed key set. The
+assignment is now **rolled**, so a second run draws different rungs, which wouldn't collide and
+would be inserted alongside the first run's — quietly giving the day extra boards. Re-running this
+script is a genuine no-op only because of the guard.
 
 ```text
 Load env from .env.local (via the load-env side-effect import, kept first).

@@ -27,3 +27,24 @@ only the fetched slot list carries.
 
 The `Variant → display name` map is where the internal slug/display-name split is honoured:
 `calc` renders as **Keisan** (the product name), never as "calc".
+
+## `reconcileSelectedKey(slots, current)`
+
+**Why:** only **3 of the 5** standard rungs are drawn on any given day, so a component holding a
+fixed default (`'easy'`) or a key carried over from a previously-viewed date can easily be pointing
+at a board that day doesn't have. The archive did exactly that and rendered
+`No daily puzzle for <date> (easy)` on every day easy didn't roll.
+
+```text
+No slots loaded yet          -> keep the current key (the fetch simply hasn't resolved)
+Current key is in the day    -> keep it   (so changing dates doesn't yank the user off their board)
+Current key is NOT in the day-> fall back to the day's first board
+```
+
+Shared rather than duplicated because **both** selection paths need it and they must behave
+identically: `LeaderboardView` calls it for its own tab state when uncontrolled, and hands the
+day's boards up via `onSlotsLoaded` so a controlled parent (the archive) can apply the same rule.
+
+This stops being strictly necessary at 5 puzzle types, where the standard set becomes a full 5-rung
+bijection and every rung exists every day — but it stays correct then, and archived dates (whose
+retired keys predate the restructure entirely) still rely on it.
