@@ -171,11 +171,25 @@ make. Do not turn this into ceremony; keep it mechanical.
    - **Who runs what.** `/code-review` (and `/code-review ultra`) is **user-triggered and billed** —
      an agent cannot launch it, so an agent must never treat this step as "run the command". An
      agent runs `/pre-merge` (`.claude/commands/pre-merge.md`), which walks steps 1–3 plus the
-     project-specific judgment prompts, and then **states plainly that the hosted review has not
-     been run** so the owner can decide whether to trigger it. `/security-review` *is*
+     project-specific judgment prompts, logs the run (step 5), and then **states plainly that the
+     hosted review has not been run** so the owner can decide whether to trigger it. `/security-review` *is*
      agent-invocable and is required for any auth/authz/data-access change (Section 6, "AI-generated
      code is unaudited by default").
-5. **Merge** only once 1–4 are green **and** CI passes (`ci.yml`: `npm run lint`,
+5. **Log the run** in `Docs/pre-merge-log.md` (newest first), in the **same** PR — mechanical
+   numbers, findings, invariants actually checked, docs sweep, verified-vs-read, and the two review
+   statements. The gate's output otherwise lives only in a chat transcript, so every run re-derives
+   what the last one already knew. Two things carry real forward value and must land here:
+   - **The Known flaky tests table.** Read it *before* running the suite. A listed test failing does
+     not implicate the diff under review. This exists because attributing one red test to a
+     pre-existing engine flake (rather than to the diff) cost ~18 full-suite runs plus isolated
+     timing — an answer worth writing down once.
+   - **Generalizable lessons**, phrased as a rule the next run can apply, not as a story about this
+     one (e.g. "a call-history assertion in a file with no `mockClear` is presumed vacuous until a
+     deliberately-broken run proves otherwise").
+
+   Keep entries short — a finding fixed inside the same PR gets one line. Don't restate that lint
+   passed.
+6. **Merge** only once 1–5 are green **and** CI passes (`ci.yml`: `npm run lint`,
    `markdownlint`, `npm test`, `npm audit --audit-level=high --omit=dev`; plus `codeql.yml`).
 
 > **Deferred hardening.** Making this gate *physical* (a `.github/pull_request_template.md`,
@@ -373,4 +387,20 @@ unfollowable. Notable changes:
   cites Braz et al. that *pointing* a reviewer at where to look moves detection, while checklist
   length does not.
 - No changes to Sections 1–7, Documentation, Roadmap, Markdown Linting, or Git Rules.
+
+**August 3, 2026 (later):** Gave the pre-merge gate a **memory**. Notable changes:
+
+- **New checklist step 5 — "Log the run"** in `Docs/pre-merge-log.md` (newest first, same PR; merge
+  renumbered to step 6), and a matching step 5 in `/pre-merge`. The gate's output previously lived
+  only in a chat transcript, so each run started blind and re-derived what the last one already knew.
+- **The log carries a standing `Known flaky tests` table, read BEFORE running the suite.** Prompted
+  by a concrete cost: on the Step 5 run, deciding that one red test was a *pre-existing* engine flake
+  rather than a regression from the diff took ~18 full-suite runs plus isolated timing (median
+  261–640 ms solo vs a measured 5738 ms under parallel load, against Vitest's default 5000 ms). That
+  is an answer worth paying for once. A test listed there failing does not implicate the diff.
+- The log also carries **generalizable lessons phrased as rules** — the first being "a call-history
+  assertion in a file with no `mockClear` is presumed vacuous until a deliberately-broken run proves
+  otherwise", which came from a real vacuous BOLA assertion caught in the Step 5 review pass.
+- Entries are deliberately short (a finding fixed in the same PR gets one line; "lint passed" is not
+  worth writing). No changes to Sections 1–7, Documentation, Roadmap, Markdown Linting, or Git Rules.
 <!-- END:update-log -->

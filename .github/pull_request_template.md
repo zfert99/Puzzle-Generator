@@ -30,6 +30,8 @@
 - [ ] `Docs/roadmap.md` + `README.md` status table, if a phase's scope or status changed
 - [ ] Living plan doc's step-log appended (process / learnings / blockers)
 - [ ] `Docs/research/*.md` record for any roadblock or plan divergence
+- [ ] `Docs/pre-merge-log.md` entry prepended for this run — findings, a newly-found flaky test
+      added to the Known flaky tests table, and any lesson phrased as a rule the next run can apply
 - [ ] `npx markdownlint-cli` clean on every doc changed
 
 ## Verification
@@ -43,6 +45,8 @@
 - [ ] Benchmarks, if solver/generator core changed (`benchmark-human-solver` / `-calc` / `-killer`),
       reviewed against the tier targets
 - [ ] Ran the thing end-to-end where it's observable — rendering bugs don't fail a test suite
+- [ ] Checked `Docs/pre-merge-log.md` → **Known flaky tests** before attributing any red test to
+      this diff — a listed test failing does not implicate these changes
 
 ## Size
 
