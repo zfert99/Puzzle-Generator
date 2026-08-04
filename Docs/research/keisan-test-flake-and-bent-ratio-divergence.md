@@ -165,8 +165,28 @@ which derives bounds from the empirical tail rather than assuming normality) —
 | `> 0.36` | 0/400 | 0.000% | 4.61 sd |
 
 N=28: mean 0.4825, sd **0.0266** (vs 0.0276 extrapolated — extrapolation was slightly conservative,
-so normality holds here), observed min over 400 trials **0.4178**. Note `> 0.40` at N=28 would also
-have sufficed; `0.39` was taken for the extra 0.4 sd.
+so normality holds here), observed min over 400 trials **0.4178**.
+
+> **⚠️ The table above was measured on the wrong RNG**, and is kept only as the historical record.
+> It drove `generateCalcSudoku` off `Math.random`, whereas the shipped test draws a random seed and
+> runs its 28-board sample off the **seeded LCG**. Two independent 400-trial re-runs on the *shipped*
+> path:
+>
+> | Run | mean | sd | observed min | `> 0.40` | `> 0.39` | margin at 0.39 |
+> | --- | --- | --- | --- | --- | --- | --- |
+> | review pass | 0.4812 | 0.0270 | **0.3934** | ≥1 breach | 0/400 | 3.38 sd |
+> | independent re-run | 0.4809 | 0.0247 | **0.4096** | **0/400** | 0/400 | 3.68 sd |
+>
+> **Mean and sd replicate tightly; the minimum does not** — 0.3934 vs 0.4096, a gap wider than the
+> distance from either to the threshold. That is expected: the minimum of 400 draws is an extreme
+> order statistic and is by far the least stable number here, which is precisely why it should not
+> carry an argument on its own.
+>
+> **Consequence:** the review pass's inference that *"`> 0.40` would have breached at least once on
+> this path"* **does not replicate** — the independent run saw 0/400 at `> 0.40`. Treat that as one
+> unlucky sample, not a property of the seeded path. The decision is unaffected and arguably better
+> supported: **`> 0.39` is 0/400 across both runs**, at 3.38–3.68 sd. Do not move the threshold, and
+> do not cite the `> 0.40` breach as a reason for it.
 
 For calibration: Google reports ~1.5% of all test runs across its corpus report a flaky result, with
 a common practical threshold of ~2% for investigation. The 2.0% measured here sat exactly on that
@@ -214,37 +234,61 @@ intrinsic tail (11635ms max) is the heaviest in the engine, and it matches the K
 If generator tests later dominate scheduling again, the next step is a separate Vitest project for
 them with its own worker cap, rather than pushing timeouts higher.
 
-## Open follow-ups (from the review pass on this change)
+## Follow-ups from the review pass — ✅ all five resolved (2026-08-04)
 
-Five issues were raised reviewing this change and are **knowingly committed unfixed** so the record
-is honest about what was verified against what. None is a runtime defect — the executable code was
-checked and cleared (the LCG's `s * 1664525 + 1013904223` peaks at ~7.15e15, safely under 2^53, so
-no precision loss; same-seed reproduction was verified empirically after the `fillGrid` fix; and no
-production caller passes `rng` to `generateCalcSudoku`, so that fix is behaviour-neutral in prod).
+Five issues were raised reviewing this change and were initially committed **unfixed**, so the record
+would be honest about what had been verified against what. All five were closed in a follow-up pass
+the same day; each is marked below with what was actually done. None was ever a runtime defect — the
+executable code was checked and cleared (the LCG's `s * 1664525 + 1013904223` peaks at ~7.15e15,
+safely under 2^53, so no precision loss; same-seed reproduction was verified empirically after the
+`fillGrid` fix; and no production caller passes `rng` to `generateCalcSudoku`, so that fix is
+behaviour-neutral in prod).
+
+**A sixth issue surfaced while fixing #5** — see that entry. The review pass found the
+walkthrough-vs-`calc-sudoku.md` contradiction but missed that the *same* stale `~39%` also sat in
+`calc-sudoku.md:56` **and in the source comment at `calc-sudoku.ts:121`**, which this change never
+touched. A contradiction between two documents is a signal to grep for every instance of the figure,
+not to reconcile the two you happen to be looking at.
 
 1. **The 0.39 threshold was validated on the wrong RNG.** The FPR table above was measured with
-   `Math.random`, but the shipped test runs its 28-board sample off the seeded LCG. Re-measured on
-   the shipped path (400 trials): mean 0.4812, sd 0.0270, **observed min 0.3934** — versus the
-   0.4178 recorded above. Still **0/400** breaches, so the threshold holds, but the true margin is
-   **3.38 sd** (~0.03%), not 3.48 sd / 0.011%, and the worst sample sits ~3× closer to the bound
-   than this doc states. It also shows `> 0.40` *would* have breached at least once on this path,
-   which independently justifies picking 0.39. **Fix:** rerun the validation seeded and correct the
-   table — do not move the threshold.
-2. **`vitest.config.ts` comment contradicts its own value** — the block says "Raising the floor to
+   `Math.random`, but the shipped test runs its 28-board sample off the seeded LCG.
+   **✅ Resolved — re-derived independently rather than accepting the review pass's numbers, which
+   turned out to matter.** A fresh 400-trial run on the shipped path gives mean 0.4809, sd 0.0247,
+   min **0.4096**, and **0/400 at `> 0.40`**. Mean and sd replicate the review pass tightly
+   (0.4812 / 0.0270); the **minimum does not** (0.3934 vs 0.4096), so its claim that `> 0.40` *would*
+   have breached **does not replicate** and must not be cited. `> 0.39` is 0/400 across both runs at
+   3.38–3.68 sd. Table above corrected and both runs recorded; **threshold unchanged**, as the
+   original fix instruction required.
+2. **`vitest.config.ts` comment contradicts its own value** — the block said "Raising the floor to
    20s" directly above `testTimeout: 30_000`, a leftover from revising 20s → 30s. A maintainer
    "correcting" the code to match would reintroduce the ~2.3× margin the same block argues against.
-3. **The timeout table in `vitest.config.md` mixes measurement conditions.** Its column reads "Worst
+   **✅ Resolved** — the stale figure is gone and the paragraph now carries an explicit *do not
+   correct this value down* warning, since the trap was the comment inviting the wrong edit.
+3. **The timeout table in `vitest.config.md` mixes measurement conditions.** Its column read "Worst
    of 30 runs", but the `hard leans on ×` row (1812ms) is a *post*-`maxWorkers`-cap figure from a
-   14-run batch while every other row is pre-cap. The headroom ratios are not comparable; the
-   post-cap equivalents of the other rows are roughly 2–3× lower.
+   14-run batch while every other row is pre-cap.
+   **✅ Resolved** — added an explicit **Measured under** column plus a note that the last row is not
+   comparable. Also recorded the direction of the error: post-cap equivalents of the pre-cap rows
+   would be *lower*, which **raises** their headroom, so every timeout derived from that table is
+   conservative and none needed changing.
 4. **`maxWorkers: '50%'` is justified entirely by 12-core measurements.** CI is `ubuntu-latest`
    (2–4 vCPU), where Vitest's default is already 1–3 workers — so the oversubscription the cap
-   removes does not exist there, and the measured 49–73% tail reduction does not transfer. On a
-   4-vCPU runner it only drops 3 workers → 2, a small CI cost with no matching gain (total serial
-   test time is 38s across 387 tests). Worth re-checking against real CI timings before keeping it.
-5. **`keisan-walkthrough.md` contradicts `calc-sudoku.md`.** The correction note says `~39% ×` and
-   `−/÷ in ~96%` "hold up", while this same change edits those figures to 38% / 94% in the mirrored
-   doc. One of the two statements has to go.
+   removes does not exist there, and the measured 49–73% tail reduction does not transfer.
+   **✅ Resolved — measured on real CI, keep the cap.** Wall clock 27.71s capped vs 24.76s / 27.19s
+   uncapped, i.e. *inside* the uncapped spread, so the CI cost is not separable from noise. That
+   settles the actual objection: there is no meaningful CI penalty, so the local flake reduction is
+   free. Σ test time was also lower capped (25.63s vs 30.66s / 35.79s), hinting the cap helps even on
+   a small runner — but n=1 per config on different dependency trees, so that is explicitly **not**
+   claimed as a result. Full table in `vitest.config.md`.
+5. **`keisan-walkthrough.md` contradicts `calc-sudoku.md`.** The correction note said `~39% ×` and
+   `−/÷ in ~96%` "hold up", while this same change edited those figures to 38% / 94% in the mirrored
+   doc.
+   **✅ Resolved, and it was a three-way contradiction, not two.** Grepping the figure rather than
+   reconciling the two known documents found the same stale `~39%` in **`calc-sudoku.md:56`** and in
+   the **source comment at `calc-sudoku.ts:121`**, neither touched by this change. All now read
+   `~38% measured` (0.380). The walkthrough's "hold up" was also too strong — `~96%` vs 0.935 is
+   2.5 pt out — so it now states the measured values and notes the argument survives anyway, since
+   61-vs-48.8 is a 12 pt gap by comparison.
 
 ## Reproduction
 

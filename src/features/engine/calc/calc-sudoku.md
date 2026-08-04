@@ -53,7 +53,7 @@ from **measured per-size distributions** and are **not comparable across sizes**
 | Lever | Easy | Medium | Hard |
 |---|---|---|---|
 | Operator palette (`activeOps`) | `+ − ÷` (no ×) | all four | all four |
-| Operator mix (`operatorWeights`) | +-heavy (5/3/2) | even | **×-weighted (~39%), −/÷ retained** |
+| Operator mix (`operatorWeights`) | +-heavy (5/3/2) | even | **×-weighted (~38% measured), −/÷ retained** |
 | Max cage size (`maxSize`) | 4×4: 2 · 6×6: 3 | 3 | 4×4: 4 · 6×6: 4 |
 | Single-cell givens (`min/maxSingles`) | 4×4: 2–4 · 6×6: 3–6 | ≤2 / ≤3 | **0** |
 | Gift-cage cap (`maxFootholds` × `giftBanLevel`) | `combos1`, uncapped | `twoCell` | `mulLowFactor`, ≤2/3 |

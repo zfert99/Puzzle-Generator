@@ -75,10 +75,18 @@ threaded into `fillGrid`, so seeded callers silently got random Latin squares.
      77.40→47.10 ms. Back-to-back variance equals or exceeds the "regression". Extreme samples 5
      puzzles, Mystery 10. **Both runs are committed deliberately** — two adjacent rows reading 1999 and
      3167 document the noise floor better than any comment could.
-3. *(carried, not introduced)* The commit lands **five review findings unfixed**, recorded under "Open
-   follow-ups" in the research doc — notably that the 0.39 threshold was validated against `Math.random`
-   rather than the seeded path it runs on (re-measured there: still 0/400, but 3.38 sd, not 3.48).
-   Deliberately left for the owner rather than quietly cleaned up.
+3. *(carried in, then closed)* The commit originally landed **five review findings unfixed**. All five
+   were resolved in a follow-up pass on this same branch before merge — see the research doc's
+   now-✅ section. Two produced more than a doc edit:
+   - **The 0.39 threshold was re-derived, not copied.** The review pass recorded a seeded-path
+     re-measurement; an independent 400-trial run replicated its mean and sd (0.4809 / 0.0247 vs
+     0.4812 / 0.0270) but **not its minimum** (0.4096 vs 0.3934). Its inference that `> 0.40` *would*
+     have breached therefore **does not replicate** — 0/400 at `> 0.40` on the re-run. The threshold
+     stays at 0.39 (0/400 on both runs, 3.38–3.68 sd); the discredited justification is struck.
+   - **A sixth issue fell out of fixing #5.** The review found the walkthrough contradicting
+     `calc-sudoku.md`, but the same stale `~39%` also sat in `calc-sudoku.md:56` **and the source
+     comment at `calc-sudoku.ts:121`**, untouched by the change. Found by grepping the figure rather
+     than reconciling the two documents in hand.
 
 ### Invariants checked (only those the diff touches)
 
@@ -124,8 +132,15 @@ threshold, an RNG-threading fix and comments.
   as fast.
 - **Before believing a benchmark regression, re-run the benchmark.** On small-n randomized generators
   the run-to-run spread here reaches ~60%. One number against one baseline is not a measurement.
+- **A minimum is not a measurement.** Mean and sd replicate across runs; the *extreme order statistic*
+  does not. Two 400-trial runs here agreed on mean to 3 decimals and disagreed on the minimum by more
+  than the min's own distance to the threshold. Never let "the worst sample we saw" carry an argument
+  on its own — if a threshold decision rests on a min, re-run before citing it.
+- **A contradiction between two documents is a cue to grep, not to reconcile.** Fixing the two files
+  in hand would have left the same stale figure in a third file and a source comment. The pair you
+  noticed is rarely the whole set.
 
-**Verdict:** gate green. Not merged — owner's call, and note Finding 3's five open follow-ups.
+**Verdict:** gate green. Not merged — owner's call. All five review follow-ups now closed (Finding 3).
 
 ---
 

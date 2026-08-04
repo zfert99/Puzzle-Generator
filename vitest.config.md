@@ -44,9 +44,32 @@ hits. Measured worst-observed durations, default workers (24 runs) vs capped (14
 | `calc-sudoku` → Expert | 11492ms | 3118ms | −73% |
 | `strategies/extreme` → solve-every | 29497ms | 15107ms | −49% |
 
-**It costs nothing.** Total wall-clock was 14.9–19.4s capped vs 16–20s uncapped — fewer workers
-doing less context-switching finish the same work in the same time. Tune this on p95 runtime and
-flake rate if it is ever revisited; do not raise it back on intuition.
+**It costs nothing locally.** Total wall-clock was 14.9–19.4s capped vs 16–20s uncapped — fewer
+workers doing less context-switching finish the same work in the same time. Tune this on p95 runtime
+and flake rate if it is ever revisited; do not raise it back on intuition.
+
+### Does it hurt CI? Measured, because the case against it was reasonable
+
+Every figure above comes from a 12-core dev machine. CI is `ubuntu-latest` (2–4 vCPU), where Vitest's
+default pool is already 1–3 workers — so the oversubscription this cap removes largely *does not
+exist there*, and the 49–73% tail reduction should not be expected to transfer. That made "a small CI
+cost for no CI gain" a fair objection, and it was raised as an open follow-up rather than waved off.
+
+Measured on real CI runs (Node 22, `ubuntu-latest`, one run per config):
+
+| Branch | `maxWorkers` | Vitest wall clock | Σ test time |
+| --- | --- | --- | --- |
+| `main` | default | 24.76s | 30.66s |
+| `fix/jsdom30-node22` | default | 27.19s | 35.79s |
+| `fix/keisan-test-flake` | **`'50%'`** | **27.71s** | **25.63s** |
+
+**Verdict: keep it.** Wall clock lands inside the spread of the two uncapped runs (24.76–27.19s), so
+the CI cost is at most a couple of seconds and is not separable from run-to-run noise. The Σ-test-time
+column is *suggestive* of the cap helping even on a small runner — 25.63s against 30.66s and 35.79s,
+i.e. each test spending less time contending — but **n = 1 per config and the rows sit on different
+dependency trees** (jsdom 29 vs 30), so treat that as a hint, not a result. What the data does settle
+is the thing that mattered: there is no meaningful CI penalty, so the local flake reduction is free.
+Re-measure over several runs per config before making any stronger claim.
 
 ## `testTimeout: 30_000` (August 2026)
 
@@ -114,17 +137,25 @@ generator's real distribution, not its average — measured idle over 30 samples
 1663ms but max 11635ms (7× the median), and Expert is p50 152ms but max 1264ms (8.3×). Averages
 were never the right basis for these timeouts. Three values were raised as a result:
 
-| Test | Worst of 30 runs | Timeout | Headroom | Note |
-| --- | --- | --- | --- | --- |
-| `calc-sudoku.test.ts` → Extreme | 35094ms | `120_000` | 3.4× | **was `30000` — this failed** |
-| `calc-logical-solver.test.ts` → T4-stuck 9×9 | 10378ms | `60_000` | 5.8× | was `30000` (only ~3×) |
-| `calc-sudoku.test.ts` → Expert | 9897ms | `60_000` | 6.1× | was `30000` (only ~3×) |
-| `strategies/extreme.test.ts` → solve-every | 25213ms | `120_000` | 4.8× | unchanged |
-| `killer-sudoku.test.ts` → `extreme` | 23705ms | `120_000` | 5.1× | unchanged |
-| `api/puzzle` → extreme 9×9 | 19022ms | `120_000` | 6.3× | unchanged |
-| `api/generate` → Extreme Challenge | 16633ms | `120_000` | 7.2× | unchanged |
-| `strategies/extreme.test.ts` → require-extreme | 7904ms | `120_000` | 15× | unchanged |
-| `calc-sudoku.test.ts` → `hard leans on ×` | **1812ms** | `30_000` (floor) | **16.6×** | the original flake, post-cap |
+| Test | Worst observed | Measured under | Timeout | Headroom | Note |
+| --- | --- | --- | --- | --- | --- |
+| `calc-sudoku.test.ts` → Extreme | 35094ms | 30 runs, **pre-cap** | `120_000` | 3.4× | **was `30000` — this failed** |
+| `calc-logical-solver.test.ts` → T4-stuck 9×9 | 10378ms | 30 runs, **pre-cap** | `60_000` | 5.8× | was `30000` (only ~3×) |
+| `calc-sudoku.test.ts` → Expert | 9897ms | 30 runs, **pre-cap** | `60_000` | 6.1× | was `30000` (only ~3×) |
+| `strategies/extreme.test.ts` → solve-every | 25213ms | 30 runs, **pre-cap** | `120_000` | 4.8× | unchanged |
+| `killer-sudoku.test.ts` → `extreme` | 23705ms | 30 runs, **pre-cap** | `120_000` | 5.1× | unchanged |
+| `api/puzzle` → extreme 9×9 | 19022ms | 30 runs, **pre-cap** | `120_000` | 6.3× | unchanged |
+| `api/generate` → Extreme Challenge | 16633ms | 30 runs, **pre-cap** | `120_000` | 7.2× | unchanged |
+| `strategies/extreme.test.ts` → require-extreme | 7904ms | 30 runs, **pre-cap** | `120_000` | 15× | unchanged |
+| `calc-sudoku.test.ts` → `hard leans on ×` | **1812ms** | 14 runs, **post-cap** | `30_000` (floor) | **16.6×** | the original flake |
+
+> **The last row is not comparable to the others.** Every pre-cap row was measured under the old
+> oversubscribed pool; the `hard leans on ×` row was measured *after* `maxWorkers: '50%'` landed, and
+> over 14 runs rather than 30. Its 16.6× headroom is therefore flattered relative to the rest. The
+> post-cap equivalents of the other rows would be roughly 2–3× lower than shown, which would *raise*
+> their headroom — so every pre-cap figure here is conservative, and the timeouts derived from them
+> are safe. Recorded rather than re-measured because the conclusion (all timeouts adequate) does not
+> change; re-run the full 30× batch post-cap before using this table for anything tighter.
 
 The rule of thumb applied: **target ≥5× headroom over the worst observed run.** Two entries are
 knowingly below it and accepted rather than escalated:

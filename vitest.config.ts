@@ -23,14 +23,17 @@ export default defineConfig({
     // clock stretches 2–13× over its isolated time. Measured: the Keisan 6×6 hard
     // operator-mix test needs 157–673ms of actual CPU (p99 673ms over 40 samples) yet
     // was observed at 5738ms in a loaded run — a timeout, not a regression. Raising the
-    // floor to 20s kills that whole class of flake, including for generator tests
-    // written later that would otherwise have to remember an explicit value. The only
-    // cost is that a genuinely hung test surfaces in 30s instead of 5s, which is
-    // irrelevant for a non-interactive suite that already carries 120s outliers.
+    // floor kills that whole class of flake, including for generator tests written later
+    // that would otherwise have to remember an explicit value. The only cost is that a
+    // genuinely hung test surfaces in 30s instead of 5s, which is irrelevant for a
+    // non-interactive suite that already carries 120s outliers.
     // Heavier tests still set their own larger per-test timeouts, which win over this.
-    // 30s (not 20s): that same test was later seen at 4698ms across 54 verification runs,
-    // and 673ms of intrinsic p99 work × the 13× contention factor projects a ~8.7s bad
-    // case. 30s keeps ≥6× headroom on both figures; 20s would have left only ~2.3×.
+    //
+    // 30s, NOT the 20s an earlier draft of this comment proposed: that same test was later
+    // seen at 4698ms across 54 verification runs, and 673ms of intrinsic p99 work × the 13×
+    // contention factor projects a ~8.7s bad case. 30s keeps ≥6× headroom on both figures;
+    // 20s would have left only ~2.3×. Do not "correct" the value down to match a stale
+    // number — that reintroduces exactly the margin this paragraph rejects.
     testTimeout: 30_000,
   },
   // React 19 uses the automatic JSX runtime. Vitest's esbuild transform picks up

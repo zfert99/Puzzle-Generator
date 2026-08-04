@@ -387,7 +387,11 @@ hard-×-weighted-with-`−`/`÷`-variety.
 > 2-cell cage is always collinear and so never bent. That is a wanted tradeoff, not a regression —
 > the bent rate among cages of size ≥3 is ~78%. The stale figure had a live consequence: a unit
 > test threshold was calibrated against it and became a ~2%-per-run CI flake. The other two
-> structural figures in this record hold up (`~39% ×` vs 0.380 measured; `−/÷ in ~96%` vs 0.935).
+> structural figures in this record are close enough that 61% stands out as the lone outlier, though
+> neither is exact: `~39% ×` vs **0.380** measured (1 pt out) and `−/÷ in ~96%` vs **0.935** (2.5 pt
+> out). The mirrored `calc-sudoku.md` now carries the rounded measurements, **38%** and **94%** —
+> those are the figures to trust; the ones in this record are what was believed at the time. Against
+> a 61%-vs-48.8% gap of over 12 points, the argument is unaffected.
 > Full record: [`research/keisan-test-flake-and-bent-ratio-divergence.md`](../research/keisan-test-flake-and-bent-ratio-divergence.md).
 
 ### Deliberately deferred (endorsed sequencing)

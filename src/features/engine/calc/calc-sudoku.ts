@@ -118,7 +118,7 @@ interface CalcDifficultyConfig {
 // Operator-mix weight presets (see `operatorWeights`): easy 5/3/2 over +/−/÷; hard keeps × prominent
 // while retaining subtraction/division variety. Note × is applied to ALL cages, but −/÷ are 2-cell
 // only, so on the (majority) 3+-cell cages only +/× compete — there × still wins ~60%. Equal −/÷/×
-// weights therefore still yield a ×-weighted puzzle overall (~39%, ≥ the doc's 30%) while ensuring
+// weights therefore still yield a ×-weighted puzzle overall (~38% measured, ≥ the doc's 30%) while ensuring
 // every hard board has some −/÷ (an over-× first cut left them nearly absent — user feedback).
 const EASY_OP_WEIGHTS: Partial<Record<CalcOperator, number>> = { add: 5, sub: 3, div: 2 };
 const HARD_OP_WEIGHTS: Partial<Record<CalcOperator, number>> = { mul: 3, add: 2, sub: 3, div: 3 };
