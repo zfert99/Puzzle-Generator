@@ -1,8 +1,13 @@
 # Multi-zone cutover — post-migration fix summary (2026-07-30)
 
+> **📦 Archived 2026-08-03 — closed incident record.** The regression described here was fixed and
+> shipped; this is the executive write-up, kept for the record. Its inventory of "the nine broken
+> calls" is a **past-tense** list of what was broken that day, not a live registry of every
+> `apiPath` call site — later correctly-written calls do not belong in it and do not falsify it.
+
 One-page summary of the regression that broke puzzle generation, the daily, and PDF
 export after the move to `biscuitlab.net/puzzles`, and how it was fixed. The deep
-write-up is [multi-zone-basepath-fetch-fix.md](research/multi-zone-basepath-fetch-fix.md);
+write-up is [multi-zone-basepath-fetch-fix.md](../research/multi-zone-basepath-fetch-fix.md);
 this is the executive version.
 
 ## What was broken
@@ -58,7 +63,7 @@ so these *relative* fetches (correct-looking precisely because relative) slipped
 
 Any new client-side `fetch('/api/...')` MUST go through `apiPath()`. A bare
 `fetch('/api/...')` is a latent 404 under the basePath. Server-side code (route handlers,
-cron) is unaffected. See [src/lib/base-path.md](../src/lib/base-path.md).
+cron) is unaffected. See [src/lib/base-path.md](../../src/lib/base-path.md).
 
 ## Follow-up: the daily cron missed 2026-07-30 (separate from the fetch bug)
 
@@ -98,6 +103,6 @@ explanation stands as the working root cause rather than a log-confirmed one.
 
 ## Related docs
 
-- Deep write-up: [research/multi-zone-basepath-fetch-fix.md](research/multi-zone-basepath-fetch-fix.md)
-- Migration plan (regression folded into §3/§4): [multi-zone-migration-plan.md](multi-zone-migration-plan.md)
-- Roadmap entry: [roadmap.md](roadmap.md) (§ "Multi-zone cutover regression")
+- Deep write-up: [research/multi-zone-basepath-fetch-fix.md](../research/multi-zone-basepath-fetch-fix.md)
+- Migration plan (regression folded into §3/§4): [multi-zone-migration-plan.md](../multi-zone-migration-plan.md)
+- Roadmap entry: [roadmap.md](../roadmap.md) (§ "Multi-zone cutover regression")

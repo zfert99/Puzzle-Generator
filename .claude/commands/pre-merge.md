@@ -72,4 +72,25 @@ Then close with, explicitly:
 - that **`/code-review` has NOT been run, because it is user-triggered and billed and you cannot
   launch it.** Say this outright every time. Never imply the hosted review happened.
 
-Do not merge. Leave that to the owner.
+## 5. Log it — same run, not a follow-up
+
+**Read [`Docs/pre-merge-log.md`](../../Docs/pre-merge-log.md) BEFORE step 1**, specifically its
+**Known flaky tests** table: a listed test failing does not implicate the diff, and checking costs
+seconds where re-deriving it cost ~18 full-suite runs once.
+
+Then prepend an entry (newest first) mirroring the report you just gave: date, branch + base commit,
+slice size, the mechanical table with **real numbers**, findings, the invariants you actually
+checked, the docs sweep, verified-vs-read, and the two review statements.
+
+Keep it short — a finding fixed inside the same PR gets one line. The point is the durable part:
+
+- **Findings**, and anything that took real work to establish (a flake attribution, a live-DB
+  verification, a re-derivation that changed the code).
+- **A newly-identified flaky test goes in the Known flaky tests table**, with its symptom, its
+  solo-vs-loaded timings, and how many runs established it. That is the single highest-value thing
+  this log carries forward.
+- **Generalizable lessons**, phrased as a rule the next run can apply — e.g. "a call-history
+  assertion in a file with no `mockClear` is presumed vacuous until a deliberately-broken run proves
+  otherwise."
+
+Do not restate that lint passed. Do not merge — leave that to the owner.

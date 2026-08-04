@@ -1,5 +1,14 @@
 # Codebase Architectural Analysis & Recommendations
 
+> **📦 Archived 2026-08-03 — historical record, do not read as current.** Its recommendations were
+> **carried out**: this analysis is what motivated the move to a root `src/` with a domain-driven
+> `src/features/` layout, so the "Current State" it describes below (`app/`, `components/`, `lib/`
+> at the repo root, `jest.config.js`) is the structure it argued *against* and no longer exists.
+> Jest is also long gone — the suite is Vitest. The rules that outlived it are now enforced
+> directly in [AGENTS.md](../../AGENTS.md) §1. It also cites
+> `Web_Development_React_Nextjs_Best_Practices.md`, since renamed to
+> [research/web-best-practices.md](../research/web-best-practices.md).
+
 Based on a thorough review of the current `Puzzle-Generator` codebase against the `Web_Development_React_Nextjs_Best_Practices.md` research document, here is an evaluation of our architecture and suggestions for improvement.
 
 ---

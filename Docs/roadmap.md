@@ -547,7 +547,7 @@ work exists yet.
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/kenken`) — the Killer branch is retired
-> **Status:** ✅ Done (feature-complete: engine + all surfaces) — **K0–K5 + a measured difficulty rebalance + the full 5-tier 9×9 ladder (K7a–K7d) + K6 Mystery / No-Op mode**. Keisan is playable, printable, discoverable, and in the daily rotation at 4×4/6×6/9×9, with a **5-tier 9×9 ladder** (easy/medium/hard/**expert**/**extreme**) at parity with Classic/Killer, plus a **🔮 Mystery (no-op) toggle** at any size/difficulty ([walkthrough](keisan-walkthrough.md)). **K7 was re-sliced** after a 9×9 de-risk found maxSize-5/T5 infeasible and the solver capped at ~T2: **K7a** (3-tier givens-gradient) → **K7b** (bounded-recursion "T5", the keen.c transplant — measured that guess *depth* never exceeds 1) → **K7c** (Expert = needs a depth-1 Nishio guess) → **K7d** (Extreme = needs *many* Nishio steps — the guess-step *count* is a monotone difficulty axis, so the research's "Option 2" won with no solver expansion). **K6** (Mystery / No-Op) landed last so it applies across the whole ladder — the operator-**union** combination table made hiding the operator a near-free add (no new solver technique). Optional follow-ons remain: a Mystery *daily* board, 5×5/7×7, and the deferred perf work below. See [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) + the [honest-ladder research](research/keisan-9x9-honest-ladder.md). Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (reuse audit + [external plan review](research/kenken-plan-review.md), GREEN) + a [difficulty-calibration](research/kenken-difficulty-calibration.md) pass
+> **Status:** ✅ Done (feature-complete: engine + all surfaces) — **K0–K5 + a measured difficulty rebalance + the full 5-tier 9×9 ladder (K7a–K7d) + K6 Mystery / No-Op mode**. Keisan is playable, printable, discoverable, and in the daily rotation at 4×4/6×6/9×9, with a **5-tier 9×9 ladder** (easy/medium/hard/**expert**/**extreme**) at parity with Classic/Killer, plus a **🔮 Mystery (no-op) toggle** at any size/difficulty ([walkthrough](archive/keisan-walkthrough.md)). **K7 was re-sliced** after a 9×9 de-risk found maxSize-5/T5 infeasible and the solver capped at ~T2: **K7a** (3-tier givens-gradient) → **K7b** (bounded-recursion "T5", the keen.c transplant — measured that guess *depth* never exceeds 1) → **K7c** (Expert = needs a depth-1 Nishio guess) → **K7d** (Extreme = needs *many* Nishio steps — the guess-step *count* is a monotone difficulty axis, so the research's "Option 2" won with no solver expansion). **K6** (Mystery / No-Op) landed last so it applies across the whole ladder — the operator-**union** combination table made hiding the operator a near-free add (no new solver technique). Optional follow-ons remain: a Mystery *daily* board, 5×5/7×7, and the deferred perf work below. See [keisan-9x9-feasibility-findings.md](research/keisan-9x9-feasibility-findings.md) + the [honest-ladder research](research/keisan-9x9-honest-ladder.md). Displayed as **Keisan** (internal slug `calc`). Full plan: [kenken-implementation-plan.md](kenken-implementation-plan.md), reviewed twice (reuse audit + [external plan review](research/kenken-plan-review.md), GREEN) + a [difficulty-calibration](research/kenken-difficulty-calibration.md) pass
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) · [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) · [kenken-plan-review.md](research/kenken-plan-review.md)
 > **Estimated effort:** Medium-Large (the Killer machinery halves it)
 > **Prerequisite:** Phase 6 (shared cage engine, scoring, daily registry)
@@ -697,6 +697,28 @@ Once the Phase 6 Killer engine lands, KenKen is a natural extension of the same
 > types with distinct constraint models; they live in their own engine module
 > (`src/features/engine/killer/`), reusing only variant-agnostic primitives (grid fill, the
 > classic `HumanSolver` techniques). See the [Killer plan](archive/killer-sudoku-implementation-plan.md).
+
+### Kakuro / Cross Sums 🔜 Candidate for puzzle type 4 or 5
+
+Research complete, nothing built: [kakuro.md](research/kakuro.md). A genuine **fourth type**, not a
+cage variant — no row/column/box constraint at all, only per-run sum + all-different, so it needs
+its own engine module rather than an extension of `killer/`. Headlines from the research:
+
+- **The name looks usable.** Nikoli's two U.S. "KAKURO" word marks were abandoned in 2007 for
+  failure to respond, so there is no live U.S. registration; "Cross Sums" is the generic fallback.
+  Shipping as "Kakuro (Cross Sums)" is the recommendation — pending a counsel check on
+  common-law/foreign marks.
+- **Generation is far harder than solving** (finding-another-solution is ASP-complete), so it needs
+  a solution-first pipeline — symmetric black-cell layout → digit fill → derive clues → erase and
+  verify with a counting solver that early-terminates at two solutions. Naive random generation is
+  empirically hopeless even at 10×10.
+- **Difficulty does not scale like Sudoku** — it rides run-length/combination structure, not clue
+  count, so tiers must be calibrated *within* a grid size. That is the same principle Keisan
+  already proved out, which makes the existing tiering approach transferable.
+- The whole `(length, sum) → bitmask` combination table is 511 entries — precompute at build time.
+
+Slots into the daily as one more type-as-slot entry (3+3 → 4+4) with no daily-system surgery, which
+is what the [restructure](daily-redesign-plan.md) was built for.
 
 ### Multiplayer Speed Races 🔜 Up next (deferred from Phase 4)
 

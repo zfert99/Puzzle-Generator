@@ -8,7 +8,7 @@
 > is a monotone difficulty axis, so Option 2 won with no solver expansion). **K6 ✅** (Mystery toggle —
 > hide operators; the operator-union combination table made it a near-free add). Remaining ideas are
 > optional follow-ons (a Mystery *daily* board; 5×5/7×7; the deferred perf work below). Build log:
-> [calcudoku/keisan walkthrough](keisan-walkthrough.md).
+> [calcudoku/keisan walkthrough](archive/keisan-walkthrough.md).
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
 > [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
 > [kenken-plan-review.md](research/kenken-plan-review.md) (external review of THIS plan —
@@ -100,7 +100,7 @@ code/UI — sound risk avoidance, not legal advice.
 
 ### K0 — Boxless-grid foundation (prerequisite; codebase audit finding) ✅ Done
 
-> **Shipped** on `feature/kenken`. Full write-up: [keisan-walkthrough.md](keisan-walkthrough.md).
+> **Shipped** on `feature/kenken`. Full write-up: [keisan-walkthrough.md](archive/keisan-walkthrough.md).
 > `GridSize` widened to `4|5|6|7|9`, `GridConfig` gained `hasBoxes` (row-strip sentinel for the
 > boxless dims), `isValid`/`fillGrid` produce Latin squares at 5/7, both grid renderers gate box
 > lines/peers on `hasBoxes`, `HumanSolver` throws on non-4/6/9, quota map made `Partial`, board

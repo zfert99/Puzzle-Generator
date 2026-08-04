@@ -25,5 +25,5 @@ runs, so it receives requests at `/api/auth/*` (verified live — see the hub's
 **public**, `/puzzles`-prefixed URL the browser uses —
 `https://biscuitlab.net/puzzles/api/auth/callback/google` — which the hub rewrites to the
 origin and Next strips back off before reaching here. It is pinned via the Google
-provider's `redirectURI` in [`auth.ts`](../../../features/auth/auth.md), not derived from
+provider's `redirectURI` in [`auth.ts`](../../../../features/auth/auth.md), not derived from
 `baseURL` (which is origin-only).

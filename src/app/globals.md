@@ -84,5 +84,5 @@ shake) atop its persistent tint. Both are disabled under `prefers-reduced-motion
 
 Only `rank-reveal` remains (the "Ranked #N" text pop). The old solved-celebration keyframes
 (`pop-in`/`bounce-soft`/`celebrate`) were removed in 5.3a — the solved moment is now the
-Motion [SolvedStamp](../../features/juice/SolvedStamp.md) + confetti. `rank-reveal` is
+Motion [SolvedStamp](../features/juice/SolvedStamp.md) + confetti. `rank-reveal` is
 disabled under `prefers-reduced-motion`.
