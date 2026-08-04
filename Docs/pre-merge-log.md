@@ -30,10 +30,78 @@ the diff under review.
 
 ---
 
+## 2026-08-04 — undici override (`^7.29.0`), unblocking the audit gate
+
+Branch `fix/undici-override` on `341b987` · merged as `fad3b45` ([#55](https://github.com/zfert99/Puzzle-Generator/pull/55)) · 2 lines of `package.json`
+plus a 10-line lockfile delta.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 387 passed (50 files) |
+| `npm run lint` | clean |
+| `npm run build` | compiled, all routes emitted |
+| `npm audit --audit-level=high --omit=dev` | **exit 0** (was exit 1) — 4 moderate remain, none high |
+| Benchmarks | **skipped — 0 engine files touched** |
+
+### Findings
+
+1. **The gate went red on every branch at once, from nobody's diff.** Five undici advisories
+   covering `7.0.0 – 7.28.0` published overnight (worst:
+   [GHSA-4cwx-7wf7-3272](https://github.com/advisories/GHSA-4cwx-7wf7-3272), cross-user information
+   disclosure). `main` was green the previous day on a **byte-identical lockfile**, which is what
+   established it as environmental rather than a regression — see the rule below.
+2. **undici is nested three levels down and unreachable by any top-level bump** —
+   `better-auth → vitest → jsdom@29 → undici@7.28.0`. Fixed with a `package.json` `overrides` entry
+   beside the existing `postcss` and `sharp` ones, exactly the case AGENTS.md §6 documents.
+
+### Invariants checked (only those the diff touches)
+
+- **Slot key / `ON CONFLICT` / retired keys / ownership / migrations** — all N/A, no source touched.
+- **No vulnerable nested copy remains** — the §6 gotcha checked explicitly, not assumed:
+  `npm ls undici` resolves a **single** `7.29.0`. A passing `npm audit` alone would not have proven
+  this; the whole point of the §6 rule is that a second nested copy can survive the bump.
+
+### Docs
+
+Nothing mirrored (no `.ts`/`.tsx`), nothing renamed or superseded, so the reverse sweep was a no-op.
+**This entry is the docs deliverable** — the rationale would otherwise live only in a squash-merged
+PR body, which is not where anyone looks before editing `package.json`. *Why the override must not
+be stripped:* it is the only thing holding the audit gate green until PR #40 (jsdom 29 → 30) lands,
+and #40 is itself blocked on `ci.yml` pinning `node-version: "20"` while jsdom 30 requires
+`^22.22.2 || ^24.15.0 || >=26.0.0`. Once #40 lands the override becomes redundant but stays harmless.
+
+### Verified vs. read
+
+**Executed:** every mechanical check above, plus `npm ls undici` on a real `npm install` (not just a
+`--package-lock-only` resolution). The override was trialled on a throwaway working tree and reverted
+*before* the branch was cut, so the recommendation carried a measured exit code rather than a guess.
+**Read only:** nothing.
+
+### Reviews
+
+`/security-review` **not run** — no auth/authz/data-access code changed; the security content here is
+the dependency graph itself, which `npm audit` verifies directly and whose output is quoted above.
+**`/code-review` NOT run** — user-triggered and billed; an agent cannot launch it. Judged a
+reasonable skip for a two-line dependency pin, and flagged as skipped rather than implied done.
+
+### Rules this run produced
+
+- **Before attributing a red gate to your diff, check whether your diff can even reach it.** This one
+  touched zero dependency files, so its lockfile was byte-identical to `main`'s — which settles the
+  question outright, with no re-run needed. Same cheap-attribution move as the Known flaky tests
+  table, applied to CI instead of to a test.
+- **A dependency pin needs a written reason with an expiry condition.** An `overrides` entry is
+  indistinguishable from cruft six months later. Record what it fixes *and* what would make it
+  removable, or the next dependency sweep strips it and reopens the CVE.
+
+---
+
 ## 2026-08-03 — Docs folder organization + `Docs/README.md`
 
-Branch `chore/pre-merge-log` on `341b987` · docs only (the three `src/**/*.md` edits are mirrored
-docs — no `.ts`/`.tsx` touched).
+Branch `chore/pre-merge-log`, gated on `341b987` (later rebased onto `3d11fac`) · docs only (the
+three `src/**/*.md` edits are mirrored docs — no `.ts`/`.tsx` touched).
 
 ### Mechanical
 
@@ -97,8 +165,8 @@ rewrite.
 
 ## 2026-08-03 — Step 5: archive completion counts (X/N)
 
-Branch `feat/daily-step5-archive-counts` on `341b987` · working tree, uncommitted · ~282 LOC of
-source plus 224 of tests and the docs (source under the ~400 target).
+Branch `feat/daily-step5-archive-counts`, gated on `341b987` · merged as `3d11fac` ([#54](https://github.com/zfert99/Puzzle-Generator/pull/54)) · ~282
+LOC of source plus 224 of tests and the docs (source under the ~400 target).
 
 ### Mechanical
 
@@ -152,13 +220,17 @@ a tenth (correct) `apiPath` call site does not falsify them.
 **Executed:** the SQL against the live DB (3 registry eras + independent numerator cross-check); the
 BOLA assertions via injected regression; the flake via 18 repeat runs + isolated timing; all four
 mechanical gates; signed-out `/archive` renders clean; `/api/me/progress` returns 401 unauthenticated.
-**Read only:** the signed-in UI — the X/N line and calendar dots need an owner visual check.
+**Signed-in UI verified by the owner** against a running dev server before merge — dot states, no
+vertical jump between marked and unmarked days, per-date denominators on July dates, month paging,
+and counts clearing on sign-out. **Read only:** nothing.
 
 ### Reviews
 
 `/security-review` **run** — full pass no findings, plus a focused re-verify of both server files
 (session-only id, authorize→validate→read ordering, parameterized dates, aggregate-only response,
 ON-clause ownership, no cross-user render path): all pass.
-**`/code-review` NOT run** — user-triggered and billed; an agent cannot launch it.
+`/code-review ultra` **run by the owner** — zero findings across all 14 files. An agent still cannot
+launch it; this run was owner-triggered, which is the only way it happens.
 
-**Verdict:** gate green, not merged.
+**Verdict:** gate green. Merged as `3d11fac` after a rebase onto the undici fix (entry above) — the
+rebase carried only the lockfile, leaving the reviewed source diff byte-identical.
