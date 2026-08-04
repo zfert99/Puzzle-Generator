@@ -81,9 +81,12 @@ No denominator reproduces 61%. (Size≥2 and "all" coincide because 6×6 hard ca
 givens.) A 2-cell cage is always orthogonally adjacent, so it can never be bent — which is what
 pulls the size≥2 figure well below the size≥3 one.
 
-The docs' *other* two structural figures for this tier check out (`~39% ×` vs measured 0.380;
-`−/÷ in ~96% of boards` vs measured 0.935), which isolates 61% as the outlier rather than a
-systematic drift. Most likely it was measured while the `minBentRatio` floor was still active —
+The docs' *other* two structural figures for this tier are close, though **neither is exact**:
+`~39% ×` vs measured **0.380** (1 pt out) and `−/÷ in ~96% of boards` vs measured **0.935**
+(2.5 pt out). Both are now carried as `~38%` / `~94%` in `calc-sudoku.md` and
+`calc-sudoku.ts` — those rounded measurements are the figures to trust. What matters here is the
+*relative* size of the error: 1–2.5 pt against 61-vs-48.8's **12+ pt**, which isolates 61% as the
+outlier rather than a systematic drift. Most likely it was measured while the `minBentRatio` floor was still active —
 the same walkthrough records that the floor was later dropped because it "halved the generation
 yield for no structural gain", and dropping it would lower the natural bent rate.
 

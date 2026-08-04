@@ -30,6 +30,100 @@ the diff under review.
 
 ---
 
+## 2026-08-04 — Keisan flake branch, re-gated after the follow-up fixes
+
+Branch `fix/keisan-test-flake` on `77f7cef`, 3 commits · 778+/21− across 10 files, but only
+**42+/6− of source** — the rest is 57 lines of tests and 679 of docs. Re-run of the entry below
+after the five review follow-ups were closed on the same branch.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 399 passed (52 files) |
+| **Full-suite repeats** | **10/10 clean** (plus 4 earlier this session — 14 post-rebase, 0 failures) |
+| `npm run lint` · `npm run build` · `markdownlint` · `npm audit` | all exit 0 |
+| Relative-link check | 275 links / 229 files — 0 broken |
+| `benchmark-calc.ts` | run on a **quiet** machine — no regression, see below |
+
+### Findings
+
+1. *(fixed in-PR)* `research/keisan-test-flake-and-bent-ratio-divergence.md:84` still asserted the
+   other two structural figures *"check out"* — the same overstatement corrected in the walkthrough
+   an hour earlier, left behind here. A reader comparing the two docs would find this one blessing
+   `~39%`/`~96%` while `calc-sudoku.md` carries 38%/94%. **The instructive part:** the follow-up pass
+   that produced the rule *"a contradiction between two documents is a cue to grep, not reconcile"*
+   then applied it to the *figure* and missed the *claim about* the figure. Grep the assertion, not
+   just the number.
+
+### The flake fix: mechanistic first, statistical second
+
+14 clean post-rebase full-suite runs is **suggestive, not decisive** on its own — at a 12.5% per-run
+rate, P(0 failures in 14) ≈ 15%. State it honestly rather than implying proof. The real confidence is
+**mechanistic**: the failure was a *timeout*, and the ceiling moved 5000 → 30000 ms against a test
+needing 157–673 ms of CPU and a worst-ever loaded observation of 4698 ms. That is ~6× headroom over
+the worst thing ever seen, plus `maxWorkers: '50%'` removing the contention that caused the stretch.
+Recurrence is structurally implausible independent of how many green runs accumulate.
+
+### Benchmarks: sample size explains the whole "regression"
+
+Ran quiet, after the repeat batch finished, so nothing contended:
+
+| Tier | n | Aug 3 baseline | Quiet run | Loaded runs |
+|---|---|---|---|---|
+| Easy | 20 | 7.45 | **7.45** | 9.65 / 9.45 |
+| Hard | 20 | 11.50 | 13.10 | 13.55 / 13.55 |
+| Expert | 10 | 398.40 | 384.60 | 398.90 / 611.90 |
+| Extreme | **5** | 1014.60 | 1681.20 | 1999.20 / 3167.80 |
+
+**The n=20 tiers land on baseline — Easy identical to two decimals — while only the n=5/n=10 tiers
+swing.** Combined with the code being provably a no-op on the default path, that closes it: there is
+no regression, and the earlier alarming numbers were small-sample lottery plus machine load. 18
+benchmark rows are committed from today rather than pruned; the spread *is* the evidence.
+
+### Invariants checked
+
+No daily, DB, auth or migration files in the diff — verified by filename sweep, so slot-key identity,
+`ON CONFLICT`, retired keys, ownership-in-query and migration SQL are all N/A rather than skipped.
+The one AI-plausible item was re-derived: across the whole branch the only executable engine change
+is `fillGrid(solution, latinConfig, rng)`, identical on the default path
+(`rng = options.rng ?? Math.random`; `grid-utils.ts:117` already defaulted that parameter the same
+way) with no production caller passing a seed.
+
+### Docs
+
+Both touched `.ts` files have mirrors updated in-diff. `Docs/archive/keisan-walkthrough.md` keeps its
+`~61%`/`~39%` correctly — annotated with a dated Correction note, not rewritten.
+
+### Verified vs. read
+
+**Executed:** every gate; 10 full-suite repeats; the benchmark on a quiet machine; the reverse sweep
+on tracked files; the `rng` default chain read through to `grid-utils.ts:117`.
+**Read only:** nothing outstanding — the previously read-only 400-trial validation was re-derived
+independently (see the entry below).
+
+### Reviews
+
+`/security-review` **not run** — no auth/authz/data-access code.
+**`/code-review` NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Rules this run produced
+
+- **The flaky-tests table can invert.** When an entry is marked resolved *by the branch under
+  review*, that test failing **implicates the diff** instead of excusing it. Read the Status column,
+  not just the test name.
+- **A `grep` over tracked files is not the same as a `grep` over the working tree.** The first sweep
+  here was entirely polluted by a stale `.claude/worktrees/` checkout — a separate working copy whose
+  pre-rebase files look exactly like unfixed hits. Use `git ls-files | xargs grep` when the question
+  is "what does this branch still contain".
+- **Benchmark noise is a sample-size story, so read the `n` column first.** The n=20 tiers here
+  reproduce baseline to two decimals while n=5 swings 3×. A "regression" that appears only in the
+  small-n rows is a measurement, not a change.
+
+**Verdict:** gate green. Not merged — owner's call.
+
+---
+
 ## 2026-08-04 — Keisan test flake killed (three causes), rebased onto the docs move
 
 Branch `fix/keisan-test-flake` on `77f7cef` · authored on `341b987` in a parallel worktree, rebased
