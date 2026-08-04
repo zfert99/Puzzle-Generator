@@ -14,12 +14,16 @@
 > - This plan's per-variant *sections* (classic/killer/minis/calc) collapse to two **sets**
 >   (standard, minis) + `overall`.
 > - Gold-day denominators key onto **that day's actual slot count** (3 per set today, 5 later) —
->   dynamic, which the S3 per-date snapshot already anticipated. Never a flat registry count.
+>   dynamic, never a flat registry count. **Already built and shipped** by restructure Step 5
+>   (`getDailyProgress` + `GET /api/me/progress`), computed live rather than from the snapshot
+>   table S3 originally specified — see the note on S3 before building it.
 > - Variant achievements read the stored `daily_puzzles.variant` column (migration `0004`), which
 >   now exists and is backfilled across all history.
 > - Slot keys are the difficulty rung (`easy…extreme`) for standard and `mini-<tier>` for minis; a
->   given key's TYPE varies by day, so anything cross-date must group by `(key, variant)` — the same
->   correction already applied to `getPersonalBests`.
+>   given key's TYPE varies by day — and the `mini-hard` slot rolls its SIZE too — so anything
+>   cross-date must group by **`(key, variant, size)`**, every axis the slot rolls. Same correction
+>   already applied to `getPersonalBests` (grouping by `(key, variant)` alone still collapsed the
+>   4×4 and 6×6 `mini-hard` boards).
 > - **Medals remain unbuilt and deferred to Phase 9** (this plan). The restructure deliberately
 >   shipped only the two-set *shape* plus archive completion counts, leaving the medal award
 >   (idempotent, top-up per set/day) as the headline crumbs faucet to design here, ahead of the flat
@@ -116,15 +120,32 @@ Design principles locked for v1:
 
 ### S3 — Archive gold / partial days
 
+> **Partly built already (2026-08-03, daily restructure Step 5) — read before starting.** The
+> **counting half of S3 has shipped**: `getDailyProgress` (`attempts.service.ts`) + `GET
+> /api/me/progress`, driving per-day **X/N** ("Standard 2/3 · Minis 1/3") and a neutral
+> per-day dot on the archive calendar. Two design points below are now settled by that build:
+>
+> - **The `daily_board_counts` snapshot table is not needed.** The denominator computes live
+>   from `daily_puzzles ⋈ jsonb_array_length(grid)`, correct across every historical date
+>   (verified: a pre-cutover date reads 15+15, the 19-board era 10+6, today 3+3) — no
+>   migration, no backfill, no cron write to keep in sync. Reintroduce it only if profiling
+>   ever justifies it, not as a correctness measure.
+> - **Section comes from GRID SIZE, never the key prefix.** Retired archive keys (`mini4-*`,
+>   `killer6-*`, `calc4-*`) have prefixes that lie; a board is a mini iff its grid is < 9×9.
+>
+> What S3 still owns is the **reward layer on top**: the gold ring treatment, per-section
+> tabs, and the idempotent `gold_day` crumbs payout. Do not rebuild the fraction display.
+
 - **No migration.** Gold/partial per (user, date, section) derives from
   `solve_attempts ⋈ daily_puzzles`: distinct completed keys vs the section’s board count
   **on that date** (denominator = boards that actually existed that day — pre-expansion
-  dates had 5/1/0, the registry history handles it; store a tiny
-  `daily_board_counts(date, section, count)` snapshot written by the cron from launch
-  day, backfilled once from existing rows).
+  dates had 5/1/0, the registry history handles it). *(Superseded detail: this originally
+  called for a `daily_board_counts(date, section, count)` snapshot written by the cron —
+  see the note above; the live computation made it unnecessary.)*
 - **UI**: the existing archive calendar gains per-day badges (gold ring / “3∕5” fraction,
   per-section tabs). Gold day pays a small crumbs bonus (ledger reason `gold_day`,
-  idempotent on (user, date, section)).
+  idempotent on (user, date, section)). *(The "3∕5" fraction + a neutral per-day dot already
+  exist — Step 5. S3 adds the gold treatment and the payout.)*
 - **Gate:** unit tests on denominators across the expansion boundary dates.
 
 ### S4 — Cosmetics shop + inventory

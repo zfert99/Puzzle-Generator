@@ -5,6 +5,7 @@ import { solveAttempts } from '@/lib/db/schema';
 import {
   getUserAttempts,
   getUserAttemptForPuzzle,
+  getDailyProgress,
   getPersonalBests,
   getTodayCompletions,
 } from './attempts.service';
@@ -82,6 +83,59 @@ describe('getTodayCompletions', () => {
     expect(rows).toEqual([{ difficulty: 'easy', puzzleId: 'p1', timeMs: 90_000 }]);
     // A compound WHERE (user_id + completed + date) was applied.
     expect(captured).toBeDefined();
+  });
+});
+
+describe('getDailyProgress', () => {
+  /** Captures the JOIN condition, the range filter, and the GROUP BY. */
+  function progressStub(rows: unknown[]) {
+    const captured: { joinOn?: unknown; filter?: unknown; groupCols: unknown[] } = { groupCols: [] };
+    const groupBy = async (...cols: unknown[]) => {
+      captured.groupCols = cols;
+      return rows;
+    };
+    const where = (filter: unknown) => {
+      captured.filter = filter;
+      return { groupBy };
+    };
+    const leftJoin = (_table: unknown, on: unknown) => {
+      captured.joinOn = on;
+      return { where };
+    };
+    const db = { select: () => ({ from: () => ({ leftJoin }) }) } as unknown as Database;
+    return { db, captured };
+  }
+
+  it('counts a day the user completed nothing on, and groups by (date, size)', async () => {
+    const rows = [
+      { date: '2026-08-01', gridSize: 9, total: 3, done: 0 },
+      { date: '2026-08-01', gridSize: 4, total: 2, done: 0 },
+    ];
+    const { db, captured } = progressStub(rows);
+
+    const progress = await getDailyProgress(db, 'user-A', '2026-08-01', '2026-08-31');
+
+    // The denominator belongs to the DAY, so an untouched day must still come back (0/N), which
+    // is exactly what the LEFT JOIN buys — a WHERE-scoped inner join would drop it entirely.
+    expect(progress).toEqual(rows);
+    expect(captured.filter).toBeDefined(); // the date range
+    expect(captured.groupCols).toHaveLength(2); // date + size
+  });
+
+  /**
+   * BOLA regression: because the ownership filter lives in the JOIN condition here (it has to —
+   * see the service doc), the usual "WHERE is scoped" assertion can't cover it. Dropping the id
+   * from the ON clause would count EVERY user's completions as this user's, so assert the join
+   * predicate actually varies with the caller.
+   */
+  it('scopes the join to the caller: a different userId produces a different condition', async () => {
+    const a = progressStub([]);
+    await getDailyProgress(a.db, 'user-A', '2026-08-01', '2026-08-31');
+    const b = progressStub([]);
+    await getDailyProgress(b.db, 'user-B', '2026-08-01', '2026-08-31');
+
+    expect(a.captured.joinOn).toBeDefined();
+    expect(b.captured.joinOn).not.toStrictEqual(a.captured.joinOn);
   });
 });
 

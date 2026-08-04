@@ -12,10 +12,16 @@ import { KeyboardHints } from '@/features/interactive-board/components/KeyboardH
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { LeaderboardView } from '@/features/leaderboards/components/LeaderboardView';
+import { useSession } from '@/features/auth/auth-client';
+import { apiPath } from '@/lib/base-path';
 import { formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { slotLabel, reconcileSelectedKey, type DailySlotInfo } from '../slot-display';
 import { useDaily } from '../hooks/useDaily';
-import { Calendar } from './Calendar';
+import { Calendar, type DayTally } from './Calendar';
+// Type-only import of the endpoint's own response shape (erased at build — no server code is
+// pulled into the bundle). Redeclaring it here would let the two drift silently: renaming a set
+// server-side would still compile, then throw on the first render that reads the missing key.
+import type { DayProgress } from '@/app/api/me/progress/route';
 
 const noopSubscribe = () => () => {};
 function useHasMounted(): boolean {
@@ -49,6 +55,8 @@ export default function ArchiveExperience() {
   const [view, setView] = useState<'browse' | 'playing'>('browse');
   const [playedDate, setPlayedDate] = useState('');
   const [warnOpen, setWarnOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => todayIso.slice(0, 7));
+  const [progress, setProgress] = useState<Record<string, DayProgress>>({});
 
   /**
    * Reconcile the selected board against the day actually being viewed. Only 3 of the 5 standard
@@ -66,6 +74,54 @@ export default function ArchiveExperience() {
   // date whose boards predate the restructure, where the key still carries its own type).
   const selectedSlot = slots.find((s) => s.key === difficulty);
   const selectedLabel = selectedSlot ? slotLabel(selectedSlot) : formatDailyKey(difficulty);
+
+  const { data: session } = useSession();
+
+  // The visible month's X/N counts, fetched a month at a time (the calendar shows a month, and
+  // per-day fetching would fire on every click). Signed-in only: the counts are personal, so a
+  // signed-out visitor gets no markers rather than a wall of "0/3".
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    fetch(apiPath(`/api/me/progress?month=${visibleMonth}`))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        // Accumulate across months so paging back and forth doesn't blank out what's already
+        // loaded (each response is keyed by ISO date, so months can't collide).
+        if (active && d?.days) setProgress((cur) => ({ ...cur, ...d.days }));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [session, visibleMonth]);
+
+  // Both readings are gated on the session at RENDER time, not cleared in an effect: signing out
+  // must drop the previous user's counts immediately (the tab is shared), and clearing state from
+  // an effect body is both a render-pass late and banned by `react-hooks/set-state-in-effect`.
+  const visible = session ? progress : {};
+
+  // The calendar marker is one dot per day, so it needs the two sets combined; the selected-day
+  // line below keeps them apart.
+  const tallies: Record<string, DayTally> = Object.fromEntries(
+    Object.entries(visible).map(([date, p]) => [
+      date,
+      { done: p.standard.done + p.mini.done, total: p.standard.total + p.mini.total },
+    ]),
+  );
+  // "Standard 2/3 · Minis 1/3" for the day being viewed. A set with no boards that day is left
+  // out entirely rather than shown as "0/0" — the denominator is per-date, and early dates (or a
+  // future day with more types) need not hold both sets.
+  const selectedProgress = visible[selectedDate];
+  const selectedSummary = selectedProgress
+    ? ([
+        ['Standard', selectedProgress.standard],
+        ['Minis', selectedProgress.mini],
+      ] as const)
+        .filter(([, set]) => set.total > 0)
+        .map(([label, set]) => `${label} ${set.done}/${set.total}`)
+        .join(' · ')
+    : '';
 
   const { loading, error, fetchDaily } = useDaily();
   const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
@@ -179,8 +235,17 @@ export default function ArchiveExperience() {
       <div className="md:grid md:grid-cols-2 md:gap-6 md:items-start">
         <div>
           <div className="mb-4">
-            <Calendar value={selectedDate} onChange={setSelectedDate} maxDate={todayIso} />
+            <Calendar
+              value={selectedDate}
+              onChange={setSelectedDate}
+              maxDate={todayIso}
+              tallies={tallies}
+              onMonthChange={setVisibleMonth}
+            />
             <p className="text-center text-sm mt-2 font-medium">{formatUtcDate(selectedDate)}</p>
+            {selectedSummary && (
+              <p className="text-center text-xs text-ink-soft mt-1 tabular-nums">{selectedSummary}</p>
+            )}
           </div>
 
           {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}

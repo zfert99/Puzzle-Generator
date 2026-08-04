@@ -655,7 +655,7 @@ speed races**, **community puzzle sharing**, and a **mobile app**.
 
 The subsections below capture the remaining backlog items.
 
-### Daily restructure — type-as-slot (one daily per type) 🚧 In progress (July 2026)
+### Daily restructure — type-as-slot (one daily per type) ✅ Done (August 2026)
 
 The `/daily` grew to a **30-board wall** (Classic + Killer + Keisan ladders + 15 minis) that
 overwhelms the ritual and scatters a small player base across empty leaderboards. Restructure:
@@ -676,8 +676,13 @@ reshape, retire old keys read-only) carries forward. Full living design + step l
 stored `variant` column ([PR #45](https://github.com/zfert99/Puzzle-Generator/pull/45)), and Step 3b
 (slot-list + `(variant,size,difficulty)` profile table, the constrained cron roller with
 never-empty fallback, the read-path cutover to stored `variant`, variant-scoped personal bests, and
-the `/api/daily/slots`-driven picker + leaderboard tabs). Remaining: Step 4 UI polish (most of it
-landed early with 3b) and Step 5 archive completion counts.
+the `/api/daily/slots`-driven picker + leaderboard tabs) with its 3c/3d follow-up fixes (roller
+idempotency guard, archive key reconciliation, size-axis personal bests), and **Step 5 archive
+completion counts** — per-day **X/N** for the Standard and Mini sets, off a new authed
+`GET /api/me/progress`, with the denominator counted from each date's real board count (a
+pre-cutover date still reads against its own 30). Remaining: only the Step 4 tail of true UI polish
+(desktop picker sizing, a one-time "the daily changed" note, the Continue banner label) — not
+blocking.
 
 ### KenKen 🔜 Up next (Killer's cousin)
 

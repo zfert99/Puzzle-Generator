@@ -32,6 +32,28 @@ endpoint twice it reports them up through `onSlotsLoaded`; this component applie
 fall back to the day's first board. The slot list is also kept in state so the Play button and the
 replay header can show the composed **"Hard · Killer"** label instead of a bare key.
 
+## Completion counts (X/N)
+
+Under the date sits **"Standard 2/3 · Minis 1/3"** for the day being viewed, and each calendar day
+carries a dot for its combined progress (see `Calendar.md`). Source: `GET /api/me/progress`.
+
+- **Signed-in only.** The counts are personal, so a signed-out visitor sees the archive exactly as
+  before rather than a calendar of "0/3". The session gate is applied when **reading** the map for
+  render, not by clearing it in an effect — signing out must drop the previous user's counts on the
+  same pass (the tab is shared), and effect-body `setState` is a render late and lint-banned
+  (`react-hooks/set-state-in-effect`).
+- **Fetched a month at a time,** keyed off the calendar's visible month (`onMonthChange`) rather
+  than the selected date — the calendar can page months without the selection moving. Responses
+  accumulate into one ISO-date-keyed map, so paging back and forth doesn't blank out months already
+  loaded (dates can't collide across months).
+- **A set with no boards that day is omitted from the line,** not shown as `0/0` — the denominator
+  is per-date, so early dates (or a future day with more types) need not hold both sets.
+- **Read-only.** No badge, star, or economy state is written; this is the X/N slice of the daily
+  restructure (Step 5), with the rest deferred to Phase 9.
+- **The response type is imported from the route,** not redeclared here — a local copy would let
+  the two drift silently, so a server-side rename would still compile and then throw on the first
+  render that read the missing set.
+
 ## Shared-slot note
 
 The board store holds one game, so starting a replay erases any parked game — hence the same
@@ -41,7 +63,8 @@ which is consistent with it being practice.
 
 ```text
 view 'browse':
-  Calendar(value=date, maxDate=today) → date
+  Calendar(value=date, maxDate=today, tallies, onMonthChange) → date
+  "Standard X/N · Minis X/N" for the selected date        # signed in only
   LeaderboardView(date, difficulty, onDifficultyChange)   # that day's final board
   "Play {difficulty} (practice)" → warn if a game is parked, else fetch + startNewGame + play
 

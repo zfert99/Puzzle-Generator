@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts, dailyPuzzles, type SolveAttempt } from '@/lib/db/schema';
 
@@ -71,6 +71,65 @@ export function getTodayCompletions(
         eq(dailyPuzzles.date, isoDate),
       ),
     );
+}
+
+export interface DailyProgressRow {
+  /** ISO `YYYY-MM-DD` (UTC), straight from the `date` column. */
+  date: string;
+  /** Board size (4/6/9), derived from the stored grid — there is no `grid_size` column. */
+  gridSize: number;
+  /** How many boards of that size the day HELD — the X/N denominator. */
+  total: number;
+  /** How many of them THIS user completed. */
+  done: number;
+}
+
+/**
+ * Per-day completion counts over a date range — the archive's **X/N** ("Standard 2/3 · Minis
+ * 1/3"). Scoped to `userId` (BOLA); one grouped query for a whole month rather than a per-day
+ * fetch as the user clicks around the calendar.
+ *
+ * **Why the ownership predicate sits in the JOIN, not the WHERE** (the one deliberate deviation
+ * from every other read in this file). The denominator is a property of the DAY, not of the user:
+ * a day the user never touched must still report `0/3`, not vanish. Driving the query from
+ * `daily_puzzles` and LEFT-joining the user's completed attempts keeps every day in the result and
+ * counts the matched attempts; putting `user_id = …` in the WHERE instead would filter the joined
+ * NULLs back out and silently drop exactly those days. The filter is still applied **in SQL**
+ * against a server-supplied id — never in application code after a broad fetch — so a caller can
+ * only ever count their own rows. Getting this wrong in the other direction (dropping the id from
+ * the ON clause) would count *everyone's* completions, so `attempts.service.test.ts` asserts the
+ * join condition carries it.
+ *
+ * **Why it groups by size rather than returning a section.** A board is a mini iff it is smaller
+ * than 9×9 — the same grid-size rule `/api/daily/slots` derives `section` from, and the only one
+ * that stays correct for retired archive keys (`mini4-*`, `killer6-*`, `calc4-*`), whose key
+ * prefixes lie. Folding size → section is left to the caller so this stays a plain aggregate.
+ */
+export function getDailyProgress(
+  db: Database,
+  userId: string,
+  fromIso: string,
+  toIso: string,
+): Promise<DailyProgressRow[]> {
+  const gridSize = sql<number>`jsonb_array_length(${dailyPuzzles.grid})`;
+  return db
+    .select({
+      date: dailyPuzzles.date,
+      gridSize: gridSize.mapWith(Number),
+      total: sql<number>`count(*)`.mapWith(Number),
+      done: sql<number>`count(${solveAttempts.id})`.mapWith(Number),
+    })
+    .from(dailyPuzzles)
+    .leftJoin(
+      solveAttempts,
+      and(
+        eq(solveAttempts.puzzleId, dailyPuzzles.id),
+        eq(solveAttempts.userId, userId),
+        eq(solveAttempts.completed, true),
+      ),
+    )
+    .where(and(gte(dailyPuzzles.date, fromIso), lte(dailyPuzzles.date, toIso)))
+    .groupBy(dailyPuzzles.date, gridSize);
 }
 
 export interface PersonalBest {
