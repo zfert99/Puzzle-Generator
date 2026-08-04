@@ -128,3 +128,9 @@
 | 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 9×9 Extreme (5x) | 4304.00 ms | N/A |
 | 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 6×6 Hard (20x) | 6.65 ms | N/A |
 | 2026-07-31T18:22:38.270Z | `f6b5f96` | Killer Gen 4×4 Easy (20x) | 0.15 ms | N/A |
+| 2026-08-03T15:28:34.794Z | `341b987` | Keisan Gen 9×9 Easy (20x) | 7.45 ms | N/A |
+| 2026-08-03T15:28:34.794Z | `341b987` | Keisan Gen 9×9 Medium (20x) | 5.15 ms | N/A |
+| 2026-08-03T15:28:34.794Z | `341b987` | Keisan Gen 9×9 Hard (20x) | 11.50 ms | N/A |
+| 2026-08-03T15:28:34.794Z | `341b987` | Keisan Gen 9×9 Expert (10x) | 398.40 ms | N/A |
+| 2026-08-03T15:28:34.794Z | `341b987` | Keisan Gen 9×9 Extreme (5x) | 1014.60 ms | N/A |
+| 2026-08-03T15:28:34.794Z | `341b987` | Keisan Gen 9×9 Hard Mystery (10x) | 24.40 ms | N/A |

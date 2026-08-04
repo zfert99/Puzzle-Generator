@@ -354,6 +354,8 @@ implementable per-(size × tier) tables, so the rebalance was extended to the fu
   by `maxFootholds`.
 - **Bent-cage lever** built (`minBentRatio` + `isBentCage`) but **left ungated**: `maxSize: 4` already
   yields ~61% bent naturally, and forcing a floor halved the generation yield for no structural gain.
+  *(The `~61%` is wrong — measured 0.527 at this commit, ~0.488 today. See the correction note at the
+  end of this section; the decision to leave the lever ungated still stands.)*
 - **Technique floor** (`techniqueFloor: 1` on hard — Tatham's gate). Applied *lightly*: measurement
   showed our solver's `hardestTier` concentrates at T1/T2 (medium vs hard differ by score, not tier),
   so the **score band is the primary tier gate** (HoDoKu weighted-sum style); a stronger Tatham gate
@@ -374,6 +376,19 @@ stays naturally lower (needs divisible pairs).
 bands, flaky tests stable across repeated runs. Structure: **6×6 hard = 0 givens, ~4.7 four-cell
 cages, ~61% bent, ~39% `×`, −/÷ in ~96% of boards**. Calc tests added: easy-no-`×`, hard-is-chunky,
 hard-×-weighted-with-`−`/`÷`-variety.
+
+> **Correction (2026-08-03) — the `~61% bent` in the gate record above is wrong.** Left in place
+> because this is a record of what the gate was believed to show at the time; the figure is
+> corrected here rather than rewritten above. Re-measured over 4200+ boards the bent rate is
+> **0.488** of multi-cell cages, and it was **0.527** even at this commit — so 61% was never
+> accurate, and the gate was signed off against a number nobody re-derived. The further drop to
+> ~0.48 came later, from the operator reweight recorded two paragraphs up: `−`/`÷` are 2-cell-only
+> operators, so restoring their variety raised the 2-cell share of cages (31.7% → 38.6%), and a
+> 2-cell cage is always collinear and so never bent. That is a wanted tradeoff, not a regression —
+> the bent rate among cages of size ≥3 is ~78%. The stale figure had a live consequence: a unit
+> test threshold was calibrated against it and became a ~2%-per-run CI flake. The other two
+> structural figures in this record hold up (`~39% ×` vs 0.380 measured; `−/÷ in ~96%` vs 0.935).
+> Full record: [`research/keisan-test-flake-and-bent-ratio-divergence.md`](research/keisan-test-flake-and-bent-ratio-divergence.md).
 
 ### Deliberately deferred (endorsed sequencing)
 

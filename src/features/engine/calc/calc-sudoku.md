@@ -24,6 +24,21 @@ The uniqueness check is **belt-and-braces**: the logical solver is sound (only t
 puzzle it fully solves already has a unique solution. The exact-solver check stays as a guard against
 a technique bug, off the hot path.
 
+### Seeding (`options.rng`) — every entropy source must be threaded
+
+`CalcGenPipelineOptions.rng` makes generation reproducible: **same seed → same puzzle**. That
+contract only holds if *every* random step receives it. Until August 2026 it did not — `rng` was
+passed to `generateCalcCageShapes` and `assignCalcCages` but **not** to the `fillGrid` call that
+builds the Latin square, so `fillGrid` silently fell back to its `Math.random` default and a seeded
+caller still got a different puzzle every run. Fixed by passing `rng` through.
+
+This is a partial-seeding bug worth recognising by shape: it fails *silently* and only in the
+direction of too much entropy, so a test that seeds for determinism keeps passing while quietly
+being a randomised test. The default path is unaffected either way (`rng` already defaults to
+`Math.random` when no seed is supplied). **The same omission still exists in
+`killer-sudoku.ts` (two sites) and `calc-generator.ts`** — tracked separately; `sudoku.ts` threads
+it correctly and is the reference.
+
 ## Difficulty rides SHAPE first, then the score (rebalanced)
 
 The v1 first cut leaned almost entirely on the score band, which left even "hard" givens-heavy and
@@ -51,8 +66,18 @@ from **measured per-size distributions** and are **not comparable across sizes**
   definition and a tighter cap, so freebies get scarce.
 - **`maxCombosPerCage`** bounds any single cage's ambiguity (keeps it solvable within `solveCap`).
 - **`minBentRatio`** (available, unused) — a bent cage (spans ≥2 rows AND columns) permits repeats →
-  more combinations → harder. Not gated on any tier: `maxSize: 4` already yields ~61% bent naturally,
+  more combinations → harder. Not gated on any tier: `maxSize: 4` already yields ~49% bent naturally,
   so forcing a floor only halved the generation yield for no structural gain. Kept as a lever.
+
+  **Corrected August 2026 — this said "~61%", which was never right.** Re-measured over 4200+
+  boards it is **0.488** of multi-cell cages, and it measured **0.527** even at the commit that
+  first wrote 61%. The gap between 0.527 and today's 0.488 has a known, deliberate cause: the
+  operator reweight that restored `−`/`÷` variety. Both are **2-cell-only** operators, so favouring
+  them raised the 2-cell share of cages from 31.7% → 38.6%, and a 2-cell cage is orthogonally
+  adjacent by definition and therefore *never* bent. Among cages of size ≥3 the bent rate is
+  **~78%**. Predicted from the size mix: 0.778 × (1 − 0.386) = 0.478, against 0.488 measured — the
+  mechanism accounts for the drift. The "skip the floor" argument is unaffected; only the number
+  was wrong. Full record: `Docs/research/keisan-test-flake-and-bent-ratio-divergence.md`.
 - **`techniqueFloor`** is Tatham's tier gate: a fresh solve capped one tier down must FAIL, so the
   tier is the *minimum* sufficient difficulty. Applied lightly (hard, `> T1`) because our solver's
   tier ladder is coarse — see below.
@@ -108,6 +133,11 @@ construction*, no score band needed (score ~99 vs Hard's ~61). `maxGuessSteps: 5
 (offline-pool friendly; interactive-tolerable, like Killer extreme); `verifyNodeBudget: 300000` caps
 the low-givens uniqueness proof.
 
+**Tail shape (re-measured August 2026, 30 idle samples):** p50 **152 ms**, mean 292 ms, p90 795 ms,
+max **1264 ms** — the max is **8.3× the median**. The averages above are right, but the *spread* is
+the number that matters operationally: a rare-accept search has no meaningful worst case, so any
+caller (or test) sizing a timeout off the average will eventually be wrong. See `vitest.config.md`.
+
 **Extreme (K7d) — the 5th tier, on the guess-STEP count.** K7b proved guess *depth* never exceeds 1,
 but K7d Slice-0 instrumentation found the guess-step *count* (`result.guessSteps`) spreads 1→23 and is
 strongly monotone with difficulty (median solve time climbs ~28× across the range). So Extreme =
@@ -117,6 +147,13 @@ the step band; same 0-given shape + `solveCap 5` + `techniqueFloor 4`. Rare + sl
 ~2.3 s/board — an offline-cron-pool / slow-interactive tier (like Killer extreme). The Slice-1/2
 technique expansion (cage-line intersection, pairwise multi-cage elimination) was **not needed** — the
 step-count axis gave a cleaner, cheaper tier; those remain deferred (see the K7d research brief).
+
+**Tail shape (re-measured August 2026, 30 idle samples):** p50 **1663 ms**, mean 2322 ms (confirming
+the ~2.3 s/board figure), p90 **5019 ms**, max **11635 ms** — the max is **7× the median**. This is
+the heaviest tail in the engine and it is *intrinsic* to a ~1%-accept search, not a defect. Practical
+consequence: Extreme must stay an **offline-pool tier** (never generated in a request path), and its
+test carries a 120 s timeout — a bad draw compounded by CI worker contention was observed at 35 s,
+which is what retired the old 30 s value. See `vitest.config.md`.
 
 ## Mystery / No-Op mode (K6)
 
@@ -134,7 +171,7 @@ the single-operator "freebie" heuristics are skipped for no-op cages (their op i
 
 Every band generates **avg ≤ 78 ms** (6×6 hard the slowest, max ~245 ms — under the 1 s budget),
 **0 fails in 40**, score ranges **disjoint per size**. Structure: **6×6 hard carries 0 single-cell
-givens and ~4.7 four-cell cages, ~61% bent, ~39% `×`, and −/÷ in ~96% of boards** (was up to 7
+givens and ~4.7 four-cell cages, ~49% bent, ~38% `×`, and −/÷ in ~94% of boards** (was up to 7
 givens, no size-4 cages, uniform ops). The `×` weight is deliberately *not* maximal: an early
 `{mul:4}`-heavy cut left subtraction/division nearly absent (they're 2-cell-only, and hard's big
 cages can only be `+`/`×`), so hard uses equal `mul/sub/div` weights — `×` still wins ~60% of the
