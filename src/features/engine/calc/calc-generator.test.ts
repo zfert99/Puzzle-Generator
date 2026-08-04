@@ -9,6 +9,16 @@ import {
 import { computeTarget, type CalcCage } from './calc-types';
 
 /** Deterministic LCG in [0, 1) so tests are reproducible. */
+/**
+ * Base seed for the `generateUniqueCalc` cases below, drawn per run and reported on failure.
+ * These assert structural invariants (Latin square, partition, cages satisfied, uniqueness) that
+ * must hold for EVERY board, so they randomize and log rather than pin — see the same reasoning in
+ * `calc-logical-solver.test.ts`. Before 2026-08-04 the seed was decorative here anyway:
+ * `generateUniqueCalc` ignored `rng` for its Latin square, so these grids were already random.
+ */
+const BASE_SEED = Math.floor(Math.random() * 0x10000000);
+const replay = `BASE_SEED=${BASE_SEED} (hard-code this to reproduce)`;
+
 function seededRng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -110,24 +120,24 @@ describe('assignCalcCages', () => {
 
 describe('generateUniqueCalc', () => {
   it('produces a unique, well-formed 4×4 puzzle (Latin square, partition, cages satisfied)', () => {
-    const { cages, solution, gridSize } = generateUniqueCalc(4, { rng: seededRng(123), maxSize: 3 });
+    const { cages, solution, gridSize } = generateUniqueCalc(4, { rng: seededRng(BASE_SEED + 123), maxSize: 3 });
     expect(gridSize).toBe(4);
-    expect(isLatinSquare(solution, 4)).toBe(true);
-    expect(cagesPartitionGrid(cages, 4)).toBe(true);
-    expect(cagesSatisfied(cages, solution, 4)).toBe(true);
+    expect(isLatinSquare(solution, 4), replay).toBe(true);
+    expect(cagesPartitionGrid(cages, 4), replay).toBe(true);
+    expect(cagesSatisfied(cages, solution, 4), replay).toBe(true);
   });
 
   it('produces a unique 6×6 puzzle', () => {
-    const { cages, solution } = generateUniqueCalc(6, { rng: seededRng(999), maxSize: 3 });
-    expect(isLatinSquare(solution, 6)).toBe(true);
-    expect(cagesPartitionGrid(cages, 6)).toBe(true);
-    expect(cagesSatisfied(cages, solution, 6)).toBe(true);
+    const { cages, solution } = generateUniqueCalc(6, { rng: seededRng(BASE_SEED + 999), maxSize: 3 });
+    expect(isLatinSquare(solution, 6), replay).toBe(true);
+    expect(cagesPartitionGrid(cages, 6), replay).toBe(true);
+    expect(cagesSatisfied(cages, solution, 6), replay).toBe(true);
   });
 
   it('fuzz: every generated 4×4 is genuinely unique per an independent brute force', () => {
     for (let seed = 1; seed <= 12; seed++) {
-      const { cages } = generateUniqueCalc(4, { rng: seededRng(seed * 31), maxSize: 3 });
-      expect(bruteForceCount(cages, 4, 2)).toBe(1); // exactly one solution — matches the solver
+      const { cages } = generateUniqueCalc(4, { rng: seededRng(BASE_SEED + seed * 31), maxSize: 3 });
+      expect(bruteForceCount(cages, 4, 2), replay).toBe(1); // exactly one solution — matches the solver
     }
   });
 

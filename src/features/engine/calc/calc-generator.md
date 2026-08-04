@@ -47,7 +47,7 @@ itself part of what the generate-and-test loop varies to hit uniqueness.
 ```text
 assert every cage size 2..maxSize has an assignable operator (else throw — legality invariant)
 repeat up to maxAttempts:
-  solution = a random Latin square (fillGrid on the boxless config), or an injected one
+  solution = a Latin square drawn from `rng` (fillGrid on the boxless config), or an injected one
   shapes   = generateCalcCageShapes(size, …)
   cages    = assignCalcCages(shapes, solution, { activeOps })   // null → un-cluable, retry
   if CalcSolver(cages, size).countSolutions(2, verifyNodeBudget) === 1:
@@ -58,3 +58,12 @@ throw (no unique layout found)
 This is the K2 building block; K4 wraps it with difficulty grading (a logical-solver tier + a
 two-factor score) and the shape gates. RNG is injectable (`rng`) and a solution can be injected
 (`solution`) for deterministic tests.
+
+> **`rng` must reach the Latin square, and for a long time it did not** (fixed 2026-08-04). The
+> grid is the *first* random step and every later one reads the values it produced, so when
+> `fillGrid` was called without `rng`, a caller-supplied seed controlled only the tail of the
+> pipeline: two calls with the same seed returned **different solutions and different cages**.
+> Nothing failed, because nothing asserted reproducibility — eight seeded test call sites had been
+> silently non-deterministic. If a new random step is ever added here, thread `rng` into it and
+> prove determinism with a same-seed equality check; a passing suite will not tell you.
+> See [`keisan-test-flake-and-bent-ratio-divergence.md`](../../../../Docs/research/keisan-test-flake-and-bent-ratio-divergence.md).

@@ -204,12 +204,31 @@ line, so fixing rather than tolerating was the right call.
 through; now same seed → same puzzle, different seed → different puzzle.
 
 This class of bug fails silently and only toward *more* entropy, so a test that seeds for
-determinism keeps passing while quietly being randomised. **The same omission remains in
-`killer-sudoku.ts` (2 sites) and `calc-generator.ts`** — meaning `calc-generator.test.ts` and
-`calc-logical-solver.test.ts` pass `rng: seededRng(n)` and are *not* deterministic today. That also
-explains the wide runtime spread of the `findT4StuckUnique` seed search. Left for a separate change:
-making those suddenly deterministic alters which cases they cover and deserves its own review.
-`sudoku.ts` threads it correctly and is the reference implementation.
+determinism keeps passing while quietly being randomised. `sudoku.ts` threads it correctly and is the
+reference implementation.
+
+#### ✅ The remaining sites are now fixed too (2026-08-04, same branch)
+
+Originally deferred here on the grounds that "making those suddenly deterministic alters which cases
+they cover". A `/code-review` pass flagged the deferral as leaving a **documented-but-false** API
+contract — `CalcGenPipelineOptions.rng` is annotated *"Injectable for deterministic tests"* — so it
+was closed rather than carried. Proof it was live, not theoretical: `generateUniqueCalc(6, { rng:
+seededRng(555), maxSize: 3 })` called twice returned `solutions identical: false, cages identical:
+false`. **Eight** seeded call sites across `calc-generator.test.ts` and `calc-logical-solver.test.ts`
+were affected; after the fix the same check returns `true` / `true`.
+
+`killer-sudoku.ts` (2 sites) is fixed as well, though it was **dormant rather than live** — every
+seeded caller there passes `solution: SOL9`, which skips the `fillGrid` branch entirely. Worth
+recording, because its `killer-sudoku.md` already claimed *"Injectable `rng` / `solution` keep the
+whole pipeline deterministic"*: a doc asserting a property no caller happened to exercise. The code
+now matches the doc.
+
+**The deferral's actual concern was real and was handled, not ignored.** With seeding fixed, the old
+fixed seeds would have pinned those fuzz loops to ~24 grids forever — a genuine coverage loss, since
+their Latin squares had been varying every run. They assert *properties* that must hold for all
+boards (soundness, uniqueness, tier caps), not exact outputs, so per this doc's own adopted rule
+(Dutta et al.) they now draw a random `BASE_SEED` per run and report it on failure. Coverage is
+preserved, and a red run is replayable for the first time.
 
 ## Cause 1, revisited: cap the workers, don't just raise the ceiling
 

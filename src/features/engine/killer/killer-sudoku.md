@@ -128,6 +128,15 @@ so exhaustion is astronomically unlikely with a bounded ~10 s worst case).
 Injectable `rng` / `solution` keep the whole pipeline deterministic for tests (and RNG-driven →
 client-side only, AGENTS.md §1).
 
+> **This claim was not true until 2026-08-04.** Both `fillGrid` calls (`generateUniqueKiller`, and
+> the batch path) omitted `rng`, so a seeded caller that did *not* also inject `solution` got a
+> random Latin square and non-reproducible output. It went unnoticed because every seeded caller
+> here happens to pass `solution: SOL9`, which skips that branch entirely — the bug was dormant,
+> not absent. Both calls now thread `rng`, so the sentence above holds as written. The identical
+> omission was live in `calc-generator.ts`; see
+> [`calc-generator.md`](../calc/calc-generator.md) and the
+> [research record](../../../../Docs/research/keisan-test-flake-and-bent-ratio-divergence.md).
+
 ## 6×6 Killer (M2)
 
 `generateKillerSudoku(difficulty, { gridSize: 6 })` — the research's beginner variant: digits

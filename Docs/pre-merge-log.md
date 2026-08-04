@@ -30,6 +30,108 @@ the diff under review.
 
 ---
 
+## 2026-08-04 — `/code-review` finding fixed: seeded generation was never seeded
+
+Branch `fix/keisan-test-flake` on `77f7cef`. Closes the one finding from the hosted-style review pass
+below. Touches two engine cores (`calc-generator.ts`, `killer-sudoku.ts`), so benchmarks were
+mandatory — and they produced the most interesting result of the run.
+
+### The bug
+
+`generateUniqueCalc` bound `const rng = options.rng ?? Math.random` and then called
+`fillGrid(solution, config)` **without it**. The Latin square is the *first* random step and every
+later one reads its values, so a caller's seed controlled only the tail. Proof, not inference:
+
+```text
+generateUniqueCalc(6, { rng: seededRng(555), maxSize: 3 })  ×2
+  before:  solutions identical: false   cages identical: false
+  after:   solutions identical: true    cages identical: true
+```
+
+**Eight** seeded call sites were affected. The docblock says *"Injectable for deterministic tests"* —
+a documented contract the code did not honour, which is why this could not stay deferred.
+`killer-sudoku.ts` (2 sites) had the identical omission but **dormant**: every seeded caller there
+passes `solution: SOL9`, skipping the branch. Its `killer-sudoku.md` nonetheless already claimed the
+pipeline was fully deterministic — a doc asserting a property no caller exercised. Fixed both.
+
+### The judgment call, and why it isn't the obvious one
+
+Threading `rng` while keeping the old fixed seeds would have made those fuzz loops **fully**
+deterministic — pinning them to ~24 grids forever. That is a genuine *coverage loss*, because the
+bug meant their Latin squares had been varying every run. The original deferral's stated reason
+("makes those tests suddenly deterministic") was therefore correct, and was handled rather than
+overridden: these assert *properties* that must hold for all boards (soundness, uniqueness, tier
+caps), not exact outputs, so per this project's already-adopted rule (Dutta et al.) they now draw a
+random `BASE_SEED` per run and report it on failure. Coverage preserved; a red run replayable for the
+first time.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 399 passed (52 files) |
+| **Randomized-seed repeats** | **12/12 clean** — the new variability is the risk, so it was measured |
+| lint · build · markdownlint · audit | all exit 0 |
+| Relative-link check | 278 links / 229 files — 0 broken |
+| `benchmark-calc.ts` · `benchmark-killer.ts` | run — no regression, established by A/B below |
+
+### Findings
+
+**None outstanding.** One scare, resolved:
+
+Killer benchmarks came in ~30% above the 31 July baseline across *every* tier including the n=20
+ones — a different signature from ordinary small-n noise, so it was not waved off. A same-machine,
+same-session A/B settled it:
+
+| Tier | base #1 | base #2 | fix #1 | fix #2 |
+|---|---|---|---|---|
+| Easy (20×) | 10.60 | 13.25 | 16.85 | **10.85** |
+| Hard (20×) | 479.35 | 497.25 | 513.50 | **313.35** |
+| Expert (10×) | 712.60 | **269.00** | 442.90 | **227.20** |
+| Extreme (5×) | 6770.60 | 8964.40 | 12754.80 | **6056.80** |
+
+**Two runs of *identical* pre-fix code swing Expert by −62%.** That is the noise floor. The fixed
+build then posts the *fastest* figure for Hard, Expert and Extreme. Regression excluded — consistent
+with the change being provably a no-op on the default path, where `rng === Math.random`, exactly what
+`fillGrid`'s default parameter already was. All 34 rows are committed; the interleaving is the
+evidence.
+
+### Docs
+
+Mirrors updated for both engine files. `calc-generator.md` gains a warning that `rng` must reach the
+Latin square and that a passing suite will not reveal otherwise; `killer-sudoku.md` records that its
+determinism claim was false-but-unfalsifiable until now. Research doc's deferred follow-up flipped to
+✅ with the measured before/after.
+
+### Verified vs. read
+
+**Executed:** same-seed equality before *and* after the fix; 12 randomized-seed full-suite repeats;
+four benchmark runs across two code versions on one machine; all gates.
+**Read only:** nothing.
+
+### Reviews
+
+`/security-review` **not run** — no auth/authz/data-access code.
+**`/code-review` NOT run by me** — user-triggered and billed; an agent cannot launch it. The finding
+this entry closes came from an owner-triggered run.
+
+### Rules this run produced
+
+- **An injectable-RNG option is a claim that needs a test.** Seeding fails *silently and toward more
+  entropy*: the tests still pass, they are just secretly random. Any `rng`/`seed` parameter should
+  have one same-seed equality assertion, or it will rot into decoration. Eight call sites trusted
+  this one for months.
+- **"Deferred because fixing it changes test coverage" is a reason to fix the docs *now*.** The
+  deferral was sound about the tests and silent about the docblock, which kept promising determinism
+  the code never delivered. Split the two: defer the behaviour, never defer the correction.
+- **A cross-tier benchmark shift needs a same-machine A/B before it counts.** Comparing to a baseline
+  from another day conflates code with machine state. Two runs of identical code here differed by
+  62% — larger than the "regression" being investigated.
+
+**Verdict:** gate green. Not merged — owner's call.
+
+---
+
 ## 2026-08-04 — Keisan flake branch, re-gated after the follow-up fixes
 
 Branch `fix/keisan-test-flake` on `77f7cef`, 3 commits · 778+/21− across 10 files, but only
