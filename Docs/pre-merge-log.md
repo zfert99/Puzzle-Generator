@@ -24,9 +24,108 @@ required real work to establish — not in restating that lint passed.
 Check here before spending runs on attribution. A test listed here failing does **not** implicate
 the diff under review.
 
-| Test | Symptom | Established |
+| Test | Symptom | Status |
 |---|---|---|
-| `src/features/engine/calc/calc-sudoku.test.ts` → `generateCalcSudoku > "hard leans on × …"` | Times out (`Test timed out in 5000ms`) in ~10–15% of **full-suite** runs. Solo: 261/453/640 ms. Under parallel load: measured **5738 ms** against Vitest's default 5000 ms (`vitest.config.ts` sets no `testTimeout`). Cause is real randomized generation + worker CPU contention, not the assertions. | 2026-08-03, ~18 full-suite runs. Fix tracked separately. |
+| `src/features/engine/calc/calc-sudoku.test.ts` → `generateCalcSudoku > "hard leans on × …"` | Times out (`Test timed out in 5000ms`) in ~10–15% of **full-suite** runs. Solo: 261/453/640 ms. Under parallel load: measured **5738 ms** against Vitest's then-default 5000 ms. Cause was worker CPU contention against real randomized generation, not the assertions. | **✅ Resolved 2026-08-04** (`fix/keisan-test-flake`). Kept here because branches cut before that fix still hit it. Established 2026-08-03 over ~18 full-suite runs; root-caused and fixed the next day — see the entry below, which found **three** distinct causes under this one test name. |
+
+---
+
+## 2026-08-04 — Keisan test flake killed (three causes), rebased onto the docs move
+
+Branch `fix/keisan-test-flake` on `77f7cef` · authored on `341b987` in a parallel worktree, rebased
+5 commits forward · engine + tests + config + docs.
+
+The substance is in the commit message and
+[`research/keisan-test-flake-and-bent-ratio-divergence.md`](research/keisan-test-flake-and-bent-ratio-divergence.md):
+three unrelated problems shared one test name — worker oversubscription (~11 forks on 12 cores), a
+second heavy-tailed timeout visible only over 30 runs, and a genuine *statistical* flake whose
+`> 0.4` threshold sat 2.1 sd below its true mean. Also fixes a latent bug where `rng` was never
+threaded into `fillGrid`, so seeded callers silently got random Latin squares.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 399 passed (52 files) |
+| `npm run lint` | clean |
+| `npm run build` | compiled |
+| `npx markdownlint-cli` | clean |
+| `npm audit --audit-level=high --omit=dev` | exit 0 |
+| Relative-link check | 274 links / 229 files — 0 broken *(after the fixes below)* |
+| `benchmark-calc.ts` | run — engine core touched. **No regression; see Findings 2** |
+
+### Findings
+
+1. **The rebase silently broke a doc link, and a link checker only caught half of it.** This work was
+   authored on `341b987`, before #56 moved `keisan-walkthrough.md` into `Docs/archive/`. Git's rename
+   detection correctly re-targeted the *edits*, but not the relative links inside the moved file:
+   `](research/…)` at `archive/keisan-walkthrough.md:391` resolved one level too shallow. Fixed to
+   `../research/…`. **The second instance was invisible to tooling** — the research doc names
+   `Docs/keisan-walkthrough.md` in *prose*, which no link checker parses. Found only by grepping the
+   moved filename as a bare string.
+2. **An apparent 2× benchmark regression is noise, established rather than assumed.** Against the
+   2026-08-03 baseline: Extreme 1014→1999 ms, Mystery 24→77 ms. Two independent checks say measurement,
+   not code:
+   - *Provably behaviour-neutral on the default path.* The only functional line is
+     `fillGrid(solution, latinConfig, rng)`. `calc-sudoku.ts:316` sets `rng = options.rng ?? Math.random`
+     and `grid-utils.ts:117` **already defaulted that parameter to `Math.random`** — so the call is
+     identical unless a caller passes a seed, and no production caller does (checked: `api/puzzle/route.ts`,
+     `dailies.service.ts`).
+   - *Re-ran the benchmark on the same commit.* Expert 398.90→611.90, Extreme 1999.20→3167.80, Mystery
+     77.40→47.10 ms. Back-to-back variance equals or exceeds the "regression". Extreme samples 5
+     puzzles, Mystery 10. **Both runs are committed deliberately** — two adjacent rows reading 1999 and
+     3167 document the noise floor better than any comment could.
+3. *(carried, not introduced)* The commit lands **five review findings unfixed**, recorded under "Open
+   follow-ups" in the research doc — notably that the 0.39 threshold was validated against `Math.random`
+   rather than the seeded path it runs on (re-measured there: still 0/400, but 3.38 sd, not 3.48).
+   Deliberately left for the owner rather than quietly cleaned up.
+
+### Invariants checked (only those the diff touches)
+
+- **Slot key / `ON CONFLICT` / retired keys / ownership / migrations** — N/A, no daily, DB or auth code.
+- **Archived-doc rule (§7)** — the walkthrough edit **annotates, does not rewrite**: the wrong `~61%`
+  is left in place with a dated *Correction* note saying so explicitly. This is the correct treatment
+  and was verified by reading the diff, not inferred from the commit message.
+- **Assertions not weakened alongside the code they cover** — checked, since "fix the flake" is the
+  classic cover for loosening a test. The threshold moves 0.4→0.39 but `N` doubles 14→28, taking it
+  from 2.1 sd to 3.4 sd (0/400 runs); the other two assertions are 4.1 and 5.0 sd and are untouched.
+  The sample stays random with the seed logged on failure, rather than being pinned — which would
+  have stopped it detecting distribution shifts.
+
+### Docs
+
+`calc-sudoku.md` mirrors `calc-sudoku.ts`; `vitest.config.md` is new for `vitest.config.ts`. Reverse
+sweep found the two stale references in Finding 1. The **Known flaky tests** table above is marked
+resolved rather than deleted — branches cut before this fix still hit the flake, and the answer
+should still be findable.
+
+### Verified vs. read
+
+**Executed:** all six gates; the benchmark **twice**; the link resolver; the `rng` default chain read
+through to `grid-utils.ts:117`; the production callers grepped.
+**Read only:** the 22-run flake verification and the 30×/300×/400× statistical sampling behind the
+threshold change — reproducing those costs hours and the research doc records the method and raw
+figures. The single post-rebase full-suite run passed, which is consistent but is not by itself
+evidence a ~10–15% flake is gone.
+
+### Reviews
+
+`/security-review` **not run** — no auth/authz/data-access code; changes are test config, a test
+threshold, an RNG-threading fix and comments.
+**`/code-review` NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Rules this run produced
+
+- **A rebase across a file *move* needs a link check, not just a clean merge.** Git re-targets edits
+  by rename detection and reports no conflict, while every relative link *inside* the moved file is
+  now wrong by one level. "Rebased cleanly" says nothing about link integrity.
+- **Grep the moved filename as a bare string, not just as a link.** Prose references
+  (`` `Docs/foo.md:347` ``) are invisible to any resolver that only walks `](…)`, and they rot exactly
+  as fast.
+- **Before believing a benchmark regression, re-run the benchmark.** On small-n randomized generators
+  the run-to-run spread here reaches ~60%. One number against one baseline is not a measurement.
+
+**Verdict:** gate green. Not merged — owner's call, and note Finding 3's five open follow-ups.
 
 ---
 

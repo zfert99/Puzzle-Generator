@@ -87,8 +87,8 @@ systematic drift. Most likely it was measured while the `minBentRatio` floor was
 the same walkthrough records that the floor was later dropped because it "halved the generation
 yield for no structural gain", and dropping it would lower the natural bent rate.
 
-Affected live text: `calc-sudoku.md:54`, `calc-sudoku.md:149`, `Docs/keisan-walkthrough.md:347`,
-`Docs/keisan-walkthrough.md:366`.
+Affected live text: `calc-sudoku.md:54`, `calc-sudoku.md:149`,
+`Docs/archive/keisan-walkthrough.md:347`, `Docs/archive/keisan-walkthrough.md:366`.
 
 ## Root cause of the divergence (confirmed by measurement)
 
