@@ -217,7 +217,12 @@ export function generateUniqueCalc(
       solution = copyGrid(options.solution);
     } else {
       solution = createEmptyGrid(size);
-      fillGrid(solution, config); // boxless config → a pure random Latin square
+      // `rng` MUST be threaded: the Latin square is the FIRST random step, and every later one
+      // (cage shapes, operator assignment) reads the values it produced. Omitting it here left
+      // `options.rng` controlling only the tail of the pipeline, so two calls with the same seed
+      // returned different solutions AND different cages — silently, since nothing asserts
+      // reproducibility. See `Docs/research/keisan-test-flake-and-bent-ratio-divergence.md`.
+      fillGrid(solution, config, rng); // boxless config → a Latin square drawn from `rng`
     }
 
     const shapes = generateCalcCageShapes(size, { ...options, maxSize });

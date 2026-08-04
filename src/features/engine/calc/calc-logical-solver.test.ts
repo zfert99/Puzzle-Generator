@@ -5,6 +5,20 @@ import { generateUniqueCalc } from './calc-generator';
 import type { CalcCage } from './calc-types';
 import type { GridSize } from '../sudoku';
 
+/**
+ * Base seed for every fuzz loop below, drawn fresh per run and reported on failure.
+ *
+ * These loops used to pass fixed seeds, but `generateUniqueCalc` ignored `rng` for its Latin square
+ * (fixed 2026-08-04), so the grids were silently random anyway — the fuzz coverage was real but the
+ * "seed" was decorative and a red run could not be replayed. Now that seeding works end to end,
+ * keeping the old fixed seeds would have pinned these to ~24 grids forever. These assert *properties*
+ * that must hold for ALL boards (soundness, tier caps), not exact outputs, so per the project's
+ * adopted rule they randomize and log rather than pin — a failure here is a genuine bug on a grid the
+ * fixed set happened to miss, and `BASE_SEED` replays it exactly.
+ */
+const BASE_SEED = Math.floor(Math.random() * 0x10000000);
+const replay = `BASE_SEED=${BASE_SEED} (hard-code this to reproduce)`;
+
 function seededRng(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -41,7 +55,7 @@ describe('CalcLogicalSolver — soundness (fuzz vs the K2 exact solver)', () => 
     let total = 0;
     for (const size of sizes) {
       for (let seed = 1; seed <= 24; seed++) {
-        const { cages, solution } = generateUniqueCalc(size, { rng: seededRng(seed * 17 + size), maxSize: 3 });
+        const { cages, solution } = generateUniqueCalc(size, { rng: seededRng(BASE_SEED + seed * 17 + size), maxSize: 3 });
         const solver = new CalcLogicalSolver(cages, size);
         const result = solver.solve();
         const grid = solver.grid2d;
@@ -51,18 +65,18 @@ describe('CalcLogicalSolver — soundness (fuzz vs the K2 exact solver)', () => 
         // whether or not it finished. An unsound elimination would surface as a wrong placement.
         for (let r = 0; r < size; r++) {
           for (let c = 0; c < size; c++) {
-            if (grid[r][c] !== 0) expect(grid[r][c]).toBe(solution[r][c]);
+            if (grid[r][c] !== 0) expect(grid[r][c], replay).toBe(solution[r][c]);
           }
         }
         if (result.solved) {
           solvedCount += 1;
-          for (let r = 0; r < size; r++) expect(grid[r]).toEqual(solution[r]);
+          for (let r = 0; r < size; r++) expect(grid[r], replay).toEqual(solution[r]);
         }
       }
     }
     // Gradable-share sanity: the technique set solves a healthy fraction of QuadOp puzzles at
     // maxSize 3 (the exact bands are calibrated in K4; this just guards against a broken ladder).
-    expect(solvedCount / total).toBeGreaterThan(0.5);
+    expect(solvedCount / total, replay).toBeGreaterThan(0.5);
   });
 });
 
@@ -70,7 +84,7 @@ describe('CalcLogicalSolver — grading', () => {
   it('reports a hardest tier in 1..4 for a generated (non-trivial) puzzle it solves', () => {
     // Find a seed whose puzzle the logical solver fully solves, then check the grade is sane.
     for (let seed = 1; seed <= 40; seed++) {
-      const { cages } = generateUniqueCalc(4, { rng: seededRng(seed * 13), maxSize: 3 });
+      const { cages } = generateUniqueCalc(4, { rng: seededRng(BASE_SEED + seed * 13), maxSize: 3 });
       const result = new CalcLogicalSolver(cages, 4).solve();
       if (result.solved && result.hardestTier >= 1) {
         expect(result.hardestTier).toBeGreaterThanOrEqual(1);
@@ -80,13 +94,13 @@ describe('CalcLogicalSolver — grading', () => {
         return;
       }
     }
-    throw new Error('expected at least one generated 4×4 to be logically solvable with tier ≥ 1');
+    throw new Error(`expected at least one generated 4×4 to be logically solvable with tier ≥ 1 — ${replay}`);
   });
 
   it('respects a maxTier cap (a tier-capped solve never reports a higher tier)', () => {
-    const { cages } = generateUniqueCalc(6, { rng: seededRng(555), maxSize: 3 });
+    const { cages } = generateUniqueCalc(6, { rng: seededRng(BASE_SEED + 555), maxSize: 3 });
     const capped = new CalcLogicalSolver(cages, 6).solve({ maxTier: 2 });
-    expect(capped.hardestTier).toBeLessThanOrEqual(2);
+    expect(capped.hardestTier, replay).toBeLessThanOrEqual(2);
   });
 });
 
@@ -95,7 +109,7 @@ describe('CalcLogicalSolver — bounded-recursion tier (K7b, T5 = depth-1 Nishio
   // depth-1 guess can — the exact population Expert/Extreme will draw from. Deterministic per seed.
   function findT4StuckUnique(): { cages: ReturnType<typeof generateUniqueCalc>['cages']; solution: number[][] } | null {
     for (let seed = 1; seed <= 120; seed++) {
-      const { cages, solution } = generateUniqueCalc(9, { rng: seededRng(seed * 101 + 7), minSize: 2, maxSize: 3 });
+      const { cages, solution } = generateUniqueCalc(9, { rng: seededRng(BASE_SEED + seed * 101 + 7), minSize: 2, maxSize: 3 });
       if (cages.filter((c) => c.cells.length === 1).length > 3) continue; // want the hard, low-givens regime
       const stuck = !new CalcLogicalSolver(cages, 9).solve({ maxTier: 4 }).solved;
       if (stuck && new CalcLogicalSolver(cages, 9).solve({ maxTier: 5 }).solved) return { cages, solution };
@@ -105,7 +119,7 @@ describe('CalcLogicalSolver — bounded-recursion tier (K7b, T5 = depth-1 Nishio
 
   it('solves a T4-stuck 9×9 with depth-1 guessing, and the solution is CORRECT', () => {
     const found = findT4StuckUnique();
-    expect(found).not.toBeNull();
+    expect(found, replay).not.toBeNull();
     const { cages, solution } = found!;
 
     // T4 genuinely can't finish it (that's why it needs the guess tier).
@@ -118,19 +132,23 @@ describe('CalcLogicalSolver — bounded-recursion tier (K7b, T5 = depth-1 Nishio
     expect(r5.solved).toBe(true);
     expect(r5.hardestTier).toBe(5);
     expect(r5.maxGuessDepth).toBe(1);
-    for (let r = 0; r < 9; r++) expect(solver.grid2d[r]).toEqual(solution[r]);
-  }, 30000); // heavy: searches up to 120 seeds of unique 9×9 generation — allow headroom under suite load
+    for (let r = 0; r < 9; r++) expect(solver.grid2d[r], replay).toEqual(solution[r]);
+    // Heavy: searches up to 120 seeds of unique 9×9 generation, so its cost depends on how deep into
+    // that seed budget the first T4-stuck hit lands — a wide, heavy-tailed distribution. Worst seen
+    // across 30 full-suite runs was 10378ms, which left the former 30s only ~3× headroom; 60s
+    // restores ~6×, in line with the other generator-backed tests.
+  }, 60_000);
 
   it('leaves maxGuessDepth 0 when the named ladder already solves the puzzle', () => {
     // A board T4 solves must never be charged a guess — the tier stays ≤ 4 even with maxTier 5.
     for (let seed = 1; seed <= 60; seed++) {
-      const { cages } = generateUniqueCalc(6, { rng: seededRng(seed * 31), maxSize: 3 });
+      const { cages } = generateUniqueCalc(6, { rng: seededRng(BASE_SEED + seed * 31), maxSize: 3 });
       const r = new CalcLogicalSolver(cages, 6).solve({ maxTier: 5 });
       if (r.solved && r.hardestTier <= 4) {
         expect(r.maxGuessDepth).toBe(0);
         return;
       }
     }
-    throw new Error('expected a T4-solvable 6×6 in the seed range');
+    throw new Error(`expected a T4-solvable 6×6 in the seed range — ${replay}`);
   });
 });

@@ -215,7 +215,7 @@ export function generateUniqueKiller(
       solution = copyGrid(options.solution);
     } else {
       solution = createEmptyGrid(config.size);
-      fillGrid(solution, config);
+      fillGrid(solution, config, rng); // seeded: see the same fix in calc-generator.ts
     }
     const cages = generateCages(solution, GRID_SIZE, { rng, maxSize, minSize: options.minSize });
     if (!shapeOk(cages)) continue; // cheap reject before the uniqueness check
@@ -261,7 +261,7 @@ export function generateKillerSudoku(
       solution = copyGrid(options.solution);
     } else {
       solution = createEmptyGrid(config.size);
-      fillGrid(solution, config);
+      fillGrid(solution, config, rng); // seeded: see the same fix in calc-generator.ts
     }
 
     const cages = generateCages(solution, gridSize, { rng, maxSize, minSize });

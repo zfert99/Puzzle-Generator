@@ -118,7 +118,7 @@ interface CalcDifficultyConfig {
 // Operator-mix weight presets (see `operatorWeights`): easy 5/3/2 over +/−/÷; hard keeps × prominent
 // while retaining subtraction/division variety. Note × is applied to ALL cages, but −/÷ are 2-cell
 // only, so on the (majority) 3+-cell cages only +/× compete — there × still wins ~60%. Equal −/÷/×
-// weights therefore still yield a ×-weighted puzzle overall (~39%, ≥ the doc's 30%) while ensuring
+// weights therefore still yield a ×-weighted puzzle overall (~38% measured, ≥ the doc's 30%) while ensuring
 // every hard board has some −/÷ (an over-× first cut left them nearly absent — user feedback).
 const EASY_OP_WEIGHTS: Partial<Record<CalcOperator, number>> = { add: 5, sub: 3, div: 2 };
 const HARD_OP_WEIGHTS: Partial<Record<CalcOperator, number>> = { mul: 3, add: 2, sub: 3, div: 3 };
@@ -182,15 +182,23 @@ const DIFFICULTY_CONFIG_4: Partial<Record<CalcDifficulty, CalcDifficultyConfig>>
 /**
  * 6×6 Keisan (36 cells) — full lever spec (the flagship size; calibrate here first). Hard: **0
  * givens, `maxSize: 4`** (~4.7 four-cell cages/puzzle, verifies ~0.2 ms avg — no Killer thrash),
- * ×-weighted, ~61% bent, `maxCombos ≤ 15`, gift cap 3, `techniqueFloor > T1`. Easy keeps small cages
+ * ×-weighted, ~49% bent, `maxCombos ≤ 15`, gift cap 3, `techniqueFloor > T1`. Easy keeps small cages
  * + several givens, `+ − ÷` only. Cuts 19 / 31 (measured, disjoint). Gen ≤ ~104 ms avg on hard.
  */
 const DIFFICULTY_CONFIG_6: Partial<Record<CalcDifficulty, CalcDifficultyConfig>> = {
   easy: { activeOps: TRI_OP, minSize: 1, maxSize: 3, solveCap: 4, minSingles: 3, maxSingles: 6, maxCombosPerCage: 6, operatorWeights: EASY_OP_WEIGHTS, giftBanLevel: 'combos1', scoreBand: { max: SCORE_CUT_6_EASY_MED } },
   medium: { activeOps: QUAD_OP, minSize: 2, maxSize: 3, solveCap: 4, maxSingles: 3, maxCombosPerCage: 10, giftBanLevel: 'twoCell', scoreBand: { min: SCORE_CUT_6_EASY_MED, max: SCORE_CUT_6_MED_HARD } },
-  // No `minBentRatio` gate: maxSize-4 already yields ~61% bent naturally, so forcing a floor only
-  // crushed generation yield (dropped the accept rate ~2×) for no structural gain. The bent lever
-  // stays available in the config for tiers that need it.
+  // No `minBentRatio` gate: maxSize-4 already yields a naturally bent-heavy mix, so forcing a floor
+  // only crushed generation yield (dropped the accept rate ~2×) for no structural gain. The bent
+  // lever stays available in the config for tiers that need it.
+  //
+  // The rate is ~49% of multi-cell cages (measured over 4200+ boards, Aug 2026). This comment used
+  // to claim ~61%, which was never accurate — it measured 0.527 even at the commit that wrote it —
+  // and the operator reweight that restored −/÷ variety then moved it to ~0.48. That is a *wanted*
+  // side effect, not a regression: − and ÷ are 2-cell-only operators, so favouring them raises the
+  // 2-cell share of cages (31.7% → 38.6%), and a 2-cell cage is always collinear and therefore
+  // never bent. Among cages of size ≥3 the bent rate is ~78%. The argument for skipping the floor
+  // is unaffected. See `Docs/research/keisan-test-flake-and-bent-ratio-divergence.md`.
   hard: { activeOps: QUAD_OP, minSize: 2, maxSize: 4, solveCap: 4, maxSingles: 0, maxFootholds: 3, maxCombosPerCage: 15, operatorWeights: HARD_OP_WEIGHTS, giftBanLevel: 'mulLowFactor', techniqueFloor: 1, scoreBand: { min: SCORE_CUT_6_MED_HARD } },
 };
 
@@ -319,7 +327,11 @@ export function generateCalcSudoku(
       solution = copyGrid(options.solution);
     } else {
       solution = createEmptyGrid(gridSize);
-      fillGrid(solution, latinConfig);
+      // `rng` MUST be threaded here, not just into the shape/assign steps below: without it the
+      // Latin square falls back to `Math.random` and a caller-supplied seed controls only part of
+      // the pipeline, so "same seed → same puzzle" silently fails. Default path is unchanged
+      // (`rng` is already `Math.random` when no seed is supplied).
+      fillGrid(solution, latinConfig, rng);
     }
 
     const shapes = generateCalcCageShapes(gridSize, { minSize: config.minSize, maxSize: config.maxSize, rng });
