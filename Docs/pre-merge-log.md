@@ -30,6 +30,93 @@ the diff under review.
 
 ---
 
+## 2026-08-04 — jsdom 30 + CI on Node 22, retiring the undici override
+
+Branch `fix/jsdom30-node22` on `6eb4f56` · supersedes
+[#40](https://github.com/zfert99/Puzzle-Generator/pull/40) · 4 lines of `package.json`, 2 of
+`ci.yml`, plus the lockfile.
+
+`jsdom` ^29.1.1→^30.0.1 · `@types/node` ^20→^22 · **`overrides.undici` removed** ·
+`ci.yml` `node-version` "20"→"22" (both jobs).
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 399 passed (52 files) |
+| `npm run lint` | clean (exit 0) |
+| `npm run build` | compiled, all routes emitted |
+| `npm audit --audit-level=high --omit=dev` | **exit 0** — still green *without* the override |
+| `npx markdownlint-cli` | clean |
+| Benchmarks | **skipped — 0 engine files touched** |
+
+### Findings
+
+1. **Merging #40 as dependabot wrote it would have left a silent major-version mismatch.** jsdom
+   30.0.1 declares `undici: ^8.9.0`. Our `overrides.undici: ^7.29.0` is *stronger than* a resolution
+   hint — it would have forced `undici@7.29.0` under jsdom 30, satisfying a `^8.9.0` dependency with
+   a **major version below its floor**. The full suite passes either way, which is exactly what makes
+   this dangerous: nothing in the gate would have flagged it, and the breakage would surface later
+   against a tree nobody would think to connect back to this PR. Removing the override lets npm
+   resolve `undici@8.10.0` as jsdom intends. **Verified both ways** — with the override, the lock
+   pins 7.29.0; without it, 8.10.0, and the audit stays green because 8.x was never in the vulnerable
+   `7.0.0 – 7.28.0` range.
+2. **The engine floor is advisory here, not load-bearing.** jsdom 30 declares
+   `^22.22.2 || ^24.15.0 || >=26.0.0`; the full suite was run on Node **24.13.1** — *below* that floor
+   — and passed 399/399 with no `markAsUncloneable` error. So the original #40 failure was Node 20
+   specifically, not "any Node under the floor". Recorded so nobody re-derives it; there is still no
+   `engines` field in `package.json`, and no `engine-strict`, so npm warns and proceeds.
+
+### Invariants checked (only those the diff touches)
+
+- **Slot key / `ON CONFLICT` / retired keys / ownership / migrations** — all N/A, no source files.
+- **No vulnerable nested copy remains** (§6) — `npm ls` resolves a **single** `undici@8.10.0`, and
+  the two surviving overrides still bind: `sharp@0.35.3` dedupes with Next's nested copy, `postcss`
+  unchanged. Removing one entry from an `overrides` block is precisely when the *others* deserve
+  re-checking.
+
+### Docs
+
+No `.ts`/`.tsx` touched, so no mirrored docs. **Reverse sweep done for the removed override:** every
+live reference to `undici` in the repo sits inside this log's own dated run entries. Per the "never
+rewrite a dated record" rule those are left intact — including the 2026-08-04 undici entry's
+forward-looking line *"the only thing holding the audit gate green until PR #40 … lands"*, which this
+entry resolves. Newest-first ordering means a reader meets the resolution before the superseded
+sentence, so the record stays honest without being falsified. Noted explicitly so a future sweep
+doesn't "fix" it.
+
+### Verified vs. read
+
+**Executed:** all five gates on a real `npm install`; the undici resolution **with and without** the
+override, to prove the mismatch rather than infer it; `npm ls` for the surviving `sharp`/`postcss`
+pins; `@types/node` ^22 run through the full suite *and* `npm run build` before being included,
+since eslint does not type-check.
+**Read only:** CI on Node 22 itself — this runs on the workflow file, so the first real proof is the
+PR's own CI. `node-version: "22"` resolves to the latest 22.x, which satisfies `^22.22.2` by
+construction.
+
+### Reviews
+
+`/security-review` **not run** — no auth/authz/data-access code changed. The security-relevant
+question here is whether dropping an override reopens an advisory, which `npm audit` answers
+directly (exit 0, recorded above).
+**`/code-review` NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Rules this run produced
+
+- **An `overrides` entry outlives the reason for it, and then starts lying.** A pin added to force a
+  package *up* keeps applying after the dependency tree moves on — at which point it silently forces
+  the package *down*, below what its dependent declares. Whenever the dependency that motivated a pin
+  changes major version, re-derive whether the pin is still an upgrade. Green tests do not answer
+  this; only comparing the resolved version against the dependent's declared range does.
+- **Test the removal, not just the addition.** The useful experiment was resolving the tree *without*
+  the override to see what npm picks on its own. That took one `--package-lock-only` install and
+  converted "probably redundant now" into a measured fact.
+
+**Verdict:** gate green. Not merged — owner's call.
+
+---
+
 ## 2026-08-04 — dependabot minor-and-patch group (7 updates)
 
 Branch `pr57-review` ← `dependabot/npm_and_yarn/minor-and-patch-7fba3b5027` on `1f2476b`
