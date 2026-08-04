@@ -1,7 +1,7 @@
 # Home Page (`/`) — Puzzle Hub
 
 The app's front door (5.4). A Server Component: a title + the presentational
-[`PuzzleHub`](../../features/hub/PuzzleHub.md) bento grid + a footer.
+[`PuzzleHub`](../features/hub/PuzzleHub.md) bento grid + a footer.
 
 ```text
 title "Puzzle Lab" (Fredoka) + a Caveat "pick your poison" tagline

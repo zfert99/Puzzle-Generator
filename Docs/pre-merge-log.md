@@ -32,13 +32,14 @@ the diff under review.
 
 ## 2026-08-03 — Docs folder organization + `Docs/README.md`
 
-Branch `chore/pre-merge-log` on `341b987` · docs only, no source touched.
+Branch `chore/pre-merge-log` on `341b987` · docs only (the three `src/**/*.md` edits are mirrored
+docs — no `.ts`/`.tsx` touched).
 
 ### Mechanical
 
 `npx markdownlint-cli` clean on every file this branch touches. **Vitest / lint / build skipped —
 no `.ts`/`.tsx` changed.** A repo-wide relative-link checker was run instead, since moving docs is
-exactly the change a test suite cannot catch.
+exactly the change a test suite cannot catch; it now reports **zero** unresolved links.
 
 ### Findings
 
@@ -52,14 +53,17 @@ exactly the change a test suite cannot catch.
    doc. Archived with a dated banner; the §7 example replaced.
 3. **`multi-zone-migration-plan.md` still said "draft / not yet applied"** months after it shipped
    to production. Banner corrected, original text preserved inline.
-4. *(pre-existing, not this branch)* Three mirrored source docs have broken links —
-   `src/app/page.md` → `../../features/hub/PuzzleHub.md`, `src/app/globals.md` →
-   `../../features/juice/SolvedStamp.md`, `src/app/api/auth/[...all]/route.md` →
-   `../../../features/auth/auth.md`. **Confirmed broken on `main`** by checking out and re-running
-   the link check there. Not fixed here — out of scope for a docs-organization slice.
-5. *(pre-existing, untracked)* `Docs/research/compass_artifact_wf-e8ed3fd9-…_text_markdown.md` —
-   an auto-generated filename that violates the kebab-case rule and fails markdownlint. Left alone:
-   it is uncommitted and not this branch's to adopt.
+4. *(pre-existing, fixed here)* Three mirrored source docs had broken links, each off by one
+   directory level — `src/app/page.md` → `PuzzleHub.md`, `src/app/globals.md` → `SolvedStamp.md`,
+   `src/app/api/auth/[...all]/route.md` → `auth.md`. **Confirmed broken on `main`** first by
+   checking out and re-running the link check there, so they are not fallout from this branch's
+   moves. The repo now has **zero** unresolved relative `.md` links.
+5. *(pre-existing, adopted here)* An untracked research doc sat in `research/` under its
+   generator's filename (`compass_artifact_wf-e8ed3fd9-…_text_markdown.md`) — unfindable, violating
+   the kebab-case rule, and failing markdownlint in 19 places. It is a substantial **Kakuro**
+   research report; renamed to `research/kakuro.md`, lint fixed (blank lines only — no prose
+   touched), and linked from a new roadmap backlog entry so it is actually discoverable. An
+   unreferenced doc is not organized, it is just filed.
 
 ### Rules this run produced
 
@@ -69,6 +73,11 @@ exactly the change a test suite cannot catch.
 - **Moving a doc breaks links in two directions.** Every inbound link *and* every relative link
   *inside* the moved file (its depth changed by a level). Verify with a resolver that walks every
   `](…md)` in the repo, not by eye.
+- **Before claiming a broken link is yours, check `main`.** Three of the six this run surfaced were
+  pre-existing. One `git checkout main` plus a re-run settles it in seconds — the same
+  cheap-attribution move the Known flaky tests table exists for.
+- **A doc nothing links to is filed, not organized.** When adopting a stray doc, give it a real
+  kebab-case name *and* an inbound link from a live doc, or nobody will ever find it.
 
 ### Docs
 

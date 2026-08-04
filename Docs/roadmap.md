@@ -698,6 +698,28 @@ Once the Phase 6 Killer engine lands, KenKen is a natural extension of the same
 > (`src/features/engine/killer/`), reusing only variant-agnostic primitives (grid fill, the
 > classic `HumanSolver` techniques). See the [Killer plan](archive/killer-sudoku-implementation-plan.md).
 
+### Kakuro / Cross Sums 🔜 Candidate for puzzle type 4 or 5
+
+Research complete, nothing built: [kakuro.md](research/kakuro.md). A genuine **fourth type**, not a
+cage variant — no row/column/box constraint at all, only per-run sum + all-different, so it needs
+its own engine module rather than an extension of `killer/`. Headlines from the research:
+
+- **The name looks usable.** Nikoli's two U.S. "KAKURO" word marks were abandoned in 2007 for
+  failure to respond, so there is no live U.S. registration; "Cross Sums" is the generic fallback.
+  Shipping as "Kakuro (Cross Sums)" is the recommendation — pending a counsel check on
+  common-law/foreign marks.
+- **Generation is far harder than solving** (finding-another-solution is ASP-complete), so it needs
+  a solution-first pipeline — symmetric black-cell layout → digit fill → derive clues → erase and
+  verify with a counting solver that early-terminates at two solutions. Naive random generation is
+  empirically hopeless even at 10×10.
+- **Difficulty does not scale like Sudoku** — it rides run-length/combination structure, not clue
+  count, so tiers must be calibrated *within* a grid size. That is the same principle Keisan
+  already proved out, which makes the existing tiering approach transferable.
+- The whole `(length, sum) → bitmask` combination table is 511 entries — precompute at build time.
+
+Slots into the daily as one more type-as-slot entry (3+3 → 4+4) with no daily-system surgery, which
+is what the [restructure](daily-redesign-plan.md) was built for.
+
 ### Multiplayer Speed Races 🔜 Up next (deferred from Phase 4)
 
 Real-time WebSocket-based head-to-head solving. Two players get the same board and race to solve it first with a live progress indicator showing the opponent's completion percentage.
