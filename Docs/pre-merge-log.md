@@ -30,6 +30,90 @@ the diff under review.
 
 ---
 
+## 2026-08-04 — dependabot minor-and-patch group (7 updates)
+
+Branch `pr57-review` ← `dependabot/npm_and_yarn/minor-and-patch-7fba3b5027` on `1f2476b`
+([#57](https://github.com/zfert99/Puzzle-Generator/pull/57)) · dependency-only: `package.json` +
+`package-lock.json`, **zero source files**.
+
+`next` 16.2.11→16.2.12 · `motion` 12.42.2→12.43.0 · `@upstash/redis` 1.38.0→1.38.1 ·
+`@playwright/test` 1.61.1→1.62.1 · `@types/react` 19.2.17→19.2.18 · `@types/react-dom` 19.2.3→19.2.4 ·
+`eslint-config-next` 16.2.11→16.2.12.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 399 passed (52 files) — no flake this run |
+| `npm run lint` | clean (exit 0) |
+| `npm run build` | compiled, all routes emitted |
+| `npm audit --audit-level=high --omit=dev` | **exit 0** |
+| Benchmarks | **skipped — 0 engine files touched** |
+
+### Findings
+
+**None.** All 7 bumps are patch/minor within their current major.
+
+### Invariants checked (only those the diff touches)
+
+- **Slot key / `ON CONFLICT` / retired keys / ownership / migrations / AI-written logic** — all N/A:
+  the diff contains no source files, so there is no logic to re-derive.
+- **No vulnerable nested copy remains** (§6) — checked, not assumed. A dependency-group bump
+  regenerates the whole lockfile, which is exactly when an `overrides` pin can be silently dropped.
+  `overrides` survives intact and the lock resolves a **single** `undici@7.29.0`. Had this bump
+  reintroduced a second nested copy, `npm audit` would have gone red again and the cause would have
+  looked like a new advisory rather than a lost pin.
+- **Every bump actually landed** — verified against the lockfile rather than trusting the PR body;
+  all 7 resolve to their claimed versions.
+
+### Docs
+
+No `.ts`/`.tsx` touched, so no mirrored docs; nothing renamed or superseded, so the reverse sweep is
+a no-op. `npx markdownlint-cli` clean repo-wide.
+
+*Checked and deliberately not actioned:* AGENTS.md §6 (line ~341) still says Upstash-backed
+rate-limit storage was "deliberately tabled … rather than implemented now", while `roadmap.md:743`
+records it as ✅ Shipped (PR #16) and `src/` has 4 live call sites. That line sits inside a **dated
+Update Log entry**, which correctly records what was true on 2026-07-22 — the "leave dated records
+alone" rule applies, so it is not stale and was left as-is. The forward-looking *rule* at line 282 is
+still accurate. Noted here so the next run doesn't re-investigate it.
+
+### Verified vs. read
+
+**Executed:** all four mechanical gates on a real `npm ci` of this exact lockfile; the installed
+versions of all 7 packages; `npm ls`-level confirmation of the single undici copy; grep for the
+call sites of the two runtime-visible bumps.
+**Read only:** the **`motion` 12.42.2 → 12.43.0** visual result. No test covers an animation, so a
+regression here would pass every gate above. Exposure is small and characterized rather than
+guessed: two files — [`template.tsx`](../src/app/template.tsx) (route fade + 8px slide) and
+[`SolvedStamp.tsx`](../src/features/juice/SolvedStamp.tsx) (scale/rotate keyframes) — both using only
+`initial`/`animate`/`transition` with keyframe arrays, the most stable part of Motion's surface, and
+neither touching a deprecated or exotic API. Judged low risk; an owner glance at one page transition
+and one solved stamp closes it.
+
+### Reviews
+
+`/security-review` **not run** — zero lines of auth/authz/data-access *code* changed. The bump does
+touch `@upstash/redis`, which backs the auth rate limiter, but a patch bump of a client library
+presents no code to review; the applicable check is `npm audit`, which passes (exit 0) and is
+recorded above. Flagged rather than skipped silently, since the package is auth-adjacent.
+**`/code-review` NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Rules this run produced
+
+- **A dependency-group bump is when `overrides` pins go missing.** Regenerating the whole lockfile
+  can drop a pin silently, and the resulting red audit looks like a *new advisory* rather than a lost
+  override — sending the next person to research a CVE instead of diffing `overrides`. Re-verify
+  every pin resolves after any grouped bump, not just that the audit is green.
+- **"CI is green" is only meaningful with the base it ran on.** #38/#39 showed `CLEAN` + all-green
+  while parented on `02e94db`, **16 commits** behind `main`; the checks were from 2026-07-31. Confirm the PR head
+  actually descends from current `main` (`git merge-base --is-ancestor main <head>`) before treating
+  a green tick as evidence.
+
+**Verdict:** gate green. Not merged — owner's call.
+
+---
+
 ## 2026-08-04 — undici override (`^7.29.0`), unblocking the audit gate
 
 Branch `fix/undici-override` on `341b987` · merged as `fad3b45` ([#55](https://github.com/zfert99/Puzzle-Generator/pull/55)) · 2 lines of `package.json`
