@@ -307,3 +307,46 @@ export function toDailyPuzzleRow(
 export function toUtcDateString(now: Date): string {
   return now.toISOString().slice(0, 10);
 }
+
+/** Days per month, index 0 = January. February is the leap-year exception handled below. */
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
+
+/** Proleptic Gregorian leap rule — the one Postgres `date` uses. */
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/**
+ * True if `value` is a real calendar date written as `YYYY-MM-DD`.
+ *
+ * **Shape is not existence, and the difference reached the database.** Every route that takes a
+ * `?date=` used to test `/^\d{4}-\d{2}-\d{2}$/`, which accepts `2026-02-31`, `2026-00-10`,
+ * `2026-01-32` and `0000-01-01`. Those cleared validation, were interpolated into a `date`
+ * comparison, and died at the driver instead — an unhandled 500 (with a stack in the logs) from an
+ * input the route had already accepted. Same failure shape as the `time_ms` int4 overflow: a loose
+ * check waves the value through and the column rejects it. Measured against the live database
+ * before writing this, so each clause below closes an observed 500, not a hypothetical one:
+ *
+ * - `2026-02-29` → 500, but `2024-02-29` is a genuine day and must stay valid ⇒ real leap rule,
+ *   not a flat 29-day February.
+ * - `0000-01-01` → 500: there is no year zero in the SQL calendar (1 BC is followed by AD 1), so
+ *   years are floored at `0001` rather than at `0000`.
+ *
+ * Range beyond that is deliberately NOT this function's job — "is it a date?" and "is it a date we
+ * have puzzles for?" are separate questions. A valid-but-empty day (`1999-12-31`) still answers
+ * with an empty list or a 404, which is the honest response.
+ */
+export function isIsoDate(value: string): boolean {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!parts) return false;
+
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const day = Number(parts[3]);
+
+  if (year < 1) return false;
+  if (month < 1 || month > 12) return false;
+
+  const maxDay = month === 2 && isLeapYear(year) ? 29 : DAYS_IN_MONTH[month - 1];
+  return day >= 1 && day <= maxDay;
+}

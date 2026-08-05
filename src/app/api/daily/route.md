@@ -14,12 +14,19 @@ is never cached.
 ```text
 Read `difficulty` + optional `date` from the query string.
 If difficulty is not a daily difficulty -> 400.
-isoDate = date ?? today's UTC date; if malformed -> 400; if in the future -> 400.
+isoDate = date ?? today's UTC date; if not a real date (isIsoDate) -> 400; if in the future -> 400.
 Ask the service for that day's puzzle.
 If none exists yet (cron hasn't run / no puzzle for that day) -> 404 with a clear message.
 Otherwise -> 200 { date, difficulty, gridSize: 9, grid, solution, clueCount }.
 On any thrown error -> log server-side, return a generic 500 (no stack on the wire).
 ```
+
+## Why "malformed" means "not a real date"
+
+**Why:** The check was `/^\d{4}-\d{2}-\d{2}$/` — shape only — so `2026-02-31` and `0000-01-01`
+passed, reached the Postgres `date` comparison, and 500'd at the driver. `isIsoDate` (see
+[daily-row.md](../../../lib/db/daily-row.md)) is the shared guard all three date-taking routes now
+use. A real date the archive simply doesn't hold still returns 404, not 400.
 
 ## Why `solution` is included (for now)
 

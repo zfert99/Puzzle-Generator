@@ -13,7 +13,7 @@ leaderboard tabs both need "what are today's boards, and what is each one?", so 
 served from the stored rows.
 
 ```text
-Validate `date` (ISO YYYY-MM-DD; not in the future) -> 400 otherwise.
+Validate `date` (a REAL YYYY-MM-DD date via `isIsoDate`; not in the future) -> 400 otherwise.
 Select every daily_puzzles row for that date: key, variant, grid.
 Shape each into { key, variant, difficulty, gridSize, section }:
   difficulty = the rung the key refers to (difficultyForKey — handles active AND retired keys)
@@ -22,6 +22,14 @@ Shape each into { key, variant, difficulty, gridSize, section }:
 Sort: standard slots in ladder order, then minis easy -> hard.
 Return 200 { date, slots }.
 ```
+
+## Why the date must be a real date, not just a well-formed one
+
+**Why:** The old check was a shape regex, so `2026-02-31` reached the `where date = …` query and
+the driver rejected it — a 500 from input the route had accepted. `isIsoDate` (see
+[daily-row.md](../../../../lib/db/daily-row.md)) answers the existence question instead. Note this
+route's future-date comparison masked *part* of the problem (`9999-99-99` was caught as "future"),
+which is exactly why the fix belongs in the shared guard rather than in each route's own regex.
 
 ## What it deliberately does not return
 

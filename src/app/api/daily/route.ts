@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { getDailyPuzzle } from '@/features/dailies/dailies.service';
-import { isDailyDifficulty, toUtcDateString } from '@/lib/db/daily-row';
+import { isDailyDifficulty, isIsoDate, toUtcDateString } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
 // Touches the DB (Node-only driver) and reads server time — keep off the Edge runtime.
 export const runtime = 'nodejs';
 // Always compute "today" fresh; never let the platform cache a day-stale response.
 export const dynamic = 'force-dynamic';
-
-// ISO YYYY-MM-DD, loosely validated to keep obviously-bad input out of the query.
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * GET /api/daily?difficulty=…&date=YYYY-MM-DD
@@ -38,8 +35,10 @@ export async function GET(req: NextRequest) {
 
     const todayIso = toUtcDateString(new Date());
     const isoDate = dateParam ?? todayIso;
-    if (!ISO_DATE.test(isoDate)) {
-      return NextResponse.json({ error: 'Invalid date: expected YYYY-MM-DD' }, { status: 400 });
+    // Existence, not just shape — a well-formed non-date (`2026-02-31`) used to reach the query
+    // and 500 at the driver. See `isIsoDate`. The future check below is a separate concern.
+    if (!isIsoDate(isoDate)) {
+      return NextResponse.json({ error: 'Invalid date: expected a real YYYY-MM-DD date' }, { status: 400 });
     }
     if (isoDate > todayIso) {
       return NextResponse.json({ error: 'Cannot fetch a future daily' }, { status: 400 });

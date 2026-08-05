@@ -30,6 +30,147 @@ the diff under review.
 
 ---
 
+## 2026-08-05 — a well-formed non-date reached Postgres and 500'd (QA item 1 of 6)
+
+Branch `fix/invalid-date-500` on `ccd84ef`. First slice of the re-cut August QA list — the previous
+attempt at these findings (`fix/qa-findings-aug-2026`, preserved, not merged) bundled five of them
+plus a new endpoint into **1,267 lines across 44 files** and broke things; this is the same work at
+one finding per branch. No engine code touched, so no benchmarks.
+
+### The finding
+
+**Shape is not existence, and three routes shipped the difference to the database.** `/api/daily`,
+`/api/daily/slots` and `/api/leaderboard` each validated `?date=` with a private
+`/^\d{4}-\d{2}-\d{2}$/`. That regex accepts `2026-02-31`, `2026-00-10`, `2026-01-32`, `2026-02-29`
+and `0000-01-01` — all of which cleared validation, were compared against a Postgres `date`, and
+threw at the **driver**: an unhandled 500 with a stack in the logs, from input the route had already
+accepted. Identical failure shape to the `time_ms` int4 overflow in the entry below, which is the
+reason to prefer one shared guard (`isIsoDate` in `daily-row.ts`) over three per-route regexes.
+
+`/api/leaderboard` was the worst of the three: the other two also compare `isoDate > todayIso`, which
+incidentally caught `9999-99-99` as "future"; this one has no future check, so nothing stood between
+a well-formed non-date and the query.
+
+**The rules were measured, not assumed** — every case was run against the live database first, which
+is what ruled out both tempting shortcuts: rejecting all February 29ths breaks `2024-02-29` (a real
+day, verified 200), and flooring the year at the project's own history breaks the archive's honest
+"no puzzles that day" answer. Year zero is rejected because the SQL calendar runs 1 BC → AD 1, so
+`0000-01-01` 500s where `0001-01-01` is fine.
+
+**A fourth route had the same bug and was missed on the first pass** — found by the review, not by
+the fix. `/api/me/progress` never took a `?date=`, so it wasn't in the sweep; it takes a `?month=`
+and *derives* two dates from it. `ISO_MONTH` admits `0000-01`, which expanded to
+`0000-01-01 … 0000-01-31` and 500'd identically. The guard there validates the **derived bounds**
+rather than adding a second regex, so whatever `lastDayOfMonth` produces is checked too. That
+mattered: `lastDayOfMonth` used `Date.UTC(year, …)`, which maps years 0–99 to 1900–1999, so
+`0000-02` computed February 1900 (28 days) where year 0 is a leap year (29) — clamping the query
+without rejecting the year would have traded a loud 500 for a silently wrong range. Now built with
+`setUTCFullYear`.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **445 passed** (55 files) — was 431/54; +14 tests, +1 file |
+| **Deliberately-broken runs** | **2 run** — guard reverted to shape-only: 9/9 new assertions failed; month guard removed: 1/1 failed |
+| Runtime verification | **35 live requests** across the 4 routes (see below) — every previously-500 input now 400, real dates still 200/404 |
+| `npm run build` | ✓ compiled in **6.5 s**, 14 static pages, 24 routes — run in an isolated copy (see below) |
+| lint · `tsc --noEmit` · markdownlint (`**/*.md`) | all exit 0 |
+| Relative-link check | 4 new cross-doc links, 0 broken |
+| Diff size | 365 insertions / 26 deletions across 13 files + a 74-line new test file — inside the <400 target |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+**Building while a dev server is running needs an isolated copy.** `next build` and `next dev` both
+own `.next`, so building in place corrupts the running server (and vice versa). `rsync` the tree
+minus `node_modules`/`.next`/`.git` to a scratch dir, then **hard-link** `node_modules`
+(`cp -al`) — a *symlink* fails outright with `TurbopackInternalError: Symlink [project]/node_modules
+is invalid, it points out of the filesystem root`. Delete the copy afterwards: it contains
+`.env.local`.
+
+### What was actually measured
+
+Pre-fix, against the live database on `main` — **12 (route, input) pairs returned 500**, across
+these inputs:
+
+| Input | `/api/daily` | `/api/daily/slots` | `/api/leaderboard` | `/api/me/progress` |
+|---|---|---|---|---|
+| `2026-02-31` | 500 | 500 | 500 | — |
+| `0000-00-00` | 500 | 500 | 500 | — |
+| `0000-01-01` | — | 500 | — | — |
+| `2026-02-29` | — | 500 | — | — |
+| `2026-00-10` | — | 500 | — | — |
+| `2026-01-32` | — | 500 | — | — |
+| `9999-99-99` | 400 † | 400 † | **500** | — |
+| `0000-01` (month) | — | — | — | **500** |
+
+† Caught incidentally as "future" by `isoDate > todayIso`, which those two routes have and
+`/api/leaderboard` does not — the reason the fix is one shared guard rather than three regexes.
+Cells marked `—` were not probed on `main`; the guard is shared, so post-fix verification covered
+the full grid.
+
+Post-fix: **45 live requests** (8 dates × 3 routes + 3 default-date + 5 `?month=` + 3 re-checks +
+10 closing the gaps below). Every input above now returns 400; `2024-02-29`, `1999-12-31`,
+`0001-01-01`, `0001-01` and the no-parameter defaults still return 200/404. The archive page's own
+traffic is all 200 — the guard rejects nothing the app itself sends.
+
+**Probe `/api/leaderboard`, not the other two, when checking this guard.** It is the only one of the
+three with no `isoDate > todayIso` check, so its status isolates `isIsoDate` instead of confounding
+it with the future rule. `2400-02-29` returns 400 `Cannot fetch a future daily` on `/api/daily/slots`
+— which looks exactly like a leap-rule bug and is not one. On `/api/leaderboard` the same date
+returns 404 (accepted; no puzzle that day), while `2400-02-30` and `2100-02-29` return 400. That
+trio verifies the ÷400/÷100 century rule at runtime, where previously only the unit test covered it.
+
+### Invariants checked (§2 of `/pre-merge`)
+
+Only what the diff touches. **Verified by running:** archived dates still resolve through the new
+guard (`/api/daily/slots?date=2026-07-11` → 4 slots; empty days → `{slots: []}`, not an error), and
+ownership still comes from the session (`/api/me/progress` BOLA tests pass, and the new guard sits
+*after* `requireUserId()`, so a signed-out caller still gets 401 before any parameter is read).
+**Read, not run:** slot-key aggregation, `ON CONFLICT` idempotency, and migrations — untouched by
+this diff, which changes validation only. The AI-written part (`isIsoDate`'s leap arithmetic) was
+re-derived rather than trusted: 204 year/month combinations checked against an independent
+reference, plus the runtime century-rule trio above.
+
+### Reviews
+
+**`/code-review` (hosted, billed) has NOT been run — an agent cannot launch it.** That decision is
+the owner's.
+
+`/security-review` **was** run (agent-invocable) and returned **no HIGH or MEDIUM findings**. Its
+summary: every changed call site narrows the accepted input set rather than widening it; all values
+still reach parameterized Drizzle builders with no `sql.raw`/`sql.identifier` introduced; the new
+check in `/api/me/progress` sits after the authorization check, so the 401 path is unchanged;
+rejection messages echo no user input and no exception detail. Net effect is a *reduction* in
+attack surface — an unauthenticated request could previously drive three routes into an unhandled
+driver exception (OWASP A10) that logged a stack trace.
+
+### Lessons
+
+**A validator that checks a value's *shape* has not checked that the value *exists*.** All three
+500s fixed on this repo in two days (`time_ms`, `?date=`, `?month=`) have the same skeleton: a
+permissive check accepts input, and the storage layer does the rejecting — so the error surfaces as
+a 500 at the driver instead of a 400 at the boundary. When a validator's output is handed to a typed
+column, the question to ask is "can the column hold every value this check admits?", not "does it
+look right?".
+
+**Sweep for the *sink*, not the parameter name.** `/api/me/progress` was missed because the sweep
+looked for routes taking a `?date=`, and it takes a `?month=` — the bug lives where a string reaches
+a `date` column, which is two derived values away from the parameter. Next time a class of bug is
+being closed repo-wide, grep for what touches the column (`getDailyProgress`, `eq(…date…)`), not for
+the request field, and validate the value that is actually *sent* rather than the one received.
+
+**Don't write "measured" next to a case you reasoned about.** Three review passes over this branch
+found three defects and **all three were in prose, none in logic**: a comment that inverted the guard
+order, invented request counts in this log, and a test titled "each one previously a 500" when two of
+its six inputs had been observed returning 400. The logic survived every pass; the claims about it
+did not. Two rules follow. Write the measurement claim only when the command is in the transcript —
+otherwise say "by construction". And when a probe's status code could come from more than one guard,
+**read the response body**, or probe the route that has only the guard under test: `2400-02-29`
+returns 400 on `/api/daily/slots` from the *future* check, which reads as a leap-rule bug and isn't
+one.
+
+---
+
 ## 2026-08-05 — three review findings: a client-only rule, a raced UPDATE, an int4 overflow
 
 Branch `fix/solve-and-username-hardening` on `0096073`. Closes all three findings from a

@@ -11,13 +11,35 @@ personal, so a signed-out visitor gets no markers at all rather than a calendar 
 ```text
 requireUserId()                                  # 401 if signed out
 month = ?month ?? current UTC month              # 400 unless /^\d{4}-(0[1-9]|1[0-2])$/
-rows  = getDailyProgress(userId, month-01, last day of month)
+from  = month-01, to = last day of month         # 400 unless BOTH are real dates (isIsoDate)
+rows  = getDailyProgress(userId, from, to)
 fold each row into its set: grid < 9x9 -> mini, else standard
 -> 200 { month, days: { "2026-08-01": { standard: {done,total}, mini: {done,total} } } }
 ```
 
 **Why a month per request.** The archive calendar shows a month at a time; fetching per day would
 fire a request on every click, and the aggregate is one grouped query either way.
+
+**Why the month is validated twice.** The regex answers "is this the right shape?"; the two derived
+bounds answer "are these real dates?", which is the question the `date` column actually asks. The
+gap between them was a live 500: `ISO_MONTH` admits `0000-01`, which expanded to
+`0000-01-01 … 0000-01-31` and threw at the driver, because the SQL calendar runs 1 BC → AD 1 with no
+year zero. Validating the *derived* strings rather than adding a second regex means whatever
+`lastDayOfMonth` produces is checked, not just what the caller sent. See
+[`isIsoDate`](../../../../lib/db/daily-row.md), the shared guard the three `?date=` routes use.
+
+There is a second trap underneath that one, which is why the fix rejects the year rather than
+clamping the query: `lastDayOfMonth` used `Date.UTC(year, …)`, and `Date.UTC` maps years 0–99 to
+1900–1999 — so `0000-02` asked for February **1900** (28 days) when year 0 is a leap year (29).
+Stopping the crash while still admitting year 0 would have swapped a loud 500 for a silently wrong
+range. It now builds the date with `setUTCFullYear`, which takes the year literally.
+
+Note the order: `lastDayOfMonth` runs **first**, and the year check is `isIsoDate` applied to what
+it returned. So `0000-01` really is expanded to `0000-01-31` before anything rejects it — the
+rejection is of the derived string, not of the caller's month. That is what makes the check on
+`toIso` load-bearing rather than redundant: nothing else inspects the year. Year 0 is the only
+value in 0–99 where the `Date.UTC` mapping disagreed about leapness, so correcting it is
+defence-in-depth, not an observable fix — it stops the trap re-arming if that bound ever moves.
 
 **Why the denominator is counted, never assumed.** `N` is a property of the *date*:
 
