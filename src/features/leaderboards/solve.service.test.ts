@@ -17,12 +17,20 @@ import { recordSolve, SolveError } from './solve.service';
 
 const solution = Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => ((r + c) % 9) + 1));
 
-/** A classic 9×9 `easy` daily — plausibility floor 15 s, so a 60 s solve passes cleanly. */
+/**
+ * A classic 9×9 `easy` daily — plausibility floor 15 s, so a 60 s solve passes cleanly.
+ *
+ * `grid` is the *dug* puzzle, not the solution: 41 givens and 40 blanks, matching what the cron
+ * actually stores. That distinction is load-bearing for the mistake bound, which counts empty
+ * cells — a fixture whose `grid` was the finished solution would report zero blanks and quietly
+ * make every mistake count clamp to 0.
+ */
+const grid = solution.map((row, r) => row.map((value, c) => (r * 9 + c < 40 ? 0 : value)));
 const puzzle = {
   id: 'puzzle-1',
   difficulty: 'easy',
   variant: 'classic',
-  grid: solution,
+  grid,
   solution,
 } as unknown as DailyPuzzle;
 
@@ -102,10 +110,24 @@ describe('recordSolve — int4 column guards', () => {
     expect(captured.setValues).toMatchObject({ timeMs: 2_147_483_647 });
   });
 
-  it('clamps an overflowing mistake count', async () => {
+  /**
+   * Bounding by int4 alone kept the column safe while storing counts no board can produce: a probe
+   * banked exactly 100 000 on a 4×4 daily, and the public leaderboard served it. The ceiling is now
+   * what the board can distinctly produce — every empty cell wrong with every wrong digit.
+   */
+  it('bounds an absurd mistake count by what the BOARD can produce, not by the column', async () => {
     const { db, captured } = dbStub({ attempt: { completed: false }, updateResult: [{ id: 'a1' }] });
+
     await recordSolve(db, { ...args, mistakes: 9e15 });
-    expect(captured.setValues).toMatchObject({ mistakes: 2_147_483_647 });
+
+    // 40 blanks × 8 wrong digits each = 320 distinct wrong placements this board admits.
+    expect(captured.setValues).toMatchObject({ mistakes: 320 });
+  });
+
+  it('leaves a believable mistake count untouched', async () => {
+    const { db, captured } = dbStub({ attempt: { completed: false }, updateResult: [{ id: 'a1' }] });
+    await recordSolve(db, { ...args, mistakes: 7 });
+    expect(captured.setValues).toMatchObject({ mistakes: 7 });
   });
 
   it('floors a fractional time (the column takes integers only)', async () => {

@@ -28,11 +28,17 @@ const VALID_GRID_SIZES: readonly GridSize[] = [4, 6, 9];
 const MAX_TIME_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Upper bound on the reported mistake count. Cosmetic (it never affects ranking), so an absurd
- * value is clamped rather than rejected — failing an otherwise-valid solve over a display stat
- * would be the worse outcome. The clamp still has to exist: the column is int4 like `time_ms`.
+ * The reported mistake count is coerced to a non-negative integer here and **bounded in
+ * `recordSolve`**, which is the layer that knows the board: the ceiling is what that grid can
+ * distinctly produce (`maxPlausibleMistakes`), not a constant. This route used to clamp at a flat
+ * `100_000` — enough to keep the int4 column safe, but not a number any board can generate, so a
+ * probe's 100 000 was stored verbatim and served on the public leaderboard. Still clamped rather
+ * than rejected: the stat is cosmetic and must never fail an otherwise-valid solve.
  */
-const MAX_MISTAKES = 100_000;
+function toMistakeCount(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.trunc(value));
+}
 
 /**
  * A valid submission grid is `size` rows × `size` cells of integers `1..size` (a completed
@@ -68,8 +74,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
     const difficulty = body?.difficulty;
     const grid = body?.grid;
-    const rawMistakes = typeof body?.mistakes === 'number' && Number.isFinite(body.mistakes) ? body.mistakes : 0;
-    const mistakes = Math.min(MAX_MISTAKES, Math.max(0, Math.trunc(rawMistakes)));
+    const mistakes = toMistakeCount(body?.mistakes);
     const clientTimeMs = typeof body?.timeMs === 'number' && Number.isFinite(body.timeMs) ? body.timeMs : null;
 
     if (!isDailyDifficulty(difficulty)) {

@@ -3,7 +3,7 @@ import type { Database } from '@/lib/db/connection';
 import { solveAttempts, type DailyPuzzle, type SolveAttempt } from '@/lib/db/schema';
 import { difficultyForKey, type Variant, type DailySize } from '@/lib/db/daily-row';
 import { getUserAttemptForPuzzle } from './attempts.service';
-import { gridsMatch, isImplausiblyFast } from './solve-rules';
+import { gridsMatch, isImplausiblyFast, maxPlausibleMistakes } from './solve-rules';
 import type { Grid } from '@/lib/db/schema';
 
 /**
@@ -122,6 +122,12 @@ export async function recordSolve(
     throw new SolveError('TOO_FAST', 400, 'Solve time is implausibly fast');
   }
 
+  // Bound the reported mistake count by what this board can distinctly produce, not by what the
+  // column can hold. `clampToColumn` alone kept int4 safe while still storing counts no board can
+  // generate (a probe banked 100 000 on a 4×4, which the public leaderboard then served). Clamped,
+  // never rejected: a cosmetic stat must not fail a real solve — see `maxPlausibleMistakes`.
+  const boundedMistakes = Math.min(clampToColumn(mistakes), maxPlausibleMistakes(puzzle.grid));
+
   // `completed = false` in the WHERE is what actually enforces one-ranked-attempt — the read
   // above is only a cheap early rejection. Those are two separate round-trips with no
   // transaction between them (the driver is `neon-http`: stateless, no interactive
@@ -130,7 +136,7 @@ export async function recordSolve(
   // conditional UPDATE is atomic, so exactly one of the racers matches a row.
   const [updated] = await db
     .update(solveAttempts)
-    .set({ completed: true, timeMs, mistakes: clampToColumn(mistakes) })
+    .set({ completed: true, timeMs, mistakes: boundedMistakes })
     .where(
       and(
         eq(solveAttempts.userId, userId),

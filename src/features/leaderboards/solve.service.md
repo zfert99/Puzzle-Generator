@@ -89,3 +89,26 @@ The route rejects an out-of-range `timeMs` with a 400 before reaching here (a ga
 should fail loudly, not be quietly recorded at the bottom of the leaderboard). `clampToColumn`
 is the last-resort guard for any other caller — pin the value rather than let the statement
 blow up. It also truncates fractional milliseconds, which an integer column would reject.
+
+## Why `mistakes` is bounded by the board, not just the column
+
+**Why:** int4 safety and *believability* are different bars, and only the first was being cleared.
+`clampToColumn` alone let any count up to 2,147,483,647 through, and the route's own ceiling was a
+flat 100 000 — a number no board here can generate. A probe sent `99999999999` and the leaderboard
+served `100000` for a **4×4** board that tops out at 100.
+
+So the write is bounded by `min(clampToColumn(mistakes), maxPlausibleMistakes(puzzle.grid))`.
+`puzzle.grid` is the *dug* grid — givens are not editable, so they cannot be got wrong — which is
+why the bound is computed here, in the layer that has the puzzle, rather than in the route.
+
+**`clampToColumn` is still doing work, but not the work its name suggests.** Its int4 ceiling is now
+unreachable: grid sizes are 4/6/9, so `maxPlausibleMistakes` never exceeds 648 and the outer
+`Math.min` caps the write long before 2,147,483,647. What the call contributes is **sanitising** — a
+non-finite value becomes `0`, a negative becomes `0`, and a fraction is truncated. `Math.min` does
+none of those: `Math.min(NaN, 320)` is `NaN`, which an integer column rejects at the driver, and
+`Math.min(2.5, 320)` is `2.5`, which it also rejects. The route coerces its own input, but
+`recordSolve` is the guard for *any* caller — so do not delete this call as a redundant column
+backstop; it is the last thing between a direct caller's `NaN` and an unhandled 500.
+
+Clamped, never rejected: see [solve-rules.md](solve-rules.md) for why a count past the bound isn't
+worth failing a solve over, and why the smallest boards get a floor.
