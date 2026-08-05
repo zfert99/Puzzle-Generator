@@ -3,14 +3,11 @@ import { db } from '@/lib/db/client';
 import { getCurrentUserId } from '@/features/auth/session';
 import { getDailyPuzzle } from '@/features/dailies/dailies.service';
 import { getLeaderboard, getUserRank } from '@/features/leaderboards/leaderboard.service';
-import { isDailyDifficulty, toUtcDateString } from '@/lib/db/daily-row';
+import { isDailyDifficulty, isIsoDate, toUtcDateString } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// ISO YYYY-MM-DD, loosely validated to keep obviously-bad input out of the query.
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * GET /api/leaderboard?difficulty=…&date=YYYY-MM-DD — the day's board for a difficulty.
@@ -29,8 +26,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or missing difficulty' }, { status: 400 });
     }
     const isoDate = dateParam ?? toUtcDateString(new Date());
-    if (!ISO_DATE.test(isoDate)) {
-      return NextResponse.json({ error: 'Invalid date: expected YYYY-MM-DD' }, { status: 400 });
+    // Existence, not just shape: `2026-02-31` matches `YYYY-MM-DD` and 500s at the driver.
+    // This route has no future-date guard either, so it is the one place a `9999-99-99` also
+    // reached the query — see `isIsoDate`.
+    if (!isIsoDate(isoDate)) {
+      return NextResponse.json({ error: 'Invalid date: expected a real YYYY-MM-DD date' }, { status: 400 });
     }
 
     const puzzle = await getDailyPuzzle(db, isoDate, difficulty);

@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { dailyPuzzles } from '@/lib/db/schema';
-import { toUtcDateString, difficultyForKey, STANDARD_RUNGS } from '@/lib/db/daily-row';
+import { toUtcDateString, difficultyForKey, isIsoDate, STANDARD_RUNGS } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
 // Touches the DB (Node-only driver) and reads server time — keep off the Edge runtime.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Stable picker order: standard rungs in ladder order, then the mini tiers, then anything else
 // (retired keys on archived dates, which have no defined position). The parentheses are load-bearing
@@ -38,8 +36,10 @@ export async function GET(req: NextRequest) {
     const dateParam = req.nextUrl.searchParams.get('date');
     const todayIso = toUtcDateString(new Date());
     const isoDate = dateParam ?? todayIso;
-    if (!ISO_DATE.test(isoDate)) {
-      return NextResponse.json({ error: 'Invalid date: expected YYYY-MM-DD' }, { status: 400 });
+    // Existence, not just shape — a well-formed non-date (`2026-02-31`) used to reach the query
+    // and 500 at the driver. See `isIsoDate`.
+    if (!isIsoDate(isoDate)) {
+      return NextResponse.json({ error: 'Invalid date: expected a real YYYY-MM-DD date' }, { status: 400 });
     }
     if (isoDate > todayIso) {
       return NextResponse.json({ error: 'Cannot fetch a future daily' }, { status: 400 });

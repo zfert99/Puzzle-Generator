@@ -87,6 +87,26 @@ describe('GET /api/me/progress', () => {
     }
   });
 
+  /**
+   * Regression: `ISO_MONTH` validates the month's SHAPE, and `0000-01` has a valid shape. It used
+   * to expand to the range `0000-01-01 … 0000-01-31`, which reached the `date` column and threw at
+   * the driver — the SQL calendar runs 1 BC → AD 1, so there is no year zero. That is a 500 (with a
+   * stack in the logs) produced by input the route had already accepted, the same failure this
+   * branch removed from the three `?date=` routes. `0001-01` is a real month and must still work,
+   * so the guard has to reject the year, not the shape.
+   */
+  it('rejects year zero before it reaches the date column, but still serves year 0001', async () => {
+    setRows([]);
+
+    const yearZero = await GET(buildRequest('?month=0000-01'));
+    expect(yearZero.status).toBe(400);
+    expect(getDailyProgress).not.toHaveBeenCalled();
+
+    const yearOne = await GET(buildRequest('?month=0001-01'));
+    expect(yearOne.status).toBe(200);
+    expect(getDailyProgress).toHaveBeenCalledWith({}, 'test-user-id', '0001-01-01', '0001-01-31');
+  });
+
   it('requires a session (401) and never reaches the data layer without one', async () => {
     requireUserId.mockRejectedValueOnce(new UnauthorizedError());
 

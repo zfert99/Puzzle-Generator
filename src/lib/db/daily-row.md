@@ -137,3 +137,37 @@ local-time formatter would bucket late-evening solvers into the wrong day.
 ```text
 Take the Date's ISO string and keep the leading YYYY-MM-DD (already UTC).
 ```
+
+## `isIsoDate(value)`
+
+**Why:** shape is not existence, and the gap between them reached the database. Every route taking
+a `?date=` used to validate with `/^\d{4}-\d{2}-\d{2}$/`, which happily accepts `2026-02-31`. That
+string cleared validation, was compared against a Postgres `date` column, and the driver threw —
+an unhandled 500 carrying a stack trace, produced by input the route had already said yes to. It is
+the same failure shape as the `time_ms` int4 overflow: a loose check waves the value through and
+the column, not the validator, does the rejecting.
+
+The cases below were each measured against the live database first, so the rules encode observed
+behaviour rather than guesses — which matters because the two obvious shortcuts are both wrong:
+rejecting every February 29 would break `2024-02-29` (a real day), and flooring the year at the
+project's own history would break the archive's honest "no puzzles that day" answer.
+
+**`/api/leaderboard` is the route to probe when checking this guard**, because it is the only one of
+the three without a `isoDate > todayIso` future check — so its response isolates *this* rule instead
+of confounding it. On the guarded routes a future-but-real date like `2400-02-29` comes back 400
+`Cannot fetch a future daily`, which reads like a rejection by `isIsoDate` and is not one. Against
+`/api/leaderboard`: `2400-02-29` → 404 (accepted, no puzzle that day), `2400-02-30` → 400,
+`2100-02-29` → 400. That trio is the century rule verified end to end, not just in the unit test.
+
+```text
+Reject anything not matching YYYY-MM-DD outright.
+Reject year 0000        -> the SQL calendar runs 1 BC -> AD 1; `0000-01-01` 500s.
+Reject month < 1 or > 12.
+Reject day < 1 or day > the month's real length,
+  where February is 29 only in a proleptic-Gregorian leap year (÷4, except ÷100 unless ÷400)
+  -> `2026-02-29` 500s, `2024-02-29` and `2400-02-29` are real days.
+```
+
+**What it deliberately does not do:** decide whether the date is one the app *has puzzles for*.
+"Is this a date?" and "is this a day we ran?" are different questions with different answers — a
+valid but empty day still deserves an empty list or a 404, never a 400.

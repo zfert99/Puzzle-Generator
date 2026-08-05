@@ -9,6 +9,7 @@ import {
   formatDailyKey,
   isDailyDifficulty,
   isEligible,
+  isIsoDate,
   getProfile,
   rollDailyAssignment,
   toDailyPuzzleRow,
@@ -52,6 +53,54 @@ describe('toUtcDateString', () => {
   it('formats a Date as YYYY-MM-DD in UTC regardless of local offset', () => {
     const instant = new Date('2026-07-11T23:30:00.000Z');
     expect(toUtcDateString(instant)).toBe('2026-07-11');
+  });
+});
+
+/**
+ * Most of these cases come from watching the pre-guard routes fail against the real database, not
+ * from imagining what might break. Being exact about which, because the distinction is the whole
+ * argument for a shared guard:
+ *
+ * - **Observed as live 500s** (the route accepted the value, the driver refused it): `2026-02-31`
+ *   and `0000-00-00` on all three `?date=` routes; `0000-01-01`, `2026-02-29`, `2026-00-10` and
+ *   `2026-01-32` on `/api/daily/slots`; `9999-99-99` on `/api/leaderboard`.
+ * - **Observed as 400s already**, saved incidentally rather than by validation: `9999-99-99` on
+ *   `/api/daily` and `/api/daily/slots`, and `2026-13-01` on `/api/daily/slots` — both caught by
+ *   those routes' `isoDate > todayIso` future check, which `/api/leaderboard` does not have. They
+ *   belong here anyway: `isIsoDate`'s job is to reject them on their own merits, so that a route
+ *   without a future check is not the only thing standing between them and the query.
+ * - **Observed as working 200s:** `2024-02-29`, `1999-12-31`, `0001-01-01`. These are asserted
+ *   alongside the rejections because both cheap fixes — reject every February 29, or floor the year
+ *   at the project's own history — would have broken a real day.
+ */
+describe('isIsoDate', () => {
+  it('accepts real dates, including a genuine leap day and days with no puzzles', () => {
+    for (const value of ['2026-08-05', '2024-02-29', '2000-02-29', '1999-12-31', '0001-01-01']) {
+      expect(isIsoDate(value), value).toBe(true);
+    }
+  });
+
+  it('rejects well-formed strings that are not real dates', () => {
+    for (const value of ['2026-02-31', '2026-02-29', '2026-00-10', '2026-01-32', '2026-13-01', '9999-99-99']) {
+      expect(isIsoDate(value), value).toBe(false);
+    }
+  });
+
+  it('rejects year zero — the SQL calendar goes 1 BC → AD 1, so `0000-01-01` 500s', () => {
+    expect(isIsoDate('0000-01-01')).toBe(false);
+    expect(isIsoDate('0000-12-31')).toBe(false);
+  });
+
+  it('applies the century rule, not just divisible-by-four', () => {
+    expect(isIsoDate('1900-02-29')).toBe(false); // divisible by 100, not 400 — not a leap year
+    expect(isIsoDate('2100-02-29')).toBe(false);
+    expect(isIsoDate('2400-02-29')).toBe(true); // divisible by 400 — is a leap year
+  });
+
+  it('rejects the wrong shape outright, so the parse below can assume three numeric fields', () => {
+    for (const value of ['', '2026-8-5', '2026/08/05', '20260805', '2026-08-05T00:00:00Z', "2026-08-05' OR 1=1--"]) {
+      expect(isIsoDate(value), value).toBe(false);
+    }
   });
 });
 
