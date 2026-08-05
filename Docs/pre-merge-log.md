@@ -30,6 +30,51 @@ the diff under review.
 
 ---
 
+## 2026-08-05 — the rate-limit key is not forgeable (QA item 3 of 6 — closed with no code change)
+
+Branch `docs/rate-limit-verified` on `7dfa341`. **Docs only.** The security pass suspected that
+`clientIp`'s `x-forwarded-for.split(',')[0]` let a caller choose their own rate-limit bucket. It
+does not, on this deployment. Measured rather than reasoned, because the platform guarantee has a
+caveat that this app happens to sit inside.
+
+### What was measured (production, ~48 small 4×4 PDF requests)
+
+| Probe | Result | Conclusion |
+|---|---|---|
+| 12 sequential, no header | `200`×10 then `429`×2 | the 10/60 s rule is enforced |
+| 12 sequential, each with a different forged `x-forwarded-for` | **identical** | forged header discarded; key is the real client IP |
+| 12 **concurrent**, no header | exactly 10 × `200` | counter is shared + atomic → **Upstash is live in prod**, closing a separate "unverified" item from the August audit |
+| exhaust via `biscuitlab.net`, then hit `origin-puzzles.biscuitlab.net` | `429` | **same bucket** → the hub preserves the client IP; visitors are not collapsed into one bucket |
+
+Vercel's docs say it **overwrites** `X-Forwarded-For` and does "not forward external IPs… to prevent
+IP spoofing" — but that is caveated for "a proxy on top of Vercel", and the hub's rewrite *is* one.
+Hence testing rather than trusting. The last row is the one that took a second entry point to get:
+`vercel logs` exposed `origin-puzzles.biscuitlab.net` as the rewrite target, which gave a way to
+reach the same deployment without the hub and prove both paths key on the same client.
+
+### Findings
+
+- Docs sweep hit `multi-zone-migration-safety-review.md` item (e), which was flagged "REAL, verify
+  keying" — the verification it asked for, now recorded there. Its conclusion was right but its
+  *mechanism* was wrong ("Vercel appends the client IP"; it overwrites). That distinction is the
+  whole bug: appending would have left `.split(',')[0]` attacker-controlled.
+- Same doc's mitigation (1) is confirmed done in passing: the generated `*.vercel.app` alias now
+  302s to `vercel.com/sso-api`, so Deployment Protection is re-enabled.
+
+### Lessons
+
+**A platform guarantee with a caveat is not a guarantee until you check which side of the caveat you
+are on.** "Vercel prevents IP spoofing" is true, and "unless there's a proxy on top of Vercel" was
+also true of this app. Both readings were available from the same doc page; only a probe separated
+them.
+
+**Prefer a second entry point to a second opinion.** The "does the hub collapse all visitors into
+one bucket?" question looked unanswerable from a single client IP, and the workaround was not a
+cleverer argument but another door into the same system — worth reaching for whenever a measurement
+seems blocked by having only one vantage point.
+
+---
+
 ## 2026-08-05 — a mistake count no board can produce (QA item 2 of 6)
 
 Branch `fix/mistakes-plausibility-bound` on `75b61d9`. Second slice of the re-cut August QA list.
