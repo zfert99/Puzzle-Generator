@@ -48,15 +48,31 @@ switch to this column in Step 3b.
 
 ## `solveAttempts`
 
-**Why:** A user's one ranked attempt at a daily. `time_ms` is **server-computed** in 4.4;
-a client-reported time is never trusted (anti-cheat). `UNIQUE(user_id, puzzle_id)` caps
-each user to one ranked attempt per puzzle; the `(puzzle_id, time_ms)` index backs the
-"fastest times for today" leaderboard query. Rows cascade-delete with their user or
-puzzle so no orphaned attempts survive an account/puzzle deletion.
+**Why:** A user's one ranked attempt at a daily. `time_ms` is the **client's in-game timer** —
+a deliberate tradeoff so save-and-continue doesn't punish a player for stepping away, guarded
+server-side by a plausibility floor rather than by trusting the number (see
+[solve-rules.md](../../features/leaderboards/solve-rules.md)). The `(puzzle_id, time_ms)`
+index backs the "fastest times for today" leaderboard query. Rows cascade-delete with their
+user or puzzle so no orphaned attempts survive an account/puzzle deletion.
+
+> **This doc said "server-computed" until August 2026.** That was true when 4.4 was written and
+> false after the switch to client timing; nothing in the mirrored-doc rule catches a claim that
+> silently *becomes* wrong, so it survived several passes over this file. Corrected during the
+> reverse-reference sweep for the solve-path hardening PR.
+
+**Two guards, often confused.** `UNIQUE(user_id, puzzle_id)` caps one attempt **row** per user
+per puzzle — it is about row count, and it says nothing about the `completed` flag. Capping one
+*ranked* attempt is a separate matter: `recordSolve` enforces it with a conditional
+`WHERE … AND completed = false` on the UPDATE, because a read-then-write pair over `neon-http`
+(no transactions) let two concurrent submissions both pass.
+
+Both `time_ms` and `mistakes` are `integer` (int4, max 2,147,483,647). They carry
+client-supplied values, so writes clamp to that range — an unclamped number is a driver-level
+error mid-UPDATE, which escapes the typed-error path and surfaces as a 500.
 
 ```text
 id, user_id (text) -> user (cascade), puzzle_id -> daily_puzzles (cascade)
-time_ms (server-computed), completed, mistakes, created_at
+time_ms (client in-game timer, clamped to int4), completed, mistakes, created_at
 UNIQUE (user_id, puzzle_id)
 INDEX (puzzle_id, time_ms)
 ```

@@ -44,7 +44,20 @@ Design principles locked for v1:
   Monetization, if ever, hangs off the shop later without touching the earn side.
 - **The server is the only mint.** Every earn event originates from the already-shipped
   server-validated completion path (`/api/solve` — grid checked against the stored
-  solution, server-computed time, plausibility floors). No client ever posts an amount.
+  solution, client-supplied in-game time bounded by a plausibility floor, one ranked attempt
+  enforced by a conditional UPDATE). No client ever posts an amount.
+  - **⛔ Read this before designing an earn rule off the clock.** The *completion* is
+    server-verified, but the *duration* is not — it comes from the client's in-game timer, a
+    deliberate tradeoff so save-and-continue is fair (see
+    [solve.service.md](../src/features/leaderboards/solve.service.md)). Minting a flat amount on
+    completion is safe; minting **in proportion to speed** inherits the timer's trust level
+    exactly, and the `minSolveMs` floor does not help — it is compared against the same
+    client-supplied number. A speed-scaled payout on `mini-easy` (4×4, 3 s floor) is mintable
+    daily by four HTTP requests with no puzzle solved.
+    **Full analysis and the gate:**
+    [research/daily-solve-time-trust.md](research/daily-solve-time-trust.md).
+    This premise said "server-computed time" until August 2026, which would have made exactly
+    that rule look safe.
 - **Flavor: this is Biscuit Lab — the currency is “crumbs” 🍪.** (Rename is one constant;
   decide finally at S1.)
 
@@ -182,8 +195,14 @@ Design principles locked for v1:
 ### S6 — Async battles
 
 - **Migration** (`0008`): `battles` (type `async`, board key + date OR generated-puzzle
-  seed payload, creator, status), `battle_participants` (PK battle×user, server-timed
-  result fields).
+  seed payload, creator, status), `battle_participants` (PK battle×user, result fields —
+  server-*validated*, but the duration is the client's in-game timer, same as
+  `solve_attempts.time_ms`).
+  - **⛔ Gated.** A head-to-head decided on time is a comparison of two client-supplied numbers,
+    so it is one of the two Phase 9 features that cannot ship on the current clock — see
+    [research/daily-solve-time-trust.md](research/daily-solve-time-trust.md). Either land the
+    server-elapsed bounds first, or decide battles on something not clock-derived (completion +
+    mistakes, or first-to-finish by server receipt order).
 - Flow: challenge a friend on a specific board → they play the SAME puzzle (daily board
   by key/date, or a stored generated puzzle for free-play challenges) → server-validated
   results compared; winner banner + small crumbs stake (fixed pot from the house, not

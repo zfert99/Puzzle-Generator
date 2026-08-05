@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signOut, updateUser, type SessionUser } from '../auth-client';
-
-const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
+import { USERNAME_PATTERN, USERNAME_RULE } from '../username';
 
 /**
  * A small session-aware header control: shows the signed-in user's handle with actions to
@@ -45,8 +44,9 @@ export function AccountBadge() {
 
   const saveUsername = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!USERNAME_RE.test(value)) {
-      setError('3–20 letters, numbers, _ or -');
+    // A fast local hint only — the server enforces the same rule (see `username.ts`).
+    if (!USERNAME_PATTERN.test(value)) {
+      setError(USERNAME_RULE);
       return;
     }
     setError('');

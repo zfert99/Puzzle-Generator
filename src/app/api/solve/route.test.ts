@@ -74,3 +74,43 @@ describe('POST /api/solve — grid-size validation', () => {
     expect(res.status).toBe(400);
   });
 });
+
+/**
+ * `time_ms` is a Postgres `integer`. A submitted value above int4 used to pass every check
+ * here — the plausibility floor only rejects times that are too *small* — then fail at the
+ * driver mid-UPDATE as "value out of range for type integer", so an input the route had
+ * already accepted came back as an unhandled 500 with a stack in the logs.
+ */
+describe('POST /api/solve — timeMs bounds', () => {
+  const submit = (timeMs: unknown) => POST(buildRequest({ difficulty: 'easy', grid: fullGrid(9), timeMs }));
+
+  it('rejects a time larger than the int4 column can hold', async () => {
+    expect((await submit(1e12)).status).toBe(400);
+  });
+
+  it('rejects a time beyond the 24h ceiling', async () => {
+    expect((await submit(24 * 60 * 60 * 1000 + 1)).status).toBe(400);
+  });
+
+  it('accepts a time exactly at the ceiling', async () => {
+    // 404 (not 400) = it cleared validation and reached the mocked daily lookup.
+    expect((await submit(24 * 60 * 60 * 1000)).status).toBe(404);
+  });
+
+  it('still rejects a negative time', async () => {
+    expect((await submit(-1)).status).toBe(400);
+  });
+
+  it('accepts an ordinary solve time', async () => {
+    expect((await submit(600_000)).status).toBe(404);
+  });
+});
+
+describe('POST /api/solve — mistakes is clamped, never fatal', () => {
+  // Cosmetic (it never affects ranking), so an absurd count must not fail an otherwise-valid
+  // solve — but it shares the int4 column, so it cannot be passed through raw either.
+  it.each([9e15, -5, 1.7])('accepts a solve with an out-of-range mistake count of %p', async (mistakes) => {
+    const res = await POST(buildRequest({ difficulty: 'easy', grid: fullGrid(9), timeMs: 60_000, mistakes }));
+    expect(res.status).toBe(404); // reached the lookup — not rejected on `mistakes`
+  });
+});

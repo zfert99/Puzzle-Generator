@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, updateUser, type SessionUser } from '../auth-client';
-
-/** 3–20 chars, letters/numbers/underscore/hyphen — a safe public handle. */
-const USERNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
+import { USERNAME_PATTERN, USERNAME_RULE } from '../username';
 
 /**
  * Prompts a signed-in user to pick a public username the first time (so the leaderboard
@@ -24,8 +22,10 @@ export function UsernamePrompt() {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!USERNAME_RE.test(value)) {
-      setError('3–20 letters, numbers, _ or -');
+    // A fast local hint only — the server enforces the same rule via better-auth's field
+    // validator, so bypassing this input still gets a 400.
+    if (!USERNAME_PATTERN.test(value)) {
+      setError(USERNAME_RULE);
       return;
     }
     setError('');

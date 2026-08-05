@@ -15,7 +15,8 @@ casual portfolio leaderboard, that's an acceptable trade (see the security-trade
 **Always enforced regardless:**
 
 - **The grid is verified** against the stored solution before any time is recorded.
-- **One ranked attempt** per user per puzzle (`UNIQUE(user_id, puzzle_id)`).
+- **One ranked attempt** per user per puzzle — see "Why the UPDATE is conditional" below for
+  which guard actually does this (it is not the unique index alone).
 - `userId` is always the caller's session id (BOLA, 4.3.1) — never from the request.
 
 `startAttempt` still records the attempt row (the one-per-day lock + the `NOT_STARTED`
@@ -44,9 +45,47 @@ timing.
 ```text
 attempt = the user's row for this puzzle
   none            -> SolveError NOT_STARTED (400)
-  already done    -> SolveError ALREADY_COMPLETED (409)
+  already done    -> SolveError ALREADY_COMPLETED (409)   # cheap early rejection only
 grid != solution  -> SolveError INCORRECT_SOLUTION (400)
-timeMs = max(0, trunc(clientTimeMs))   # the client's in-game timer
+timeMs = clampToColumn(clientTimeMs)   # the client's in-game timer, pinned to int4
 too fast          -> SolveError TOO_FAST (400)   # plausibility floor = the guard
-otherwise: mark completed, store timeMs + mistakes, return the row
+UPDATE ... WHERE user = u AND puzzle = p AND completed = false
+  no row matched  -> SolveError ALREADY_COMPLETED (409)   # lost a race
+otherwise: return the updated row
 ```
+
+## Why the UPDATE is conditional (`completed = false` in the WHERE)
+
+**Why:** Because the `attempt.completed` read above it is **not** what enforces one ranked
+attempt — it cannot be. The read and the write are two separate round-trips with nothing
+between them: the driver is `neon-http`, which is stateless and offers no interactive
+transaction (the same constraint documented in `dailies.service.ts` for the cron's idempotency
+guard).
+
+So two submissions racing each other both read `completed = false`, both passed the grid and
+floor checks, and both wrote — letting a concurrent double-submit keep the better of two
+claimed times, against the very invariant this service exists to hold. The unique index does
+not help here: it caps one attempt **row** per `(user, puzzle)` and says nothing about the
+`completed` transition, which is the thing being raced.
+
+Putting the predicate in the UPDATE's own WHERE makes it a single atomic statement, so exactly
+one racer matches a row. The early read stays because it is cheap, distinguishes `NOT_STARTED`,
+and avoids a pointless write on the common replay path — but it is an optimization now, not the
+guard. `.returning()` yielding nothing means another request got there first, which is reported
+as the same 409 a sequential replay gets: a caller cannot tell the two apart, and shouldn't.
+
+**Gotcha this also closed:** an unmatched UPDATE previously left `updated` as `undefined`, and
+the route's `attempt.timeMs` then threw a `TypeError` — a 500 where the caller should have seen
+a clean 409.
+
+## Why writes clamp to int4 (`clampToColumn`)
+
+**Why:** `time_ms` and `mistakes` are Postgres `integer` columns carrying **client-supplied**
+numbers. A value above 2,147,483,647 is not a validation failure but a *driver* error raised
+mid-UPDATE, so it bypasses the typed-`SolveError` path entirely and surfaces as an unhandled
+500. The plausibility floor is no help: it only rejects times that are too **small**.
+
+The route rejects an out-of-range `timeMs` with a 400 before reaching here (a garbage time
+should fail loudly, not be quietly recorded at the bottom of the leaderboard). `clampToColumn`
+is the last-resort guard for any other caller — pin the value rather than let the statement
+blow up. It also truncates fractional milliseconds, which an integer column would reject.

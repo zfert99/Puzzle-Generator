@@ -7,6 +7,7 @@ import { db } from '@/lib/db/client';
 import * as authSchema from '@/lib/db/auth-schema';
 import { hashPassword, verifyPassword } from './password';
 import { upstashRateLimitStorage } from './rate-limit-storage';
+import { usernameSchema } from './username-schema';
 
 /**
  * The better-auth server instance — the single source of truth for authentication.
@@ -90,9 +91,22 @@ export const auth = betterAuth({
   ...(upstashRateLimitStorage ? { rateLimit: { customStorage: upstashRateLimitStorage } } : {}),
   // Public leaderboard handle — settable via updateUser, returned in the session user.
   // Uniqueness is enforced by the DB constraint (a taken handle surfaces as an error).
+  //
+  // `validator.input` is REQUIRED, not decorative: without it better-auth assigns the field
+  // verbatim (`parsedData[key] = data[key]` in its `parseInputData`), so the 3–20 char rule
+  // enforced in the UI was the ONLY check — and a direct `POST /api/auth/update-user` sailed
+  // past it into an unbounded `text` column that renders on the public leaderboard. The schema
+  // must be synchronous: better-auth throws INTERNAL_SERVER_ERROR on a Promise-returning
+  // validator. A rejection surfaces as a 400 carrying `issues[0].message`, which is why the
+  // message is the shared `USERNAME_RULE` string the client shows.
   user: {
     additionalFields: {
-      username: { type: 'string', required: false, input: true },
+      username: {
+        type: 'string',
+        required: false,
+        input: true,
+        validator: { input: usernameSchema },
+      },
     },
   },
   emailAndPassword: {

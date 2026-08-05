@@ -135,6 +135,32 @@ scoped mechanism for this.
 handle surfaces as an error), not by better-auth. The client mirrors this via
 `inferAdditionalFields` (see [auth-client.md](./auth-client.md)).
 
+### Why `validator.input` is not optional here
+
+**Why:** Without it, better-auth assigns the field **verbatim**. Its `parseInputData` runs
+`validator?.input` if present and otherwise falls through to `parsedData[key] = data[key]` —
+declaring `type: 'string'` buys a type check and nothing more. No length, no charset.
+
+That is what shipped until August 2026, and the gap was real rather than theoretical:
+
+- The 3–20 char rule lived only in `UsernamePrompt.tsx` and `AccountBadge.tsx`, so it applied
+  to the *form*, not the *endpoint*.
+- A direct `POST /api/auth/update-user` with a session cookie skipped it entirely.
+- The column is unbounded `text`, and the value renders on the public leaderboard for every
+  visitor via `coalesce(user.username, user.name)`.
+
+So a 10,000-character handle, a bidi-override string, or a plain `"Puzzle Bot"` was accepted
+and shown to everyone. Not XSS — React escapes it — but layout breakage, impersonation of the
+system account, and unbounded storage on a public surface. It was also the one write path in
+the app that skipped the **authorize → validate → mutate** step AGENTS.md §4 requires.
+
+The rule now lives in one place ([username.md](./username.md)) with the server schema beside it
+([username-schema.md](./username-schema.md)); the components keep the same regex as a fast
+local hint, and the server rejects with a 400 regardless.
+
+**Gotcha:** the schema must validate **synchronously** — better-auth throws
+`INTERNAL_SERVER_ERROR`, not a 400, if `validate()` returns a Promise.
+
 ## Gotchas encoded here
 
 - **Passkey is `@better-auth/passkey`** in 1.6.x (a separate package), not bundled in core.
