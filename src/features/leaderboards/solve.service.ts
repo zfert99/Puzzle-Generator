@@ -24,6 +24,25 @@ import type { Grid } from '@/lib/db/schema';
 
 export type SolveErrorCode = 'NOT_STARTED' | 'ALREADY_COMPLETED' | 'INCORRECT_SOLUTION' | 'TOO_FAST';
 
+/**
+ * Largest value `solve_attempts.time_ms` / `.mistakes` can hold — both are Postgres `integer`
+ * (int4). Anything above it is a driver-level error, not a validation failure, so it escapes
+ * the typed `SolveError` path and surfaces as a 500.
+ */
+const MAX_INT4 = 2_147_483_647;
+
+/**
+ * Force a client-supplied number into the int4 range. The route rejects an out-of-range
+ * `timeMs` with a 400 *before* this (a garbage time should fail loudly, not be silently
+ * recorded), so this is the last-resort guard for any other caller: a value the column cannot
+ * hold gets pinned rather than blowing up mid-UPDATE. `Math.trunc` also drops fractional ms,
+ * which the column would reject outright.
+ */
+function clampToColumn(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(MAX_INT4, Math.max(0, Math.trunc(value)));
+}
+
 /** A rejected solve. `status` is the HTTP status the route should return. */
 export class SolveError extends Error {
   constructor(
@@ -62,8 +81,9 @@ export async function startAttempt(
 
 /**
  * Validate and record a completed solve. Throws `SolveError` on any rejection (unstarted,
- * already completed, wrong grid, implausibly fast). On success, marks the attempt complete
- * with the server-computed time and returns it.
+ * already completed, wrong grid, implausibly fast, or losing a race to a concurrent submit).
+ * On success, marks the attempt complete with the client-reported time — clamped to the
+ * column's range and already past the plausibility floor — and returns it.
  */
 export async function recordSolve(
   db: Database,
@@ -89,7 +109,7 @@ export async function recordSolve(
     throw new SolveError('INCORRECT_SOLUTION', 400, 'The submitted grid is not the solution');
   }
 
-  const timeMs = Math.max(0, Math.trunc(clientTimeMs));
+  const timeMs = clampToColumn(clientTimeMs);
   // Floor is derived from the puzzle's stored (variant, size, difficulty) — not the slot key, whose
   // type varies per day. `puzzle.difficulty` is the slot key; `difficultyForKey` maps it to the rung.
   const isTooFast = isImplausiblyFast(
@@ -102,11 +122,30 @@ export async function recordSolve(
     throw new SolveError('TOO_FAST', 400, 'Solve time is implausibly fast');
   }
 
+  // `completed = false` in the WHERE is what actually enforces one-ranked-attempt — the read
+  // above is only a cheap early rejection. Those are two separate round-trips with no
+  // transaction between them (the driver is `neon-http`: stateless, no interactive
+  // transaction), so two submissions racing each other both saw `completed = false` and both
+  // wrote, letting a concurrent double-submit keep the better of two claimed times. A single
+  // conditional UPDATE is atomic, so exactly one of the racers matches a row.
   const [updated] = await db
     .update(solveAttempts)
-    .set({ completed: true, timeMs, mistakes: Math.max(0, Math.trunc(mistakes)) })
-    .where(and(eq(solveAttempts.userId, userId), eq(solveAttempts.puzzleId, puzzle.id)))
+    .set({ completed: true, timeMs, mistakes: clampToColumn(mistakes) })
+    .where(
+      and(
+        eq(solveAttempts.userId, userId),
+        eq(solveAttempts.puzzleId, puzzle.id),
+        eq(solveAttempts.completed, false),
+      ),
+    )
     .returning();
+
+  // No row matched despite the read above finding an incomplete attempt: another request
+  // completed it in between. Same rejection the sequential path gives, so the loser of a race
+  // and a plain replay are indistinguishable to the caller.
+  if (!updated) {
+    throw new SolveError('ALREADY_COMPLETED', 409, 'This daily has already been completed');
+  }
 
   return updated;
 }

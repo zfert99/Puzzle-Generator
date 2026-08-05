@@ -30,6 +30,165 @@ the diff under review.
 
 ---
 
+## 2026-08-05 — three review findings: a client-only rule, a raced UPDATE, an int4 overflow
+
+Branch `fix/solve-and-username-hardening` on `0096073`. Closes all three findings from a
+whole-of-`main` review (the range diff was empty — `main` was level with `origin/main`, so the review
+had no PR to scope to and took the branch state instead). No engine code touched, so no benchmarks.
+
+### The findings
+
+**1 · The username rule was enforced on the form, not the endpoint.** `USERNAME_RE` was a literal
+copy-pasted into `UsernamePrompt.tsx` and `AccountBadge.tsx` and existed **nowhere on the server**.
+Confirmed from better-auth's own source rather than inferred: `parseInputData` runs
+`fields[key].validator?.input` when present and otherwise falls through to
+`parsedData[key] = data[key]`, so `type: 'string'` bought a type check and nothing else. A direct
+`POST /api/auth/update-user` therefore put any string into an unbounded `text` column that renders
+on the public leaderboard via `coalesce(username, name)` — a 10,000-char handle, a bidi override, or
+a plain `"Puzzle Bot"`. Not XSS (React escapes), but layout breakage, impersonation, and the one
+write path in the app skipping **authorize → validate → mutate**.
+
+**2 · `UNIQUE(user_id, puzzle_id)` was never the one-ranked-attempt guard.** `recordSolve` read
+`attempt.completed` and then issued an *unconditional* UPDATE — two round-trips, no transaction
+(`neon-http` is stateless). Two concurrent submissions both read `false` and both wrote, so a raced
+double-submit kept the better of two claimed times. The unique index caps one attempt **row**; it
+says nothing about the `completed` transition, which is the thing being raced. Now a conditional
+`WHERE … AND completed = false`, atomic in one statement.
+
+**3 · `timeMs` had a floor but no ceiling.** `time_ms` is int4. A submitted `1e12` passed the route's
+finite/non-negative check, cleared the plausibility floor — which by construction only rejects times
+that are too *small* — and failed at the **driver** mid-UPDATE, escaping the typed-`SolveError` path
+as an unhandled 500. Route now bounds at 24h; `mistakes` is clamped rather than rejected (cosmetic,
+never worth failing a real solve over); the service clamps both as a column-level backstop.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **431 passed** (54 files) — was 399/52; +32 tests, +2 files |
+| **Deliberately-broken runs** | **2 run** — 4/4 then 2/2 new assertions failed without the fix |
+| `npm run build` | ✓ compiled in 6.1 s, 14 static pages — run as its own gate, since eslint does not type-check |
+| lint · markdownlint (`**/*.md`) · audit | all exit 0 |
+| Relative-link check | 95 links + 2 in-page anchors — 0 broken |
+| Client-bundle check | zod absent from all 23 chunks; regex present |
+| Diff size | 354 code lines (**213 of them tests**) + docs — inside the <400 target |
+| Benchmarks | **not run** — no engine/solver core touched |
+| Known-flaky check | table read first; its one entry (`calc-sudoku` "hard leans on ×") was fixed in `0096073`, this branch's own base — no flake seen in 5 full runs |
+
+### Invariants checked (gate step 2)
+
+Only what the diff touches:
+
+- **Ownership lives in the query — checked, and tightened.** The UPDATE's WHERE still carries
+  `eq(userId, requireUserId())`; the new predicate narrows it. Non-vacuously asserted: the test
+  compares the *whole* filter expression with `toStrictEqual`, so dropping any of the three
+  predicates fails it.
+- **Migration safety — N/A, and verified rather than assumed.** `schema.ts` appears in the diff, so
+  it was checked for a schema change: filtering the diff to non-comment lines returns **empty**. It
+  is a JSDoc correction only, so `drizzle-kit` has nothing to emit and no migration is needed.
+- **Slot key is not an identity — N/A.** No cross-date aggregate touched. `recordSolve`'s floor
+  still derives from the stored `(variant, size, difficulty)` via `difficultyForKey`, unchanged.
+  Confirmed the new clamp cannot perturb it: clamping only lowers values above 2.1 × 10⁹ ms
+  (≈24.8 days), which are far above every floor, so no floor decision changes.
+- **`ON CONFLICT DO NOTHING` / randomised inputs — N/A.** No new retry-safe write; the change is to
+  an UPDATE, not an upsert.
+- **Retired keys — N/A.** Key validation untouched; `isDailyDifficulty` not in the diff.
+- **AI-written logic re-derived.** Every load-bearing claim was verified against something external
+  rather than reasoned about — see *Verified vs. read*.
+
+### Findings from the review pass
+
+None outstanding. Two things worth one line each:
+
+- **Anchoring checked, not assumed.** `/^…$/` is safe here because JS's `$` is end-of-input — unlike
+  Python's, which matches before a trailing newline. Verified empirically (`"abc\n"` rejects), since
+  this is the standard way an allowlist regex leaks.
+- **The module split was justified by measurement, not taste.** `username.ts` (constants, zero
+  imports) is separate from `username-schema.ts` (zod) so the schema stays out of the client bundle
+  *and* stays unit-testable without booting the `server-only` auth instance. Grepping the built
+  chunks confirms zod did not leak.
+
+### Docs
+
+Mirrors for all 7 touched source files, plus 2 new ones. The **reverse-reference sweep earned its
+keep this run — and then failed on its second pass**, see below.
+
+New research record: **[daily-solve-time-trust.md](research/daily-solve-time-trust.md)**, written
+for the one review observation deliberately *not* reported as a defect. `/api/solve` behaves as
+designed; what the doc records is that the design buys less than the code comments imply. The
+finding worth keeping: **`minSolveMs` is compared against the client-supplied `timeMs`, so raising a
+floor buys nothing at any value** — a scripted submit just says `floor + 1`. Since `/api/daily`
+serves the solution publicly (deliberately, for hints), first place on `mini-easy` (4×4, 3 s floor,
+bot at 40 s) is four HTTP requests with no puzzle solved.
+
+Not fixed here, on purpose: the available guard (bound submissions by `solve_attempts.created_at`,
+already stamped and unused) needs `/api/daily/start` to stop being fire-and-forget first, or it
+false-rejects honest fast solves on the 3 s minis — a worse outcome than a scripter on a flavor
+leaderboard. **Gated against Phase 9 instead**, narrowly: flat-rate crumbs need nothing, but a
+speed-scaled mint or a time-decided S6 battle needs it first. Gate lives in `roadmap.md` (linked
+from both the Phase 9 header and QA Stage 2), with pointers from
+`social-progression-economy-plan.md` and `solve-rules.md`.
+
+### Verified vs. read
+
+**Executed:** better-auth's `parseInputData` read directly in `node_modules` to confirm the
+passthrough; zod v4's `~standard` contract probed for synchronous return; two deliberately-broken
+runs; the built client chunks grepped for zod; regex anchoring probed against 9 inputs; all gates.
+**Read only:** the concurrent double-submit is reasoned from the driver's statelessness and modelled
+in tests — not reproduced against a live Postgres.
+
+### Reviews
+
+`/security-review` **run** — clean, no HIGH/MEDIUM. It covered auth (`username` validation) and
+data-access (the solve UPDATE), which AGENTS.md §4 requires.
+**`/code-review ultra` run by the owner** (agents cannot launch it — user-triggered and billed).
+One `nit` returned: the reverse-reference sweep missed three stale server-timing claims. Verified
+rather than accepted — the confirming grep found **five**, including two the hosted review did not
+report, both in files this PR had already edited. All five fixed here; see the sweep rule below.
+The three original findings came from an in-session review pass on `main`.
+
+### Rules this run produced
+
+- **A validation rule that lives only in a component is not a validation rule.** Ask where the
+  *endpoint* enforces it. Two copies of a regex is a smell; two copies with zero server-side
+  enforcement is a hole, and the duplication hides it by making the rule look well-established.
+- **A `UNIQUE` constraint constrains rows, not state transitions.** If the invariant is "one
+  *completed* attempt" and the flag is a column, the predicate belongs in the UPDATE's WHERE. A
+  read-then-write pair is not a guard on a driver with no transactions.
+- **A lower bound is not a bound.** `isImplausiblyFast` reads like input validation, so `timeMs`
+  looked validated. Any client-supplied number heading for an `integer` column needs a *ceiling*,
+  and the column type — not the domain — is what makes it mandatory.
+- **A doc claim can go stale without anyone editing it.** `schema.md`/`schema.ts` had said `time_ms`
+  is "SERVER-COMPUTED … never trusted" since 4.4; the switch to client timing silently falsified it,
+  and `roadmap.md` repeated it. Mirroring cannot catch this — nobody touched those files. **When a
+  design changes, grep for prose asserting the property you just removed**, not just for renamed
+  symbols.
+- **Do the sweep as a grep, not as a reading.** ⚠️ The rule above was written *in this entry* and
+  then immediately under-executed: the first pass found three hits by reading the files it was
+  already editing, and a hosted review found more. The full
+  `grep -rn 'server-timed\|server-computed\|server-measured' Docs/ src/` surfaces **eight**, of which
+  five were live and stale:
+
+  | Location | Why it was missed |
+  |---|---|
+  | `roadmap.md:50` | Same file as the fix at :388, 338 lines above it |
+  | `schema.md:75` | Same file — prose corrected, the `text` block under it was not |
+  | `solve.service.ts:85` | JSDoc on `recordSolve`, the function being rewritten |
+  | `social-progression-economy-plan.md:47` | Active Phase 9 plan — never opened |
+  | `social-progression-economy-plan.md:185` | Same |
+
+  Reading finds hits in files you already have open, which is precisely the set mirroring already
+  covers. The grep is the whole value. **Two of the five sat in files this PR had already edited**,
+  so "I updated that file" is not evidence its other claims are current.
+- **A stale premise in a *planned* doc outranks a stale one in a shipped doc.** The two
+  `social-progression-economy-plan.md` hits were the load-bearing ones: Phase 9 is marked
+  implementation-ready, so its "server-computed time" premise would have been *designed against*.
+  Anyone building the S6 speed-based earn rule or async battles would have assumed a trusted clock.
+  Both spots now say what is actually guaranteed (completion is verified; duration is not) and name
+  the decision that inherits the risk, rather than just swapping the adjective.
+
+---
+
 ## 2026-08-04 — `/code-review` finding fixed: seeded generation was never seeded
 
 Branch `fix/keisan-test-flake` on `77f7cef`. Closes the one finding from the hosted-style review pass

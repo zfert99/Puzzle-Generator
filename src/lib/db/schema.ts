@@ -100,10 +100,14 @@ export const dailyPuzzles = pgTable(
 );
 
 /**
- * A user's ranked attempt at a daily puzzle. `time_ms` is SERVER-COMPUTED (4.4) — a
- * client-reported solve time is never trusted. `UNIQUE(user_id, puzzle_id)` enforces
- * one ranked attempt per user per puzzle; the `(puzzle_id, time_ms)` index backs
- * leaderboard ordering. Rows cascade-delete with their user or puzzle.
+ * A user's ranked attempt at a daily puzzle. `time_ms` is the CLIENT's in-game timer — a
+ * deliberate tradeoff that makes save-and-continue fair, with a server-side plausibility
+ * floor as the guard (see `solve-rules.ts`). It is `integer` (int4), so every write clamps
+ * to that range rather than trusting the submitted number.
+ *
+ * `UNIQUE(user_id, puzzle_id)` caps one attempt ROW per user per puzzle, but it cannot police
+ * the completion transition — that is enforced by `recordSolve`'s conditional
+ * `WHERE … AND completed = false`. Rows cascade-delete with their user or puzzle.
  *
  * `user_id` is `text` and references better-auth's `user.id` (a string id), not a uuid.
  */
@@ -117,7 +121,7 @@ export const solveAttempts = pgTable(
     puzzleId: uuid('puzzle_id')
       .notNull()
       .references(() => dailyPuzzles.id, { onDelete: 'cascade' }),
-    /** Server-computed solve duration in milliseconds. */
+    /** Solve duration in milliseconds, from the client's in-game timer. int4 — writes clamp. */
     timeMs: integer('time_ms').notNull(),
     completed: boolean('completed').default(false).notNull(),
     mistakes: integer('mistakes').default(0).notNull(),

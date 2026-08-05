@@ -47,7 +47,7 @@ rotation alongside classic Sudoku.
 | **PDF** | `pdf.service.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
 | **Backend** | Neon Postgres + Drizzle ORM, Vercel Cron daily generation, one shared puzzle/difficulty/day | ✅ Shipped |
 | **Auth** | better-auth — passkeys-first, email/password (Argon2id), Google OAuth, DB sessions, BOLA-scoped access | ✅ Shipped |
-| **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (server-timed) | ✅ Shipped |
+| **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (client-timed, server-validated) | ✅ Shipped |
 | **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
 | **Engine** | Killer Sudoku — cage-aware bitmask backtracking + MRV exact solver, randomized cage generator, five-tier grader (Basic → Extreme), 6×6 beginner variant | ✅ Shipped |
 | **Frontend** | Killer on `/play`, `/generate` (PDF, cage rendering), and the `/daily` registry — **restructured to type-as-slot** (one daily per type, difficulty rolled per day: 3 standard + 3 mini = 6 boards/day, down from 30; scales to 5+5) — see [daily-redesign-plan.md](daily-redesign-plan.md) | ✅ Shipped |
@@ -385,7 +385,7 @@ CREATE TABLE solve_attempts (
 
 #### 4.4 — Leaderboards, streaks & anti-cheat ✅ Done (backend + UI)
 
-- **Anti-cheat solve** ([solve.service.ts](../src/features/leaderboards/solve.service.ts)): server-measured time (start stamped by [`/api/daily/start`](../src/app/api/daily/start/route.ts), single app clock), grid verified against the stored solution, plausibility floor, one ranked attempt/user. [`POST /api/solve`](../src/app/api/solve/route.ts). Pragmatic posture — solution still served so board hints work.
+- **Anti-cheat solve** ([solve.service.ts](../src/features/leaderboards/solve.service.ts)): client in-game timer (a deliberate tradeoff so save-and-continue is fair; [`/api/daily/start`](../src/app/api/daily/start/route.ts) stamps the attempt row and the one-per-day lock), grid verified against the stored solution, plausibility floor as the guard, one ranked attempt/user enforced by a conditional UPDATE. [`POST /api/solve`](../src/app/api/solve/route.ts). Pragmatic posture — solution still served so board hints work.
 - **Leaderboards** ([leaderboard.service.ts](../src/features/leaderboards/leaderboard.service.ts)): per-day, per-difficulty board + caller's own rank via [`GET /api/leaderboard`](../src/app/api/leaderboard/route.ts).
 - **Streaks** ([streak.ts](../src/features/leaderboards/streak.ts) + [`GET /api/me/streak`](../src/app/api/me/streak/route.ts)): consecutive UTC-day completions with a yesterday grace.
 - Ranked = signed in; anonymous play stays unranked. All writes ownership-scoped (4.3.1).
@@ -566,12 +566,37 @@ registry. Displayed as **Keisan** (internal slug `calc`); "KenKen" is trademarke
 > **Status:** 📋 Planned — implementation-ready plan: [social-progression-economy-plan.md](social-progression-economy-plan.md)
 > **Estimated effort:** Large (7 slices; S7 gated on new realtime infra)
 > **Prerequisite:** Phase 4 (auth, solve validation, leaderboards); benefits from Phase 8's fourth daily section
+> **⛔ Gate — clock-based rules only:** see [Solve-time trust](#gate-solve-time-trust-clock-based-phase-9-rules) below
 
 Crumbs 🍪 (closed-loop soft currency minted only by server-validated completions),
 achievements, stored streaks with freezes, archive gold days, a readability-safe cosmetics
 shop, public profiles + friends + friend streaks, and async battles — with live battles
 (S7) quarantined behind a realtime-infra decision. Ledger-first design (append-only,
 idempotent payouts), BOLA-checked mutations throughout, zero client-trusted amounts.
+
+### Gate: solve-time trust (clock-based Phase 9 rules)
+
+> **Full analysis:** [research/daily-solve-time-trust.md](research/daily-solve-time-trust.md)
+
+**"The server is the only mint" is true for *completion* and false for *duration*.** A daily's
+`timeMs` is the client's in-game timer, and the `minSolveMs` plausibility floor is compared against
+that same client-supplied number — so the floor excludes accidental garbage but guards nothing
+against a chosen value, **at any setting**. `/api/daily` serves the solution publicly (deliberately,
+so hints work), which makes a first-place submission four HTTP requests with no puzzle solved. On
+`mini-easy` — always 4×4, floor 3 s, Puzzle Bot at 40 s — that lands rank 1.
+
+This is **fine while the leaderboard is flavor** and remains the accepted posture. Phase 9 inverts
+it only for rules that read the clock:
+
+- ✅ **No gate:** flat-rate crumbs per completion, achievements on completion, streaks, gold days,
+  shop, profiles/friends. The grid check is server-authoritative and the conditional UPDATE makes it
+  once-per-puzzle.
+- ⛔ **Gated:** any **speed-scaled payout**, and **S6 async battles decided on time** (a head-to-head
+  is a comparison of two client-supplied numbers). These require the server-elapsed bounds
+  (checks A + B in the research doc) to land first — which in turn requires making
+  `/api/daily/start`'s timestamp reliable, since it is currently fire-and-forget and can stamp late.
+
+Raising the floors is **not** a substitute and buys nothing; the research doc explains why.
 
 ---
 
@@ -799,6 +824,10 @@ Deferred per the pragmatic-tradeoff posture — recorded so the gap stays visibl
   economy endpoint rejects unauthorized / malformed / replayed requests; **fast-check
   property-based tests** for the generator/solver invariants (unique solution, grid/cage
   validity, seed determinism, difficulty-band stability) with failing-seed logging.
+  - **Also in this stage, for clock-based rules only:** server-elapsed bounds on solve
+    submission — see [Gate: solve-time trust](#gate-solve-time-trust-clock-based-phase-9-rules).
+    Not required for a flat-rate payout; required before any speed-scaled mint or time-decided
+    battle.
 - **Stage 3 — ongoing/as-needed:** Stryker mutation testing on the engine core (advisory,
   ~80% target, not per-merge); lightweight ADRs for the already-made architectural decisions;
   gitleaks secret scanning + a dependency-vetting habit for AI-suggested packages.

@@ -16,6 +16,25 @@ export const dynamic = 'force-dynamic';
 const VALID_GRID_SIZES: readonly GridSize[] = [4, 6, 9];
 
 /**
+ * Upper bound on a submitted in-game time: 24 hours. Only *today's* daily is rankable
+ * (`DailyExperience` drops a submission once the board's `dailyDate` is no longer today), and
+ * the timer only advances while actively playing, so no genuine solve can exceed a day.
+ *
+ * The bound is load-bearing, not cosmetic: `time_ms` is a Postgres `integer`, so a submitted
+ * `1e12` used to clear the plausibility floor (which only rejects times that are too *small*),
+ * reach the UPDATE, and fail at the driver as "value out of range for type integer" — an
+ * unhandled 500 with a stack in the logs, from an input the route had already accepted.
+ */
+const MAX_TIME_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Upper bound on the reported mistake count. Cosmetic (it never affects ranking), so an absurd
+ * value is clamped rather than rejected — failing an otherwise-valid solve over a display stat
+ * would be the worse outcome. The clamp still has to exist: the column is int4 like `time_ms`.
+ */
+const MAX_MISTAKES = 100_000;
+
+/**
  * A valid submission grid is `size` rows × `size` cells of integers `1..size` (a completed
  * board) for one of this app's supported grid sizes — 4×4/6×6 minis or a 9×9 board. This used
  * to hardcode 9×9, which rejected every mini daily solve outright (400 "expected a completed
@@ -49,7 +68,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null);
     const difficulty = body?.difficulty;
     const grid = body?.grid;
-    const mistakes = typeof body?.mistakes === 'number' ? body.mistakes : 0;
+    const rawMistakes = typeof body?.mistakes === 'number' && Number.isFinite(body.mistakes) ? body.mistakes : 0;
+    const mistakes = Math.min(MAX_MISTAKES, Math.max(0, Math.trunc(rawMistakes)));
     const clientTimeMs = typeof body?.timeMs === 'number' && Number.isFinite(body.timeMs) ? body.timeMs : null;
 
     if (!isDailyDifficulty(difficulty)) {
@@ -58,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (!isCompletedGrid(grid)) {
       return NextResponse.json({ error: 'Invalid grid: expected a completed 4x4, 6x6, or 9x9 board' }, { status: 400 });
     }
-    if (clientTimeMs === null || clientTimeMs < 0) {
+    if (clientTimeMs === null || clientTimeMs < 0 || clientTimeMs > MAX_TIME_MS) {
       return NextResponse.json({ error: 'Invalid or missing timeMs' }, { status: 400 });
     }
 
