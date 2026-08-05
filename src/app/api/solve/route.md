@@ -14,7 +14,7 @@ back as typed `SolveError`s → mapped to their 4xx status (not a 500).
 requireUserId()                                            # 401 if signed out
 validate difficulty + grid (completed 4x4/6x6/9x9)          # 400 otherwise
 validate timeMs: finite, 0 <= t <= 24h                      # 400 otherwise
-clamp mistakes into [0, 100_000]                            # never rejects
+coerce mistakes to a non-negative integer   # bounded by the BOARD in recordSolve; never rejects
 puzzle = today's daily                                      # 404 if missing
 recordSolve(userId, puzzle, grid, mistakes, timeMs)  # throws SolveError on rejection
 rank = getUserRank(puzzle, userId)
@@ -39,10 +39,22 @@ day. That is far tighter than the column limit, which is the point — a bound t
 something rejects more garbage than one that merely avoids a crash.
 
 **`mistakes` is clamped, not rejected**, because it is cosmetic — it never affects ranking, so
-failing an otherwise-valid solve over a display stat would be the worse outcome. It shares the
-same int4 column, though, so it cannot be passed through raw either.
-`recordSolve` clamps both again as a last-resort column guard for any non-route caller (see
-[solve.service.md](../../../features/leaderboards/solve.service.md)).
+failing an otherwise-valid solve over a display stat would be the worse outcome. That half of the
+reasoning is unchanged. What changed is the ceiling.
+
+This route used to clamp into `[0, 100_000]`. That kept the int4 column safe and nothing else:
+**100 000 is not a mistake count any board in this app can produce** — the largest, a 9×9 Killer
+with no givens at all, tops out at 648. So a client sending `99999999999` had `100000` stored
+verbatim and served on the public leaderboard, which is what today's `mini-easy` row still shows
+after a probe banked exactly that. A bound that only prevents a crash is not validation.
+
+The ceiling now comes from the board, in `recordSolve`, which is the layer that has one:
+`maxPlausibleMistakes(puzzle.grid)` = the *distinct* wrong placements the grid admits (empty cells ×
+(size − 1)), floored at 100 so the tiniest boards can still absorb a real beginner's repetition.
+That lands between 100 (any 4×4) and 648 (a caged 9×9). The route's job shrinks to coercing the
+field to a non-negative integer. Same shape as `timeMs`'s 24-hour ceiling: prefer a bound derived from the domain over one
+derived from the column. See [solve-rules.md](../../../features/leaderboards/solve-rules.md) and
+[solve.service.md](../../../features/leaderboards/solve.service.md).
 
 ## Bug: mini dailies couldn't complete (fixed July 2026)
 

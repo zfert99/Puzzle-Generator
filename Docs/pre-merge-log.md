@@ -30,6 +30,91 @@ the diff under review.
 
 ---
 
+## 2026-08-05 — a mistake count no board can produce (QA item 2 of 6)
+
+Branch `fix/mistakes-plausibility-bound` on `75b61d9`. Second slice of the re-cut August QA list.
+No engine code touched, so no benchmarks.
+
+### The finding
+
+**`mistakes` was bounded by the column, not by reality.** `/api/solve` clamped into `[0, 100_000]`
+and `recordSolve` clamped again to int4 — both of which keep Postgres happy and neither of which
+asks whether the number is *possible*. 100 000 is not a mistake count any board in this app can
+generate: the largest, a 9×9 Killer with no givens, admits 648 distinct wrong placements. A probe
+sending `99999999999` therefore had `100000` stored verbatim on a **4×4** board and served on the
+public leaderboard, where today's `mini-easy` row still shows it — 2 083× that board's real maximum
+of 48.
+
+The ceiling now comes from the board: `maxPlausibleMistakes(puzzle.grid)` = `max(100, blanks ×
+(size − 1))`, computed in `recordSolve` because that is the layer holding the puzzle. Givens are
+excluded by construction — they aren't editable, so they can't be got wrong. The route keeps only
+the coercion to a non-negative integer. Measured against today's real stored grids: 100 / 100 / 180
+/ 320 / 648 / 648.
+
+**The floor is not decoration — it is the 4×4 bound.** The distinct-placement count alone gives a
+4×4 only 30, which a flailing beginner can pass inside one bad session by re-entering the same
+wrong digit (the board counts every wrong placement; erasing doesn't decrement). Truncating a
+*real* player's count is the failure the bound exists to avoid, so the floor is 100.
+
+**Which boards sit on the floor is a fact about the roller, not about size** — a review pass
+caught the first version of this claiming otherwise. Measured: 6×6 *easy* is 16 blanks → 80 and 6×6
+*medium* exactly 100, both at or under the floor. They never reach `recordSolve` today because
+`rollDailyAssignment` rolls a size for the `mini-hard` slot alone, so every 6×6 daily is `hard`
+(125–180). Let `mini-easy` or `mini-medium` roll to 6×6 and those boards quietly become floor-bound
+instead of board-derived — the same "a slot key is not an identity" trap logged twice before.
+
+**Still clamped, never rejected** — that half of the original reasoning was right and is unchanged:
+`mistakes` never touches ranking, so failing a real solve over a display stat would be the worse
+outcome.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **452 passed** (55 files) — was 445; +7 tests |
+| `npm run build` | ✓ compiled, 14 static pages — isolated-copy technique per the entry below |
+| **Deliberately-broken runs** | **2** — bound reverted to int4-only: 1/1 fails; floor removed: 2/2 fail |
+| Real-board verification | bound computed from all 6 of today's stored grids: 100 / 100 / 180 / 320 / 648 / 648 vs a flat 100 000, plus 12 freshly generated 4×4/6×6 boards across all three tiers |
+| Self-review passes | **3** — pass 1 and pass 2 each found a wrong measurement claim; pass 3 clean |
+| lint · `tsc --noEmit` · markdownlint (`**/*.md`) | all exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+**The write path was not exercised live, deliberately.** `/api/solve` only accepts *today's* board,
+so any end-to-end proof of the clamp means putting a fabricated ranked entry on the public
+leaderboard. Covered instead by the service test (which asserts the value handed to the UPDATE),
+the broken run, and the real-board bound table above.
+
+### Findings
+
+- A fixture bug caught while writing the test, not by it: `solve.service.test.ts` set the puzzle's
+  `grid` to the **solution**, so a bound counting blanks would have read zero and made every
+  mistake count clamp to 0 — while the test still "passed" against the wrong expected value. The
+  fixture is now a dug grid (41 givens / 40 blanks), matching what the cron stores.
+- Review finding, fixed here: `solve.service.md` justified keeping `clampToColumn` as a backstop
+  "for a hypothetical board large enough to matter". No such board exists (sizes are 4/6/9, so the
+  bound never exceeds 648), and the stated reason hid what the call actually does — sanitising
+  non-finite → 0, negative → 0, and truncating fractions, none of which `Math.min` does. Acting on
+  the wrong reason and deleting it would let a direct caller's `NaN` reach an int4 column.
+- Review finding, fixed here: the original 4×4 bound of 30 was reachable by a real player. Hence
+  the floor.
+- Review pass 1, fixed here: "6×6 and 9×9 boards clear the floor on their own arithmetic" was false
+  — 6×6 easy is 80 and 6×6 medium exactly 100. Rewritten as a fact about the roller (see above),
+  which is the part that actually holds.
+- Review pass 2, fixed here: "every 4×4 lands here (10–16 blanks → 30–48)" understated the range;
+  a 4×4 *easy* measures 7 blanks → 21. Both the JSDoc range and the doc's table are now per-tier
+  and measured.
+
+### Lesson
+
+**A clamp that only prevents a crash is not validation.** Both ceilings this repo has had to fix
+(`timeMs`'s and now `mistakes`') were originally sized to the *column* — int4 — which is a fact
+about storage, not about the domain. Sized to the domain instead (24 hours; blanks × (size − 1)),
+they reject garbage the column-sized version accepted. When writing a bound, ask what the largest
+value the *application* can produce is; if the answer is orders of magnitude below the column
+limit, the column limit is the wrong number.
+
+---
+
 ## 2026-08-05 — a well-formed non-date reached Postgres and 500'd (QA item 1 of 6)
 
 Branch `fix/invalid-date-500` on `ccd84ef`. First slice of the re-cut August QA list — the previous

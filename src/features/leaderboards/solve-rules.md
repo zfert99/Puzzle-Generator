@@ -56,3 +56,56 @@ That is analysed, costed, and gated against Phase 9 in
 It is **not** a defect in what ships today: while the leaderboard is flavor, the accepted posture
 here is the right call, and the proposed guard carries its own false-rejection risk on the fastest
 minis.
+
+## `maxPlausibleMistakes(puzzleGrid)`
+
+**Why:** `mistakes` is client-reported and unverifiable, so the only answerable question is
+"could a real client have produced this number?" — and the board is what answers it. Givens are
+not editable, so they cannot be got wrong; an empty cell has exactly `size - 1` wrong digits
+available. The distinct-wrong-placement count is therefore `emptyCells × (size - 1)`.
+
+```text
+count the zeros in the stored puzzle grid    # blanks; givens are excluded by construction
+distinct = blanks × (size - 1)               # every blank, every digit that isn't its answer
+return max(100, distinct)                    # the floor is, in practice, the 4×4 bound
+```
+
+Concretely, measured across the boards actually in rotation:
+
+| Board | Blanks | Distinct | Bound |
+|---|---|---|---|
+| 4×4 easy (classic) | 7 | 21 | **100** (floor) |
+| 4×4 medium (classic) | 10 | 30 | **100** (floor) |
+| 4×4 hard (classic) | 12 | 36 | **100** (floor) |
+| 4×4 caged — no givens | 16 | 48 | **100** (floor) |
+| 6×6 easy (classic) | 16 | 80 | **100** (floor) |
+| 6×6 medium (classic) | 20 | 100 | **100** (exactly) |
+| 6×6 hard (classic) | 26 | 130 | **130** |
+| 6×6 caged — no givens | 36 | 180 | **180** |
+| 9×9 classic (easy) | 40 | 320 | **320** |
+| 9×9 caged — no givens | 81 | 648 | **648** |
+
+**Why the floor.** The distinct count is the right *shape* but too tight on the smallest boards. A
+4×4 admits only 30 distinct wrong placements, and a flailing beginner can pass that inside one bad
+session by re-entering the same wrong digit — the board counts every wrong placement, and erasing
+does not decrement. Truncating a *real* player's count is the failure this bound exists to avoid.
+
+**Which boards sit on the floor is a fact about the roller, not about size.** The table shows 6×6
+easy and medium at or under 100 — they do not reach this function today only because `recordSolve`
+sees dailies alone and [`rollDailyAssignment`](../../lib/db/daily-row.md) rolls a size for the
+`mini-hard` slot and no other, so every 6×6 daily is the `hard` tier. If `mini-easy` or
+`mini-medium` ever rolls to 6×6, those boards silently become floor-bound instead of board-derived.
+Worth knowing before changing the roller; it is the same "a slot key is not an identity" trap that
+has bitten this repo twice.
+
+The ceiling this replaces was a flat **100 000**, two-plus orders of magnitude above anything the
+app can generate; a probe's `99999999999` was duly stored as `100000` on a 4×4 and served on the
+public leaderboard.
+
+**Why clamp instead of reject.** Past the bound the count stops being informative, and `mistakes`
+is cosmetic — it never touches ranking — so failing an otherwise-valid solve over a display stat
+would be the worse outcome. Clamping keeps the solve and loses only the uninformative tail.
+
+**What it is not.** Like the plausibility floor above, this is not an anti-cheat lever: a scripted
+submission simply sends a believable number instead of an absurd one. It is validation — it keeps
+impossible values out of a column the leaderboard serves.
