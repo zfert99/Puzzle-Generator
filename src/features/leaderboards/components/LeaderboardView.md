@@ -29,12 +29,31 @@ prepends the `/puzzles` basePath — Next does not apply basePath to `fetch()`, 
 `/api/...` paths 404 under the multi-zone rewrite.
 
 ```text
-effect [difficulty] -> GET /api/leaderboard -> setEntries/setMe (async)
-effect [date]       -> GET /api/daily/slots -> setSlots (the day's real boards; drives the tabs)
-effect [session]    -> if signed in, GET /api/me/streak + /api/me/bests -> setStreak/setBests (async)
-tab click           -> setLoading(true) + setDifficulty (event handler)
-render              -> tabs · (streak · your rank) · personal best (this board only) · table (caller's row highlighted)
+effect [difficulty, date, session?.user.id] -> GET /api/leaderboard -> setEntries/setMe (async)
+effect [date]                               -> GET /api/daily/slots -> setSlots (drives the tabs)
+effect [session, date]                      -> if signed in, GET /api/me/streak + /api/me/bests
+tab click                                   -> setLoading(true) + setDifficulty (event handler)
+render                                      -> tabs · (streak · your rank) · personal best · table
 ```
+
+## Why the board refetches on a viewer change
+
+**Why:** `isMe` is decided by the **server** now — it arrives baked into the payload rather than
+being recomputed each render from `session?.user.id === entry.userId`, because the public endpoint
+no longer ships account ids (see
+[leaderboard.service.md](../leaderboard.service.md)). That trades a self-correcting comparison for
+cached data, so the fetch has to re-run when the viewer changes.
+
+The path that makes it matter is signing out: `AccountBadge` calls `signOut()` then
+`router.refresh()`, which re-renders Server Components but does **not** re-run a client component's
+effects. With deps of `[difficulty, date]` alone, the table kept the previous viewer's row
+highlighted and labelled "(you)" until a tab switch or reload — the streak and "your rank" lines
+disappeared correctly only because their render gates on `session`.
+
+Keyed on `session?.user.id`, not the `session` object: the id changes only when the viewer actually
+changes, whereas a new object identity from the auth client would refetch the board on unrelated
+re-renders. `LeaderboardView.test.tsx` pins both halves — one test fails if the id leaves the deps,
+another fails if it is swapped for the object.
 
 ## Tabs come from the day's boards (type-as-slot, Step 3b)
 
@@ -62,8 +81,9 @@ another type's best for that rung.
 
 ## "Puzzle Bot" badge (July 2026)
 
-**Why not color alone:** Any entry whose `userId` matches `BOT_USER_ID`
-(`features/leaderboards/bot-identity.ts`) gets a 🤖 emoji plus explicit
+**Why not color alone:** Any entry the server marks `isBot` (the leaderboard service compares the
+row against `BOT_USER_ID` — see `features/leaderboards/bot-identity.ts` — so the id itself never
+reaches the client) gets a 🤖 emoji plus explicit
 `" (bot — beat it!)"` text next to its name — not just a different background or text color.
 Styling-only distinction would fail WCAG 1.4.1 (Use of Color) for anyone who can't perceive
 the color difference; the emoji + text label reads the same for everyone.

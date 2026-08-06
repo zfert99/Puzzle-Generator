@@ -38,10 +38,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: `No daily puzzle for ${isoDate} (${difficulty})` }, { status: 404 });
     }
 
-    const entries = await getLeaderboard(db, puzzle.id);
-
-    // Own rank only if signed in; never from a client-supplied id.
+    // Resolved BEFORE the board is built: `getLeaderboard` needs it to mark the viewer's own row
+    // (`isMe`), now that entries no longer carry a `userId` for the client to compare against.
+    // Session-derived, never a client-supplied id — that is what keeps `isMe` unspoofable (BOLA).
     const userId = await getCurrentUserId();
+
+    const entries = await getLeaderboard(db, puzzle.id, userId);
     const me = userId ? await getUserRank(db, puzzle.id, userId) : null;
 
     logger.info({ event: 'leaderboard_success', date: isoDate, difficulty, count: entries.length }, 'Served leaderboard');

@@ -20,7 +20,8 @@ vi.mock('@/features/leaderboards/leaderboard.service', () => ({
   getUserRank: (...args: unknown[]) => getUserRank(...args),
 }));
 
-vi.mock('@/features/auth/session', () => ({ getCurrentUserId: async () => null }));
+const getCurrentUserId = vi.fn<() => Promise<string | null>>(async () => null);
+vi.mock('@/features/auth/session', () => ({ getCurrentUserId: () => getCurrentUserId() }));
 
 import { GET } from './route';
 
@@ -33,6 +34,8 @@ beforeEach(() => {
   getDailyPuzzle.mockClear();
   getLeaderboard.mockClear();
   getUserRank.mockClear();
+  getCurrentUserId.mockClear();
+  getCurrentUserId.mockResolvedValue(null);
   getDailyPuzzle.mockResolvedValue({ id: 'p1', date: '2026-08-05', difficulty: 'easy' });
 });
 
@@ -70,5 +73,35 @@ describe('GET /api/leaderboard date validation', () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({ date: '2024-02-29', difficulty: 'easy' });
     expect(getLeaderboard).toHaveBeenCalledOnce();
+  });
+});
+
+/**
+ * The board no longer ships each player's account id, so "which row is you?" is decided on the
+ * server. The id it decides with has to be the SESSION's — taking it from the request would let a
+ * caller ask which row belongs to someone else, the same BOLA rule the rest of this feature keeps.
+ */
+describe('GET /api/leaderboard viewer identity', () => {
+  it('passes the session user id to the board query', async () => {
+    getCurrentUserId.mockResolvedValue('user-A');
+
+    await GET(buildRequest('?difficulty=easy'));
+
+    expect(getLeaderboard).toHaveBeenCalledWith(expect.anything(), 'p1', 'user-A');
+  });
+
+  it('passes null when signed out, so no row can be marked as the viewer', async () => {
+    await GET(buildRequest('?difficulty=easy'));
+
+    expect(getLeaderboard).toHaveBeenCalledWith(expect.anything(), 'p1', null);
+  });
+
+  it('ignores a ?userId= in the query and still uses the session id', async () => {
+    getCurrentUserId.mockResolvedValue('user-A');
+
+    await GET(buildRequest('?difficulty=easy&userId=user-B'));
+
+    expect(getLeaderboard).toHaveBeenCalledWith(expect.anything(), 'p1', 'user-A');
+    expect(getUserRank).toHaveBeenCalledWith(expect.anything(), 'p1', 'user-A');
   });
 });

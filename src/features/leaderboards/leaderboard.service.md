@@ -9,19 +9,35 @@ rank is still derived from their session id by the route (never a client-supplie
 "my rank" can't be spoofed to peek at someone else's placement. Ordering is served by the
 `(puzzle_id, time_ms)` index; only completed attempts count.
 
-## `getLeaderboard(db, puzzleId, limit=20)`
+## `getLeaderboard(db, puzzleId, viewerId=null, limit=20)`
 
 **Why join `user`:** Entries need a display name, so it joins the better-auth `user` table.
 The name is `coalesce(username, name)` — the chosen public handle, falling back to the account
 name if none is set. Ascending by time; rank is the row position.
 
 ```text
-SELECT userId, user.name, time_ms, mistakes
+SELECT user_id, user.name, time_ms, mistakes
   FROM solve_attempts JOIN user
   WHERE puzzle_id = puzzleId AND completed
   ORDER BY time_ms ASC LIMIT limit
--> attach rank = index + 1
+-> rank  = index + 1
+-> isBot = user_id === BOT_USER_ID
+-> isMe  = viewerId !== null && user_id === viewerId
+-> DROP user_id; it does not appear in the returned entry
 ```
+
+**Why the row's `user_id` is read but never returned.** This endpoint is public and
+unauthenticated, so everything it returns is world-readable, and `solve_attempts.user_id` is the
+better-auth account id that sessions are keyed to. It was being shipped only so the client could
+derive two booleans — "is this me?" and "is this the bot?" — which the server can answer without
+handing out identifiers. Not exploitable on its own (no route accepts a `userId`; ownership always
+comes from the session), but it is the enumeration surface OWASP A01 warns about, and a DTO is the
+standard answer. The mapping destructures `user_id` out explicitly rather than spreading the row,
+so re-adding it has to be a deliberate act.
+
+**Why `viewerId` is a parameter, not a request field.** It is the caller's **session** id, supplied
+by the route. A client-supplied id would let anyone ask "which row is this other person?" — the
+same BOLA rule the rest of this feature follows.
 
 ## `getUserRank(db, puzzleId, userId)`
 

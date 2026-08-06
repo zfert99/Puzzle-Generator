@@ -6,7 +6,8 @@ import { BOT_USER_ID, BOT_NAME } from './bot-identity';
  * "Puzzle Bot" — a transparent, clearly-labeled system account that posts a good-but-
  * beatable time on every daily board. It exists to give players a visible "time to beat"
  * while the real player base is small, never to impersonate a real solver: the UI always
- * renders it with a 🤖 badge (`LeaderboardView`, via `bot-identity.ts`), and its target
+ * renders it with a 🤖 badge (`LeaderboardView`, from the `isBot` flag the leaderboard service
+ * sets using `bot-identity.ts`), and its target
  * times (the profile table's `botTimeMs` in `daily-row.ts`) are tuned to be comfortably above
  * the anti-cheat `minSolveMs` floor — a solid time, not a world record.
  *

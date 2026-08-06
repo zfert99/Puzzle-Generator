@@ -30,6 +30,78 @@ the diff under review.
 
 ---
 
+## 2026-08-06 — the public leaderboard stops shipping account ids (QA item 4 of 6)
+
+Branch `fix/leaderboard-dto` on `92f0665`. No engine code touched, so no benchmarks.
+
+### The finding
+
+`/api/leaderboard` is unauthenticated, and every entry carried `userId` — the better-auth account
+id that sessions are keyed to. It was there only so the client could derive two booleans from it:
+`isMe` (compare against the session id) and `isBot` (compare against `BOT_USER_ID`). Both are now
+decided server-side and the id is destructured out of the mapping, so it never reaches the wire.
+
+Not exploitable on its own — no route accepts a `userId`, and ownership everywhere comes from the
+session — which is why this ranked fourth rather than first. It is the enumeration surface OWASP
+A01 warns about, and a DTO is the standard answer.
+
+**The non-obvious part was `isMe`.** Deciding it server-side means `getLeaderboard` needs the
+viewer's id as an input, so `getCurrentUserId()` moved *above* the board query in the route. That
+id must be the session's: a request-supplied one would let a caller ask which row belongs to
+someone else. A route test passes `?userId=user-B` while the session is `user-A` and asserts the
+session id is what reaches the query.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **464 passed** (56 files) — was 452; +12, +1 file |
+| `npm run build` | ✓ compiled in **7.9 s**, 14/14 static pages (isolated copy — a dev server owns `.next`) |
+| **Deliberately-broken runs** | **4** — pre-fix DTO: 4/4 fail; viewer id from the query string: 2/2 fail; effect deps without the viewer id: 1/1 fails; deps keyed on the session object: 1/1 fails |
+| Live payload check | signed out and signed in on the same board: `userId` absent from the whole response, `isMe` flips correctly |
+| Browser check | bot row renders 🤖 + "(bot — beat it!)", own row highlights with "(you)"; no React key warnings after moving the key to `rank`. **Sign-out repro run end to end** on an archived board: header flips to "Sign in", the row stays (public data), `(you)` clears |
+| lint · `tsc --noEmit` · markdownlint | all exit 0 |
+
+### Findings
+
+- **Review finding, fixed here: moving `isMe` server-side made it non-reactive, and the fetching
+  effect still depended only on `[difficulty, date]`.** Signing out via the header (`signOut()` +
+  `router.refresh()`, which re-renders Server Components but not client effects) left the previous
+  viewer's row highlighted and labelled "(you)" until a tab switch or reload. Deps now include
+  `session?.user.id`. New `LeaderboardView.test.tsx` pins both halves of the choice — one test
+  fails without the id in the deps, another fails if it is keyed on the `session` object instead.
+- Reverse-reference sweep caught four live docs asserting the client derives the badge from an id:
+  `bot-identity.ts`'s own module rationale ("so client components can reference `BOT_USER_ID`"),
+  `bot.ts`'s header comment, `bot-identity.md`, and `LeaderboardView.md`. **No client file imports
+  `bot-identity` any more** — the split now earns its place one step inward, keeping
+  `leaderboard.service.ts` from importing the bot *writer* just to get the id. All four rewritten.
+
+### Invariants checked (§2)
+
+**Verified by running:** ownership — the viewer id reaching `getLeaderboard` is `getCurrentUserId()`,
+pinned by a test that passes `?userId=user-B` under an `user-A` session and by a broken run that
+swaps in the query param (2/2 fail); retired keys / archived boards — the sign-out repro was done on
+an **archived** date's board, which rendered its flags correctly, and the flags are derived from the
+row rather than the slot key, so they cannot care what a key means on a given day. **Read, not run:**
+no `ON CONFLICT` write, no migration, no cross-date aggregate in this diff.
+
+### Reviews
+
+**`/code-review` has NOT been run — it is user-triggered and billed, and an agent cannot launch it.**
+
+`/security-review` **not run**: the diff *removes* a field from a public payload and adds no auth,
+authz, or data-access rule. The one authorization-adjacent change — where the viewer id comes from —
+is covered by the test and broken run above.
+
+### Lesson
+
+**A field that exists only to be compared can usually be replaced by the comparison.** Both client
+uses of `userId` were equality checks whose answer the server already knew; shipping the operand
+instead of the result is what made a public endpoint leak identifiers. When a DTO carries an id the
+UI never displays, check whether the client is computing something the server could just state.
+
+---
+
 ## 2026-08-05 — the rate-limit key is not forgeable (QA item 3 of 6 — closed with no code change)
 
 Branch `docs/rate-limit-verified` on `7dfa341`. **Docs only.** The security pass suspected that
