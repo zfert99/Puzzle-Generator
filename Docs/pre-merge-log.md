@@ -100,6 +100,20 @@ returning >= 400** — the meta-guard, so a future basePath move turns the suite
 - **Prefer a production build for parallel e2e.** `next dev` compiles on demand, so parallel workers
   hitting cold routes produce timeouts that look like assertion failures.
 
+### Re-verified 2026-08-07 (post-rebase onto `eeafac4`, post-review-follow-up)
+
+Rebased after PR #71 landed; one code-review follow-up folded in (the `HAS_DATABASE` presence
+check above). Re-run rather than logged as a separate entry — same PR, same day, and a second
+near-identical entry would be noise.
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 468 passed (57 files) |
+| `tsc --noEmit` · `npm run lint` · `markdownlint "**/*.md"` | all exit 0 |
+| `npm run build` | ✓ 14/14 static pages |
+| `npx playwright test` | 38 passed |
+| Merge cleanliness | clean vs `main` **and** vs `feat/hub-reorg` (`git merge-tree`, both directions) |
+
 ### Reviews
 
 - `/security-review`: **run — no findings.** Test harness, CI config and docs only; no application
