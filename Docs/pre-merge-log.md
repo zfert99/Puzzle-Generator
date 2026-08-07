@@ -30,6 +30,106 @@ the diff under review.
 
 ---
 
+## 2026-08-07 — daily generation moves off Vercel Cron after a silent outage
+
+Branch `fix/cron-via-github-actions` on `1089316`. Infrastructure + docs; **no application code**
+beyond a stale JSDoc, so no benchmarks and no test-count change.
+
+### The incident
+
+`2026-08-07` had **zero** daily boards for ~13.5 hours. No alert, no error, no failed cron run —
+because there was no cron run. Vercel invokes crons on the project's **generated** production URL,
+Deployment Protection (re-enabled the previous day as mitigation #1 of the multi-zone safety review)
+restricts exactly that URL, crons don't follow the resulting redirect, and **redirected invocations
+are never written to the logs**. Both halves matter: the first broke generation, the second hid it.
+
+Full diagnosis, evidence table and rejected options:
+[research/vercel-cron-deployment-protection-outage.md](research/vercel-cron-deployment-protection-outage.md).
+
+### The fix
+
+A scheduled GitHub Action calls the **custom** domain, which is exempt from Standard Protection, so
+protection stays exactly as configured and authorization is unchanged (the constant-time
+`CRON_SECRET` check was always the real guard, not the caller's identity). `vercel.json`'s `crons`
+block is removed so there is one scheduler, not one working and one silently dead.
+
+Two things the Vercel cron never had: `workflow_dispatch`, so a missed night is recovered without
+hand-seeding from a laptop; and a **post-run assertion that the day actually has boards** — the
+check that would have caught this in minutes instead of hours.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **464 passed** (56 files) — unchanged from `main`; no source logic touched |
+| `npm run build` | ✓ compiled in **10.8 s**, 14/14 static pages (isolated copy) |
+| lint · `tsc --noEmit` · markdownlint (`**/*.md`) | all exit 0 |
+| Workflow YAML | **parses** — validated with `js-yaml`, already present transitively in `node_modules`; triggers `schedule`+`workflow_dispatch`, cron `7 0 * * *` |
+| Workflow shell logic | **run end to end** under `bash -e` with a real `$GITHUB_OUTPUT` handoff: happy path (incl. the idempotent `skipped:true` branch) passes; wrong secret now prints the endpoint's own body; a boardless date still fails the assertion |
+| Production restored | `npm run db:seed` (same idempotent service the endpoint calls) — 6 boards, verified live |
+| Workflow assertion, dry-run | the verify step's logic run against the real API: `2026-08-07 has 6 board(s)` → PASS |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- The local `CRON_SECRET` does **not** match production (a hand probe returned 401). Harmless, but
+  it means the repo secret must be taken from Vercel's env, not from `.env.local`.
+- The workflow YAML **is** validated locally after all: `js-yaml` is already in `node_modules`
+  transitively, so no install was needed. Parsed, and its trigger/step/secret shape checked against
+  the repo's two existing workflows. What remains unverified is GitHub *accepting* it — which only
+  happens once it is on the default branch, since `schedule:` never fires from a feature branch.
+- A stale number caught by this gate run: the entry first recorded 468 tests, measured while the
+  working tree still held QA item 5. Split onto its own branch, this diff is 464/56 — unchanged
+  from `main`, which is the point.
+- Review finding, fixed here: `response=$(curl --fail-with-body …)` discarded the body it captured,
+  because the default `bash -e {0}` aborts the step before the next line prints it. Reproduced with
+  a wrong token: the log showed only `curl: (22) … 401`, never `{"error":"Unauthorized"}` — in a PR
+  whose whole point is legible failure. The assignment now sits inside `if !`, where `set -e` is
+  suspended.
+- Review finding, fixed here: the verify step recomputed the date instead of using the `isoDate` the
+  endpoint returns. A `workflow_dispatch` recovery run started just before 00:00 UTC would generate
+  day N and then assert against day N+1, failing a run that succeeded. The date is now handed
+  between steps via `$GITHUB_OUTPUT`.
+
+### Invariants checked (§2)
+
+**Verified by running:** *anything AI-wrote that looks plausible* — the workflow's shell is the only
+executable code here, so it was re-derived rather than read. Every branch exercised under `bash -e`
+with a real `$GITHUB_OUTPUT`: happy path (including the `skipped:true` no-op), wrong secret, a
+boardless date, and an `ok:true` response carrying no `isoDate`. The extracted date is confined to
+`[0-9-]` by the capture group, so it cannot inject a second line into `$GITHUB_OUTPUT` — checked
+against a `\n`-bearing probe, which simply fails to match — and the value reaches step 2 through
+`env:` rather than `${{ }}` inside the script, with zero raw interpolations in any `run` block.
+Also *idempotency*, which is the one that matters most here — the new caller can be
+re-dispatched by hand and retried, so a second run must not re-roll the day.
+`generateDailyPuzzles` returns `{ skipped: true, inserted: 0 }` when the date already has boards
+(`dailies.service.ts:184`), and that **explicit date guard** — not `UNIQUE(date, difficulty)` — is
+what makes a re-run safe, because the assignment is *rolled*: a second run draws different rungs
+that have nothing to collide with. Exercised for real today, when `npm run db:seed` restored the
+missing day through the same service. **Read, not run:** no slot-key aggregate, no migration, no
+ownership predicate — this diff is a workflow file, a deleted config block, and docs.
+
+### Reviews
+
+**`/code-review` has NOT been run — it is user-triggered and billed, and an agent cannot launch it.**
+
+`/security-review` **not run**: this changes *who calls* an endpoint, not its authorization. The
+constant-time `CRON_SECRET` check is untouched and remains the only thing that admits a request —
+the caller's identity was never part of the guard.
+
+### Lessons
+
+**A scheduler that can fail silently needs an assertion, not a status code.** The endpoint was
+healthy throughout; nothing was checking the *outcome*. Any future scheduled job in this repo should
+assert the state it was supposed to produce.
+
+**When you close a security gap, audit what was reaching through it.** Locking the generated URL was
+correct and stays. The miss was not asking what depended on that URL being reachable — and the
+answer was already written down, in `multi-zone-migration-validation.md` §5, a week earlier: *"It
+hits the deployment's own generated production URL, NOT your custom domain."*
+
+---
+
 ## 2026-08-06 — the public leaderboard stops shipping account ids (QA item 4 of 6)
 
 Branch `fix/leaderboard-dto` on `92f0665`. No engine code touched, so no benchmarks.

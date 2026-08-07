@@ -25,10 +25,13 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 /**
- * GET /api/cron/daily — Vercel Cron target (scheduled 00:00 UTC in vercel.json).
+ * GET /api/cron/daily — daily generation target, called at 00:07 UTC by the `daily-puzzles`
+ * GitHub Actions workflow against the CUSTOM domain. It was a Vercel Cron until 2026-08-07, when
+ * Deployment Protection began restricting the generated production URL that Vercel invokes crons
+ * on — the job then failed silently, unlogged, because crons don't follow redirects (see route.md).
  *
- * Vercel automatically sends `Authorization: Bearer <CRON_SECRET>` when the CRON_SECRET
- * env var is set; we verify it in constant time and reject anything else with 401. The
+ * The caller sends `Authorization: Bearer <CRON_SECRET>`; we verify it in constant time and reject
+ * anything else with 401. That check, not the caller's identity, is the actual guard. The
  * job generates today's daily puzzle for every eligible difficulty and is idempotent, so
  * a retry (or an accidental double-fire) inserts nothing extra.
  */
