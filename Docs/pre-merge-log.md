@@ -54,7 +54,8 @@ returning >= 400** — the meta-guard, so a future basePath move turns the suite
 |---|---|
 | `npx playwright test` | **38 passed**, 0 failed — first genuine green in the suite's life |
 | Deliberately-broken run | fixture prefixing disabled -> **suite goes red**; restored -> 38 green. The assertions are not vacuous |
-| No-database run | **34 passed, 4 skipped** — only the `/daily` modal specs need a DB |
+| CI conditions reproduced locally | **34 passed, 4 skipped** — production build, placeholder DB, `E2E_HAS_DB=false` |
+| Local, real database | **38 passed** — all four DB specs run |
 | `npx vitest run` | 468 passed |
 | `tsc --noEmit` / `npm run lint` / `markdownlint "**/*.md"` | all exit 0 |
 | Workflow YAML | parses (`js-yaml`) |
@@ -67,6 +68,13 @@ returning >= 400** — the meta-guard, so a future basePath move turns the suite
 - **A stale selector had been hiding since the daily restructure.** `a11y.spec.ts` picked the daily
   by `/^easy$/i`, but type-as-slot labels read "Easy · Classic" and **both halves roll daily**. The
   test was wrong, not the app. Fixed by taking whatever the picker preselects.
+- **A production build REQUIRES `DATABASE_URL`, even to build.** `/api/daily` and
+  `/api/cron/daily` evaluate the DB client at module scope, so `next build` dies collecting page
+  data without it — while `next dev` does not, which is why local testing missed it and **CI caught
+  it**. The earlier "34 of 38 pass without a database" was measured against dev only. CI now passes
+  a placeholder connection string purely to get the build through, and `E2E_HAS_DB` (set from the
+  secret's presence) decides whether the four DB specs actually run — the *presence* of
+  `DATABASE_URL` is useless as a signal once a placeholder exists.
 - **My own DB skip guard was silently wrong.** `test.skip(!process.env.DATABASE_URL, …)` reads the
   *runner's* env, and Next loads `.env.local` for the app only — so the four DB specs skipped even
   on a machine with a working database, quietly dropping coverage 38 -> 34. Fixed by loading
@@ -81,6 +89,10 @@ returning >= 400** — the meta-guard, so a future basePath move turns the suite
 - **An env-var guard in a test runner does not see the app's `.env`.** Next injects `.env.local`
   into the app process, not into Playwright or Vitest. A `process.env.X`-gated skip silently
   over-skips unless the config loads the file itself — and a skip reports as success.
+- **A build-time dependency is invisible to `next dev`.** Dev compiles per request; `next build`
+  collects page data for every route up front, so a module-scope `throw` in a rarely-hit API route
+  fails the build and nothing else. Any "does this work without X?" claim measured under dev must be
+  re-measured under a build before it goes in CI.
 - **Prefer a production build for parallel e2e.** `next dev` compiles on demand, so parallel workers
   hitting cold routes produce timeouts that look like assertion failures.
 

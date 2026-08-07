@@ -58,11 +58,16 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: End-to-end tests
-        # 34 of the 38 specs need no database. The four that play a real daily board skip
-        # themselves unless DATABASE_URL is set — add it as a repository secret to unlock them.
+        # DATABASE_URL is required just to BUILD: /api/daily and /api/cron/daily evaluate the DB
+        # client at module scope, so `next build` dies collecting page data without it. Hence the
+        # placeholder fallback — it gets the build through and is never connected to, because the
+        # four specs that would query skip themselves via E2E_HAS_DB. Add DATABASE_URL as a
+        # repository secret to run those four for real; the other 34 run either way.
         run: npm run test:e2e
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-used-for-real-sessions' }}
+          E2E_HAS_DB: ${{ secrets.DATABASE_URL != '' }}
 
       - name: Upload report on failure
         if: failure()

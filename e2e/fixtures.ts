@@ -33,6 +33,21 @@ import { BASE_PATH } from '@/lib/base-path';
  * `@playwright/test` still compiles and still 404s, so the convention is the only thing holding —
  * `e2e/no-raw-playwright-import.spec.ts` asserts it mechanically.
  */
+/**
+ * Whether a **real** database is reachable, which four `/daily` specs need (they play an actual
+ * daily board). Everything else runs without one.
+ *
+ * Why this is not simply `Boolean(process.env.DATABASE_URL)`: a production build **fails** without
+ * that variable — `/api/daily` and `/api/cron/daily` evaluate the DB client at module scope, so
+ * `next build` dies during page-data collection. CI therefore always sets a *placeholder*
+ * connection string just to get the build through, which makes the variable's presence useless as
+ * a signal. `E2E_HAS_DB` carries the real answer (set from the repo secret's presence); locally,
+ * where `.env.local` holds a genuine string and no placeholder is involved, we fall back to it.
+ */
+export const HAS_DATABASE = process.env.E2E_HAS_DB
+  ? process.env.E2E_HAS_DB === 'true'
+  : Boolean(process.env.DATABASE_URL);
+
 export const test = base.extend({
   // The second argument is Playwright's fixture callback, which its docs name `use`. Named
   // `provide` here because `react-hooks/rules-of-hooks` sees a bare `use(...)` call and reports

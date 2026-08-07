@@ -29,7 +29,11 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // Local runs get a retry too. Locally the server is `next dev`, which compiles on demand, so
+  // parallel workers hitting cold routes time out in ways that look like assertion failures
+  // (~67% of runs saw one; every such test passed 5/5 solo). A retry keeps that from drowning the
+  // signal, and Playwright still REPORTS a retried pass as "flaky" — it is visible, not hidden.
+  retries: process.env.CI ? 2 : 1,
   reporter: 'list',
   use: {
     // Origin only. The app is mounted at `basePath: '/puzzles'`, but a path here would NOT help:

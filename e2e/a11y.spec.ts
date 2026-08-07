@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, HAS_DATABASE } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
 
 /**
@@ -137,12 +137,12 @@ test.describe('responsive: overlay bounds stay inside the viewport', () => {
 
     for (const scenario of confirmModalScenarios) {
       test(`"Start a new puzzle?" confirm modal (${scenario.label}) stays on-screen at ${width}px`, async ({ page }) => {
-        // The /daily path needs a real daily board, so it needs a database. Everything else in
-        // this suite runs without one (measured: 34 of 38 pass with DATABASE_URL unset), which is
-        // what lets CI run the suite at all. Set DATABASE_URL as a CI secret to unlock these four.
+        // The /daily path needs a real daily board, so it needs a database. The other 34 specs
+        // do not, which is what lets CI run the suite without one. See `HAS_DATABASE` for why
+        // the presence of DATABASE_URL is NOT the signal here.
         test.skip(
-          scenario.label === '/daily' && !process.env.DATABASE_URL,
-          'needs DATABASE_URL — no daily board to play without one',
+          scenario.label === '/daily' && !HAS_DATABASE,
+          'needs a real database — no daily board to play without one',
         );
         await page.setViewportSize({ width, height: 900 });
         // Create a saved game first (the warning only fires when one already exists), then
