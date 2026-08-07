@@ -12,7 +12,7 @@ content; `DailyExperience` hydrates and fetches on the client.
 
 ```text
 Render the page shell:
-  "Daily Sudoku" heading + links to Free play and the PDF generator.
+  "Daily Sudoku" heading (the shell renders no nav links of its own — see note below).
   <DailyExperience /> — the client board orchestrator.
 ```
 
