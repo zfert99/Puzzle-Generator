@@ -272,7 +272,7 @@ export default function ArchiveExperience() {
               href={`/daily?slot=${encodeURIComponent(difficulty)}`}
               className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
             >
-              Play {selectedLabel} on the Daily (ranked)
+              Daily {selectedLabel} (ranked)
             </Link>
           ) : (
             <button

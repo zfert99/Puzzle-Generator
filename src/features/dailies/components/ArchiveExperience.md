@@ -5,8 +5,8 @@ its puzzle as **unranked practice**.
 
 ## Why today is browsable but not playable here (August 2026)
 
-The calendar reaches today, so today's leaderboard stays visible beside it — but pressing Play on
-today **hands off to `/daily`** rather than starting a board.
+The calendar reaches today, so today's leaderboard stays visible beside it — but today's button reads
+**"Daily {slot} (ranked)"** and **hands off to `/daily`** rather than starting a board.
 
 It used to start an *unranked practice* run of the very board you still had to play ranked. Worse,
 a replay calls `startNewGame`, which overwrites the single saved slot, so it could erase an

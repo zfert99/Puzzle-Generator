@@ -9,13 +9,13 @@ test.describe('Archive hands today off to the ranked daily', () => {
   test('today offers a ranked hand-off, not a practice start', async ({ page }) => {
     await page.goto('/archive');
     // Default selection is today, so the primary action must be the hand-off.
-    await expect(page.getByRole('link', { name: /on the Daily \(ranked\)/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /^Daily .+\(ranked\)$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /\(practice\)$/ })).toHaveCount(0);
   });
 
   test('the hand-off carries the chosen slot through to /daily', async ({ page }) => {
     await page.goto('/archive');
-    const handoff = page.getByRole('link', { name: /on the Daily \(ranked\)/i });
+    const handoff = page.getByRole('link', { name: /^Daily .+\(ranked\)$/i });
     const href = await handoff.getAttribute('href');
     expect(href).toMatch(/\/daily\?slot=/);
 
@@ -32,7 +32,7 @@ test.describe('Archive hands today off to the ranked daily', () => {
     const anyDay = page.getByRole('button', { name: '15', exact: true });
     await anyDay.click();
     await expect(page.getByRole('button', { name: /\(practice\)$/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /on the Daily \(ranked\)/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Daily .+\(ranked\)$/i })).toHaveCount(0);
   });
 
   test('a stale or garbage slot self-corrects instead of breaking', async ({ page }) => {
