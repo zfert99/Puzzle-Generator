@@ -62,7 +62,7 @@ check that would have caught this in minutes instead of hours.
 | Check | Result |
 |---|---|
 | `npx vitest run` | **464 passed** (56 files) — unchanged from `main`; no source logic touched |
-| `npm run build` | ✓ compiled in **10.0 s**, 14/14 static pages (isolated copy) |
+| `npm run build` | ✓ compiled in **10.8 s**, 14/14 static pages (isolated copy) |
 | lint · `tsc --noEmit` · markdownlint (`**/*.md`) | all exit 0 |
 | Workflow YAML | **parses** — validated with `js-yaml`, already present transitively in `node_modules`; triggers `schedule`+`workflow_dispatch`, cron `7 0 * * *` |
 | Workflow shell logic | **run end to end** under `bash -e` with a real `$GITHUB_OUTPUT` handoff: happy path (incl. the idempotent `skipped:true` branch) passes; wrong secret now prints the endpoint's own body; a boardless date still fails the assertion |
@@ -93,7 +93,14 @@ check that would have caught this in minutes instead of hours.
 
 ### Invariants checked (§2)
 
-**Verified by running:** *idempotency*, which is the one that matters here — the new caller can be
+**Verified by running:** *anything AI-wrote that looks plausible* — the workflow's shell is the only
+executable code here, so it was re-derived rather than read. Every branch exercised under `bash -e`
+with a real `$GITHUB_OUTPUT`: happy path (including the `skipped:true` no-op), wrong secret, a
+boardless date, and an `ok:true` response carrying no `isoDate`. The extracted date is confined to
+`[0-9-]` by the capture group, so it cannot inject a second line into `$GITHUB_OUTPUT` — checked
+against a `\n`-bearing probe, which simply fails to match — and the value reaches step 2 through
+`env:` rather than `${{ }}` inside the script, with zero raw interpolations in any `run` block.
+Also *idempotency*, which is the one that matters most here — the new caller can be
 re-dispatched by hand and retried, so a second run must not re-roll the day.
 `generateDailyPuzzles` returns `{ skipped: true, inserted: 0 }` when the date already has boards
 (`dailies.service.ts:184`), and that **explicit date guard** — not `UNIQUE(date, difficulty)` — is
