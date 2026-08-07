@@ -61,8 +61,10 @@ check that would have caught this in minutes instead of hours.
 
 | Check | Result |
 |---|---|
-| `npx vitest run` | **468 passed** (57 files) — unchanged; no source logic touched |
-| `npm run build` · lint · `tsc --noEmit` · markdownlint | all exit 0 |
+| `npx vitest run` | **464 passed** (56 files) — unchanged from `main`; no source logic touched |
+| `npm run build` | ✓ compiled in **10.0 s**, 14/14 static pages (isolated copy) |
+| lint · `tsc --noEmit` · markdownlint (`**/*.md`) | all exit 0 |
+| Workflow YAML | **parses** — validated with `js-yaml`, already present transitively in `node_modules`; triggers `schedule`+`workflow_dispatch`, cron `7 0 * * *` |
 | Production restored | `npm run db:seed` (same idempotent service the endpoint calls) — 6 boards, verified live |
 | Workflow assertion, dry-run | the verify step's logic run against the real API: `2026-08-07 has 6 board(s)` → PASS |
 | Benchmarks | **not run** — no engine/solver core touched |
@@ -71,9 +73,32 @@ check that would have caught this in minutes instead of hours.
 
 - The local `CRON_SECRET` does **not** match production (a hand probe returned 401). Harmless, but
   it means the repo secret must be taken from Vercel's env, not from `.env.local`.
-- YAML could not be parsed locally (no PyYAML, no `actionlint`), so the workflow's *syntax* is
-  verified only by GitHub registering it — checked after push, not before. Its shell logic was
-  dry-run against the live API.
+- The workflow YAML **is** validated locally after all: `js-yaml` is already in `node_modules`
+  transitively, so no install was needed. Parsed, and its trigger/step/secret shape checked against
+  the repo's two existing workflows. What remains unverified is GitHub *accepting* it — which only
+  happens once it is on the default branch, since `schedule:` never fires from a feature branch.
+- A stale number caught by this gate run: the entry first recorded 468 tests, measured while the
+  working tree still held QA item 5. Split onto its own branch, this diff is 464/56 — unchanged
+  from `main`, which is the point.
+
+### Invariants checked (§2)
+
+**Verified by running:** *idempotency*, which is the one that matters here — the new caller can be
+re-dispatched by hand and retried, so a second run must not re-roll the day.
+`generateDailyPuzzles` returns `{ skipped: true, inserted: 0 }` when the date already has boards
+(`dailies.service.ts:184`), and that **explicit date guard** — not `UNIQUE(date, difficulty)` — is
+what makes a re-run safe, because the assignment is *rolled*: a second run draws different rungs
+that have nothing to collide with. Exercised for real today, when `npm run db:seed` restored the
+missing day through the same service. **Read, not run:** no slot-key aggregate, no migration, no
+ownership predicate — this diff is a workflow file, a deleted config block, and docs.
+
+### Reviews
+
+**`/code-review` has NOT been run — it is user-triggered and billed, and an agent cannot launch it.**
+
+`/security-review` **not run**: this changes *who calls* an endpoint, not its authorization. The
+constant-time `CRON_SECRET` check is untouched and remains the only thing that admits a request —
+the caller's identity was never part of the guard.
 
 ### Lessons
 
