@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
-import { formatDailyKey } from '@/lib/db/daily-row';
+import { formatDailyKey, toUtcDateString } from '@/lib/db/daily-row';
 
 /**
  * Front-door "continue" affordance. Reads the single saved game from the board store and, if
@@ -16,9 +16,20 @@ export function ContinueBanner() {
 
   // `?resume=1` tells the surface to jump straight into the parked game, not its menu.
   const href = saved.mode === 'daily' ? '/daily?resume=1' : '/play?resume=1';
+
+  /**
+   * `mode: 'daily'` means "a daily-shaped board", not "today's ranked daily". An archive replay
+   * (`ArchiveExperience` starts boards as `startNewGame(puzzle, 'daily', thatDate)`) and a daily
+   * left running past 00:00 UTC both carry an older `dailyDate`, and this banner used to call
+   * both of them "Daily" — telling a player their parked *practice* board was the ranked daily
+   * they still had to play. The date is the only thing that separates them.
+   */
+  const isAnotherDaysDaily = Boolean(saved.dailyDate && saved.dailyDate !== toUtcDateString(new Date()));
   const what =
     saved.mode === 'daily'
-      ? `Daily · ${formatDailyKey(saved.difficulty)}`
+      ? isAnotherDaysDaily
+        ? `Practice · ${formatDailyKey(saved.difficulty)}`
+        : `Daily · ${formatDailyKey(saved.difficulty)}`
       : saved.variant === 'killer'
         ? `Killer · ${saved.difficulty}`
         : `${saved.gridSize}×${saved.gridSize} · ${saved.difficulty}`;
