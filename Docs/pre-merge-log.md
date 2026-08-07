@@ -188,6 +188,70 @@ security-relevant piece was the dependency bump, verified directly instead: `npm
 
 ---
 
+## 2026-08-07 — hub grouped into Play / Compete / Print
+
+Branch `feat/hub-reorg` on `bb10da9`, commit `03152de`. ~173 LOC across 6 files; one `.tsx`
+(`PuzzleHub`, a presentational Server Component), two e2e specs, three mirrored docs.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **468 passed** (57 files) |
+| `npx tsc --noEmit` · `npm run lint` · `markdownlint "**/*.md"` | all exit 0 |
+| `npm run build` | ✓ compiled **8.9 s**, 14/14 static pages |
+| Benchmarks | **not run** — no solver/generator core touched |
+| Hub rendered live | 3 `<h2>`s (Play/Compete/Print); all 8 links HTTP 200 under `/puzzles` |
+
+### Findings
+
+- **The commit cited a doc that was not in the repo.** `PuzzleHub.tsx:26` and `PuzzleHub.md:28`
+  named `Docs/qa-remediation-plan.md` as plan of record while that file was still **untracked**, so
+  a fresh clone of the branch got a dangling rationale link — the §7 failure mode, arriving from the
+  *code* side rather than the doc side. Fixed in the same PR by committing the plan doc.
+- Pre-existing, not introduced: `ContinueBanner.tsx:33-35` special-cases `killer` and lets every
+  other variant fall through to `${gridSize}×${gridSize} · ${difficulty}`, so a saved **Keisan**
+  9×9 hard and a saved **classic** 9×9 hard render identically. Read, not executed.
+- Pre-existing, not introduced: `home.spec.ts`'s page-wide `/killer/i` link selector also matches
+  `ContinueBanner`'s "Killer · medium" when a free-play Killer game is saved → two matches → strict
+  mode failure. Fresh contexts hide it in CI.
+
+### Invariants
+
+Slot-key identity, `ON CONFLICT`, retired keys, ownership-in-query and migrations were all
+**checked and found not applicable** — the diff performs no data access, no writes, no key
+resolution. Stated rather than skipped silently so the next run knows it was considered.
+
+### Docs
+
+Mirrored `.md` for the one changed `.tsx`. The reverse-reference sweep on the removed **"Free
+play"** card caught `src/app/page.md`, `src/app/daily/page.md` and both e2e specs — none of whose
+sources this change touched. `Docs/roadmap.md:434` still describes the original flat hub and was
+**left alone**: dated entry, completed ✅ phase, historical record.
+
+### Lessons (apply next run)
+
+- **A `.md` cited by committed code must be committed in the same commit.** The reverse-reference
+  sweep is normally run doc→code ("what docs mention this symbol?"). It has a mirror image —
+  code→doc — that is just as easy to fail: a code comment can name a doc path that no one added to
+  git. Grep the diff for `Docs/...\.md` and confirm each hit is tracked.
+- **"Committed" is not "verified".** This branch is code complete with lint/build/unit green while
+  its two e2e assertions have never executed, because the suite itself cannot run (`baseURL` vs
+  `basePath`). Say which is which in the commit message; a reader otherwise assumes a green branch
+  is a tested branch.
+- **When the dev server belongs to another session, build in an isolated copy.** `next dev` and
+  `next build` share `.next`. `rsync` the tree and **hardlink** `node_modules` (`cp -Rl`) — a
+  symlink fails with `Symlink [project]/node_modules is invalid, it points out of the filesystem
+  root` under Turbopack.
+
+### Reviews
+
+- `/security-review`: **run — no findings.** Propless Server Component, static literals, no
+  user input, no auth/data-access change.
+- `/code-review`: **NOT run.** User-triggered and billed; an agent cannot launch it.
+
+---
+
 ## 2026-08-07 — daily generation moves off Vercel Cron after a silent outage
 
 Branch `fix/cron-via-github-actions` on `1089316`. Infrastructure + docs; **no application code**
