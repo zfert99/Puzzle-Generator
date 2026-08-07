@@ -3,6 +3,26 @@
 Client orchestrator for `/archive` — browse a past day, see its final leaderboard, and replay
 its puzzle as **unranked practice**.
 
+## Why today is browsable but not playable here (August 2026)
+
+The calendar reaches today, so today's leaderboard stays visible beside it — but pressing Play on
+today **hands off to `/daily`** rather than starting a board.
+
+It used to start an *unranked practice* run of the very board you still had to play ranked. Worse,
+a replay calls `startNewGame`, which overwrites the single saved slot, so it could erase an
+in-progress *ranked* attempt at that same board. Nothing on screen said either thing.
+
+Rankability stays entirely in `DailyExperience` — it posts `/api/daily/start` on begin and submits
+only when `dailyDate === today`. This surface still has **no `/api/solve` caller**, and
+`· practice` remains unconditionally true for everything it does start.
+
+The hand-off carries the chosen slot as `/daily?slot=<key>` so the player does not pick twice.
+That seed is deliberately **unvalidated**: `DailyExperience`'s slots effect already keeps the
+current key only if today actually rolled it, and falls back to the first real slot otherwise — so
+a retired key from an old bookmark self-corrects through the path that was always there rather than
+needing a second validation branch. Verified: `?slot=not-a-real-slot` lands on the first slot with
+no error.
+
 ## Why replays are unranked
 
 That day's leaderboard is closed; letting late solves post to it would let players pad old

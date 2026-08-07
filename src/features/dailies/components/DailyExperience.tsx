@@ -70,7 +70,14 @@ export default function DailyExperience() {
   const mounted = useHasMounted();
   const { data: session } = useSession();
   const [phase, setPhase] = useState<'select' | 'playing'>('select');
-  const [difficulty, setDifficulty] = useState<DailyDifficulty>('easy');
+  // Seeded from `?slot=` so `/archive` can hand off the board the player already picked there
+  // (otherwise they land on the picker and choose twice). NOT validated here on purpose: the
+  // slots effect below already keeps the current key only if today actually rolled it, and falls
+  // back to the first real slot otherwise — so a stale, retired or garbage `slot` self-corrects
+  // through the path that was always there.
+  const [difficulty, setDifficulty] = useState<DailyDifficulty>(
+    () => (searchParams.get('slot') as DailyDifficulty | null) ?? 'easy',
+  );
   const [dailyDate, setDailyDate] = useState<string>('');
   const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
   const [warnOpen, setWarnOpen] = useState(false);

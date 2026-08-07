@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
@@ -43,6 +44,17 @@ function formatUtcDate(isoDate: string): string {
  * leaderboard, and replay its puzzle as **unranked practice** (no `/api/solve` submit here).
  * Replays reuse the shared board via `startNewGame(puzzle, 'daily', date)`; the difficulty is
  * lifted here so the one `LeaderboardView` selector also drives the Play button.
+ *
+ * **Today is browsable but not playable here (Aug 2026).** The calendar still reaches today, so
+ * today's leaderboard stays visible beside the calendar — but pressing Play on today hands off to
+ * `/daily` instead of starting a board. It used to start an *unranked* practice run of the board
+ * you still had to play ranked, and, because a replay calls `startNewGame`, could erase an
+ * in-progress ranked attempt at that same board from the one saved slot. Nothing on screen said so.
+ *
+ * The hand-off carries the chosen slot (`/daily?slot=<key>`) so the player does not pick twice.
+ * Rankability stays entirely in `DailyExperience`, which already posts `/api/daily/start` on begin
+ * and submits only when `dailyDate === today` — this surface still has no `/api/solve` caller, and
+ * `· practice` remains unconditionally true for everything it does start.
  */
 export default function ArchiveExperience() {
   const router = useRouter();
@@ -113,6 +125,8 @@ export default function ArchiveExperience() {
   // out entirely rather than shown as "0/0" — the denominator is per-date, and early dates (or a
   // future day with more types) need not hold both sets.
   const selectedProgress = visible[selectedDate];
+  /** Today is browsable here, but playing it belongs to `/daily` — see the component doc. */
+  const isToday = selectedDate === todayIso;
   const selectedSummary = selectedProgress
     ? ([
         ['Standard', selectedProgress.standard],
@@ -250,14 +264,26 @@ export default function ArchiveExperience() {
 
           {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
-          <button
-            type="button"
-            onClick={handlePlay}
-            disabled={loading}
-            className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
-          >
-            {loading ? 'Loading…' : `Play ${selectedLabel} (practice)`}
-          </button>
+          {isToday ? (
+            /* Today is browsable (its leaderboard is right there) but must not be STARTED here —
+               that is what used to hand out an unranked run of the live board. Hand off to the
+               ranked surface, carrying the slot so the player does not pick twice. */
+            <Link
+              href={`/daily?slot=${encodeURIComponent(difficulty)}`}
+              className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
+            >
+              Play {selectedLabel} on the Daily (ranked)
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePlay}
+              disabled={loading}
+              className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
+            >
+              {loading ? 'Loading…' : `Play ${selectedLabel} (practice)`}
+            </button>
+          )}
         </div>
 
         <LeaderboardView
@@ -271,7 +297,7 @@ export default function ArchiveExperience() {
       <ConfirmModal
         open={warnOpen}
         title="Start a new puzzle?"
-        message="You have a saved puzzle in progress. Playing this archived puzzle will erase it — you can only save one puzzle at a time."
+        message="You have a saved puzzle in progress. Playing this archived puzzle will erase it — you can only save one puzzle at a time, and an archived replay is practice, so it will not be ranked."
         confirmLabel="Play it"
         cancelLabel="Keep playing"
         onConfirm={confirmNew}
