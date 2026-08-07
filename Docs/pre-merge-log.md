@@ -248,6 +248,30 @@ sources this change touched. `Docs/roadmap.md:434` still describes the original 
   symlink fails with `Symlink [project]/node_modules is invalid, it points out of the filesystem
   root` under Turbopack.
 
+### Re-verified 2026-08-07 (post-rebase onto `eeafac4`, post-review-follow-up)
+
+Rebased after PR #71 landed; one code-review follow-up folded in (locator scoping above). Logged
+here rather than as a second entry — same PR, same day.
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 468 passed (57 files) |
+| `tsc --noEmit` · `npm run lint` · `markdownlint "**/*.md"` | all exit 0 |
+| `npm run build` | ✓ 14/14 static pages |
+| Hub specs vs PR #70's harness | **12 passed** — retires this entry's "written but unproven" caveat |
+| Merge cleanliness | clean vs `main` **and** vs `fix/e2e-basepath`, both directions |
+
+**The 640px claim, re-derived and then observed.** The comment in `PuzzleHub.tsx` asserts the cap
+yields exactly 3 columns. Arithmetic: 4 tracks need `4×150 + 3×16 = 648 px` > 640, 3 need
+`450 + 32 = 482` ≤ 640. Measured on a **production build** (`next start`): grid 640 px,
+`grid-template-columns: 202.664px ×3`, laying out as `§Play / Sudoku·Killer·Keisan / §Compete /
+Daily·Leaderboard·Archive / §Print / Print packs`. Reflow: 1 column at 320, 2 at 390–520, 3 at
+768+, no horizontal overflow.
+
+> Measurement trap worth keeping: grouping cards into rows by `getBoundingClientRect().top`
+> reports **every card on its own row**, because each card carries a `tilt-*` rotation that shifts
+> its bounding box by a pixel or two. Group by row midpoint with a tolerance instead.
+
 ### Reviews
 
 - `/security-review`: **run — no findings.** Propless Server Component, static literals, no
