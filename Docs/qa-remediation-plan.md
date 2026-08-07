@@ -277,7 +277,7 @@ decisions in it were paid for once already:
    The fix is a third state — *settled without a floor* → **no** `minDate`, degrading to today's
    unbounded behaviour rather than locking.
 
-#### Step 3a — The archive covers past days only (F3) · S · first in step
+#### Step 3a — Today hands off to the ranked daily (F3) · S · ✅ done
 
 ##### Spec
 
@@ -288,29 +288,56 @@ selectable, so the most natural path — open Archive, press Play — silently b
 no rank. It also calls `startNewGame(puzzle, 'daily', date)`, which overwrites the single saved
 slot, so it can erase an in-progress **ranked** attempt at the same board.
 
-**The resolution is narrower than "make the archive submit".** The page's own copy already says
-*"Pick a **past** day to replay its puzzle (unranked)"* — today was never meant to be in range. And
-`DailyExperience` already owns rankability correctly: it calls `/api/daily/start` on begin and
-submits only when `session && dailyDate === todayIso`. So the fix is to stop the archive offering
-today, not to teach it a second ranked write path:
+**The resolution keeps rankability in one place.** `DailyExperience` already owns it correctly —
+posts `/api/daily/start` on begin, submits only when `session && dailyDate === todayIso` — so the
+archive must not learn a second ranked-write path. **Today stays browsable, but its Play button
+hands off** instead of starting a board:
 
-- `maxDate` becomes **yesterday** (UTC), and the default `selectedDate` follows.
-- Today is not a dead end: render a link to `/daily` ("Today's daily is live — play it ranked →").
-- The `· practice` label stays constant, because now it is always true.
-- **No new write path, so no new `/api/solve` caller** — which is most of why this option wins.
-  The alternative (make the archive date-aware and submit) needs `/api/daily/start` too, doubles
-  the ranked-write surface, and buys nothing the `/daily` link does not.
-- Sharpen the `ConfirmModal` copy: it warns that a saved puzzle will be erased but not that the
-  replacement will not count. Say so.
+- Today remains selectable, so its leaderboard stays visible beside the calendar.
+- Its button reads **"Daily {slot} (ranked)"** and links to **`/daily?slot=<key>`**, carrying the
+  chosen board so the player does not pick twice.
+- **No new `/api/solve` caller.** `· practice` stays unconditionally true for everything this
+  surface does start.
+- Sharpen the `ConfirmModal` copy: it warned that a saved puzzle would be erased but not that the
+  replacement would not count. Say so.
 
-**Decision needed before building:** with `maxDate = yesterday`, today's *leaderboard* is no longer
-reachable from `/archive`. It is already on `/leaderboard`, so this is likely fine — confirm.
+The `?slot=` seed is deliberately **unvalidated**: `DailyExperience`'s slots effect already keeps
+the current key only if today actually rolled it and falls back to the first real slot otherwise, so
+a retired key from an old bookmark self-corrects through the path that was always there.
 
 ##### Verification
 
 E2E: today is not selectable in the archive calendar; selecting yesterday still yields a board
 labelled practice; playing it writes **no** `solve_attempts` row (assert via `/api/me/attempts`
 before/after) and leaves the historical leaderboard unchanged.
+
+##### Step-log — landed 2026-08-07 (`fix/archive-today-to-daily`)
+
+- **Process.** Today's Play button became a `Link` to `/daily?slot=<key>` labelled
+  "Daily {slot} (ranked)"; `DailyExperience` seeds `difficulty` from `?slot=`; `ConfirmModal` copy
+  now says a replay will not be ranked. New `e2e/archive.spec.ts` (4 specs).
+- **Two options were built and compared, not argued about.** The rejected one capped the calendar at
+  **yesterday** (branch `fix/archive-correctness`, since deleted). It was the smaller diff and made
+  `· practice` unconditionally true, but it fixed the bug by **removing a capability** — today's
+  leaderboard disappeared from `/archive`. The chosen one keeps today browsable and converts the
+  dangerous button into the useful one, for one branch and a query param. **Building both was
+  cheaper than deciding on paper**; the owner picked from working software.
+- **Learning — measure a claimed trade-off before conceding it.** The yesterday-cap option was
+  flagged as "loses today's leaderboard from `/archive`". Measuring both pages showed `/archive`
+  passes `date` to `LeaderboardView`, which suppresses streak / your-rank / personal-bests whenever
+  a date is present — so its view of today was already a **strict subset** of `/leaderboard`. The
+  trade was smaller than it sounded. That did not save the option, but it corrected the reasoning.
+- **Learning — a label that drops a rolling axis collides.** "Daily Killer (ranked)" was the first
+  ask. Today's roll holds **both** `Easy · Killer` (standard 9×9) and `Easy 4×4 · Killer` (mini), so
+  type-only labels render two different boards identically. Under type-as-slot, difficulty, size
+  *and* type all roll — a label may drop at most the axis that is constant, and none is.
+- **Learning — reuse the validation that already exists.** The `?slot=` seed needed no validation
+  branch: the slots effect already reconciles the current key against today's real slots. Verified
+  live — `?slot=expert` arrives preselected, `?slot=not-a-real-slot` falls back to the first slot
+  with no error (now a test).
+- **Verification.** e2e 42 passed; unit 468; lint/tsc/build clean; deep-link and self-correction
+  both checked in a browser, not inferred.
+- **Blocker: none.** 3b and 3c remain.
 
 #### Step 3b — Calendar bounds + empty days (U2) · M
 
