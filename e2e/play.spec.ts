@@ -7,7 +7,9 @@ import { test, expect } from './fixtures';
 test.describe('Interactive play', () => {
   test('links from the hub into play mode', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: /free play/i }).click();
+    // The Sudoku card replaced the old "Free play" card (Aug 2026 hub reorg) and is the
+    // plain-`/play` entry point; Killer/Keisan carry a `?variant=` query.
+    await page.getByRole('link', { name: /sudoku/i }).click();
     await expect(page).toHaveURL(/\/play$/);
     await expect(page.getByRole('heading', { name: /new game/i })).toBeVisible();
   });

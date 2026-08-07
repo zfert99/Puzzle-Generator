@@ -14,10 +14,18 @@ test.describe('Hub and generator', () => {
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: /puzzle lab/i })).toBeVisible();
-    // The hub's core cards link to the app's surfaces.
-    await expect(page.getByRole('link', { name: /free play/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /print packs/i })).toBeVisible();
+    // The hub groups its cards under real <h2>s (Aug 2026 reorg) — assert the outline, not
+    // just the links, since the grouping IS the feature.
+    await expect(page.getByRole('heading', { name: 'Play', level: 2 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Compete', level: 2 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Print', level: 2 })).toBeVisible();
+    // One card per puzzle type — there is deliberately no "Free play" card; the type cards
+    // are the free-play entry points.
+    await expect(page.getByRole('link', { name: /sudoku/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /killer/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /keisan/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /free play/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /print packs/i })).toBeVisible();
   });
 
   test('the Killer card deep-links into play with Killer preselected', async ({ page }) => {
