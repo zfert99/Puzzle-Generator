@@ -65,6 +65,7 @@ check that would have caught this in minutes instead of hours.
 | `npm run build` | ✓ compiled in **10.0 s**, 14/14 static pages (isolated copy) |
 | lint · `tsc --noEmit` · markdownlint (`**/*.md`) | all exit 0 |
 | Workflow YAML | **parses** — validated with `js-yaml`, already present transitively in `node_modules`; triggers `schedule`+`workflow_dispatch`, cron `7 0 * * *` |
+| Workflow shell logic | **run end to end** under `bash -e` with a real `$GITHUB_OUTPUT` handoff: happy path (incl. the idempotent `skipped:true` branch) passes; wrong secret now prints the endpoint's own body; a boardless date still fails the assertion |
 | Production restored | `npm run db:seed` (same idempotent service the endpoint calls) — 6 boards, verified live |
 | Workflow assertion, dry-run | the verify step's logic run against the real API: `2026-08-07 has 6 board(s)` → PASS |
 | Benchmarks | **not run** — no engine/solver core touched |
@@ -80,6 +81,15 @@ check that would have caught this in minutes instead of hours.
 - A stale number caught by this gate run: the entry first recorded 468 tests, measured while the
   working tree still held QA item 5. Split onto its own branch, this diff is 464/56 — unchanged
   from `main`, which is the point.
+- Review finding, fixed here: `response=$(curl --fail-with-body …)` discarded the body it captured,
+  because the default `bash -e {0}` aborts the step before the next line prints it. Reproduced with
+  a wrong token: the log showed only `curl: (22) … 401`, never `{"error":"Unauthorized"}` — in a PR
+  whose whole point is legible failure. The assignment now sits inside `if !`, where `set -e` is
+  suspended.
+- Review finding, fixed here: the verify step recomputed the date instead of using the `isoDate` the
+  endpoint returns. A `workflow_dispatch` recovery run started just before 00:00 UTC would generate
+  day N and then assert against day N+1, failing a run that succeeded. The date is now handed
+  between steps via `$GITHUB_OUTPUT`.
 
 ### Invariants checked (§2)
 

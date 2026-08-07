@@ -34,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger daily generation
+        id: generate
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
@@ -42,10 +43,17 @@ jobs:
             exit 1
           fi
 
-          # `--fail-with-body` so a 4xx/5xx is both fatal and readable in the log.
-          response=$(curl --silent --show-error --fail-with-body --max-time 120 \
+          # The assignment sits inside `if !` on purpose. The default shell here is `bash -e {0}`,
+          # so a bare `response=$(curl ...)` aborts the step the instant curl fails — discarding the
+          # body that `--fail-with-body` just captured, which is the one thing worth reading when
+          # this breaks. `set -e` is suspended inside an `if` condition, so the endpoint's own error
+          # (e.g. {"error":"Unauthorized"}) survives to the log instead of only curl's exit code.
+          if ! response=$(curl --silent --show-error --fail-with-body --max-time 120 \
             --header "Authorization: Bearer $CRON_SECRET" \
-            https://biscuitlab.net/puzzles/api/cron/daily)
+            https://biscuitlab.net/puzzles/api/cron/daily); then
+            echo "::error::Generation request failed. Response: ${response:-<empty>}"
+            exit 1
+          fi
 
           echo "response: $response"
           echo "$response" | grep -q '"ok":true' || {
@@ -53,18 +61,34 @@ jobs:
             exit 1
           }
 
+          # Hand the SERVER's date to the next step rather than letting it recompute one. The two
+          # clocks are read at different instants on different machines, and a manual recovery run
+          # started just before 00:00 UTC would otherwise generate day N and then verify day N+1 —
+          # reporting failure for a run that succeeded.
+          iso_date=$(echo "$response" | sed -n 's/.*"isoDate":"\([0-9-]*\)".*/\1/p')
+          if [ -z "$iso_date" ]; then
+            echo "::error::Response carried no isoDate: $response"
+            exit 1
+          fi
+          echo "iso_date=$iso_date" >> "$GITHUB_OUTPUT"
+
       - name: Verify the day actually has boards
         # The endpoint reporting success is not the same as the day being playable — this is the
-        # assertion that would have caught the silent outage, so it runs as its own step.
+        # assertion that would have caught the silent outage, so it runs as its own step, and it
+        # checks the date the endpoint said it generated.
+        env:
+          ISO_DATE: ${{ steps.generate.outputs.iso_date }}
         run: |
-          today=$(date -u +%F)
-          slots=$(curl --silent --show-error --fail-with-body --max-time 60 \
-            "https://biscuitlab.net/puzzles/api/daily/slots?date=$today")
+          if ! slots=$(curl --silent --show-error --fail-with-body --max-time 60 \
+            "https://biscuitlab.net/puzzles/api/daily/slots?date=$ISO_DATE"); then
+            echo "::error::Could not read back $ISO_DATE. Response: ${slots:-<empty>}"
+            exit 1
+          fi
 
           count=$(echo "$slots" | grep -o '"key":' | wc -l | tr -d ' ')
-          echo "$today has $count board(s)"
+          echo "$ISO_DATE has $count board(s)"
 
           if [ "$count" -lt 1 ]; then
-            echo "::error::$today has no daily boards after generation"
+            echo "::error::$ISO_DATE has no daily boards after generation"
             exit 1
           fi
