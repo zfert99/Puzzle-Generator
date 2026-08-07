@@ -5,7 +5,8 @@
 # that URL — Vercel's docs: "When you enable Standard Protection, the production generated
 # deployment URL becomes restricted." Crons do not follow the resulting redirect, and redirected
 # invocations are not even written to the runtime logs, so the job stopped silently on 2026-08-07
-# and nothing surfaced it. See Docs/pre-merge-log.md for the diagnosis.
+# and nothing surfaced it. Full diagnosis, evidence and the options rejected:
+# Docs/research/vercel-cron-deployment-protection-outage.md.
 #
 # Calling the CUSTOM domain sidesteps that entirely: custom production domains are exempt from
 # Standard Protection, so protection can stay on. Authorization is unchanged — the endpoint's own
