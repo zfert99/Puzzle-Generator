@@ -18,7 +18,7 @@ graph LR
     H --> DB[("Neon Postgres<br/>Drizzle ORM")]
     B -->|"Sign in · solve · rank"| I["Auth + Leaderboards<br/>(better-auth)"]
     I --> DB
-    K["Vercel Cron 00:00 UTC"] -->|"Generate dailies"| DB
+    K["GitHub Actions 00:07 UTC"] -->|"Generate dailies"| DB
     D["Sudoku Engine + HumanSolver"] --> C
     D --> G
     D --> H
@@ -45,7 +45,7 @@ rotation alongside classic Sudoku.
 | **Frontend** | Interactive board at `/play` — Zustand+zundo store, playable grid, pencil marks, undo/redo, hints, timer, mistakes, persistence | ✅ Shipped |
 | **API** | `/api/puzzle` — on-demand single-puzzle JSON for the interactive board | ✅ Shipped |
 | **PDF** | `pdf.service.ts` — vector grids, bookmarks, internal links, answer keys | ✅ Shipped |
-| **Backend** | Neon Postgres + Drizzle ORM, Vercel Cron daily generation, one shared puzzle/difficulty/day | ✅ Shipped |
+| **Backend** | Neon Postgres + Drizzle ORM, scheduled daily generation (GitHub Actions), one shared puzzle/difficulty/day | ✅ Shipped |
 | **Auth** | better-auth — passkeys-first, email/password (Argon2id), Google OAuth, DB sessions, BOLA-scoped access | ✅ Shipped |
 | **Frontend** | `/daily` + anti-cheat leaderboards + streaks; account UI, ranked solves (client-timed, server-validated) | ✅ Shipped |
 | **Design** | Biscuit Lab design system — tokens + light/dark theme, full restyle, juice layer, chaos chrome, puzzle hub | ✅ Shipped |
@@ -355,7 +355,7 @@ CREATE TABLE solve_attempts (
 
 #### 4.2 — Daily Puzzle Cron ✅ Done
 
-- **Vercel Cron** ([vercel.json](../vercel.json)) hits [`/api/cron/daily`](../src/app/api/cron/daily/route.ts) at 00:00 UTC, guarded by a constant-time `CRON_SECRET` check (fails closed if unset).
+- A scheduled **GitHub Actions** workflow ([daily-puzzles.yml](../.github/workflows/daily-puzzles.yml)) calls [`/api/cron/daily`](../src/app/api/cron/daily/route.ts) at 00:07 UTC, guarded by a constant-time `CRON_SECRET` check (fails closed if unset). *(Was Vercel Cron until 2026-08-07, when Deployment Protection silently broke it — see the route's doc and the pre-merge log.)*
 - Idempotent generation service ([dailies.service.ts](../src/features/dailies/dailies.service.ts)) — one puzzle per daily difficulty (Easy/Medium/Hard/Expert/Extreme), upserted on `UNIQUE(date, difficulty)`. The seed script now shares this service so it can't drift.
 - [`GET /api/daily`](../src/app/api/daily/route.ts) serves today's shared board; [`/daily`](../src/app/daily/page.tsx) plays it on the reused Phase 3 board ([DailyExperience](../src/features/dailies/components/DailyExperience.tsx)). Anonymous & unranked for now.
 - All users worldwide get the exact same boards.

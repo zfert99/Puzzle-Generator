@@ -1,0 +1,70 @@
+# Generates each day's daily puzzles by calling the app's own cron endpoint.
+#
+# This replaces the Vercel Cron that used to do it. Vercel invokes crons on a project's
+# GENERATED production URL (`*.vercel.app`), and enabling Deployment Protection restricts exactly
+# that URL — Vercel's docs: "When you enable Standard Protection, the production generated
+# deployment URL becomes restricted." Crons do not follow the resulting redirect, and redirected
+# invocations are not even written to the runtime logs, so the job stopped silently on 2026-08-07
+# and nothing surfaced it. See Docs/pre-merge-log.md for the diagnosis.
+#
+# Calling the CUSTOM domain sidesteps that entirely: custom production domains are exempt from
+# Standard Protection, so protection can stay on. Authorization is unchanged — the endpoint's own
+# `CRON_SECRET` check is the real guard, and it is verified in constant time.
+name: Daily puzzles
+
+on:
+  schedule:
+    # 00:07 UTC, not 00:00. The daily rolls over at midnight UTC, but GitHub explicitly warns that
+    # scheduled workflows are delayed at the start of every hour, when load spikes. A few minutes
+    # past is both more reliable and earlier than what this replaces — the Vercel cron was firing
+    # at ~00:54 anyway, because Hobby-plan crons are spread across the scheduled hour.
+    - cron: "7 0 * * *"
+  # Manual trigger, which the Vercel cron never had. This is the recovery path: if a night is
+  # missed, run this instead of hand-seeding from a laptop.
+  workflow_dispatch:
+
+# Only one generation run at a time. The endpoint is idempotent (it returns early if the date
+# already has boards), but a rolled assignment is not something to race.
+concurrency:
+  group: daily-puzzles
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger daily generation
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repository secret is not set — the endpoint will reject this."
+            exit 1
+          fi
+
+          # `--fail-with-body` so a 4xx/5xx is both fatal and readable in the log.
+          response=$(curl --silent --show-error --fail-with-body --max-time 120 \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            https://biscuitlab.net/puzzles/api/cron/daily)
+
+          echo "response: $response"
+          echo "$response" | grep -q '"ok":true' || {
+            echo "::error::Generation endpoint did not report ok:true"
+            exit 1
+          }
+
+      - name: Verify the day actually has boards
+        # The endpoint reporting success is not the same as the day being playable — this is the
+        # assertion that would have caught the silent outage, so it runs as its own step.
+        run: |
+          today=$(date -u +%F)
+          slots=$(curl --silent --show-error --fail-with-body --max-time 60 \
+            "https://biscuitlab.net/puzzles/api/daily/slots?date=$today")
+
+          count=$(echo "$slots" | grep -o '"key":' | wc -l | tr -d ' ')
+          echo "$today has $count board(s)"
+
+          if [ "$count" -lt 1 ]; then
+            echo "::error::$today has no daily boards after generation"
+            exit 1
+          fi

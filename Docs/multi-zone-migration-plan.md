@@ -145,6 +145,13 @@ route handler moves to `/puzzles/api/cron/daily`:
    ]
 ```
 
+> **SUPERSEDED 2026-08-07 — there is no longer a `crons` block.** This step was correct and shipped;
+> it is recorded here as written. What it could not anticipate is that Vercel invokes crons on the
+> **generated** production URL, which Deployment Protection later restricted — so the job began
+> failing silently (crons don't follow redirects, and redirected invocations aren't logged). Daily
+> generation moved to a scheduled GitHub Action calling the custom domain. See
+> [research/vercel-cron-deployment-protection-outage.md](research/vercel-cron-deployment-protection-outage.md).
+
 **better-auth under Next basePath (CORRECTED — safety review §3):**
 
 - **`BETTER_AUTH_URL` must be ORIGIN-ONLY: `https://biscuitlab.net`.** A path in it

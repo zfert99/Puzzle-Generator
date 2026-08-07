@@ -77,7 +77,7 @@ that can never apply.
 **Why:** After the day's boards exist, `generateDailyPuzzles` gives "Puzzle Bot"
 (`features/leaderboards/bot.ts`) a clean, completed solve on each one — a visible "time to
 beat" for a small player base, without any separate cron or infra. It runs as a step inside
-the *existing* idempotent pipeline (already called by both the Vercel cron and the local seed
+the *existing* idempotent pipeline (already called by both the scheduled workflow and the local seed
 script), so no new scheduled job is needed.
 
 **Why a fresh SELECT, not the insert's `.returning()`:** `.returning()` only reflects rows

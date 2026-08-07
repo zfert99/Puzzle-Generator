@@ -30,6 +30,64 @@ the diff under review.
 
 ---
 
+## 2026-08-07 — daily generation moves off Vercel Cron after a silent outage
+
+Branch `fix/cron-via-github-actions` on `1089316`. Infrastructure + docs; **no application code**
+beyond a stale JSDoc, so no benchmarks and no test-count change.
+
+### The incident
+
+`2026-08-07` had **zero** daily boards for ~13.5 hours. No alert, no error, no failed cron run —
+because there was no cron run. Vercel invokes crons on the project's **generated** production URL,
+Deployment Protection (re-enabled the previous day as mitigation #1 of the multi-zone safety review)
+restricts exactly that URL, crons don't follow the resulting redirect, and **redirected invocations
+are never written to the logs**. Both halves matter: the first broke generation, the second hid it.
+
+Full diagnosis, evidence table and rejected options:
+[research/vercel-cron-deployment-protection-outage.md](research/vercel-cron-deployment-protection-outage.md).
+
+### The fix
+
+A scheduled GitHub Action calls the **custom** domain, which is exempt from Standard Protection, so
+protection stays exactly as configured and authorization is unchanged (the constant-time
+`CRON_SECRET` check was always the real guard, not the caller's identity). `vercel.json`'s `crons`
+block is removed so there is one scheduler, not one working and one silently dead.
+
+Two things the Vercel cron never had: `workflow_dispatch`, so a missed night is recovered without
+hand-seeding from a laptop; and a **post-run assertion that the day actually has boards** — the
+check that would have caught this in minutes instead of hours.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **468 passed** (57 files) — unchanged; no source logic touched |
+| `npm run build` · lint · `tsc --noEmit` · markdownlint | all exit 0 |
+| Production restored | `npm run db:seed` (same idempotent service the endpoint calls) — 6 boards, verified live |
+| Workflow assertion, dry-run | the verify step's logic run against the real API: `2026-08-07 has 6 board(s)` → PASS |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- The local `CRON_SECRET` does **not** match production (a hand probe returned 401). Harmless, but
+  it means the repo secret must be taken from Vercel's env, not from `.env.local`.
+- YAML could not be parsed locally (no PyYAML, no `actionlint`), so the workflow's *syntax* is
+  verified only by GitHub registering it — checked after push, not before. Its shell logic was
+  dry-run against the live API.
+
+### Lessons
+
+**A scheduler that can fail silently needs an assertion, not a status code.** The endpoint was
+healthy throughout; nothing was checking the *outcome*. Any future scheduled job in this repo should
+assert the state it was supposed to produce.
+
+**When you close a security gap, audit what was reaching through it.** Locking the generated URL was
+correct and stays. The miss was not asking what depended on that URL being reachable — and the
+answer was already written down, in `multi-zone-migration-validation.md` §5, a week earlier: *"It
+hits the deployment's own generated production URL, NOT your custom domain."*
+
+---
+
 ## 2026-08-06 — the public leaderboard stops shipping account ids (QA item 4 of 6)
 
 Branch `fix/leaderboard-dto` on `92f0665`. No engine code touched, so no benchmarks.
