@@ -34,6 +34,49 @@ jobs:
       - name: Unit tests
         run: npm test
 
+  e2e:
+    # The Playwright suite. It could never run before August 2026: `baseURL` was the bare origin
+    # while the app is mounted at `basePath: '/puzzles'`, so every navigation 404'd, the axe scans
+    # passed against Next's 404 page, and the `webServer` readiness probe never got a 2xx — the run
+    # aborted before a single test. Wiring it into CI is what keeps that from silently recurring;
+    # `e2e/fixtures.ts` fails any test whose navigation returns >= 400.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        # DATABASE_URL is required just to BUILD: /api/daily and /api/cron/daily evaluate the DB
+        # client at module scope, so `next build` dies collecting page data without it. Hence the
+        # placeholder fallback — it gets the build through and is never connected to, because the
+        # four specs that would query skip themselves via E2E_HAS_DB. Add DATABASE_URL as a
+        # repository secret to run those four for real; the other 34 run either way.
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-used-for-real-sessions' }}
+          E2E_HAS_DB: ${{ secrets.DATABASE_URL != '' }}
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   security-audit:
     runs-on: ubuntu-latest
     steps:

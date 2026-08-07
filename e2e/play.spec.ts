@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 /**
  * End-to-end coverage of the interactive board flow (Phase 3): navigate in, generate

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, HAS_DATABASE } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
 
 /**
@@ -122,7 +122,11 @@ test.describe('responsive: overlay bounds stay inside the viewport', () => {
         label: '/daily',
         trigger: async (page: import('@playwright/test').Page) => {
           await page.goto('/daily');
-          await page.getByRole('button', { name: /^easy$/i }).first().click();
+          // Do NOT pick a slot by name. Under type-as-slot the picker's labels carry both the
+          // difficulty AND the type ("Easy · Classic"), and BOTH roll daily — the old
+          // `/^easy$/i` selector matched a bare-difficulty label that stopped existing with the
+          // daily restructure, and went unnoticed because this suite could not run. The picker
+          // preselects the first slot, so just play whatever that is.
           await page.getByRole('button', { name: /^Play/ }).click();
           await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible({ timeout: 15000 });
           await page.getByRole('button', { name: /difficulties/i }).click();
@@ -133,6 +137,13 @@ test.describe('responsive: overlay bounds stay inside the viewport', () => {
 
     for (const scenario of confirmModalScenarios) {
       test(`"Start a new puzzle?" confirm modal (${scenario.label}) stays on-screen at ${width}px`, async ({ page }) => {
+        // The /daily path needs a real daily board, so it needs a database. The other 34 specs
+        // do not, which is what lets CI run the suite without one. See `HAS_DATABASE` for why
+        // the presence of DATABASE_URL is NOT the signal here.
+        test.skip(
+          scenario.label === '/daily' && !HAS_DATABASE,
+          'needs a real database — no daily board to play without one',
+        );
         await page.setViewportSize({ width, height: 900 });
         // Create a saved game first (the warning only fires when one already exists), then
         // return to the menu and try to start another — the real trigger flow.
