@@ -55,6 +55,11 @@ export function PuzzleHub() {
       <ContinueBanner />
 
       <div
+        // Lets e2e scope card assertions to the grid. `ContinueBanner` above renders a link whose
+        // label comes from `formatDailyKey`, which for retired keys reads "keisan expert" /
+        // "killer 6×6 medium" — a page-wide `getByRole('link', {name: /keisan/i})` would then match
+        // two elements and fail Playwright's strict mode instead of asserting anything.
+        data-testid="hub-card-grid"
         className="grid gap-4 w-full max-w-[640px] mx-auto"
         style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}
       >

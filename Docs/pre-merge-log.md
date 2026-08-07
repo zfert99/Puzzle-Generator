@@ -212,6 +212,10 @@ Branch `feat/hub-reorg` on `bb10da9`, commit `03152de`. ~173 LOC across 6 files;
 - Pre-existing, not introduced: `ContinueBanner.tsx:33-35` special-cases `killer` and lets every
   other variant fall through to `${gridSize}×${gridSize} · ${difficulty}`, so a saved **Keisan**
   9×9 hard and a saved **classic** 9×9 hard render identically. Read, not executed.
+- **Review follow-up (same PR).** The card assertions were page-wide, so `ContinueBanner`'s
+  legacy-key label (`keisan expert`, `killer 6×6 medium`) could match them and fail strict mode.
+  Now scoped to `data-testid="hub-card-grid"`. Verified by running these specs against PR #70's
+  harness: **12 passed** — which also retires this entry's "written but unproven" caveat.
 - Pre-existing, not introduced: `home.spec.ts`'s page-wide `/killer/i` link selector also matches
   `ContinueBanner`'s "Killer · medium" when a free-play Killer game is saved → two matches → strict
   mode failure. Fresh contexts hide it in CI.

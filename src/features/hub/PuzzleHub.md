@@ -64,6 +64,15 @@ under the `<h1>`, so a screen-reader user can jump between groups the same way a
 scans them. (WCAG 1.3.1 — the same reasoning as the `role="grid"` work tracked in the plan's
 Step 6.)
 
+## `data-testid="hub-card-grid"`
+
+The one test hook here, on the grid itself. E2E scopes its card assertions to it rather than
+querying the whole page, because `ContinueBanner` — which sits *above* the grid — renders a link
+labelled from `formatDailyKey`, and retired daily keys read `keisan expert` or `killer 6×6 medium`
+(`daily-row.ts` → `LEGACY_LABELS`). A page-wide `getByRole('link', { name: /keisan/i })` would then
+match two elements and fail Playwright's strict mode instead of asserting anything. Assertions stay
+role-based; only the container is a test id.
+
 ## The "new!" sticker
 
 Follows whatever shipped last — currently **Keisan**. Move it when the next puzzle type lands;
