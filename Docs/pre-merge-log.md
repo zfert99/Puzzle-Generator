@@ -30,6 +30,72 @@ the diff under review.
 
 ---
 
+## 2026-08-07 — devlog for the cron outage (cross-repo gate, `Biscuit-Website` #37)
+
+**The gated diff was in the other repo.** Branch `feat/log-thirteen-hours-no-error` on hub `8dbe941`
+— the build-log post the [multi-zone cost doc](research/multi-zone-cost-and-alternatives.md)
+recommended, plus three diagrams and a dependency bump. Logged here because this is where the gate
+and its memory live; adapted because the hub ships **no Vitest** (deliberately — its AGENTS.md says
+a static hub of a few routes doesn't need it) and has no solver core, so two of the three mechanical
+checks have no analogue there.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx playwright test` (the hub's only suite) | **30 passed**, 8.0 s — includes 5 new widths |
+| `npm run lint` · `npm run typecheck` · `markdownlint --ignore node_modules` | all exit 0 |
+| `npm audit --omit=dev --audit-level=high` | **0 vulnerabilities** (was 1 high — see below) |
+| `npm run build` | ✓ compiled **4.6 s**, 17/17 static pages |
+| `npx vitest run` · benchmarks | **no analogue** — hub has neither |
+
+237 insertions across 6 files, but only **9 lines are not prose or binary**.
+
+### Findings
+
+- **A live decision doc still advertised the post as the outstanding next action.**
+  `research/multi-zone-cost-and-alternatives.md:95` read *"Do the write-up now instead"* and named a
+  working title the published post doesn't use — a textbook reverse-reference miss, and one that
+  **file-mirroring could never catch in either repo**: the doc is here, the source that superseded
+  it is in `Biscuit-Website`. Fixed in this PR.
+- Two accuracy fixes in the post itself, both in its evidence: a blockquote had silently dropped and
+  recapitalised two words of a vendor quote, and the log excerpt showed `00:53` runs two paragraphs
+  after the post said "midnight UTC" with nothing reconciling them. Fixed in the hub PR.
+- Pre-existing, fixed here: `daily-puzzles.yml:8` pointed a reader at *this log* for the outage
+  diagnosis rather than at `research/vercel-cron-deployment-protection-outage.md`, which is the
+  record that actually carries the evidence and the rejected options.
+
+### Invariants
+
+Slot-key identity, `ON CONFLICT`, retired keys, ownership `WHERE`, migration SQL — **all N/A**; the
+diff has no database, query, auth, endpoint or migration. Re-derived rather than trusted: both
+load-bearing Vercel quotes (re-fetched live, not from prior notes — one was wrong, above); the
+post's "verifies a shared secret in constant time" claim against `route.ts:21-25` (`timingSafeEqual`
+over SHA-256 digests — accurate); the YAML the post quotes against the real workflow (faithful
+abridgement, `::error::` block verbatim); and the lockfile by hand.
+
+### Lessons
+
+- **A red `npm audit --audit-level=high` on a branch that touched no dependencies is a newly
+  published advisory, not your diff.** Check the advisory's version *range* against your existing
+  semver range **before** reaching for an `overrides` entry. Here the range was `3.0.0 - 3.15.0` and
+  `gray-matter` allows `^3.13.1`, so the patched `3.15.1` was already reachable: a lockfile bump, no
+  override, no major, no API risk. The reflex — override to the next major — would have broken
+  `gray-matter`, which calls js-yaml 3's `safeLoad`, removed in 4.
+- **A gate that enumerates its own targets silently excludes anything new.** The hub's reflow spec
+  lists post paths literally, so a new post sits outside the WCAG check until someone adds it, and
+  nothing goes red to say so. Same failure shape as the reverse-reference miss above: the check
+  passes because it never looked. Worth asking of any allowlist-shaped gate here.
+
+### Review
+
+`/security-review` **not run** — no auth/authz/data-access change, which is the trigger. The one
+security-relevant piece was the dependency bump, verified directly instead: `npm audit` clean plus
+`npm ls js-yaml` confirming no vulnerable nested copy survives (§6's post-patch check).
+**`/code-review` was NOT run** — user-triggered and billed; an agent cannot launch it.
+
+---
+
 ## 2026-08-07 — daily generation moves off Vercel Cron after a silent outage
 
 Branch `fix/cron-via-github-actions` on `1089316`. Infrastructure + docs; **no application code**

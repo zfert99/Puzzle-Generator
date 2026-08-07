@@ -92,11 +92,14 @@ that already calls Puzzle Lab "done enough" and names planning-as-the-activity a
 mode. Estimated **8–14 hours** across five PRs, with the `basePath`/auth PR carrying roughly half
 the risk.
 
-**Do the write-up now instead.** *"Why I built a multi-zone Next.js setup — and the honest case for
-tearing it back down"* captures most of the interview value for a fraction of the effort, and this
-repo already has the raw material: the `fetch()`/basePath regression, the passkey/rpID reasoning,
-and the cron postmortem. Per the Build Log rule that publishes to the `Biscuit-Website` repo's
-`/log`.
+**Do the write-up now instead.** ✅ **Done, 2026-08-07** — published as
+[**Thirteen hours, no error**](https://biscuitlab.net/log/thirteen-hours-no-error), not under the
+working title this doc first proposed. It leads with the [cron outage](vercel-cron-deployment-protection-outage.md)
+rather than the architecture, because the outage is the part that earns a reader's attention, and it
+carries Finding 2's measurements, Finding 3's passkey/rpID reasoning, and the triggers below. Per
+the Build Log rule that publishes to the `Biscuit-Website` repo's `/log`. This captured most of the
+interview value for a fraction of the 8–14 hours a merge would have cost — which is the whole point
+of the paragraph above.
 
 ## The tension this creates with the tier rule
 
