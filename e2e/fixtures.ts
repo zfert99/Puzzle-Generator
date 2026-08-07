@@ -44,9 +44,10 @@ import { BASE_PATH } from '@/lib/base-path';
  * a signal. `E2E_HAS_DB` carries the real answer (set from the repo secret's presence); locally,
  * where `.env.local` holds a genuine string and no placeholder is involved, we fall back to it.
  */
-export const HAS_DATABASE = process.env.E2E_HAS_DB
-  ? process.env.E2E_HAS_DB === 'true'
-  : Boolean(process.env.DATABASE_URL);
+export const HAS_DATABASE =
+  'E2E_HAS_DB' in process.env
+    ? process.env.E2E_HAS_DB === 'true'
+    : Boolean(process.env.DATABASE_URL);
 
 export const test = base.extend({
   // The second argument is Playwright's fixture callback, which its docs name `use`. Named

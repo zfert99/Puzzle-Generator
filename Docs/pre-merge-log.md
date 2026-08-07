@@ -75,6 +75,10 @@ returning >= 400** — the meta-guard, so a future basePath move turns the suite
   a placeholder connection string purely to get the build through, and `E2E_HAS_DB` (set from the
   secret's presence) decides whether the four DB specs actually run — the *presence* of
   `DATABASE_URL` is useless as a signal once a placeholder exists.
+- **Review follow-up (same PR).** `HAS_DATABASE` tested `E2E_HAS_DB` for *truthiness*, so
+  `E2E_HAS_DB=` (set but empty) fell through to `DATABASE_URL` — the CI **placeholder** — and would
+  have run the four DB specs against a refusing connection. Now tested for presence
+  (`'E2E_HAS_DB' in process.env`).
 - **My own DB skip guard was silently wrong.** `test.skip(!process.env.DATABASE_URL, …)` reads the
   *runner's* env, and Next loads `.env.local` for the app only — so the four DB specs skipped even
   on a machine with a working database, quietly dropping coverage 38 -> 34. Fixed by loading
