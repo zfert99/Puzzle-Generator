@@ -13,12 +13,25 @@ needs no argument.
 validate difficulty (daily set)   # 400 otherwise
 isoDate = date param or today; validate it is a REAL date (isIsoDate)   # 400 otherwise
 puzzle = daily for (isoDate, difficulty)  # 404 if missing
-entries = getLeaderboard(puzzle)          # top N, public
+sessionUserId = getCurrentUserId()        # BEFORE the board: it decides `isMe`
+entries = getLeaderboard(puzzle, sessionUserId)   # top N, public, NO user ids
 me = signed in ? getUserRank(puzzle, sessionUserId) : null
 -> 200 { date, difficulty, entries, me }
 ```
 
 Node runtime (DB), `force-dynamic`.
+
+## Why the session is read before the board is built
+
+**Why:** entries carry no `userId` — this endpoint is unauthenticated, so shipping every player's
+better-auth account id made it world-readable for the sake of two booleans the client derived from
+it ("is this row me?", "is this the bot?"). Both are now set server-side, which means
+`getLeaderboard` needs the viewer's id as an *input*, so `getCurrentUserId()` moved above it.
+
+That id is the session's, never a query parameter — a request-supplied one would let a caller ask
+which row belongs to somebody else, and a route test pins that by passing `?userId=` and asserting
+the session id is used anyway. See
+[leaderboard.service.md](../../../features/leaderboards/leaderboard.service.md).
 
 ## Why the date check asks whether the date *exists*
 

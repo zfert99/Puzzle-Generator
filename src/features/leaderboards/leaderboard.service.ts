@@ -3,6 +3,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts } from '@/lib/db/schema';
 import { user } from '@/lib/db/auth-schema';
+import { BOT_USER_ID } from './bot-identity';
 
 /**
  * Leaderboard reads for a single daily puzzle. Ordering is served by the
@@ -13,18 +14,39 @@ import { user } from '@/lib/db/auth-schema';
  * client-supplied one.
  */
 
+/**
+ * One public row of a daily board.
+ *
+ * **No `userId`.** This endpoint is unauthenticated, so every field here is world-readable, and
+ * `solve_attempts.user_id` is the better-auth account id that sessions are keyed to. It was being
+ * shipped purely so the client could derive two booleans from it — "is this row me?" and "is this
+ * the bot?" — which the server can answer without handing out the identifier. Not an exploitable
+ * hole on its own (no route accepts a `userId`; ownership always comes from the session), but
+ * handing out internal ids to anyone who asks is the enumeration surface OWASP A01 warns about,
+ * and DTOs are the standard answer.
+ */
 export interface LeaderboardEntry {
   rank: number;
-  userId: string;
   name: string;
   timeMs: number;
   mistakes: number;
+  /** Puzzle Bot's row — the client draws the 🤖 badge from this, not from an id comparison. */
+  isBot: boolean;
+  /** The viewer's own row, resolved from their SESSION id — never from a request parameter. */
+  isMe: boolean;
 }
 
-/** Top `limit` fastest completed solves for a puzzle, ascending by time. */
+/**
+ * Top `limit` fastest completed solves for a puzzle, ascending by time.
+ *
+ * `viewerId` is the caller's **session** id (or `null` when signed out) and exists only to set
+ * `isMe`. It is deliberately a parameter rather than something the client sends: the route reads
+ * it from the session, so a caller cannot ask "which row is <someone else>?" and get an answer.
+ */
 export async function getLeaderboard(
   db: Database,
   puzzleId: string,
+  viewerId: string | null = null,
   limit = 20,
 ): Promise<LeaderboardEntry[]> {
   const rows = await db
@@ -41,7 +63,16 @@ export async function getLeaderboard(
     .orderBy(asc(solveAttempts.timeMs))
     .limit(limit);
 
-  return rows.map((r, i) => ({ rank: i + 1, ...r }));
+  // `userId` is destructured out here and never reaches the returned object — that omission is the
+  // point of this function's shape, so keep it explicit rather than spreading `...r`.
+  return rows.map(({ userId, name, timeMs, mistakes }, i) => ({
+    rank: i + 1,
+    name,
+    timeMs,
+    mistakes,
+    isBot: userId === BOT_USER_ID,
+    isMe: viewerId !== null && userId === viewerId,
+  }));
 }
 
 export interface UserRank {

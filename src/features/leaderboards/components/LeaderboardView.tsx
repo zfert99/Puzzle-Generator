@@ -6,14 +6,18 @@ import { slotLabel, reconcileSelectedKey, type DailySlotInfo } from '@/features/
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
 import { useCountUp } from '@/features/juice/useCountUp';
-import { BOT_USER_ID } from '@/features/leaderboards/bot-identity';
 
+/**
+ * Mirrors `LeaderboardEntry` from the service. No `userId`: the endpoint is public, so it ships
+ * display data and two server-decided booleans rather than every player's account id.
+ */
 interface Entry {
   rank: number;
-  userId: string;
   name: string;
   timeMs: number;
   mistakes: number;
+  isBot: boolean;
+  isMe: boolean;
 }
 interface Me {
   rank: number;
@@ -101,7 +105,13 @@ export function LeaderboardView({
     return () => {
       active = false;
     };
-  }, [difficulty, date]);
+    // `session?.user.id` is a dependency because `isMe` is decided by the SERVER now — it arrives
+    // baked into this payload instead of being recomputed on every render from the session. Without
+    // it, signing out in the header (`AccountBadge` calls `signOut()` then `router.refresh()`, which
+    // re-renders Server Components but does not re-run a client effect) would leave the previous
+    // viewer's row highlighted and labelled "(you)" until a tab switch or reload. Keyed on the id
+    // rather than the `session` object so a new object identity alone can't trigger a refetch.
+  }, [difficulty, date, session?.user.id]);
 
   // Streak + personal bests, only when signed in and viewing TODAY (they're today-relative,
   // meaningless for an archived board). Render gates on `session`, so no synchronous reset.
@@ -229,25 +239,28 @@ export function LeaderboardView({
             </tr>
           </thead>
           <tbody>
-            {entries.map((e) => {
-              const isMe = session?.user.id === e.userId;
-              const isBot = e.userId === BOT_USER_ID;
-              return (
-                <tr
-                  key={e.userId}
-                  className={`border-t border-white/5 ${isMe ? 'bg-butterscotch/25 font-semibold' : ''}`}
-                >
-                  <td className="py-2">{e.rank}</td>
-                  <td className="py-2">
-                    {isBot && <span aria-hidden="true">🤖 </span>}
-                    {e.name}
-                    {isBot && <span className="text-ink-soft text-xs"> (bot — beat it!)</span>}
-                    {isMe && <span className="text-grape"> (you)</span>}
-                  </td>
-                  <td className="py-2 text-right tabular-nums">{formatMs(e.timeMs)}</td>
-                </tr>
-              );
-            })}
+            {/*
+              `isMe`/`isBot` arrive decided by the server. They used to be derived here by
+              comparing `entry.userId` against the session id and the bot's id, which meant the
+              public endpoint had to ship every player's account id to draw two badges. `rank` is
+              the row key: unique within one response by construction (it is the array index + 1),
+              and stable across re-renders of the same board.
+            */}
+            {entries.map((e) => (
+              <tr
+                key={e.rank}
+                className={`border-t border-white/5 ${e.isMe ? 'bg-butterscotch/25 font-semibold' : ''}`}
+              >
+                <td className="py-2">{e.rank}</td>
+                <td className="py-2">
+                  {e.isBot && <span aria-hidden="true">🤖 </span>}
+                  {e.name}
+                  {e.isBot && <span className="text-ink-soft text-xs"> (bot — beat it!)</span>}
+                  {e.isMe && <span className="text-grape"> (you)</span>}
+                </td>
+                <td className="py-2 text-right tabular-nums">{formatMs(e.timeMs)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}

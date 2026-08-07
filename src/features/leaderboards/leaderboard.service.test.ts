@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@/lib/db/connection';
-import { getUserRanksForPuzzles } from './leaderboard.service';
+import { getLeaderboard, getUserRanksForPuzzles } from './leaderboard.service';
+import { BOT_USER_ID } from './bot-identity';
 
 /**
  * Covers the batched rank helper (the N+1 fix for /api/me/today). We mock the DB at the boundary —
@@ -53,5 +54,72 @@ describe('getUserRanksForPuzzles', () => {
 
     expect(ranks.has('p1')).toBe(true);
     expect(ranks.has('p2')).toBe(false);
+  });
+});
+
+/**
+ * A DB stub for the board query: `select(...).from().innerJoin().where().orderBy().limit()`.
+ * Rows are returned in the order given, standing in for `ORDER BY time_ms ASC`.
+ */
+function boardStub(rows: { userId: string; name: string; timeMs: number; mistakes: number }[]) {
+  const limit = async () => rows;
+  const orderBy = () => ({ limit });
+  const where = () => ({ orderBy });
+  const innerJoin = () => ({ where });
+  const from = () => ({ innerJoin });
+  return { select: () => ({ from }) } as unknown as Database;
+}
+
+const ROWS = [
+  { userId: BOT_USER_ID, name: 'Puzzle Bot', timeMs: 60_000, mistakes: 0 },
+  { userId: 'user-A', name: 'ada', timeMs: 63_000, mistakes: 2 },
+  { userId: 'user-B', name: 'grace', timeMs: 90_000, mistakes: 1 },
+];
+
+describe('getLeaderboard', () => {
+  /**
+   * The reason this function exists in its current shape. `/api/leaderboard` is public and
+   * unauthenticated, so anything returned here is world-readable — and `solve_attempts.user_id` is
+   * the better-auth account id that sessions are keyed to. It used to be shipped so the client
+   * could derive "is this me?" and "is this the bot?"; both are now decided server-side.
+   */
+  it('never returns a user id', async () => {
+    const entries = await getLeaderboard(boardStub(ROWS), 'puzzle-1', 'user-A');
+
+    for (const entry of entries) {
+      expect(entry).not.toHaveProperty('userId');
+      expect(Object.values(entry)).not.toContain('user-A');
+      expect(Object.values(entry)).not.toContain(BOT_USER_ID);
+    }
+  });
+
+  it('ranks by row order and carries only display fields plus the two flags', async () => {
+    const entries = await getLeaderboard(boardStub(ROWS), 'puzzle-1', 'user-A');
+
+    expect(entries.map((e) => e.rank)).toEqual([1, 2, 3]);
+    expect(Object.keys(entries[0]).sort()).toEqual(['isBot', 'isMe', 'mistakes', 'name', 'rank', 'timeMs']);
+  });
+
+  it('marks the bot row, and only the bot row', async () => {
+    const entries = await getLeaderboard(boardStub(ROWS), 'puzzle-1', 'user-A');
+    expect(entries.map((e) => e.isBot)).toEqual([true, false, false]);
+  });
+
+  it("marks the viewer's own row from the id the ROUTE supplies (their session)", async () => {
+    const asAda = await getLeaderboard(boardStub(ROWS), 'puzzle-1', 'user-A');
+    expect(asAda.map((e) => e.isMe)).toEqual([false, true, false]);
+
+    const asGrace = await getLeaderboard(boardStub(ROWS), 'puzzle-1', 'user-B');
+    expect(asGrace.map((e) => e.isMe)).toEqual([false, false, true]);
+  });
+
+  it('marks nothing as "me" for a signed-out viewer', async () => {
+    const entries = await getLeaderboard(boardStub(ROWS), 'puzzle-1', null);
+    expect(entries.some((e) => e.isMe)).toBe(false);
+  });
+
+  it('defaults to signed-out when no viewer is passed, rather than matching a stray value', async () => {
+    const entries = await getLeaderboard(boardStub(ROWS), 'puzzle-1');
+    expect(entries.some((e) => e.isMe)).toBe(false);
   });
 });
