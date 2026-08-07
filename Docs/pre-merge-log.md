@@ -26,7 +26,69 @@ the diff under review.
 
 | Test | Symptom | Status |
 |---|---|---|
+| Playwright e2e, any spec, under `fullyParallel` | A single test times out in roughly **1 run in 8** against a production build; against `next dev` it was **2 runs in 3** (measured 38/38, 35/38, 37/38). Every failure observed passed **5/5 in isolation**. Cause is server contention, not the assertions — `next dev` compiles routes on demand and parallel workers hit cold routes at once. | **Mitigated 2026-08-07.** CI now builds once and runs `next start` (`playwright.config.ts`), cutting it from ~67% to ~12% of runs; the pre-existing `retries: 2` absorbs the remainder. A red e2e test that passes solo is this, not your diff — confirm with `npx playwright test <file> -g "<title>"` before investigating further. |
 | `src/features/engine/calc/calc-sudoku.test.ts` → `generateCalcSudoku > "hard leans on × …"` | Times out (`Test timed out in 5000ms`) in ~10–15% of **full-suite** runs. Solo: 261/453/640 ms. Under parallel load: measured **5738 ms** against Vitest's then-default 5000 ms. Cause was worker CPU contention against real randomized generation, not the assertions. | **✅ Resolved 2026-08-04** (`fix/keisan-test-flake`). Kept here because branches cut before that fix still hit it. Established 2026-08-03 over ~18 full-suite runs; root-caused and fixed the next day — see the entry below, which found **three** distinct causes under this one test name. |
+
+---
+
+## 2026-08-07 — the e2e suite runs for the first time
+
+Branch `fix/e2e-basepath` on `bb10da9`. Fixes **F1** of the August 2026 QA pass (Step 1 of the
+remediation plan). Test harness, CI config and docs only — **no application code**.
+
+### What was actually wrong
+
+`baseURL` was the bare origin while the app is mounted at `basePath: '/puzzles'`, so every
+`page.goto('/…')` 404'd. Two consequences, the second being the one that mattered: `webServer.url`
+pointed at `/`, Playwright treats 404 as "not ready", so **`npm run test:e2e` aborted before a
+single test ran** — and when forced to run anyway, the axe scans and overflow checks passed happily
+**against Next's 404 page**. `ci.yml` never ran e2e, so nothing surfaced it.
+
+Putting the path in `baseURL` does **not** fix it: root-relative paths discard a `baseURL` path.
+The prefixing lives in a new `e2e/fixtures.ts` instead, which also **throws on any navigation
+returning >= 400** — the meta-guard, so a future basePath move turns the suite red, not green.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx playwright test` | **38 passed**, 0 failed — first genuine green in the suite's life |
+| Deliberately-broken run | fixture prefixing disabled -> **suite goes red**; restored -> 38 green. The assertions are not vacuous |
+| No-database run | **34 passed, 4 skipped** — only the `/daily` modal specs need a DB |
+| `npx vitest run` | 468 passed |
+| `tsc --noEmit` / `npm run lint` / `markdownlint "**/*.md"` | all exit 0 |
+| Workflow YAML | parses (`js-yaml`) |
+
+### Findings
+
+- **Two of the first run's failures were an artifact of `reuseExistingServer`.** It attached to a
+  dev server on :3000 running a **different branch's** code and reported two confident, wrong
+  failures about a hub card. The port is now `E2E_PORT`-configurable and documented.
+- **A stale selector had been hiding since the daily restructure.** `a11y.spec.ts` picked the daily
+  by `/^easy$/i`, but type-as-slot labels read "Easy · Classic" and **both halves roll daily**. The
+  test was wrong, not the app. Fixed by taking whatever the picker preselects.
+- **My own DB skip guard was silently wrong.** `test.skip(!process.env.DATABASE_URL, …)` reads the
+  *runner's* env, and Next loads `.env.local` for the app only — so the four DB specs skipped even
+  on a machine with a working database, quietly dropping coverage 38 -> 34. Fixed by loading
+  `.env.local` in `playwright.config.ts` via `dotenv`.
+
+### Lessons (apply next run)
+
+- **A readiness probe that never succeeds looks exactly like a suite with no tests.** "0 tests ran"
+  and "all tests passed" are one careless glance apart. Assert the landing response is 200.
+- **`reuseExistingServer` will reuse a server running code you are not testing.** It matches on
+  port, not on commit. Give a suite its own port whenever another server might be up.
+- **An env-var guard in a test runner does not see the app's `.env`.** Next injects `.env.local`
+  into the app process, not into Playwright or Vitest. A `process.env.X`-gated skip silently
+  over-skips unless the config loads the file itself — and a skip reports as success.
+- **Prefer a production build for parallel e2e.** `next dev` compiles on demand, so parallel workers
+  hitting cold routes produce timeouts that look like assertion failures.
+
+### Reviews
+
+- `/security-review`: **run — no findings.** Test harness, CI config and docs only; no application
+  code, no new endpoints, no auth or data-access change.
+- `/code-review`: **NOT run.** User-triggered and billed; an agent cannot launch it.
 
 ---
 
