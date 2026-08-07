@@ -18,7 +18,7 @@ import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
-import { formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { difficultyForKey, formatDailyKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { slotLabel, type DailySlotInfo } from '../slot-display';
 import { useDaily } from '../hooks/useDaily';
 
@@ -84,8 +84,18 @@ export default function DailyExperience() {
   const submittedRef = useRef(false);
 
   const { loading, error, fetchDaily } = useDaily();
-  const { status, grid, solution, errorsRevealed } = useBoardStore(
-    useShallow((s) => ({ status: s.status, grid: s.grid, solution: s.solution, errorsRevealed: s.errorsRevealed })),
+  // `variant`/`gridSize` describe the board actually loaded. They are read here so the playing
+  // header can label the board in front of the player rather than looking its key up in TODAY's
+  // slots — see `playingLabel` below.
+  const { status, grid, solution, errorsRevealed, boardVariant, boardGridSize } = useBoardStore(
+    useShallow((s) => ({
+      status: s.status,
+      grid: s.grid,
+      solution: s.solution,
+      errorsRevealed: s.errorsRevealed,
+      boardVariant: s.variant,
+      boardGridSize: s.gridSize,
+    })),
   );
   const [reviewDismissed, setReviewDismissed] = useState(false);
   const startNewGame = useBoardStore((s) => s.startNewGame);
@@ -95,6 +105,10 @@ export default function DailyExperience() {
 
   const saved = useSavedGame();
   const savedIsDaily = saved?.mode === 'daily';
+  // `mode: 'daily'` means "a daily-shaped board" (no live error feedback), NOT "today's ranked
+  // board". Archive replays and dailies left running across the UTC rollover both land here with
+  // an older `dailyDate`, and only the date can tell them apart — see the picker copy below.
+  const savedIsFromAnotherDay = Boolean(saved?.dailyDate && saved.dailyDate !== toUtcDateString(new Date()));
 
   // Deep link from the hub's Continue banner (`/daily?resume=1`): jump straight into the parked
   // daily instead of the picker. Adjust state during render (once, after mount) — restoring the
@@ -270,8 +284,28 @@ export default function DailyExperience() {
 
   // Label for the currently-selected board — the composed "Difficulty · Type" when today's slots
   // are loaded, falling back to the bare key label (e.g. resuming before the fetch resolves).
+  // Correct for the PICKER, which only ever offers today's boards.
   const selectedSlot = slots.find((s) => s.key === difficulty);
   const selectedLabel = selectedSlot ? slotLabel(selectedSlot) : formatDailyKey(difficulty);
+
+  /**
+   * Label for the board being PLAYED, composed from the board itself rather than from today's
+   * slots.
+   *
+   * These differ whenever `dailyDate` isn't today — an archive replay, or a daily left running
+   * across the UTC rollover. A slot key is not an identity: `hard` holds a different *type* each
+   * day, so looking the key up in today's list labelled a 3 August **Killer** board as
+   * "Hard · Keisan" simply because that is what `hard` happens to be today. The board's own
+   * `variant`/`gridSize` cannot drift like that. `difficultyForKey` strips any `mini-` prefix, and
+   * a board is a mini iff it is smaller than 9×9 — the same rule `/api/daily/slots` uses.
+   */
+  const playingLabel = slotLabel({
+    key: difficulty,
+    variant: boardVariant,
+    difficulty: difficultyForKey(difficulty),
+    gridSize: boardGridSize,
+    section: boardGridSize < 9 ? 'mini' : 'standard',
+  });
 
   if (!mounted) {
     return <div className="glass-panel p-8 max-w-md md:max-w-2xl w-full mx-auto h-48" aria-hidden="true" />;
@@ -308,7 +342,18 @@ export default function DailyExperience() {
               >
                 Continue {formatDailyKey(saved.difficulty)} · {formatElapsed(saved.elapsedTime)}
               </button>
-              <p className="text-xs text-ink-soft text-center mt-3">— or start a new one —</p>
+              {/*
+                This button sits under "Today's Daily", but the parked board is only today's when
+                its `dailyDate` says so — an archive replay and a daily left running across the UTC
+                rollover are both stored as `mode: 'daily'` with an older date. Saying which day it
+                is stops the picker implying that resuming it counts for today; it does not (the
+                submit is dropped for any non-today board).
+              */}
+              <p className="text-xs text-ink-soft text-center mt-3">
+                {savedIsFromAnotherDay
+                  ? `— that's practice from ${formatUtcDate(saved.dailyDate!)}, not today's board —`
+                  : '— or start a new one —'}
+              </p>
             </div>
           )}
 
@@ -396,7 +441,8 @@ export default function DailyExperience() {
         </button>
         {dailyDate && (
           <span className="text-xs text-ink-soft">
-            {selectedLabel} · {formatUtcDate(dailyDate)}
+            {playingLabel} · {formatUtcDate(dailyDate)}
+            {isExpiredDaily && ' · practice'}
           </span>
         )}
       </div>

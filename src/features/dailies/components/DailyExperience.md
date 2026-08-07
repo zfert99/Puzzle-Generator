@@ -32,9 +32,10 @@ Until hydrated: render a neutral placeholder (avoids reading persisted state dur
 
 Phase 'select':
   Show the daily difficulties and a Play button.
-  If a daily is parked in the store (saved.mode === 'daily'): a "Continue {difficulty} · M:SS"
+  If a daily-shaped board is parked (saved.mode === 'daily'): a "Continue {difficulty} · M:SS"
     button → handleContinue (restore difficulty/date from the store, resume() if paused,
-    phase 'playing'; no re-fetch).
+    phase 'playing'; no re-fetch). Captioned with the day it came from when that is not
+    today, so the picker never implies a practice board counts for today.
   On Play: if any game is parked (one slot), open the <ConfirmModal> warning first; on
     confirm — or when nothing is parked — fetch the daily, startNewGame(puzzle, 'daily', date),
     phase 'playing'.
@@ -100,6 +101,24 @@ Pills are labelled via `slotLabel` ("Hard · Killer") rather than `formatDailyKe
 key is ambiguous once the type varies by day. `formatDailyKey` remains the fallback for the header
 and Play button before the slot list resolves (and for the Continue banner, which restores a saved
 key with no variant context).
+
+## Two labels, because the picker and the board can disagree
+
+**Why:** there are two questions here, and one variable was answering both.
+
+- `selectedLabel` — looks the selected key up in **today's** slots. Correct for the picker and Play
+  button, which only ever offer today's boards.
+- `playingLabel` — composed from the **board actually loaded** (`variant`/`gridSize` straight out of
+  the board store, with `difficultyForKey` stripping any `mini-` prefix and `gridSize < 9` deciding
+  the mini/standard split, the same rule `/api/daily/slots` uses).
+
+They diverge whenever `dailyDate` isn't today — an archive replay or a daily left running past the
+UTC rollover. **A slot key is not an identity:** `hard` held Killer on 3 August and Keisan on
+6 August, so the playing header labelled a 3-August Killer board "Hard · Keisan" purely because that
+is what `hard` happens to mean today. The board's own variant cannot drift like that. The header
+also appends **· practice** when `isExpiredDaily`, and the picker's Continue button says which day
+the parked board is from rather than implying it counts for today (the submit is dropped for any
+non-today board regardless — this only stops the UI from claiming otherwise).
 
 ## Desktop width (July 2026)
 

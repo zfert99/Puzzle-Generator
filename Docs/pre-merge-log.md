@@ -130,6 +130,92 @@ hits the deployment's own generated production URL, NOT your custom domain."*
 
 ---
 
+## 2026-08-07 — an archived board stops posing as today's daily (QA item 5 of 6)
+
+Branch `fix/archive-not-today`, rebased onto `38ec174` (was cut from `1089316`). UI labelling only
+— no API, no store shape change, no engine code, so no benchmarks.
+
+### The finding
+
+`mode: 'daily'` means "a daily-shaped board", **not** "today's ranked daily". Two things land in
+that mode carrying an older `dailyDate`: an archive replay (`ArchiveExperience` starts boards as
+`startNewGame(puzzle, 'daily', thatDate)`) and a daily left running past 00:00 UTC. Three surfaces
+branched on `mode` alone and told the player all three were today's board:
+
+1. the hub's Continue banner read **"Daily · Hard"**;
+2. the `/daily` picker offered **"Continue hard"** directly under "Today's Daily";
+3. on resume, the playing header labelled the board by looking its key up in **today's** slots.
+
+(3) is the sharpest, and it is this repo's own recurring trap: **a slot key is not an identity.**
+`hard` held Killer on 3 August and Keisan on 6 August, so a 3-August Killer board rendered as
+"Hard · Keisan" purely because that is what `hard` means today.
+
+Ranking was never affected — `/api/solve` only accepts today's board and `isExpiredDaily` already
+dropped the submit. This is the UI claiming otherwise.
+
+The fix compares `dailyDate` against today (the same test `isExpiredDaily` already made) and labels
+the board from its own `variant`/`gridSize` rather than from today's slot list.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **468 passed** (57 files) — was 464/56; +4 tests, +1 file |
+| `npm run build` | ✓ compiled in **13.9 s**, 14/14 static pages (isolated copy — a dev server owns `.next`) |
+| **Deliberately-broken run** | **1** — pre-fix banner labelling: 1/1 fails |
+| Browser repro, end to end | on a date whose `hard` really is a different type from today's: banner "Practice · Hard"; picker "— that's practice from Monday, 3 August 2026, not today's board —"; header **"Hard · Killer · Monday, 3 August 2026 · practice"**, `saysKeisan: false` |
+| lint · `tsc --noEmit` · markdownlint | all exit 0 |
+
+### Findings
+
+- A test assertion of mine failed first time against `/Daily · Hard/`: `formatDailyKey` returns the
+  raw lower-case rung and the capital comes from a CSS `capitalize` class. Assertions match the DOM
+  text, not the rendered text — noted in the test file so the next person doesn't re-derive it.
+- Rebase conflict, resolved deterministically rather than by hand: the cron PR and this one both
+  prepended an entry to this log, and git split them into **two** conflict regions. Concatenating
+  each region would have interleaved the two entries into nonsense. Taking `main`'s file and
+  inserting this entry whole — extracted from the replayed commit — is the resolution that cannot
+  scramble them. Worth knowing: any two branches that both prepend here will conflict this way.
+
+### Invariants checked (§2)
+
+**Verified by running:** *a slot key is not an identity* — the invariant this diff is about, proven
+by the browser repro above on a date where `hard` genuinely holds a different type than today; and
+*retired keys stay readable*, since the new label runs every key through `difficultyForKey`, checked
+against all five retired shapes (`mini4-easy`→easy, `killer6-hard`→hard, `calc4-easy`→easy, legacy
+`killer`→medium, `mini-hard`→hard) with the mini/standard split taken from the board's own grid
+size. **Read, not run:** no query, no `ON CONFLICT` write, no migration, no ownership predicate —
+this diff touches two client components and their docs.
+
+### Reviews
+
+**`/code-review` has NOT been run — it is user-triggered and billed, and an agent cannot launch it.**
+
+`/security-review` **not run**: no auth, authz, or data-access code is touched. The change is which
+words appear next to a board; the submit path it describes (`/api/solve` accepting only today's
+board) is unchanged and was already enforced server-side.
+
+### Not fixed here
+
+`DailyExperience` computes `toUtcDateString(new Date())` twice — once for `savedIsFromAnotherDay`,
+once for `todayIso` about twenty lines later — because the second is declared after the first is
+needed. Same value within a render, so there is no failure to describe; noted so the next reader
+knows it was seen rather than missed.
+
+### Lesson
+
+**When one flag answers two questions, split the flag before adding a special case.** `mode` was
+being asked both "how should this board behave?" (no live error feedback — right answer) and "is
+this today's ranked daily?" (wrong answer). The date needed to answer the second was already in the
+saved state, and `isExpiredDaily` was already computing it a few lines away — the bug was three
+call sites not asking it.
+
+---
+
+---
+
+---
+
 ## 2026-08-06 — the public leaderboard stops shipping account ids (QA item 4 of 6)
 
 Branch `fix/leaderboard-dto` on `92f0665`. No engine code touched, so no benchmarks.
