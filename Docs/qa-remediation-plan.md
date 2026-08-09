@@ -301,9 +301,11 @@ hands off** instead of starting a board:
 - Sharpen the `ConfirmModal` copy: it warned that a saved puzzle would be erased but not that the
   replacement would not count. Say so.
 
-The `?slot=` seed is deliberately **unvalidated**: `DailyExperience`'s slots effect already keeps
-the current key only if today actually rolled it and falls back to the first real slot otherwise, so
-a retired key from an old bookmark self-corrects through the path that was always there.
+`DailyExperience` applies `?slot=` **inside** its slots effect rather than seeding it into state —
+that effect is the only place the key can be checked against the boards today actually rolled, so an
+unvalidated value never enters state. (The first attempt did seed it directly, on the theory that
+the effect would correct it; it would not have, because that reconciliation sits behind
+`if (!d?.slots?.length) return;`. Caught in review — see the step-log.)
 
 ##### Verification
 
