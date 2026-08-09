@@ -267,13 +267,28 @@ export default function ArchiveExperience() {
           {isToday ? (
             /* Today is browsable (its leaderboard is right there) but must not be STARTED here —
                that is what used to hand out an unranked run of the live board. Hand off to the
-               ranked surface, carrying the slot so the player does not pick twice. */
-            <Link
-              href={`/daily?slot=${encodeURIComponent(difficulty)}`}
-              className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
-            >
-              Daily {selectedLabel} (ranked)
-            </Link>
+               ranked surface, carrying the slot so the player does not pick twice.
+
+               Held back until the day's slots arrive. `difficulty` starts at the hardcoded 'easy',
+               and the standard rungs ROLL — 2026-08-03 rolled hard/expert/extreme with no `easy` at
+               all — so before `handleSlotsLoaded` reconciles, this link would read one board and
+               navigate to another (/daily would silently correct the bogus key to its first slot). */
+            slots.length === 0 ? (
+              <button
+                type="button"
+                disabled
+                className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0 opacity-60 cursor-not-allowed"
+              >
+                Loading…
+              </button>
+            ) : (
+              <Link
+                href={`/daily?slot=${encodeURIComponent(difficulty)}`}
+                className="btn-primary w-full text-lg flex justify-center items-center mb-6 md:mb-0"
+              >
+                Daily {selectedLabel} (ranked)
+              </Link>
+            )
           ) : (
             <button
               type="button"

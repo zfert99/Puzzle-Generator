@@ -335,8 +335,28 @@ before/after) and leaves the historical leaderboard unchanged.
   branch: the slots effect already reconciles the current key against today's real slots. Verified
   live — `?slot=expert` arrives preselected, `?slot=not-a-real-slot` falls back to the first slot
   with no error (now a test).
-- **Verification.** e2e 42 passed; unit 468; lint/tsc/build clean; deep-link and self-correction
-  both checked in a browser, not inferred.
+- **Two review findings, both mine, both fixed in the same PR.**
+  - The hand-off `href` was built from `difficulty`, which starts at the hardcoded `'easy'` and is
+    only reconciled once slots load — and **the standard rungs roll**: 2026-08-03 rolled
+    `hard`/`expert`/`extreme` with **no `easy` at all**. An early click read one board and
+    navigated to another. The link is now held back behind a disabled "Loading…" until slots
+    arrive. Regression test proven non-vacuous by removing the gate *and* filtering `easy` out of
+    the slots response: it fails with `Expected "easy", Received ["expert", "extreme", …]`.
+  - The `?slot=` key was seeded straight into `useState` with a comment claiming it "self-corrects
+    through the path that was always there". It does not: that reconciliation sits behind
+    `if (!d?.slots?.length) return;` with a bare `.catch(() => {})`, so a failed slots fetch left
+    the raw URL value in state. Now applied **inside** the effect, so an unvalidated key never
+    enters state.
+- **Learning — a claim tested only on the happy path is not tested.** The self-correction comment
+  was written confidently and verified against a *working* fetch. The failure path had a hole. If a
+  comment asserts an invariant, exercise the branch that would break it.
+- **Learning — a test that cannot fail is worse than no test.** The first regression test for that
+  second finding asserted the garbage key was not on screen with the slots fetch aborted. It passed
+  against the broken code too — with no slots, nothing renders the key at all. **Deleted rather
+  than kept green.** The hole was genuinely inert, which is why the finding was Low; the fix is
+  hygiene, not a user-visible repair, and the docs now say so instead of implying coverage.
+- **Verification.** e2e **43 passed**; unit 468; lint/tsc/build clean; deep-link, self-correction
+  and the label/destination gate all checked in a browser, not inferred.
 - **Blocker: none.** 3b and 3c remain.
 
 #### Step 3b — Calendar bounds + empty days (U2) · M

@@ -17,11 +17,14 @@ only when `dailyDate === today`. This surface still has **no `/api/solve` caller
 `· practice` remains unconditionally true for everything it does start.
 
 The hand-off carries the chosen slot as `/daily?slot=<key>` so the player does not pick twice.
-That seed is deliberately **unvalidated**: `DailyExperience`'s slots effect already keeps the
-current key only if today actually rolled it, and falls back to the first real slot otherwise — so
-a retired key from an old bookmark self-corrects through the path that was always there rather than
-needing a second validation branch. Verified: `?slot=not-a-real-slot` lands on the first slot with
-no error.
+`DailyExperience` applies that key **inside** its slots effect, where it can be checked against the
+boards today actually rolled — see [`DailyExperience`](DailyExperience.md).
+
+**The link is held back until this page's own slots arrive.** `difficulty` starts at the hardcoded
+`'easy'` and is only reconciled by `handleSlotsLoaded`, and the standard rungs *roll* — 2026-08-03
+rolled `hard`/`expert`/`extreme` with no `easy` at all. An ungated link would read one board and
+navigate to another, with `/daily` silently correcting the bogus key to its first slot. Until slots
+load the button is a disabled "Loading…".
 
 ## Why replays are unranked
 

@@ -42,4 +42,31 @@ test.describe('Archive hands today off to the ranked daily', () => {
     await expect(page.getByRole('button', { name: /^Play .+/ })).toBeVisible();
     await expect(page.getByText(/error|something went wrong/i)).toHaveCount(0);
   });
+
+  test('the hand-off never points at a board the label does not name', async ({ page }) => {
+    // Regression for a review finding: `difficulty` starts at the hardcoded 'easy', but the
+    // standard rungs roll — 2026-08-03 rolled hard/expert/extreme with no `easy` — so an
+    // ungated link could read one board and navigate to another. Whatever the link says, its
+    // slot must be one today actually rolled.
+    await page.route('**/api/daily/slots*', async (route) => {
+      const res = await route.fetch();
+      const body = await res.json();
+      body.slots = body.slots.filter((x: { key: string }) => x.key !== 'easy');
+      await route.fulfill({ response: res, body: JSON.stringify(body) });
+    });
+    await page.goto('/archive');
+    const handoff = page.getByRole('link', { name: /^Daily .+\(ranked\)$/i });
+    await expect(handoff).toBeVisible();
+
+    const href = await handoff.getAttribute('href');
+    const slot = new URL(href!, 'http://localhost').searchParams.get('slot');
+
+    const slots: string[] = await page.evaluate(async () => {
+      const r = await fetch('/puzzles/api/daily/slots');
+      const d = await r.json();
+      return d.slots.map((s: { key: string }) => s.key);
+    });
+    expect(slots).toContain(slot);
+  });
+
 });
