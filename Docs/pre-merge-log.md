@@ -89,6 +89,34 @@ of retired keys is a separate, untouched path. `ON CONFLICT`, ownership-in-query
   `hard`/`expert`/`extreme` with no `easy` — so the day it fed a navigation target, it could send a
   player somewhere the label did not name.
 
+### CI caught three things local runs could not (2026-08-11)
+
+The first CI run on this branch went red, and every cause was real:
+
+- **A stuck spinner I introduced.** The review fix held the hand-off back on `slots.length === 0`,
+  but `LeaderboardView.onSlotsLoaded` **never fired for an empty day** (`if (!d?.slots?.length)
+  return;`) — so a boardless day sat on "Loading…" forever. Not hypothetical: **2026-08-11 had zero
+  daily boards**. `onSlotsLoaded` now reports an empty day too, and the page tracks
+  `slotsLoadedFor` (the date the answer applies to) so there are **three** states — pending, none,
+  some — instead of two. Regression test proven non-vacuous.
+- **`HAS_DATABASE` was the wrong gate, in this PR *and* pre-existing.** The four `/daily` modal
+  specs gated on a database being configured; the condition they actually need is **today having
+  boards**. On 2026-08-11 those differ — database present, zero boards — and all four failed. Both
+  suites now share `todayHasBoards()`.
+- **`npm audit` went red on a transitive `nanoid` CVE** (GHSA-2v37-7h3g-55p8, high) published after
+  2026-08-07. Unrelated to this diff, which touches no dependency file; `main` was green on 08-07
+  and would fail the same way today.
+
+### Lessons from the CI round (apply next run)
+
+- **Gate a test on the condition it needs, not a proxy for it.** "Is a database configured" stood in
+  for "does today have boards" and they diverged the first day the roller did not run.
+- **A placeholder needs a terminal state.** Any "loading" branch keyed on *absence* of data must
+  distinguish "not answered yet" from "answered: none", or an empty answer renders as a permanent
+  spinner. Same shape as the calendar deadlock recorded in the Step 3b prior art.
+- **A callback that skips the empty case is not a callback the parent can trust.** `onSlotsLoaded`
+  looked like "here are the boards" and was really "here are the boards, unless there are none".
+
 ### Reviews
 
 - `/security-review`: **run — no findings.** The one untrusted input (`?slot=`) never enters state

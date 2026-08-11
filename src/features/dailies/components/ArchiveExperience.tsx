@@ -64,6 +64,16 @@ export default function ArchiveExperience() {
   const [selectedDate, setSelectedDate] = useState(todayIso);
   const [difficulty, setDifficulty] = useState<DailyDifficulty>('easy');
   const [slots, setSlots] = useState<DailySlotInfo[]>([]);
+  /**
+   * The date `slots` was last answered FOR — not a boolean, so switching dates invalidates it with
+   * no reset effect (the lint rule bans `setState` inside one, and a stale `true` would let a
+   * boardless day inherit the previous day's answer).
+   *
+   * A separate signal is needed at all because **zero boards is a real answer**, not just a pending
+   * one: 2026-07-24 has none (a cron outage), and a day's boards do not exist until the roller runs.
+   * A placeholder keyed on `slots.length === 0` alone would sit there forever on such a day.
+   */
+  const [slotsLoadedFor, setSlotsLoadedFor] = useState<string | null>(null);
   const [view, setView] = useState<'browse' | 'playing'>('browse');
   const [playedDate, setPlayedDate] = useState('');
   const [warnOpen, setWarnOpen] = useState(false);
@@ -77,10 +87,14 @@ export default function ArchiveExperience() {
    * "No daily puzzle for <date> (easy)". `LeaderboardView` already fetches the day's boards, so it
    * hands them over rather than us fetching the same endpoint twice.
    */
-  const handleSlotsLoaded = useCallback((loaded: DailySlotInfo[]) => {
-    setSlots(loaded);
-    setDifficulty((cur) => reconcileSelectedKey(loaded, cur));
-  }, []);
+  const handleSlotsLoaded = useCallback(
+    (loaded: DailySlotInfo[]) => {
+      setSlots(loaded);
+      setSlotsLoadedFor(selectedDate);
+      setDifficulty((cur) => reconcileSelectedKey(loaded, cur));
+    },
+    [selectedDate],
+  );
 
   // "Hard · Killer" once the day's boards are known; the bare key label until then (and for a
   // date whose boards predate the restructure, where the key still carries its own type).
@@ -127,6 +141,8 @@ export default function ArchiveExperience() {
   const selectedProgress = visible[selectedDate];
   /** Today is browsable here, but playing it belongs to `/daily` — see the component doc. */
   const isToday = selectedDate === todayIso;
+  /** Derived, so a date change invalidates it without a reset effect. */
+  const slotsLoaded = slotsLoadedFor === selectedDate;
   const selectedSummary = selectedProgress
     ? ([
         ['Standard', selectedProgress.standard],
@@ -273,7 +289,7 @@ export default function ArchiveExperience() {
                and the standard rungs ROLL — 2026-08-03 rolled hard/expert/extreme with no `easy` at
                all — so before `handleSlotsLoaded` reconciles, this link would read one board and
                navigate to another (/daily would silently correct the bogus key to its first slot). */
-            slots.length === 0 ? (
+            !slotsLoaded ? (
               <button
                 type="button"
                 disabled
@@ -281,6 +297,10 @@ export default function ArchiveExperience() {
               >
                 Loading…
               </button>
+            ) : slots.length === 0 ? (
+              <p className="text-center text-sm text-ink-soft mb-6 md:mb-0">
+                Today&apos;s boards haven&apos;t been generated yet — check back shortly.
+              </p>
             ) : (
               <Link
                 href={`/daily?slot=${encodeURIComponent(difficulty)}`}

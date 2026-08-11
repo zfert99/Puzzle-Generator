@@ -143,11 +143,17 @@ export function LeaderboardView({
     fetch(apiPath(`/api/daily/slots${date ? `?date=${date}` : ''}`))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!active || !d?.slots?.length) return;
-        setSlots(d.slots);
-        onSlotsLoaded?.(d.slots);
+        if (!active || !d) return;
+        const loaded: DailySlotInfo[] = d.slots ?? [];
+        // Reported even when EMPTY. A parent cannot otherwise tell "no boards on this date" from
+        // "still fetching", and a day with zero boards is real — 2026-07-24 has none (a cron
+        // outage), and today's have not been generated yet at the time of writing. A parent that
+        // renders a placeholder until this fires would otherwise show it forever.
+        onSlotsLoaded?.(loaded);
+        if (!loaded.length) return; // internal state unchanged for an empty day, as before
+        setSlots(loaded);
         if (!onDifficultyChange) {
-          setInternalDifficulty((cur) => reconcileSelectedKey(d.slots, cur));
+          setInternalDifficulty((cur) => reconcileSelectedKey(loaded, cur));
         }
       })
       .catch(() => {});

@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test';
+import { test as base, expect, type APIRequestContext } from '@playwright/test';
 import { BASE_PATH } from '@/lib/base-path';
 
 /**
@@ -82,3 +82,19 @@ export const test = base.extend({
 });
 
 export { expect };
+
+/**
+ * Whether **today actually has daily boards**, which is the precondition for anything that plays or
+ * links to today's daily.
+ *
+ * Not the same question as {@link HAS_DATABASE}, and the difference is not hypothetical: on
+ * 2026-08-11 the database was configured and today held **zero** boards because the roller had not
+ * run, so every `HAS_DATABASE`-gated daily spec failed against an empty state. A missing database
+ * lands in the same place for a different reason. Gate on the condition you actually need.
+ */
+export async function todayHasBoards(request: APIRequestContext): Promise<boolean> {
+  const res = await request.get(`${BASE_PATH}/api/daily/slots`);
+  if (!res.ok()) return false;
+  const body = await res.json().catch(() => null);
+  return (body?.slots?.length ?? 0) > 0;
+}

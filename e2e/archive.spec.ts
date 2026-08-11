@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, todayHasBoards } from './fixtures';
 
 /**
  * Today is browsable in the archive but must not be STARTED there. It used to start an unranked
@@ -6,6 +6,16 @@ import { test, expect } from './fixtures';
  * in-progress ranked attempt from the single saved slot.
  */
 test.describe('Archive hands today off to the ranked daily', () => {
+  /**
+   * Gated on TODAY ACTUALLY HAVING BOARDS, not on a database being configured. Those are different
+   * conditions and the difference is not hypothetical: 2026-08-11 had a real database and **zero**
+   * boards (the roller had not run), so a `HAS_DATABASE` gate would have run these against the
+   * empty state and failed. CI without a database lands in the same place for a different reason.
+   */
+  test.beforeEach(async ({ request }) => {
+    test.skip(!(await todayHasBoards(request)), 'today has no daily boards — nothing to hand off to');
+  });
+
   test('today offers a ranked hand-off, not a practice start', async ({ page }) => {
     await page.goto('/archive');
     // Default selection is today, so the primary action must be the hand-off.
@@ -68,5 +78,22 @@ test.describe('Archive hands today off to the ranked daily', () => {
     });
     expect(slots).toContain(slot);
   });
+});
 
+/**
+ * Deliberately its own describe: the block above has a `beforeEach` that skips when today has no
+ * boards, which is exactly the condition this test needs. Nested inside it, it could never run.
+ */
+test.describe('Archive on a day with no boards', () => {
+  test('a day with no boards shows a note, never a stuck spinner', async ({ page, request }) => {
+    // Runs in the opposite condition to the block above, so CI (no database → no boards) covers
+    // this branch even though it can cover none of the others. Regression for a bug introduced
+    // while fixing a review finding: the hand-off was first held back on `slots.length === 0`, and
+    // `onSlotsLoaded` never fired for an empty day — so a boardless day sat on "Loading…" forever.
+    test.skip(await todayHasBoards(request), 'today has boards — the empty state is not reachable');
+
+    await page.goto('/archive');
+    await expect(page.getByText(/haven.t been generated yet/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Loading…' })).toHaveCount(0);
+  });
 });

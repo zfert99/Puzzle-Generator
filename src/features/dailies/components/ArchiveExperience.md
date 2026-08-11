@@ -23,8 +23,19 @@ boards today actually rolled — see [`DailyExperience`](DailyExperience.md).
 **The link is held back until this page's own slots arrive.** `difficulty` starts at the hardcoded
 `'easy'` and is only reconciled by `handleSlotsLoaded`, and the standard rungs *roll* — 2026-08-03
 rolled `hard`/`expert`/`extreme` with no `easy` at all. An ungated link would read one board and
-navigate to another, with `/daily` silently correcting the bogus key to its first slot. Until slots
-load the button is a disabled "Loading…".
+navigate to another, with `/daily` silently correcting the bogus key to its first slot.
+
+**Three states, not two.** Holding the link back on `slots.length === 0` is wrong, because zero
+boards is a real answer rather than a pending one — 2026-07-24 has none (a cron outage), and a
+day's boards do not exist until the roller runs. `LeaderboardView` now reports an empty day too, and
+this page tracks `slotsLoadedFor` (the date the answer applies to, so a date change invalidates it
+without a reset effect):
+
+| State | Rendered |
+|---|---|
+| not answered yet | disabled "Loading…" |
+| answered, no boards | "Today's boards haven't been generated yet" |
+| answered, boards exist | the "Daily {slot} (ranked)" hand-off |
 
 ## Why replays are unranked
 
