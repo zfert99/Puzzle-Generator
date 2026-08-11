@@ -81,19 +81,28 @@ test.describe('Archive hands today off to the ranked daily', () => {
 });
 
 /**
- * Deliberately its own describe: the block above has a `beforeEach` that skips when today has no
- * boards, which is exactly the condition this test needs. Nested inside it, it could never run.
+ * The placeholder's terminal states. Both are driven deterministically, so they run in **every**
+ * environment rather than depending on whether today happens to have boards.
+ *
+ * Regression for a bug introduced while fixing a review finding, in two rounds: the hand-off was
+ * first held back on `slots.length === 0` while `onSlotsLoaded` never fired for an empty day, then
+ * still never fired when the request *failed* — so a boardless day (2026-08-11) and a
+ * database-less CI both sat on "Loading…" forever.
  */
-test.describe('Archive on a day with no boards', () => {
-  test('a day with no boards shows a note, never a stuck spinner', async ({ page, request }) => {
-    // Runs in the opposite condition to the block above, so CI (no database → no boards) covers
-    // this branch even though it can cover none of the others. Regression for a bug introduced
-    // while fixing a review finding: the hand-off was first held back on `slots.length === 0`, and
-    // `onSlotsLoaded` never fired for an empty day — so a boardless day sat on "Loading…" forever.
-    test.skip(await todayHasBoards(request), 'today has boards — the empty state is not reachable');
-
-    await page.goto('/archive');
-    await expect(page.getByText(/haven.t been generated yet/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Loading…' })).toHaveCount(0);
-  });
+test.describe('Archive when today has no boards to hand off', () => {
+  for (const [label, handler] of [
+    ['the slots request fails', (route: import('@playwright/test').Route) => route.abort()],
+    [
+      'the day genuinely has none',
+      (route: import('@playwright/test').Route) =>
+        route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ slots: [] }) }),
+    ],
+  ] as const) {
+    test(`shows a note, never a stuck spinner, when ${label}`, async ({ page }) => {
+      await page.route('**/api/daily/slots*', handler);
+      await page.goto('/archive');
+      await expect(page.getByText(/aren.t available right now/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Loading…' })).toHaveCount(0);
+    });
+  }
 });

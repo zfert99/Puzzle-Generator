@@ -93,12 +93,15 @@ of retired keys is a separate, untouched path. `ON CONFLICT`, ownership-in-query
 
 The first CI run on this branch went red, and every cause was real:
 
-- **A stuck spinner I introduced.** The review fix held the hand-off back on `slots.length === 0`,
-  but `LeaderboardView.onSlotsLoaded` **never fired for an empty day** (`if (!d?.slots?.length)
-  return;`) — so a boardless day sat on "Loading…" forever. Not hypothetical: **2026-08-11 had zero
-  daily boards**. `onSlotsLoaded` now reports an empty day too, and the page tracks
-  `slotsLoadedFor` (the date the answer applies to) so there are **three** states — pending, none,
-  some — instead of two. Regression test proven non-vacuous.
+- **A stuck spinner I introduced — and had to fix twice.** The review fix held the hand-off back on
+  `slots.length === 0`, but `LeaderboardView.onSlotsLoaded` **never fired for an empty day**, so a
+  boardless day sat on "Loading…" forever. Not hypothetical: **2026-08-11 had zero daily boards**
+  until the roller ran. Round one made the callback report an empty day. CI was still red: without
+  a database the request **fails** rather than returning empty, and the `.catch(() => {})` swallowed
+  that too. The callback now fires on **every settled outcome** — boards, none, non-2xx, malformed,
+  network error — and the page tracks `slotsLoadedFor` so there are three states, not two. Both
+  terminal states are now driven deterministically by route interception, so the tests run in every
+  environment instead of depending on whether today happens to have boards.
 - **`HAS_DATABASE` was the wrong gate, in this PR *and* pre-existing.** The four `/daily` modal
   specs gated on a database being configured; the condition they actually need is **today having
   boards**. On 2026-08-11 those differ — database present, zero boards — and all four failed. Both
@@ -111,9 +114,11 @@ The first CI run on this branch went red, and every cause was real:
 
 - **Gate a test on the condition it needs, not a proxy for it.** "Is a database configured" stood in
   for "does today have boards" and they diverged the first day the roller did not run.
-- **A placeholder needs a terminal state.** Any "loading" branch keyed on *absence* of data must
-  distinguish "not answered yet" from "answered: none", or an empty answer renders as a permanent
-  spinner. Same shape as the calendar deadlock recorded in the Step 3b prior art.
+- **A placeholder needs a terminal state for every way the question can end.** "Not answered yet"
+  vs "answered: none" was not enough — "the request failed" is a third, and a bare
+  `.catch(() => {})` silently converts it into the first. Enumerate settled outcomes, not just the
+  happy one and the empty one. Same shape as the calendar deadlock in the Step 3b prior art, which
+  this run reproduced *after* writing that prior art down — reading a lesson is not applying it.
 - **A callback that skips the empty case is not a callback the parent can trust.** `onSlotsLoaded`
   looked like "here are the boards" and was really "here are the boards, unless there are none".
 

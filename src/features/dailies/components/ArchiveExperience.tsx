@@ -299,7 +299,7 @@ export default function ArchiveExperience() {
               </button>
             ) : slots.length === 0 ? (
               <p className="text-center text-sm text-ink-soft mb-6 md:mb-0">
-                Today&apos;s boards haven&apos;t been generated yet — check back shortly.
+                Today&apos;s boards aren&apos;t available right now — check back shortly.
               </p>
             ) : (
               <Link
