@@ -1,5 +1,17 @@
 # Puzzle Generator
 
+> ## ⏸ PAUSED — 2026-08-11
+>
+> **Picking this back up? Read [`Docs/project-status.md`](Docs/project-status.md) first.**
+>
+> `main` is at `331dc67`, green and deployed, with nothing half-finished. That doc has the cold-start
+> handoff: what shipped, what is next, which branches to delete, and the traps that already cost time.
+>
+> **Two things you would otherwise miss:** the next step (**3b**) has substantial prior art on the
+> unmerged `fix/qa-findings-aug-2026` branch plus `stash@{0}` — don't start it from scratch. And the
+> cheapest high-value fix in the queue is **Step 6a**: the puzzle board is unreachable by keyboard,
+> and the fix is about ten lines.
+
 A modern Next.js web application that generates print-ready Sudoku puzzle books in PDF format.
 
 Unlike typical brute-force generators, this project features a custom-built, purely logical `HumanSolver` engine. This guarantees that even the most "Expert" level puzzles generated can actually be solved by a human without ever needing to blindly guess.

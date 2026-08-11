@@ -36,6 +36,7 @@ Before archiving any doc, grep for it in `src/` and `*.config.ts`, not just in `
 
 | Doc | What it's for | Status |
 |---|---|---|
+| [project-status.md](project-status.md) | **⏸ START HERE while paused** — cold-start handoff: state, next steps, branch inventory, traps | 🚧 Living |
 | [roadmap.md](roadmap.md) | The plan of record — phases, tracks, backlog | 🚧 Living |
 | [pre-merge-log.md](pre-merge-log.md) | One entry per pre-merge run + **known flaky tests** (read before blaming a red test on your diff) | 🚧 Living |
 | [daily-redesign-plan.md](daily-redesign-plan.md) | Daily restructure (type-as-slot) — spec + step-log per step | 🚧 Step 4 polish left |
