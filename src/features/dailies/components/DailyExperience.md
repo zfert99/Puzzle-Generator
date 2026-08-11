@@ -46,6 +46,26 @@ Phase 'playing':
   On solved: show a modal with time + mistakes and the ranked result; return to the picker.
 ```
 
+## Query params: `?resume=1` and `?slot=<key>` (August 2026)
+
+- **`?resume=1`** — from the hub's Continue banner: jump straight into the parked game rather than
+  the picker.
+- **`?slot=<key>`** — from `/archive`, which shows today's board but hands it off here to be played
+  ranked (see [`ArchiveExperience`](ArchiveExperience.md)). It seeds `difficulty` so the player does
+  not pick the same board twice.
+
+**`?slot=` is applied inside the slots effect, not seeded into state.** That effect is the only
+place the key can be checked against the boards today actually rolled, so an unvalidated value never
+enters state at all. Precedence: a valid `?slot=` wins, else the current key if today rolled it,
+else `slots[0]`.
+
+Seeding it straight into `useState` looked equivalent and was not: the reconciliation sits behind
+`if (!d?.slots?.length) return;` with a bare `.catch(() => {})`, so a failed or empty slots fetch
+would have left the raw URL value sitting in state. Nothing rendered it — which is why the bug was
+inert and, deliberately, has no e2e test: an assertion there passed against the broken code too.
+Verified: `?slot=expert` arrives preselected; `?slot=not-a-real-slot` lands on the first real slot
+with no error.
+
 ## Ranked flow (4.4 UI)
 
 **Why:** For a signed-in player the daily is competitive, so the component drives the ranked

@@ -31,6 +31,106 @@ the diff under review.
 
 ---
 
+## 2026-08-07 — the archive stops handing out today's board unranked
+
+Branch `fix/archive-today-to-daily` on `1a1624b`. **Step 3a** of the QA remediation plan (F3).
+~139 LOC of production code across 2 client components; no server code.
+
+### What was wrong
+
+`/archive`'s calendar reached today **and defaulted to it**, so the most natural path on the page —
+open it, press Play — started an *unranked practice* run of the board you still had to play ranked.
+Because a replay calls `startNewGame`, it could also erase an in-progress **ranked** attempt at that
+same board from the single saved slot. Nothing on screen said either thing.
+
+Today is now browsable (its leaderboard stays beside the calendar) but hands off to `/daily?slot=`.
+**No new `/api/solve` caller** — rankability stays entirely in `DailyExperience`.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 468 passed (57 files) |
+| `npx playwright test` | **43 passed** |
+| `tsc --noEmit` / `npm run lint` / `markdownlint "**/*.md"` | all exit 0 |
+| `npm run build` | ✓ compiled 5.3 s, 14/14 static pages |
+| Benchmarks | **not run** — no solver/generator core touched |
+
+### Findings
+
+- **Docs, caught by the reverse-reference sweep and fixed in-PR.** Both mirrored `.md` files were
+  corrected when the `?slot=` seed moved inside the slots effect, but `qa-remediation-plan.md`'s
+  Step 3a spec still described the **superseded** design ("the seed is deliberately unvalidated").
+  Its source was never touched, so mirroring could not have caught it — which is the entire reason
+  that sweep exists.
+- **Two code-review findings, both fixed in-PR** — see the plan's Step 3a step-log for detail: an
+  ungated hand-off link could name one board and navigate to another, and the `?slot=` key was
+  seeded into state on a self-correction claim that had a hole.
+
+### Invariants
+
+**Slot key is not an identity** — checked and *relevant here*: `?slot=` is matched against the keys
+the server rolled **for today**, so a retired key (`calc9-expert`, `killer6-easy`) is correctly
+rejected and falls back rather than resolving to a same-named board from another era. Archive replay
+of retired keys is a separate, untouched path. `ON CONFLICT`, ownership-in-query and migrations are
+**not applicable** — the diff performs no data access and no writes.
+
+### Lessons (apply next run)
+
+- **A claim tested only on the happy path is not tested.** The "self-corrects" comment was written
+  confidently and verified against a *working* slots fetch. The failure path had the hole. If a
+  comment asserts an invariant, exercise the branch that would break it.
+- **A test that cannot fail is worse than no test.** The first regression test for that hole
+  asserted the garbage key was absent from the screen with the fetch aborted — it passed against
+  the broken code too, because with no slots nothing renders the key. Deleted rather than kept
+  green, and the docs now say the hole was inert instead of implying coverage.
+- **Hardcoded initial state becomes a bug the moment it is put in an href.** `difficulty` started at
+  `'easy'` harmlessly for months. The standard rungs *roll* — 2026-08-03 rolled
+  `hard`/`expert`/`extreme` with no `easy` — so the day it fed a navigation target, it could send a
+  player somewhere the label did not name.
+
+### CI caught three things local runs could not (2026-08-11)
+
+The first CI run on this branch went red, and every cause was real:
+
+- **A stuck spinner I introduced — and had to fix twice.** The review fix held the hand-off back on
+  `slots.length === 0`, but `LeaderboardView.onSlotsLoaded` **never fired for an empty day**, so a
+  boardless day sat on "Loading…" forever. Not hypothetical: **2026-08-11 had zero daily boards**
+  until the roller ran. Round one made the callback report an empty day. CI was still red: without
+  a database the request **fails** rather than returning empty, and the `.catch(() => {})` swallowed
+  that too. The callback now fires on **every settled outcome** — boards, none, non-2xx, malformed,
+  network error — and the page tracks `slotsLoadedFor` so there are three states, not two. Both
+  terminal states are now driven deterministically by route interception, so the tests run in every
+  environment instead of depending on whether today happens to have boards.
+- **`HAS_DATABASE` was the wrong gate, in this PR *and* pre-existing.** The four `/daily` modal
+  specs gated on a database being configured; the condition they actually need is **today having
+  boards**. On 2026-08-11 those differ — database present, zero boards — and all four failed. Both
+  suites now share `todayHasBoards()`.
+- **`npm audit` went red on a transitive `nanoid` CVE** (GHSA-2v37-7h3g-55p8, high) published after
+  2026-08-07. Unrelated to this diff, which touches no dependency file; `main` was green on 08-07
+  and would fail the same way today.
+
+### Lessons from the CI round (apply next run)
+
+- **Gate a test on the condition it needs, not a proxy for it.** "Is a database configured" stood in
+  for "does today have boards" and they diverged the first day the roller did not run.
+- **A placeholder needs a terminal state for every way the question can end.** "Not answered yet"
+  vs "answered: none" was not enough — "the request failed" is a third, and a bare
+  `.catch(() => {})` silently converts it into the first. Enumerate settled outcomes, not just the
+  happy one and the empty one. Same shape as the calendar deadlock in the Step 3b prior art, which
+  this run reproduced *after* writing that prior art down — reading a lesson is not applying it.
+- **A callback that skips the empty case is not a callback the parent can trust.** `onSlotsLoaded`
+  looked like "here are the boards" and was really "here are the boards, unless there are none".
+
+### Reviews
+
+- `/security-review`: **run — no findings.** The one untrusted input (`?slot=`) never enters state
+  unvalidated; all three consuming routes re-validate server-side.
+- `/code-review`: **NOT run by the agent.** User-triggered and billed; an agent cannot launch it.
+  The owner ran it on this branch and both findings above came from it.
+
+---
+
 ## 2026-08-07 — the e2e suite runs for the first time
 
 Branch `fix/e2e-basepath` on `bb10da9`. Fixes **F1** of the August 2026 QA pass (Step 1 of the

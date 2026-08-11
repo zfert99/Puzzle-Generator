@@ -143,14 +143,25 @@ export function LeaderboardView({
     fetch(apiPath(`/api/daily/slots${date ? `?date=${date}` : ''}`))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!active || !d?.slots?.length) return;
-        setSlots(d.slots);
-        onSlotsLoaded?.(d.slots);
+        if (!active) return;
+        const loaded: DailySlotInfo[] = d?.slots ?? [];
+        // Reported on EVERY settled outcome — boards, no boards, a non-2xx, or malformed JSON.
+        // A parent cannot otherwise tell "this date has none" from "still fetching", and both
+        // no-boards and failed-fetch are real: 2026-07-24 has none (a cron outage), 2026-08-11 had
+        // none before the roller ran, and CI has no database at all. A parent rendering a
+        // placeholder until this fires would show it forever in every one of those cases.
+        onSlotsLoaded?.(loaded);
+        if (!loaded.length) return; // internal state unchanged for an empty day, as before
+        setSlots(loaded);
         if (!onDifficultyChange) {
-          setInternalDifficulty((cur) => reconcileSelectedKey(d.slots, cur));
+          setInternalDifficulty((cur) => reconcileSelectedKey(loaded, cur));
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        // Network error is also a settled outcome. Silently swallowing it is what left the
+        // placeholder up forever.
+        if (active) onSlotsLoaded?.([]);
+      });
     return () => {
       active = false;
     };

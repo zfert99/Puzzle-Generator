@@ -1,5 +1,16 @@
 # Leaderboard View (`LeaderboardView.tsx`)
 
+## `onSlotsLoaded` fires even for an empty day (August 2026)
+
+The callback reports the day's boards **whatever they are**, including `[]`. A parent cannot
+otherwise distinguish "no boards on this date" from "still fetching", and a boardless day is real:
+2026-07-24 has none (a cron outage), and a day's boards do not exist until the roller runs —
+2026-08-11 had zero at 02:00 UTC. `ArchiveExperience` renders a placeholder until this fires, so
+withholding it on an empty day left that placeholder up forever.
+
+Internal state is unchanged for an empty day: `slots` and the uncontrolled `internalDifficulty` are
+only written when at least one board came back, exactly as before.
+
 Client view for the leaderboard: difficulty tabs, a day's board, and (signed in) the caller's
 own rank + streak.
 

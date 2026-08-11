@@ -119,6 +119,17 @@ The scope source of truth. "Step" links to where it gets fixed.
 | **U3** | — | **Owner ask:** per-type rules popup on first play + a way to reopen rules any time | 5 |
 | D1 | Medium | *Discovered:* legacy archive days render 19–33 picker tabs (old 30-board key scheme) | 3c |
 
+### Open items not owned by a step
+
+Small things with no natural home in the numbered steps. Kept here so they are visible rather than
+living only in a chat transcript.
+
+| Item | Status | Notes |
+|---|---|---|
+| **`DATABASE_URL` as a repository secret** | ⏳ Owner action | Unlocks the four `/daily` e2e specs, which currently `test.skip` themselves. **CI is green without it** — it is coverage, not a blocker. Add under Settings → Secrets and variables → Actions; `ci.yml` already reads it and derives `E2E_HAS_DB` from its presence. Nothing else needs changing. |
+| **`killer-sudoku.ts:124` cites a moved doc** | 🔴 Open on `main` | Points at `Docs/killer-6x6-implementation-plan.md`; the file is at `Docs/archive/`. PR #71's title says "fix two stale doc pointers", but it fixed pointers *inside* a research doc — not this one. Either repoint the comment or move the doc back per §7 ("live source rationale outranks completed"). |
+| **The code→doc sweep** | 💡 Adopt | The reverse-reference sweep runs doc→code. Its mirror image also fails: a code comment can name a `Docs/*.md` path nobody committed. `git grep -oh "Docs/[a-z0-9-]*\.md" -- src/ '*.config.ts'` then check each is tracked. Exclude anything worded "the **hub's** `Docs/…`" — that is the separate `Biscuit-Website` repo, not a dangling link. |
+
 ### Deliberately not in scope
 
 - **`/api/daily` serves the solution to the client.** A recorded decision with its reasoning in
@@ -238,70 +249,150 @@ selector turns the suite red.
 
 ### Step 3 — Archive correctness (F3, U2, D1) · M · order #4
 
-Three related slices; **3a is a genuine bug and should not wait for 3b/3c.**
+> **Refined 2026-08-07, before building.** Three things changed this spec: today's board turns out
+> to be *out of scope for the archive entirely*, a **discarded branch's stash** was found with the
+> calendar work already reasoned through (including a deadlock this plan had not anticipated), and
+> the greying design needs a third piece of state nobody would guess. Read the prior art below
+> before writing code.
 
-#### Step 3a — Today, played from Archive, must be rankable (F3) · S · first in step
+#### Prior art — do not re-derive this
+
+`stash@{0}` ("wip: ArchiveExperience calendar-bounds fix from the discarded QA branch") holds a
+refinement of a **3b implementation that no longer exists**: none of it is on `main` — no
+`/api/daily/days` route, `Calendar` still takes only `maxDate`/`tallies`, `ArchiveExperience` has no
+`firstDate`/`availableDays` state. **The stash cannot be applied** (its base is gone), but three
+decisions in it were paid for once already:
+
+1. **One endpoint, not two.** It fetched `/api/daily/days?month=…` returning
+   `{ days: [...], first: 'YYYY-MM-DD' }` — the month's populated days *and* the global floor in a
+   single call. Better than this plan's earlier `/api/daily/coverage` sketch, which needed a second
+   round trip for the floor.
+2. **`loadedMonths` is load-bearing.** Without it, "this month has no boards" and "we have not
+   fetched this month yet" are the same state, so every unfetched day greys out on arrival.
+3. **A provisional `minDate` can deadlock the calendar.** While the fetch is in flight the floor
+   must be the visible month, or a fast `‹` double-click lands on a month the response then greys
+   out *and* locks. But if that request **fails**, holding the provisional floor pins the calendar
+   forever: `‹` is disabled by the provisional floor, `›` by `maxDate`, and the effect only re-runs
+   on a month change neither arrow can now produce. Both arrows dead, reload the only escape.
+   The fix is a third state — *settled without a floor* → **no** `minDate`, degrading to today's
+   unbounded behaviour rather than locking.
+
+#### Step 3a — Today hands off to the ranked daily (F3) · S · ✅ done
 
 ##### Spec
 
-- `ArchiveExperience` is unconditionally the practice surface: no `selectedDate === todayIso`
-  branch exists, it never calls `/api/solve`, and it hardcodes the `· practice` label. The calendar
-  *defaults* `selectedDate` to today and today is selectable — so the most natural path (open
-  Archive → press Play) silently gives an unranked run of today's board.
-- Worse, it calls `startNewGame(puzzle, 'daily', date)`, which overwrites the single saved-game
-  slot — so it can also erase an in-progress *ranked* attempt at today's daily. (The "Start a new
-  puzzle?" confirm does warn, but the wording does not say the replacement will not count.)
-- **Decide the model, then implement one of:**
-  - **(a) Route today to the ranked surface.** Selecting today in the archive routes to `/daily`
-    (deep-linked to that slot) instead of rendering the practice board. Simplest; keeps exactly one
-    ranked surface. **Recommended.**
-  - **(b) Make the archive surface date-aware.** Submit to `/api/solve` when
-    `playedDate === todayIso`, and label accordingly. More code, two paths to keep in sync, and the
-    `NOT_STARTED` guard means it must also call `/api/daily/start`.
-- Either way the "practice" label must become conditional, not a constant.
+**The bug.** `ArchiveExperience` is unconditionally the practice surface: there is no
+`selectedDate === todayIso` branch, it never calls `/api/solve` or `/api/daily/start`, and it
+hardcodes the `· practice` label. The calendar *defaults* `selectedDate` to today and today is
+selectable, so the most natural path — open Archive, press Play — silently burns today's board for
+no rank. It also calls `startNewGame(puzzle, 'daily', date)`, which overwrites the single saved
+slot, so it can erase an in-progress **ranked** attempt at the same board.
 
-**Done when:** an e2e test proves that playing today's board from `/archive` produces a ranked
-attempt (or lands the player on `/daily`), and that a past day still produces none.
+**The resolution keeps rankability in one place.** `DailyExperience` already owns it correctly —
+posts `/api/daily/start` on begin, submits only when `session && dailyDate === todayIso` — so the
+archive must not learn a second ranked-write path. **Today stays browsable, but its Play button
+hands off** instead of starting a board:
 
-**Step-log:** *(pending)*
+- Today remains selectable, so its leaderboard stays visible beside the calendar.
+- Its button reads **"Daily {slot} (ranked)"** and links to **`/daily?slot=<key>`**, carrying the
+  chosen board so the player does not pick twice.
+- **No new `/api/solve` caller.** `· practice` stays unconditionally true for everything this
+  surface does start.
+- Sharpen the `ConfirmModal` copy: it warned that a saved puzzle would be erased but not that the
+  replacement would not count. Say so.
+
+`DailyExperience` applies `?slot=` **inside** its slots effect rather than seeding it into state —
+that effect is the only place the key can be checked against the boards today actually rolled, so an
+unvalidated value never enters state. (The first attempt did seed it directly, on the theory that
+the effect would correct it; it would not have, because that reconciliation sits behind
+`if (!d?.slots?.length) return;`. Caught in review — see the step-log.)
+
+##### Verification
+
+E2E: today is not selectable in the archive calendar; selecting yesterday still yields a board
+labelled practice; playing it writes **no** `solve_attempts` row (assert via `/api/me/attempts`
+before/after) and leaves the historical leaderboard unchanged.
+
+##### Step-log — landed 2026-08-07 (`fix/archive-today-to-daily`)
+
+- **Process.** Today's Play button became a `Link` to `/daily?slot=<key>` labelled
+  "Daily {slot} (ranked)"; `DailyExperience` seeds `difficulty` from `?slot=`; `ConfirmModal` copy
+  now says a replay will not be ranked. New `e2e/archive.spec.ts` (4 specs).
+- **Two options were built and compared, not argued about.** The rejected one capped the calendar at
+  **yesterday** (branch `fix/archive-correctness`, since deleted). It was the smaller diff and made
+  `· practice` unconditionally true, but it fixed the bug by **removing a capability** — today's
+  leaderboard disappeared from `/archive`. The chosen one keeps today browsable and converts the
+  dangerous button into the useful one, for one branch and a query param. **Building both was
+  cheaper than deciding on paper**; the owner picked from working software.
+- **Learning — measure a claimed trade-off before conceding it.** The yesterday-cap option was
+  flagged as "loses today's leaderboard from `/archive`". Measuring both pages showed `/archive`
+  passes `date` to `LeaderboardView`, which suppresses streak / your-rank / personal-bests whenever
+  a date is present — so its view of today was already a **strict subset** of `/leaderboard`. The
+  trade was smaller than it sounded. That did not save the option, but it corrected the reasoning.
+- **Learning — a label that drops a rolling axis collides.** "Daily Killer (ranked)" was the first
+  ask. Today's roll holds **both** `Easy · Killer` (standard 9×9) and `Easy 4×4 · Killer` (mini), so
+  type-only labels render two different boards identically. Under type-as-slot, difficulty, size
+  *and* type all roll — a label may drop at most the axis that is constant, and none is.
+- **Learning — reuse the validation that already exists.** The `?slot=` seed needed no validation
+  branch: the slots effect already reconciles the current key against today's real slots. Verified
+  live — `?slot=expert` arrives preselected, `?slot=not-a-real-slot` falls back to the first slot
+  with no error (now a test).
+- **Two review findings, both mine, both fixed in the same PR.**
+  - The hand-off `href` was built from `difficulty`, which starts at the hardcoded `'easy'` and is
+    only reconciled once slots load — and **the standard rungs roll**: 2026-08-03 rolled
+    `hard`/`expert`/`extreme` with **no `easy` at all**. An early click read one board and
+    navigated to another. The link is now held back behind a disabled "Loading…" until slots
+    arrive. Regression test proven non-vacuous by removing the gate *and* filtering `easy` out of
+    the slots response: it fails with `Expected "easy", Received ["expert", "extreme", …]`.
+  - The `?slot=` key was seeded straight into `useState` with a comment claiming it "self-corrects
+    through the path that was always there". It does not: that reconciliation sits behind
+    `if (!d?.slots?.length) return;` with a bare `.catch(() => {})`, so a failed slots fetch left
+    the raw URL value in state. Now applied **inside** the effect, so an unvalidated key never
+    enters state.
+- **Learning — a claim tested only on the happy path is not tested.** The self-correction comment
+  was written confidently and verified against a *working* fetch. The failure path had a hole. If a
+  comment asserts an invariant, exercise the branch that would break it.
+- **Learning — a test that cannot fail is worse than no test.** The first regression test for that
+  second finding asserted the garbage key was not on screen with the slots fetch aborted. It passed
+  against the broken code too — with no slots, nothing renders the key at all. **Deleted rather
+  than kept green.** The hole was genuinely inert, which is why the finding was Low; the fix is
+  hygiene, not a user-visible repair, and the docs now say so instead of implying coverage.
+- **Verification.** e2e **43 passed**; unit 468; lint/tsc/build clean; deep-link, self-correction
+  and the label/destination gate all checked in a browser, not inferred.
+- **Blocker: none.** 3b and 3c remain.
 
 #### Step 3b — Calendar bounds + empty days (U2) · M
 
 ##### Spec
 
-- [Calendar.tsx](../src/features/dailies/components/Calendar.tsx) has `maxDate` (future days
-  disabled) and its doc block states there is deliberately **no lower bound**. Add `minDate`:
-  - disable days before the first daily — **2026-07-11**, measured, not guessed;
-  - disable the `‹` control when the visible month is the boundary month (mirroring the existing
-    `canGoNext` logic).
-- Do **not** hardcode `2026-07-11` in the component. Source it from the data so a DB restore or a
-  backfill cannot make the UI lie.
-- Grey out days with no puzzles *within* range (2026-07-24 is a real gap). **Constraint:**
-  `/api/me/progress?month=` already returns per-day totals but is **auth-gated (401 signed out)**
-  and is per-user. The calendar must grey out days for everyone, so this needs a small **public**
-  `GET /api/daily/coverage?month=` returning `{ "2026-07-24": 0, "2026-07-25": 19, … }` — one
-  grouped count query, cacheable, no user data. That endpoint also supplies `minDate`.
-- Empty and out-of-range days must be distinguishable from merely *unplayed* ones by more than
-  colour (WCAG 1.4.1 — the QA doc calls this out for exactly this kind of state dot).
+Build the endpoint the stash implies, then the UI on top of it.
 
-**Done when:** July's calendar cannot page back past 2026-07-11, 2026-07-24 is visibly and
-programmatically unavailable, and the bound survives a data change without a code change.
-
-**Step-log:** *(pending)*
+- **New public route `GET /api/daily/days?month=YYYY-MM`** → `{ days: string[], first: string|null }`.
+  Aggregate only — dates and a floor, no user data, so it works signed-out (which
+  `/api/me/progress` cannot: it is 401 without a session and is per-user). Model validation on
+  [`slots/route.ts`](../src/app/api/daily/slots/route.ts), which already rejects a well-formed
+  non-date like `2026-02-31` **by existence, not shape** — that exact input used to 500 at the
+  driver. One `SELECT DISTINCT date` per month plus one `MIN(date)`; cacheable.
+- **`Calendar` gains `minDate`, `availableDays`, `loadedMonths`.** Disable days outside
+  `[minDate, maxDate]`, disable `‹` at the boundary month mirroring the existing `canGoNext`, and
+  grey days in a *loaded* month that are not in `availableDays`.
+- Implement the **three-state `minDate`** from the prior art above. This is the part that will look
+  like over-engineering and is not.
+- **Do not hardcode the floor.** It is `first` from the endpoint. Measured today it is
+  **2026-07-11**, with a real one-day hole at **2026-07-24** (the silent cron outage) — so
+  "greyed" must mean *no boards*, not *before the floor*, and the two need different treatment.
+- Unavailable days must be distinguishable by more than colour (WCAG 1.4.1) — the existing tally
+  dots set the precedent.
 
 #### Step 3c — Legacy days do not explode the picker (D1) · M
 
 ##### Spec
 
-- Days from 2026-07-20 → 07-31 carry the old 30-key scheme, so `LeaderboardView` renders up to 33
-  tabs. Group them (Standard / Mini / Killer / Keisan) or collapse to a select on legacy-shaped
-  days. Keep every key **readable** — this is presentation only.
-- Cheap alternative if this proves fiddly: render legacy days as leaderboard-only (no replay), with
-  a one-line note. Record the choice and why in the step-log.
-
-**Step-log:** *(pending)*
-
----
+Days from 2026-07-20 → 07-31 carry the old 30-key scheme, so `LeaderboardView` renders up to 33
+tabs. Group them (Standard / Mini / Killer / Keisan) or collapse to a `<select>` on legacy-shaped
+days. Presentation only — **every key must stay readable and replayable** (a standing `/pre-merge`
+invariant). Cheap fallback if grouping proves fiddly: render legacy days leaderboard-only, with a
+one-line note; record the choice and why in the step-log.
 
 ### Step 4 — Reorganise the hub (U1) · XS (re-verify committed work) · order #3
 

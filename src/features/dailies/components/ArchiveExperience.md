@@ -3,6 +3,40 @@
 Client orchestrator for `/archive` — browse a past day, see its final leaderboard, and replay
 its puzzle as **unranked practice**.
 
+## Why today is browsable but not playable here (August 2026)
+
+The calendar reaches today, so today's leaderboard stays visible beside it — but today's button reads
+**"Daily {slot} (ranked)"** and **hands off to `/daily`** rather than starting a board.
+
+It used to start an *unranked practice* run of the very board you still had to play ranked. Worse,
+a replay calls `startNewGame`, which overwrites the single saved slot, so it could erase an
+in-progress *ranked* attempt at that same board. Nothing on screen said either thing.
+
+Rankability stays entirely in `DailyExperience` — it posts `/api/daily/start` on begin and submits
+only when `dailyDate === today`. This surface still has **no `/api/solve` caller**, and
+`· practice` remains unconditionally true for everything it does start.
+
+The hand-off carries the chosen slot as `/daily?slot=<key>` so the player does not pick twice.
+`DailyExperience` applies that key **inside** its slots effect, where it can be checked against the
+boards today actually rolled — see [`DailyExperience`](DailyExperience.md).
+
+**The link is held back until this page's own slots arrive.** `difficulty` starts at the hardcoded
+`'easy'` and is only reconciled by `handleSlotsLoaded`, and the standard rungs *roll* — 2026-08-03
+rolled `hard`/`expert`/`extreme` with no `easy` at all. An ungated link would read one board and
+navigate to another, with `/daily` silently correcting the bogus key to its first slot.
+
+**Three states, not two.** Holding the link back on `slots.length === 0` is wrong, because zero
+boards is a real answer rather than a pending one — 2026-07-24 has none (a cron outage), and a
+day's boards do not exist until the roller runs. `LeaderboardView` now reports an empty day too, and
+this page tracks `slotsLoadedFor` (the date the answer applies to, so a date change invalidates it
+without a reset effect):
+
+| State | Rendered |
+|---|---|
+| not answered yet | disabled "Loading…" |
+| answered, no boards | "Today's boards haven't been generated yet" |
+| answered, boards exist | the "Daily {slot} (ranked)" hand-off |
+
 ## Why replays are unranked
 
 That day's leaderboard is closed; letting late solves post to it would let players pad old

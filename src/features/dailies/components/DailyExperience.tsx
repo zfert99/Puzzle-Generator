@@ -71,6 +71,15 @@ export default function DailyExperience() {
   const { data: session } = useSession();
   const [phase, setPhase] = useState<'select' | 'playing'>('select');
   const [difficulty, setDifficulty] = useState<DailyDifficulty>('easy');
+  /**
+   * `/archive` hands today's board off as `/daily?slot=<key>` so the player does not pick the same
+   * board twice. Applied inside the slots effect below rather than seeded into state here: that is
+   * the only place the key can be checked against the boards today actually rolled, so an
+   * unvalidated value never enters state at all. Seeding directly looked equivalent but was not —
+   * the reconciliation is behind `if (!d?.slots?.length) return;`, so a failed or empty slots fetch
+   * would have left a garbage key sitting in state.
+   */
+  const wantedSlot = searchParams.get('slot');
   const [dailyDate, setDailyDate] = useState<string>('');
   const [submit, setSubmit] = useState<SubmitState>({ status: 'idle' });
   const [warnOpen, setWarnOpen] = useState(false);
@@ -163,13 +172,19 @@ export default function DailyExperience() {
       .then((d) => {
         if (!active || !d?.slots?.length) return;
         setSlots(d.slots);
-        setDifficulty((cur) => (d.slots.some((s: DailySlotInfo) => s.key === cur) ? cur : d.slots[0].key));
+        const rolled = (key: string | null) => Boolean(key) && d.slots.some((s: DailySlotInfo) => s.key === key);
+        // Precedence: an explicit, VALID `?slot=` wins; else keep the current key if today rolled
+        // it; else fall back to the first real board. A stale, retired or garbage `slot` therefore
+        // never survives — it is simply not preferred.
+        setDifficulty((cur) => (rolled(wantedSlot) ? (wantedSlot as DailyDifficulty) : rolled(cur) ? cur : d.slots[0].key));
       })
       .catch(() => {});
     return () => {
       active = false;
     };
-  }, []);
+  // `wantedSlot` is a real dependency: a client-side nav that changes `?slot=` should re-apply
+  // it. Refetching the day's slots alongside is cheap and keeps the two in step.
+  }, [wantedSlot]);
 
   // Which of today's dailies this user has already completed (one attempt per day).
   useEffect(() => {
