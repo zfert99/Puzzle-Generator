@@ -24,6 +24,19 @@ listed below is either merged or explicitly parked. There is no work in progress
 
 ---
 
+## What shipped on 2026-09-02 (one-day detour, not on the plan)
+
+[#78](https://github.com/zfert99/Puzzle-Generator/pull/78) — **hint agent**: an MCP server over
+`HumanSolver`, a one-hint agent on the Anthropic SDK, and an eval harness that scored 52 positions
+against the solver as ground truth (100% valid / 0% leak / 12 of 12 refusals on Opus 5, with a
+recorded ceiling effect — every hint was a single). New engine file `deductions.ts` gives
+`listDeductions()`, the first way to ask the solver "what are *all* my options here?"; nothing is
+routed into the app. Living doc: [hint-agent-plan.md](hint-agent-plan.md). Devlog:
+[https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver](https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver). Running the eval needs `ANTHROPIC_API_KEY` **and** `ANTHROPIC_WORKSPACE_ID` (the
+Console's keys are identity-linked now). The Next-up table below is unchanged by this.
+
+---
+
 ## What shipped in the last working session (2026-08-07 → 08-11)
 
 Five PRs, all merged and green:

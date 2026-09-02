@@ -1,10 +1,11 @@
 # Hint Agent — MCP server, agent, eval harness
 
-> **Status (September 2, 2026):** All four pieces done. The full 52-state eval ran live on
-> `claude-opus-5` (raw report committed under `src/features/hint-agent/eval-results/`), and the
-> writeup below carries the numbers. Remaining: publish the writeup as a devlog (Build Log
-> rule), and — as a follow-up, not this weekend — add a singles-free state population so the
-> elimination techniques are actually exercised (see Limits).
+> **Status (September 2, 2026):** ✅ Complete. All four pieces shipped in
+> [#78](https://github.com/zfert99/Puzzle-Generator/pull/78); the full 52-state eval ran live on
+> `claude-opus-5` (raw report under `src/features/hint-agent/eval-results/`); the writeup is
+> published as a devlog at [https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver](https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver)
+> (Biscuit-Website #47). One follow-up, deliberately not this weekend: a singles-free state
+> population so the elimination techniques are actually exercised (see Limits).
 
 ## Background
 
@@ -94,7 +95,7 @@ two sanity rates (parsed, called the oracle). Full report JSON written to
 
 **Blocker.** Same as Step 2. Run live the same day: 5-state smoke, then the full 52.
 
-### Step 4 — Writeup ✅ (drafted here; devlog publish pending)
+### Step 4 — Writeup ✅ (published)
 
 **Process.** Numbers filled from `eval-results/2026-09-02T17-24-42-536Z-claude-opus-5.json`.
 Before quoting them, the raw runs were read for what the grader cannot see: the twelve refusal
@@ -104,8 +105,14 @@ flagged are all the phrase "one candidate" — not leaks.
 
 **Learning.** A perfect score is a finding about the *eval*, not just the model. See Limits.
 
-**Next.** Publish per the Build Log rule (Biscuit-Website
-`src/content/log/sudoku-hint-agent-eval.mdx`).
+**Published** the same day per the Build Log rule: [https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver](https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver), Biscuit-Website
+`src/content/log/grading-a-hint-agent-with-the-solver.mdx`. Beyond the draft below it gained the
+three things the devlog research asks for that were missing: a chart (technique available vs.
+hinted, across the 40 solvable positions — the ceiling effect in one image, rendered from the
+eval JSON with Playwright at 1800px), a code snippet for the clone-and-diff core, and the thing
+that broke (the MCP client's `env` option replacing the child environment). The site's audit
+gate failed on the first CI run on a pre-existing `nanoid` advisory, fixed in the same PR with
+the override pattern from #73.
 
 ## Build log (draft)
 
