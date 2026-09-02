@@ -39,7 +39,7 @@ Before archiving any doc, grep for it in `src/` and `*.config.ts`, not just in `
 | [project-status.md](project-status.md) | **⏸ START HERE while paused** — cold-start handoff: state, next steps, branch inventory, traps | 🚧 Living |
 | [roadmap.md](roadmap.md) | The plan of record — phases, tracks, backlog | 🚧 Living |
 | [pre-merge-log.md](pre-merge-log.md) | One entry per pre-merge run + **known flaky tests** (read before blaming a red test on your diff) | 🚧 Living |
-| [hint-agent-plan.md](hint-agent-plan.md) | MCP server + hint agent + eval harness over `HumanSolver` — step-log, draft writeup | ✅ Built + eval run; devlog pending |
+| [hint-agent-plan.md](hint-agent-plan.md) | MCP server + hint agent + eval harness over `HumanSolver` — step-log, published writeup | ✅ Complete (Sept 2026) |
 | [daily-redesign-plan.md](daily-redesign-plan.md) | Daily restructure (type-as-slot) — spec + step-log per step | 🚧 Step 4 polish left |
 | [qa-remediation-plan.md](qa-remediation-plan.md) | Aug 2026 QA findings + hub/archive/rules UX asks — 9 ordered steps, step-log per step | 📋 Planned |
 | [social-progression-economy-plan.md](social-progression-economy-plan.md) | Phase 9 — crumbs, achievements, streaks, shop, social | 📋 Planned |
