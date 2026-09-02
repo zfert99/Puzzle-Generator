@@ -1,0 +1,244 @@
+{
+  "model": "claude-opus-5",
+  "startedAt": "2026-09-02T17:23:05.591Z",
+  "summary": {
+    "model": "claude-opus-5",
+    "n": 5,
+    "nHasDeduction": 5,
+    "nNone": 0,
+    "parseRate": 1,
+    "oracleCallRate": 1,
+    "validity": 1,
+    "labelAccuracy": 1,
+    "leakRate": 0,
+    "refusalAccuracy": 0,
+    "unnecessaryRefusals": 0,
+    "hallucinatedHints": 0
+  },
+  "grades": [
+    {
+      "id": "easy-0",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c1"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-4",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r2c1"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-8",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r4c6"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-12",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-16",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r1c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    }
+  ],
+  "runs": [
+    {
+      "grid": "602000090007008020000009571010000002834907105276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c1"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box is already accounted for, so only a single candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r3c1\"], \"explanation\": \"Every other digit in that cell's row, column, and box is already accounted for, so only a single candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6292,
+        "output": 137
+      }
+    },
+    {
+      "grid": "652000090097008020480009571010000002834907105276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r2c1"
+          ],
+          "explanation": "Every other digit already appears in that cell's row, column, or box, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r2c1\"], \"explanation\": \"Every other digit already appears in that cell's row, column, or box, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6396,
+        "output": 133
+      }
+    },
+    {
+      "grid": "652000090197008020483009571010000042834907165276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r4c6"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r4c6\"], \"explanation\": \"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5909,
+        "output": 134
+      }
+    },
+    {
+      "grid": "652004090197008020483209571010603042834907165276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c5"
+          ],
+          "explanation": "Every other digit in r3c5's row, column, and box is already used, so only one candidate survives in that cell."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r3c5\"], \"explanation\": \"Every other digit in r3c5's row, column, and box is already used, so only one candidate survives in that cell.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6167,
+        "output": 137
+      }
+    },
+    {
+      "grid": "652104090197358020483269571010603042834907165276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r1c5"
+          ],
+          "explanation": "Every other digit already appears in this cell's row, column, or box, so only one candidate survives there. Fill it and several neighbouring cells will cascade."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r1c5\"], \"explanation\": \"Every other digit already appears in this cell's row, column, or box, so only one candidate survives there. Fill it and several neighbouring cells will cascade.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5822,
+        "output": 151
+      }
+    }
+  ],
+  "states": [
+    {
+      "id": "easy-0",
+      "grid": "602000090007008020000009571010000002834907105276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-4",
+      "grid": "652000090097008020480009571010000002834907105276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-8",
+      "grid": "652000090197008020483009571010000042834907165276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-12",
+      "grid": "652004090197008020483209571010603042834907165276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-16",
+      "grid": "652104090197358020483269571010603042834907165276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    }
+  ]
+}

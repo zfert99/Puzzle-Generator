@@ -680,6 +680,20 @@ speed races**, **community puzzle sharing**, and a **mobile app**.
 
 The subsections below capture the remaining backlog items.
 
+### Hint agent — MCP server + eval harness over `HumanSolver` ✅ Built + eval run (September 2026)
+
+A weekend-scoped build to turn the human solver into an agent tool *and* into the grader for
+that agent: `src/features/hint-agent/` holds a stdio MCP server (`npm run mcp:hint`, registered
+in `.mcp.json` as `sudoku-hint`), a one-hint agent on the Anthropic SDK (`npm run hint:agent`),
+and an eval harness (`npm run hint:eval`) that scores validity, strategy label, leak and refusal
+over 52 seeded states — 12 of them with *no* deduction available, where hallucination shows up.
+First live run on `claude-opus-5`: 100% validity, 100% label, 0% leak, 12/12 correct refusals —
+with a known ceiling effect (every solvable state had a single available; elimination
+techniques never exercised). Made possible by the new `deductions.ts` enumerator (`listDeductions`), since `solve()` is a
+stepper. Plan, step-log and draft writeup: [hint-agent-plan.md](hint-agent-plan.md). Not a
+product feature; the artifact is the measured number plus the writeup. Explicitly out of scope:
+move application, session state, UI, public demo.
+
 ### Daily restructure — type-as-slot (one daily per type) ✅ Done (August 2026)
 
 The `/daily` grew to a **30-board wall** (Classic + Killer + Keisan ladders + 15 minis) that
