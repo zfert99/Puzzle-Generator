@@ -31,6 +31,69 @@ the diff under review.
 
 ---
 
+## 2026-09-02 — hint agent: MCP server + eval harness over `HumanSolver`
+
+Branch `feat/hint-agent` on `b819184`. New feature folder `src/features/hint-agent/` (7 source
+files + tests + mirrored docs), one engine addition (`deductions.ts` — the enumerator), two new
+deps, `.mcp.json`, two eval-result JSONs. **~4,400 LOC added**, of which roughly 2,500 is the two
+committed eval reports (raw model output kept as evidence), ~500 is docs, ~250 tests. Production
+code is ~600 LOC across two isolated modules with no callers in the app — nothing routed, no
+server code, no data access. Over the 400-LOC target on paper; the reviewable surface is not.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 505 passed (64 files) — 28 new |
+| `npm run lint` / `tsc --noEmit` / `markdownlint "**/*.md"` | all exit 0 |
+| `npm run build` | ✓ compiled, all routes unchanged |
+| `npm audit --audit-level=high --omit=dev` | 0 high (4 moderate, pre-existing, via drizzle-kit's esbuild) |
+| Benchmarks | **not run** — `human-solver.ts` / `sudoku.ts` untouched; `deductions.ts` only clones and calls existing `apply*` functions |
+| Live eval | 52/52 on `claude-opus-5`: 100% validity, 100% label, 0% leak, 12/12 refusals; ~$1.50 |
+
+### Findings
+
+- **New deps verified real before install** (slopsquatting check): `@modelcontextprotocol/sdk`
+  1.30.0 and `@anthropic-ai/sdk` 0.123.0, both confirmed on npm with `npm view`.
+- **The 100% is a ceiling effect, recorded, not hidden.** Every solvable eval state had a single
+  available and the prompt prefers the simplest technique, so all 40 hints were singles. The
+  harness measures oracle-following, not technique reasoning. Written into the plan doc's Limits
+  and the roadmap entry rather than left for a reader to discover.
+- **Identity-linked Console keys need `anthropic-workspace-id`.** The SDK reads
+  `ANTHROPIC_WORKSPACE_ID` only on its federation path; `createClient()` in `agent.ts` sets the
+  header for the plain-key path. Found on the first live run.
+- **AI-written logic re-derived:** the leak regex (strips `r#c#` / `row 3` before searching for
+  the placed digit) and the subset-validity rule (elimination strategies report the union of
+  instances, so a subset is one real step). Both have deliberately-broken cases in
+  `eval-grade.test.ts`; the regex's false-positive on "one candidate" was checked by hand against
+  the raw runs (37 hits, all that phrase).
+
+### Invariants
+
+Slot keys, `ON CONFLICT`, retired keys, ownership-in-query, migrations: **all not applicable** —
+no database, no routes, no auth touched. `/security-review` **not required** for the same reason
+and not run. The MCP server is stdio-only and reads one env var; the agent sends only the grid to
+the API.
+
+### Docs
+
+Mirrored `.md` for all 8 new `.ts` files. Reverse-reference sweep: nothing removed or renamed;
+`hint-agent-plan.md` created as the living doc with step-log; `Docs/README.md` and `roadmap.md`
+entries added. No archived doc touched.
+
+### Lessons (apply next run)
+
+- **A perfect eval score is a finding about the eval first.** Before quoting 100%, check what
+  the population actually exercised — here, one glance at the strategy histogram (33 Naked, 7
+  Hidden, 0 anything else) said more than the four headline rates.
+- **Read the raw runs for what the grader cannot see.** The refusal *reasons* (did it cite the
+  tool, or its own reading of the candidates?) are the evidence that the refusal rate means
+  something; the rate alone does not.
+
+**`/code-review` has NOT been run** — it is user-triggered and billed, and an agent cannot launch it.
+
+---
+
 ## 2026-08-07 — the archive stops handing out today's board unranked
 
 Branch `fix/archive-today-to-daily` on `1a1624b`. **Step 3a** of the QA remediation plan (F3).

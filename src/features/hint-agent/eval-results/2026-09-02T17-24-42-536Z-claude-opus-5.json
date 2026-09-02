@@ -1,0 +1,2216 @@
+{
+  "model": "claude-opus-5",
+  "startedAt": "2026-09-02T17:24:42.536Z",
+  "summary": {
+    "model": "claude-opus-5",
+    "n": 52,
+    "nHasDeduction": 40,
+    "nNone": 12,
+    "parseRate": 1,
+    "oracleCallRate": 1,
+    "validity": 1,
+    "labelAccuracy": 1,
+    "leakRate": 0,
+    "refusalAccuracy": 1,
+    "unnecessaryRefusals": 0,
+    "hallucinatedHints": 0
+  },
+  "grades": [
+    {
+      "id": "easy-0",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c1"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-4",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r2c1"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-8",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r4c6"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-12",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-16",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r1c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-20",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r6c4"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-24",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r1c9"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-28",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r4c3"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-32",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r2c9"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "easy-36",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r9c3"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-0",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r1c9"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-5",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r7c3"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-10",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c8"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-15",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r1c6"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-20",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r4c4"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-25",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r4c8"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-30",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r6c2"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-35",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r4c7"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-40",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r7c4"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "medium-45",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r9c2"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-0",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Hidden Single",
+      "cells": [
+        "r9c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-5",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Hidden Single",
+      "cells": [
+        "r9c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-10",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Hidden Single",
+      "cells": [
+        "r6c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-15",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Hidden Single",
+      "cells": [
+        "r4c1"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-20",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c2"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-25",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r1c2"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-30",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r1c4"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-35",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r2c4"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-40",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r5c6"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "hard-45",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r6c6"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-0",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r8c9"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-5",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Hidden Single",
+      "cells": [
+        "r1c3"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-10",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Hidden Single",
+      "cells": [
+        "r1c5"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-15",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r5c2"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-20",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Hidden Single",
+      "cells": [
+        "r7c1"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-25",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c3"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-30",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r3c4"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-35",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r6c1"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-40",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r6c2"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "expert-45",
+      "kind": "has_deduction",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": "Naked Single",
+      "cells": [
+        "r4c6"
+      ],
+      "valid": true,
+      "labelCorrect": true,
+      "leaked": false,
+      "refusedCorrectly": null
+    },
+    {
+      "id": "none-1",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-2",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-3",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-4",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-5",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-6",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-7",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-8",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-9",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-10",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-11",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    },
+    {
+      "id": "none-12",
+      "kind": "none",
+      "parsed": true,
+      "calledOracle": true,
+      "strategy": null,
+      "cells": [],
+      "valid": null,
+      "labelCorrect": null,
+      "leaked": null,
+      "refusedCorrectly": true
+    }
+  ],
+  "runs": [
+    {
+      "grid": "602000090007008020000009571010000002834907105276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c1"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r3c1\"],\"explanation\":\"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6292,
+        "output": 130
+      }
+    },
+    {
+      "grid": "652000090097008020480009571010000002834907105276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r2c1"
+          ],
+          "explanation": "Every other digit already appears in this cell's row, column, or box, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r2c1\"], \"explanation\": \"Every other digit already appears in this cell's row, column, or box, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6396,
+        "output": 133
+      }
+    },
+    {
+      "grid": "652000090197008020483009571010000042834907165276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r4c6"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r4c6\"], \"explanation\": \"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5909,
+        "output": 134
+      }
+    },
+    {
+      "grid": "652004090197008020483209571010603042834907165276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c5"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there. Fill it in and several nearby cells will open up."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r3c5\"],\"explanation\":\"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there. Fill it in and several nearby cells will open up.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6167,
+        "output": 146
+      }
+    },
+    {
+      "grid": "652104090197358020483269571010603042834907165276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r1c5"
+          ],
+          "explanation": "Every other digit already appears in this cell's row, column, or box, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r1c5\"],\"explanation\":\"Every other digit already appears in this cell's row, column, or box, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5822,
+        "output": 129
+      }
+    },
+    {
+      "grid": "652174090197358020483269571010683742834927165276005089061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r6c4"
+          ],
+          "explanation": "Every other value in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r6c4\"],\"explanation\":\"Every other value in that cell's row, column, and box has already been used, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5135,
+        "output": 129
+      }
+    },
+    {
+      "grid": "652174890197358020483269571010683742834927165276415389061842037720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r1c9"
+          ],
+          "explanation": "Every other digit already appears in r1c9's row, column, or box, so only one candidate survives in that cell."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r1c9\"],\"explanation\":\"Every other digit already appears in r1c9's row, column, or box, so only one candidate survives in that cell.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4691,
+        "output": 133
+      }
+    },
+    {
+      "grid": "652174893197358020483269571910683742834927165276415389561842937720036010300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r4c3"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box is already accounted for, leaving only one possibility for r4c3."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r4c3\"], \"explanation\": \"Every other digit in that cell's row, column, and box is already accounted for, leaving only one possibility for r4c3.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4555,
+        "output": 140
+      }
+    },
+    {
+      "grid": "652174893197358620483269571915683742834927165276415389561842937720536410300701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r2c9"
+          ],
+          "explanation": "Every other digit already appears in that cell's row, column, or box, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r2c9\"],\"explanation\":\"Every other digit already appears in that cell's row, column, or box, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4267,
+        "output": 129
+      }
+    },
+    {
+      "grid": "652174893197358624483269571915683742834927165276415389561842937729536418340701050",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r9c3"
+          ],
+          "explanation": "Look at r9c3 and cross off everything already used in its row, column, and box \far, "
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r9c3\"], \"explanation\": \"Look at r9c3 and cross off everything already used in its row, column, and box \\far, \"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3985,
+        "output": 131
+      }
+    },
+    {
+      "grid": "103470680000001053700600000000000000204050809008103000000008007845210390009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r1c9"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r1c9\"], \"explanation\": \"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5974,
+        "output": 134
+      }
+    },
+    {
+      "grid": "103470682006001053702600000000000000204756809008103000000008007845210390009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r7c3"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r7c3\"], \"explanation\": \"Every other digit in that cell's row, column, and box has been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6234,
+        "output": 133
+      }
+    },
+    {
+      "grid": "103470682006001053702600000007000000204756809008103000001008047845217396009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c8"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r3c8\"], \"explanation\": \"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6041,
+        "output": 134
+      }
+    },
+    {
+      "grid": "103470682006001753702605914007000000204756809008103000001008047845217396009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r1c6"
+          ],
+          "explanation": "Every other digit already appears in this cell's row, column, or box, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r1c6\"], \"explanation\": \"Every other digit already appears in this cell's row, column, or box, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6428,
+        "output": 133
+      }
+    },
+    {
+      "grid": "153479682496801753702605914007000000204756809008103000001008047845217396009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r4c4"
+          ],
+          "explanation": "Every other digit already appears in this cell's row, column, or 3x3 box, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r4c4\"], \"explanation\": \"Every other digit already appears in this cell's row, column, or 3x3 box, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6306,
+        "output": 138
+      }
+    },
+    {
+      "grid": "153479682496821753782635914007900000204756839008103000001008047845217396009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r4c8"
+          ],
+          "explanation": "Every other value in that cell's row, column, and box is already accounted for, leaving exactly one possibility there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r4c8\"],\"explanation\":\"Every other value in that cell's row, column, and box is already accounted for, leaving exactly one possibility there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 6005,
+        "output": 133
+      }
+    },
+    {
+      "grid": "153479682496821753782635914537900061214756839008103000001008047845217396009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r6c2"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box is already used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r6c2\"], \"explanation\": \"Every other digit in that cell's row, column, and box is already used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5751,
+        "output": 133
+      }
+    },
+    {
+      "grid": "153479682496821753782635914537982061214756839968143000001008047845217396009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r4c7"
+          ],
+          "explanation": "Every other value in row 4, column 7 and that box is already used, so only one candidate survives in this cell."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r4c7\"], \"explanation\": \"Every other value in row 4, column 7 and that box is already used, so only one candidate survives in this cell.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5387,
+        "output": 136
+      }
+    },
+    {
+      "grid": "153479682496821753782635914537982461214756839968143275021008047845217396009500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r7c4"
+          ],
+          "explanation": "Once you cross off everything already used in row 7, column 4, and that box, only one candidate survives in this cell."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r7c4\"], \"explanation\": \"Once you cross off everything already used in row 7, column 4, and that box, only one candidate survives in this cell.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4608,
+        "output": 138
+      }
+    },
+    {
+      "grid": "153479682496821753782635914537982461214756839968143275621398547845217396309500020",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r9c2"
+          ],
+          "explanation": "Every other value in that cell's row, column, and box is already used, so only a single candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r9c2\"], \"explanation\": \"Every other value in that cell's row, column, and box is already used, so only a single candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4156,
+        "output": 133
+      }
+    },
+    {
+      "grid": "000000090700000000100090203000042610009080400006000000007005102200010074651700000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Hidden Single",
+          "cells": [
+            "r9c5"
+          ],
+          "explanation": "Look at row 9: one of the digits still missing from that row has only a single cell left where it can legally go, and that cell is r9c5. Scan the row's remaining digits one at a time against the columns and box to spot it."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Hidden Single\",\"cells\":[\"r9c5\"],\"explanation\":\"Look at row 9: one of the digits still missing from that row has only a single cell left where it can legally go, and that cell is r9c5. Scan the row's remaining digits one at a time against the columns and box to spot it.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5726,
+        "output": 168
+      }
+    },
+    {
+      "grid": "000000790790000800100097203000042610009080400006000000007005102200010574651700000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Hidden Single",
+          "cells": [
+            "r9c5"
+          ],
+          "explanation": "Look along row 9: one of the digits still missing from that row has only a single cell left where it can legally go, and that cell is r9c5."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Hidden Single\",\"cells\":[\"r9c5\"],\"explanation\":\"Look along row 9: one of the digits still missing from that row has only a single cell left where it can legally go, and that cell is r9c5.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5631,
+        "output": 142
+      }
+    },
+    {
+      "grid": "000000790790000800100097203000042610009080400406000000947005102200010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Hidden Single",
+          "cells": [
+            "r6c5"
+          ],
+          "explanation": "Look at column 5: one digit still needed there has only a single cell left that can hold it, and that cell is r6c5."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Hidden Single\",\"cells\":[\"r6c5\"],\"explanation\":\"Look at column 5: one digit still needed there has only a single cell left that can hold it, and that cell is r6c5.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4985,
+        "output": 137
+      }
+    },
+    {
+      "grid": "000008790790000800100097203000042610009080400406070000947835162200010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Hidden Single",
+          "cells": [
+            "r4c1"
+          ],
+          "explanation": "Look down column 1: one of the digits still missing from that column has only a single cell left where it can legally go, and that cell is r4c1."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Hidden Single\", \"cells\": [\"r4c1\"], \"explanation\": \"Look down column 1: one of the digits still missing from that column has only a single cell left where it can legally go, and that cell is r4c1.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5038,
+        "output": 146
+      }
+    },
+    {
+      "grid": "000008790790000840108497253800042610009080400406070000947835162200010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c2"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r3c2\"], \"explanation\": \"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5068,
+        "output": 134
+      }
+    },
+    {
+      "grid": "000008790792000840168497253875042610009080400406070000947835162203010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r1c2"
+          ],
+          "explanation": "Every other value in that cell's row, column and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r1c2\"], \"explanation\": \"Every other value in that cell's row, column and box has already been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5288,
+        "output": 132
+      }
+    },
+    {
+      "grid": "534068791792000840168497253875042610009080400406070000947835162203010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r1c4"
+          ],
+          "explanation": "Every other value in that cell's row, column and box is already used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r1c4\"],\"explanation\":\"Every other value in that cell's row, column and box is already used, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5027,
+        "output": 127
+      }
+    },
+    {
+      "grid": "534268791792050846168497253875342619009080400406070000947835162203010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r2c4"
+          ],
+          "explanation": "Every other digit already appears in that cell's row, column, or box, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r2c4\"],\"explanation\":\"Every other digit already appears in that cell's row, column, or box, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4497,
+        "output": 129
+      }
+    },
+    {
+      "grid": "534268791792153846168497253875342619319080420406070000947835162203010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r5c6"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r5c6\"],\"explanation\":\"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4333,
+        "output": 130
+      }
+    },
+    {
+      "grid": "534268791792153846168497253875342619319586427426970000947835162203010574651724000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r6c6"
+          ],
+          "explanation": "Look at r6c6: between its row, its column, and its 3x3 box, every other value has already been used, leaving exactly one possibility for that cell."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r6c6\"], \"explanation\": \"Look at r6c6: between its row, its column, and its 3x3 box, every other value has already been used, leaving exactly one possibility for that cell.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4354,
+        "output": 150
+      }
+    },
+    {
+      "grid": "670000014000000905050009020000020000000807450001000007000904000830200690002000000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r8c9"
+          ],
+          "explanation": "Look at r8c9: between its row, column, and box, every other digit is already accounted for, leaving just one possibility for that cell."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r8c9\"], \"explanation\": \"Look at r8c9: between its row, column, and box, every other digit is already accounted for, leaving just one possibility for that cell.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4506,
+        "output": 144
+      }
+    },
+    {
+      "grid": "670002014000000905050009020000020000000807450001000007000904000834275691002000000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Hidden Single",
+          "cells": [
+            "r1c3"
+          ],
+          "explanation": "Look at row 1: one of the digits still missing from that row has only a single cell left where it can legally go, and that cell is r1c3. Scan each missing digit across the row's empty cells to find it."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Hidden Single\", \"cells\": [\"r1c3\"], \"explanation\": \"Look at row 1: one of the digits still missing from that row has only a single cell left where it can legally go, and that cell is r1c3. Scan each missing digit across the row's empty cells to find it.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4726,
+        "output": 166
+      }
+    },
+    {
+      "grid": "679002014000000905050009020000020100000817450001090007000904000834275691002000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Hidden Single",
+          "cells": [
+            "r1c5"
+          ],
+          "explanation": "Looking down column 5, one digit has only a single cell left where it can still go, and that cell is r1c5."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Hidden Single\",\"cells\":[\"r1c5\"],\"explanation\":\"Looking down column 5, one digit has only a single cell left where it can still go, and that cell is r1c5.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4969,
+        "output": 134
+      }
+    },
+    {
+      "grid": "679352814000000905050009020000020100006817450001090007000904000834275691092000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r5c2"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only a single candidate remains there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r5c2\"],\"explanation\":\"Every other digit in that cell's row, column, and box has already been used, so only a single candidate remains there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4766,
+        "output": 131
+      }
+    },
+    {
+      "grid": "679352814200000905050009020000020100026817450001090207060904002834275691092000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Hidden Single",
+          "cells": [
+            "r7c1"
+          ],
+          "explanation": "Scanning row 7, one digit has only a single cell left in that row where it can legally go, since every other empty cell in the row is blocked by that digit appearing in its column or box."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Hidden Single\", \"cells\": [\"r7c1\"], \"explanation\": \"Scanning row 7, one digit has only a single cell left in that row where it can legally go, since every other empty cell in the row is blocked by that digit appearing in its column or box.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4793,
+        "output": 159
+      }
+    },
+    {
+      "grid": "679352814213008905450009020000020100026817450001090207160904002834275691092000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c3"
+          ],
+          "explanation": "Every other digit is already used among r3c3's row, column, and box, so only one candidate survives in that cell."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r3c3\"], \"explanation\": \"Every other digit is already used among r3c3's row, column, and box, so only one candidate survives in that cell.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4795,
+        "output": 137
+      }
+    },
+    {
+      "grid": "679352814213748965458069020000020100026817450001090207160904002834275691092000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r3c4"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r3c4\"], \"explanation\": \"Every other digit in that cell's row, column, and box has already been used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 4899,
+        "output": 134
+      }
+    },
+    {
+      "grid": "679352814213748965458169723000020100326817459001090207160904002834275691092000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r6c1"
+          ],
+          "explanation": "Every other digit in that cell's row, column, and box is already used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r6c1\"],\"explanation\":\"Every other digit in that cell's row, column, and box is already used, so only one candidate survives there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5092,
+        "output": 129
+      }
+    },
+    {
+      "grid": "679352814213748965458169723907520100326817459501490207160904002834275691092000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r6c2"
+          ],
+          "explanation": "Every other value in that cell's row, column, and box is already accounted for, leaving only one possibility there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\":{\"strategy\":\"Naked Single\",\"cells\":[\"r6c2\"],\"explanation\":\"Every other value in that cell's row, column, and box is already accounted for, leaving only one possibility there.\"},\"reason\":\"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5301,
+        "output": 131
+      }
+    },
+    {
+      "grid": "679352814213748965458169723947520186326817459581490237160904002834275691092000040",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": {
+          "strategy": "Naked Single",
+          "cells": [
+            "r4c6"
+          ],
+          "explanation": "Every other value in that cell's row, column, and box is already used, so only one candidate survives there."
+        },
+        "reason": ""
+      },
+      "rawText": "{\"hint\": {\"strategy\": \"Naked Single\", \"cells\": [\"r4c6\"], \"explanation\": \"Every other value in that cell's row, column, and box is already used, so only one candidate survives there.\"}, \"reason\": \"\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 5109,
+        "output": 132
+      }
+    },
+    {
+      "grid": "230000000007086000080000000002000000000000000090603000000000007000009600000000800",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the position with the deduction engine and it returned no available steps \\u2014 no singles, no locked candidates, no pairs, and no fish are currently justified in this grid. Since I won't invent a step that isn't actually supported, I can't give you a nudge here; please double-check that the grid was entered correctly (this position looks very sparsely filled, with 67 empty cells), and if a placement was made in error, correcting it should reopen the logic."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the position with the deduction engine and it returned no available steps \\\\u2014 no singles, no locked candidates, no pairs, and no fish are currently justified in this grid. Since I won't invent a step that isn't actually supported, I can't give you a nudge here; please double-check that the grid was entered correctly (this position looks very sparsely filled, with 67 empty cells), and if a placement was made in error, correcting it should reopen the logic.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3853,
+        "output": 263
+      }
+    },
+    {
+      "grid": "005006010000000004480000500003020070000000000000100000000002400030084100000000000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the position with the deduction tool and it returned no available steps \\u2014 no singles, no pairs, no fish, nothing it can justify in the current grid. Rather than invent a move, I'd suggest double-checking the digits you've already entered (a misplaced entry earlier can leave a position with no valid next deduction)."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the position with the deduction tool and it returned no available steps \\\\u2014 no singles, no pairs, no fish, nothing it can justify in the current grid. Rather than invent a move, I'd suggest double-checking the digits you've already entered (a misplaced entry earlier can leave a position with no valid next deduction).\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3822,
+        "output": 176
+      }
+    },
+    {
+      "grid": "007000800000000000000000000002090300000000000900000007600710000020640700000000000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the current position with the deduction tool and it returned no available steps \\u2014 no singles, no pairs/wings/fish, nothing. This grid has very few givens (67 empty cells), so there simply isn't a logical next move to point you to right now; any step I named would be invented rather than justified."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the current position with the deduction tool and it returned no available steps \\\\u2014 no singles, no pairs/wings/fish, nothing. This grid has very few givens (67 empty cells), so there simply isn't a logical next move to point you to right now; any step I named would be invented rather than justified.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3857,
+        "output": 166
+      }
+    },
+    {
+      "grid": "002000710000000000000000800000000000000000000000070000000000000000000003000001500",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I ran the deduction check on the current grid and it returned no available steps — with only 8 digits placed, there isn't yet enough information for any known technique (singles, pairs, fish, etc.) to fire. This position appears to be under-constrained rather than merely difficult, so I'd rather refuse than invent a step. Double-check that the givens were entered correctly."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I ran the deduction check on the current grid and it returned no available steps — with only 8 digits placed, there isn't yet enough information for any known technique (singles, pairs, fish, etc.) to fire. This position appears to be under-constrained rather than merely difficult, so I'd rather refuse than invent a step. Double-check that the givens were entered correctly.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3929,
+        "output": 186
+      }
+    },
+    {
+      "grid": "800000000030000850040000000000000000000000000208000000000000000000079103000000000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the deduction list for this position and it came back empty \\u2014 no single, pair, or fish-style step is currently available in the grid, so there is no verified nudge I can give you without guessing. This puzzle appears to be very sparsely filled (70 empty cells), so it may not have enough clues to be solvable by logic alone from here."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the deduction list for this position and it came back empty \\\\u2014 no single, pair, or fish-style step is currently available in the grid, so there is no verified nudge I can give you without guessing. This puzzle appears to be very sparsely filled (70 empty cells), so it may not have enough clues to be solvable by logic alone from here.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3892,
+        "output": 179
+      }
+    },
+    {
+      "grid": "000000050000000830000008000600080000000000000300100006900000301000001005000050000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the current position with the deduction tool and it returned no available steps \\u2014 no singles, no pairs, no fish, nothing that the known techniques can justify from this grid. With 66 cells still empty and very wide candidate lists (most cells still hold five or more possibilities), there simply isn't enough constraint yet for a logical deduction, so I won't invent one. It's worth double-checking that the givens were entered correctly, since a puzzle in this state may be under-clued."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the current position with the deduction tool and it returned no available steps \\\\u2014 no singles, no pairs, no fish, nothing that the known techniques can justify from this grid. With 66 cells still empty and very wide candidate lists (most cells still hold five or more possibilities), there simply isn't enough constraint yet for a logical deduction, so I won't invent one. It's worth double-checking that the givens were entered correctly, since a puzzle in this state may be under-clued.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3842,
+        "output": 225
+      }
+    },
+    {
+      "grid": "000400000000000070000000000072050000960070000000200000000000200000000000000090006",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the current position with the deduction tool and it returned no available deductions \\u2014 no singles, no locked candidates, no pairs, wings, or fish apply to this grid as it stands. Since I won't invent a step that isn't logically justified, I can't give you a nudge here. It's worth double-checking that every given/placed digit was entered correctly, since a puzzle this sparse (69 empty cells) may not have enough clues yet for any technique to bite."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the current position with the deduction tool and it returned no available deductions \\\\u2014 no singles, no locked candidates, no pairs, wings, or fish apply to this grid as it stands. Since I won't invent a step that isn't logically justified, I can't give you a nudge here. It's worth double-checking that every given/placed digit was entered correctly, since a puzzle this sparse (69 empty cells) may not have enough clues yet for any technique to bite.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3881,
+        "output": 219
+      }
+    },
+    {
+      "grid": "000040009000007050000000000005000000300206040040000000000000000000000000000002500",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I ran the deduction check on the current grid and it returned no available steps \\u2014 no singles, no pairs, no fish, nothing that any known technique can justify right now. This grid is very sparse (69 empty cells), so there simply isn't enough information yet for a logical next move; I won't invent one. Please double-check that the givens were entered correctly, or add any placements you've already made."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I ran the deduction check on the current grid and it returned no available steps \\\\u2014 no singles, no pairs, no fish, nothing that any known technique can justify right now. This grid is very sparse (69 empty cells), so there simply isn't enough information yet for a logical next move; I won't invent one. Please double-check that the givens were entered correctly, or add any placements you've already made.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3882,
+        "output": 193
+      }
+    },
+    {
+      "grid": "000008650000000900000000000400000000000000000000000000000009000000000000500000002",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I ran the deduction check on the current position and it returned no available steps \\u2014 no singles, no locked candidates, no pairs or fish apply right now. With 73 empty cells and only a handful of givens, this grid doesn't have enough information yet for any standard technique (and it likely has many solutions), so I can't honestly point you at a next move."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I ran the deduction check on the current position and it returned no available steps \\\\u2014 no singles, no locked candidates, no pairs or fish apply right now. With 73 empty cells and only a handful of givens, this grid doesn't have enough information yet for any standard technique (and it likely has many solutions), so I can't honestly point you at a next move.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3928,
+        "output": 181
+      }
+    },
+    {
+      "grid": "000090000000100000000000000000000000000000100000004000000000000000470050207000000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the current position with the deduction tool and it returned no available steps \" no singles, pairs, or fish apply right now. With 72 cells still empty and only a handful of givens, this grid doesn't yet contain enough information for a logical technique to fire, so I won't invent a step. If you've been working from a fuller puzzle, double-check that any placements you made are still in the grid."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the current position with the deduction tool and it returned no available steps \\\" no singles, pairs, or fish apply right now. With 72 cells still empty and only a handful of givens, this grid doesn't yet contain enough information for a logical technique to fire, so I won't invent a step. If you've been working from a fuller puzzle, double-check that any placements you made are still in the grid.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3919,
+        "output": 192
+      }
+    },
+    {
+      "grid": "001530009000000000000000010000005007000000000000000250000000004000000020020009000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the deduction list for this position and it came back empty — no single, pair, or fish pattern is currently available. The grid still has 68 empty cells with very open candidate sets, so there's nothing I can point to with certainty. Rather than invent a step, I'd suggest double-checking that all given clues were entered correctly, since this position may not yet be solvable by standard logic."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the deduction list for this position and it came back empty — no single, pair, or fish pattern is currently available. The grid still has 68 empty cells with very open candidate sets, so there's nothing I can point to with certainty. Rather than invent a step, I'd suggest double-checking that all given clues were entered correctly, since this position may not yet be solvable by standard logic.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3868,
+        "output": 190
+      }
+    },
+    {
+      "grid": "800000000000004620000000035000000050000200000060000000030000070910005000000000000",
+      "model": "claude-opus-5",
+      "response": {
+        "hint": null,
+        "reason": "I checked the position with the deduction tool and it reports no available logical steps right now — no singles, pairs, or fish patterns apply to this grid as it stands. With 67 cells still empty and very wide candidate lists, there simply isn't a technique I can point to with certainty. Rather than invent a step, I'd suggest double-checking that the givens were entered correctly, since a puzzle in this state may be missing clues."
+      },
+      "rawText": "{\"hint\": null, \"reason\": \"I checked the position with the deduction tool and it reports no available logical steps right now — no singles, pairs, or fish patterns apply to this grid as it stands. With 67 cells still empty and very wide candidate lists, there simply isn't a technique I can point to with certainty. Rather than invent a step, I'd suggest double-checking that the givens were entered correctly, since a puzzle in this state may be missing clues.\"}",
+      "toolCalls": [
+        "get_grid_state",
+        "list_available_deductions"
+      ],
+      "stopReason": "end_turn",
+      "usage": {
+        "input": 3850,
+        "output": 204
+      }
+    }
+  ],
+  "states": [
+    {
+      "id": "easy-0",
+      "grid": "602000090007008020000009571010000002834907105276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-4",
+      "grid": "652000090097008020480009571010000002834907105276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-8",
+      "grid": "652000090197008020483009571010000042834907165276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-12",
+      "grid": "652004090197008020483209571010603042834907165276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-16",
+      "grid": "652104090197358020483269571010603042834907165276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-20",
+      "grid": "652174090197358020483269571010683742834927165276005089061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-24",
+      "grid": "652174890197358020483269571010683742834927165276415389061842037720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-28",
+      "grid": "652174893197358020483269571910683742834927165276415389561842937720036010300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-32",
+      "grid": "652174893197358620483269571915683742834927165276415389561842937720536410300701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "easy-36",
+      "grid": "652174893197358624483269571915683742834927165276415389561842937729536418340701050",
+      "kind": "has_deduction",
+      "difficulty": "easy"
+    },
+    {
+      "id": "medium-0",
+      "grid": "103470680000001053700600000000000000204050809008103000000008007845210390009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-5",
+      "grid": "103470682006001053702600000000000000204756809008103000000008007845210390009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-10",
+      "grid": "103470682006001053702600000007000000204756809008103000001008047845217396009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-15",
+      "grid": "103470682006001753702605914007000000204756809008103000001008047845217396009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-20",
+      "grid": "153479682496801753702605914007000000204756809008103000001008047845217396009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-25",
+      "grid": "153479682496821753782635914007900000204756839008103000001008047845217396009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-30",
+      "grid": "153479682496821753782635914537900061214756839008103000001008047845217396009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-35",
+      "grid": "153479682496821753782635914537982061214756839968143000001008047845217396009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-40",
+      "grid": "153479682496821753782635914537982461214756839968143275021008047845217396009500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "medium-45",
+      "grid": "153479682496821753782635914537982461214756839968143275621398547845217396309500020",
+      "kind": "has_deduction",
+      "difficulty": "medium"
+    },
+    {
+      "id": "hard-0",
+      "grid": "000000090700000000100090203000042610009080400006000000007005102200010074651700000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-5",
+      "grid": "000000790790000800100097203000042610009080400006000000007005102200010574651700000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-10",
+      "grid": "000000790790000800100097203000042610009080400406000000947005102200010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-15",
+      "grid": "000008790790000800100097203000042610009080400406070000947835162200010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-20",
+      "grid": "000008790790000840108497253800042610009080400406070000947835162200010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-25",
+      "grid": "000008790792000840168497253875042610009080400406070000947835162203010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-30",
+      "grid": "534068791792000840168497253875042610009080400406070000947835162203010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-35",
+      "grid": "534268791792050846168497253875342619009080400406070000947835162203010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-40",
+      "grid": "534268791792153846168497253875342619319080420406070000947835162203010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "hard-45",
+      "grid": "534268791792153846168497253875342619319586427426970000947835162203010574651724000",
+      "kind": "has_deduction",
+      "difficulty": "hard"
+    },
+    {
+      "id": "expert-0",
+      "grid": "670000014000000905050009020000020000000807450001000007000904000830200690002000000",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-5",
+      "grid": "670002014000000905050009020000020000000807450001000007000904000834275691002000000",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-10",
+      "grid": "679002014000000905050009020000020100000817450001090007000904000834275691002000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-15",
+      "grid": "679352814000000905050009020000020100006817450001090007000904000834275691092000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-20",
+      "grid": "679352814200000905050009020000020100026817450001090207060904002834275691092000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-25",
+      "grid": "679352814213008905450009020000020100026817450001090207160904002834275691092000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-30",
+      "grid": "679352814213748965458069020000020100026817450001090207160904002834275691092000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-35",
+      "grid": "679352814213748965458169723000020100326817459001090207160904002834275691092000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-40",
+      "grid": "679352814213748965458169723907520100326817459501490207160904002834275691092000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "expert-45",
+      "grid": "679352814213748965458169723947520186326817459581490237160904002834275691092000040",
+      "kind": "has_deduction",
+      "difficulty": "expert"
+    },
+    {
+      "id": "none-1",
+      "grid": "230000000007086000080000000002000000000000000090603000000000007000009600000000800",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-2",
+      "grid": "005006010000000004480000500003020070000000000000100000000002400030084100000000000",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-3",
+      "grid": "007000800000000000000000000002090300000000000900000007600710000020640700000000000",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-4",
+      "grid": "002000710000000000000000800000000000000000000000070000000000000000000003000001500",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-5",
+      "grid": "800000000030000850040000000000000000000000000208000000000000000000079103000000000",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-6",
+      "grid": "000000050000000830000008000600080000000000000300100006900000301000001005000050000",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-7",
+      "grid": "000400000000000070000000000072050000960070000000200000000000200000000000000090006",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-8",
+      "grid": "000040009000007050000000000005000000300206040040000000000000000000000000000002500",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-9",
+      "grid": "000008650000000900000000000400000000000000000000000000000009000000000000500000002",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-10",
+      "grid": "000090000000100000000000000000000000000000100000004000000000000000470050207000000",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-11",
+      "grid": "001530009000000000000000010000005007000000000000000250000000004000000020020009000",
+      "kind": "none",
+      "difficulty": "medium"
+    },
+    {
+      "id": "none-12",
+      "grid": "800000000000004620000000035000000050000200000060000000030000070910005000000000000",
+      "kind": "none",
+      "difficulty": "medium"
+    }
+  ]
+}

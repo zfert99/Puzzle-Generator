@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sudoku-hint": {
+      "command": "npx",
+      "args": ["tsx", "src/features/hint-agent/mcp-server.ts"]
+    }
+  }
+}
