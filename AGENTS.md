@@ -295,9 +295,13 @@ When operating within this codebase, AI agents MUST adhere to the following work
   does.** Archiving such a doc breaks the code's own explanatory links, which are how a reader gets
   from a puzzling line to its rationale. `kenken-implementation-plan.md` (cited by `sudoku.ts` /
   `human-solver.ts` for K0) and `multi-zone-migration-plan.md` (cited by `next.config.ts`,
-  `auth.ts`, `base-path.ts`) stay in the root for exactly this reason. **Before archiving anything,
-  grep for it in `src/` and `*.config.ts`, not just in `*.md`** — the doc-only sweep misses code
-  comments entirely.
+  `auth.ts`, `base-path.ts`) stay in the root for exactly this reason, as does
+  `killer-6x6-implementation-plan.md` (cited by `killer-sudoku.ts` for the 6×6 16/28 score bands).
+  **Before archiving anything, grep for it in `src/` and `*.config.ts`, not just in `*.md`** — the
+  doc-only sweep misses code comments entirely. The rule has been broken exactly once:
+  `killer-6x6-implementation-plan.md` was archived while `killer-sudoku.ts` still cited it, and
+  nothing noticed until August 2026 — code compiles fine with a dead path in a comment, and
+  markdownlint checks formatting, not link targets.
 - **Never rewrite an archived doc to match today.** It correctly records what was true when
   written; editing it falsifies the record. Add a dated **Archived** / **Superseded** note at the
   top instead, and say what superseded it. When moving a doc, fix the relative links *inside* it
@@ -435,4 +439,21 @@ unfollowable. Notable changes:
   (its depth changed) as well as inbound ones.
 - Fixed a stale banner: `multi-zone-migration-plan.md` still read "draft / not yet applied" months
   after it shipped. Original text preserved inline.
+
+**September 3, 2026** (authored August 7, 2026 in a worktree that was never committed — salvaged
+at the September resume): Enforced the Section 7 rule the August 3 pass had written down, after
+finding it had already been broken.
+
+- **Restored `killer-6x6-implementation-plan.md` to the `Docs/` root** from `archive/`. It was
+  archived on completion while `killer-sudoku.ts` was still citing it from `DIFFICULTY_CONFIG_6` as
+  the reason the 6×6 score bands cut at **16/28** rather than reusing the 9×9 cuts — precisely the
+  case Section 7 protects. The alternative (repoint the code comment at `archive/`) would have
+  fixed the symptom and left the rule broken. Its depth-relative links were fixed, a "kept live"
+  banner added; the doc had **no** prior Archived banner, so no historical record was overwritten.
+- Section 7 now names it alongside the other two live-rationale docs, and records that the rule has
+  been broken once. **Automating the `src/` grep was considered and deliberately deferred** to its
+  own change rather than bundled into a two-line doc repair.
+- **Still unenforced, recorded so it stays visible:** nothing checks either direction of doc
+  linkage. Code→doc citations rot silently (this entry is the proof), and stale **doc→doc** links
+  are hand-caught too — moving this one file broke an inbound `roadmap.md` link into `archive/`.
 <!-- END:update-log -->
