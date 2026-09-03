@@ -14,11 +14,44 @@ via the local-timezone `Date` constructor.
 
 - **Future dates are disabled** (`date > maxDate`), and the next-month arrow is disabled once
   the view reaches the current month.
-- **No hard lower bound** — a past date with no stored daily simply 404s on fetch, surfaced by
-  the caller. Keeping the calendar unbounded avoids hardcoding a launch date here.
+- **Dates before the archive's first board are disabled** (`date < minDate`), and the previous-month
+  arrow is disabled once the view reaches that month.
+- **Days with no boards are disabled** even inside the range (`availableDays`).
 
-Controlled component: `value` (selected ISO), `onChange`, and `maxDate` (today). Month
-navigation is local view state; picking a day calls `onChange`.
+Controlled component: `value` (selected ISO), `onChange`, `maxDate` (today), plus the optional
+`minDate` / `availableDays` / `loadedMonths` availability set. Month navigation is local view state;
+picking a day calls `onChange`.
+
+### Why empty days are disabled, not just unhelpful (September 2026)
+
+**Why:** the only bound used to be `maxDate`, so every day back to year zero was clickable and each
+one dead-ended on "No daily puzzle for …". The fix is deliberately **data-driven rather than a
+hardcoded launch date**, for a reason the live data makes concrete: boards begin `2026-07-11`, but
+`2026-07-24` holds none (the cron missed it). A "nothing before July" rule would have left a
+clickable hole mid-month. `minDate` handles the floor; `availableDays` handles the holes. Both come
+from `GET /api/daily/days` — see [that route's doc](../../../app/api/daily/days/route.md).
+
+### Why an absent `minDate` still pages freely
+
+`minDate` absent means **genuinely unbounded** — the component's original behaviour, which its own
+paging test relies on. A caller whose bound is still loading must not simply omit it: that leaves
+"‹" live during the fetch, and a fast double-click can land on a month the response then greys out
+entirely *and* locks, leaving "›" as the only escape. `ArchiveExperience` passes the visible month's
+first day as a **provisional floor** until the real one arrives, so "‹" waits for the bound it needs
+rather than the component inventing a "bound unknown" state.
+
+### Why `loadedMonths` exists
+
+Availability arrives asynchronously, so an empty `availableDays` is ambiguous — it means either
+"this month genuinely has no boards" or "the fetch hasn't landed". Treating unknown as unavailable
+would grey out the whole month on first paint and then un-grey it a moment later. A day is
+disabled only once **its own month** is in `loadedMonths`; until then it renders normally.
+
+### Why the greyed state is in the accessible name
+
+A disabled day's only visual cue is opacity, and `disabled` alone doesn't distinguish "no puzzles
+that day" from "in the future". Days with no boards carry `"<day> <month> <year> — no puzzles"` as
+their `aria-label`, so the reason survives without colour (WCAG 1.4.1).
 
 ## Completion markers (`tallies`, optional)
 

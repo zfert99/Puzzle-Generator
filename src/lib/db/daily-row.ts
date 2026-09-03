@@ -350,3 +350,44 @@ export function isIsoDate(value: string): boolean {
   const maxDay = month === 2 && isLeapYear(year) ? 29 : DAYS_IN_MONTH[month - 1];
   return day >= 1 && day <= maxDay;
 }
+
+/**
+ * True if `value` is a real `YYYY-MM` month — `isIsoDate`'s contract, one axis shorter.
+ *
+ * Exists so routes taking a `?month=` (`/api/me/progress`, `/api/daily/days`) share one
+ * definition instead of each carrying its own regex that forgets an edge. Month `00`/`13` and
+ * year `0000` are rejected for the same reason `isIsoDate` rejects them: Postgres can build no
+ * date inside them, so a shape-only match becomes a driver 500 one layer down.
+ */
+export function isIsoMonth(value: string): boolean {
+  const parts = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!parts) return false;
+
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  return year >= 1 && month >= 1 && month <= 12;
+}
+
+/**
+ * First day of the month AFTER `month` (`YYYY-MM`), as an ISO date string — the exclusive upper
+ * bound for "everything in this month" range queries.
+ *
+ * **Why string arithmetic instead of `Date`.** The obvious spelling,
+ * `new Date(Date.UTC(year, month0 + 1, 1))`, is wrong at both ends of the range `isIsoMonth`
+ * accepts: `Date.UTC` maps years 0–99 onto 1900–1999 (so `0050-03` would silently query April
+ * 1950), and `9999-12` formats as the extended-year string `+010000-01-01`, which Postgres
+ * rejects. Neither is reachable with real data — the archive starts in 2026 — but "the helper is
+ * correct except at the edges the validator allows" is exactly the bug shape `isIsoDate` exists
+ * to kill. Digits in, digits out: no calendar arithmetic, no era mapping.
+ *
+ * Day 1 of the next month always exists, which is why callers bound with
+ * `< firstDayOfNextMonth(month)` rather than `<= lastDayOfMonth` — the latter composes invalid
+ * literals for short months (`2026-02-31`) unless it carries its own month-length table.
+ */
+export function firstDayOfNextMonth(month: string): string {
+  const year = Number(month.slice(0, 4));
+  const monthNumber = Number(month.slice(5, 7));
+  return monthNumber === 12
+    ? `${String(year + 1).padStart(4, '0')}-01-01`
+    : `${month.slice(0, 4)}-${String(monthNumber + 1).padStart(2, '0')}-01`;
+}

@@ -171,3 +171,34 @@ Reject day < 1 or day > the month's real length,
 **What it deliberately does not do:** decide whether the date is one the app *has puzzles for*.
 "Is this a date?" and "is this a day we ran?" are different questions with different answers — a
 valid but empty day still deserves an empty list or a 404, never a 400.
+
+## `isIsoMonth(value)` (September 2026)
+
+**Why:** the same rule as `isIsoDate`, one axis shorter, for routes taking a `?month=YYYY-MM`
+(`/api/me/progress`, `/api/daily/days`). One shared definition instead of a per-route regex — the
+route-local copies each accepted year `0000`, which Postgres cannot build a date in, so the shape
+match became a driver 500 one layer down (see `isIsoDate` above).
+
+```text
+Reject anything not matching YYYY-MM outright.
+Reject year 0000 and month < 1 or > 12.
+```
+
+## `firstDayOfNextMonth(month)` (September 2026)
+
+**Why:** the exclusive upper bound for "everything in this month" queries — `getArchiveMonth` and
+`getDailyProgress` both want a whole month, and an *inclusive* bound has to know how long the month
+is (and gets February wrong in a leap year if it guesses). Day 1 of the next month always exists, so
+`date >= '<month>-01' AND date < firstDayOfNextMonth(month)` needs no month-length table.
+
+**Why string arithmetic, not `Date.UTC`:** the obvious spelling is wrong at both ends of the range
+`isIsoMonth` accepts. `Date.UTC` maps years `0`–`99` onto 1900–1999, so `0050-03` would silently
+become April **1950**; and `9999-12` formats as `+010000-01-01`, an extended-year string Postgres
+rejects outright. Neither is reachable with real data (the archive starts in 2026), but "correct
+except at the edges the validator allows" is exactly the bug shape `isIsoDate` exists to kill, so
+it is closed rather than left in place.
+
+```text
+month 12 -> `${year + 1}-01-01`
+otherwise -> `${year}-${month + 1 padded}-01`
+```

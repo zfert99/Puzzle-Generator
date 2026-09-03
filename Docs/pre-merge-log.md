@@ -31,6 +31,62 @@ the diff under review.
 
 ---
 
+## 2026-09-03 — archive calendar learns its bounds (QA Step 3b, U2)
+
+Branch `fix/archive-calendar-bounds` on `3137539`. A **port of the prior art**, not a rebuild:
+endpoint + `Calendar` changes from the never-merged `fix/qa-findings-aug-2026`, the parent wiring
+re-done by hand around #72 with the stash's **three-state floor** (known / waiting-provisional /
+settled-without-a-floor — the state that stops one failed request deadlocking both arrows).
+`/api/me/progress` folded onto the new shared `isIsoMonth` + half-open `firstDayOfNextMonth`
+bound; `getDailyProgress`'s upper bound is now exclusive (single caller, updated together).
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **543 passed** (68 files, was 507) — new route, Calendar, and date-helper suites |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 (`/api/daily/days` registered ƒ) |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- **Wholesale checkout of a prior-art file deleted a test that postdated it.** Taking the QA
+  branch's `progress/route.test.ts` dropped main's #61 year-zero regression test. Caught by
+  diffing against main before commit. Rule form: **after `git checkout <old-branch> -- <file>`,
+  diff the result against main and re-apply what main gained since the branch was cut.**
+- **F2 (`bg-pattern.svg` basePath 404) is still open**, observed live during verification: all 7
+  pages still carry the unprefixed CSS `url()`, no fix commit exists, and Step 2's step-log is
+  *(pending)* — the pause handoff simply didn't list it. The e2e ≥400 guard cannot catch it
+  (document navigations only, not subresources). Re-filed under Step 2, not fixed here.
+
+### Invariants checked (§2)
+
+- **Retired keys stay readable:** verified by construction *and* live — legacy days (07-20→31)
+  hold boards, so the calendar leaves them enabled; greying keys off *dates with no rows* cannot
+  touch a stored key. No key parsing anywhere in the diff.
+- **Ownership lives in the query:** `getDailyProgress` still takes the session id and joins on it
+  (its BOLA test passes unchanged). The new `/api/daily/days` is deliberately public — a dates-only
+  aggregate, no user data, documented in its mirror doc.
+- No migration, no economy write, no `ON CONFLICT` path touched.
+- **Re-derived:** the exclusive-bound switch was checked against every caller — `getDailyProgress`
+  has exactly one (`/api/me/progress`), updated in the same diff.
+
+### Verified vs read
+
+Verified live in the browser against the real archive: July 1–10 greyed (floor 2026-07-11),
+**24 July greyed with "no puzzles" in the accessible name** (the cron-outage hole), `‹` disabled
+at the floor month, endpoint 200 signed out. The deadlock degradation (failed request → no floor)
+is covered by unit tests + read, not fault-injected live.
+
+### Reviews
+
+`/security-review` **not run**: the new endpoint is a public, unauthenticated, dates-only
+aggregate (no auth/authz/data-access change; the one authed query kept its ownership scoping and
+test). The hosted `/code-review` has **not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-03 — the board becomes reachable by keyboard (QA Step 6a, F4)
 
 Branch `fix/board-keyboard-entry` on `3137539`. First PR of the September resume, pulled ahead of

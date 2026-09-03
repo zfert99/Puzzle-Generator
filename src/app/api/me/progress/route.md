@@ -10,9 +10,8 @@ personal, so a signed-out visitor gets no markers at all rather than a calendar 
 
 ```text
 requireUserId()                                  # 401 if signed out
-month = ?month ?? current UTC month              # 400 unless /^\d{4}-(0[1-9]|1[0-2])$/
-from  = month-01, to = last day of month         # 400 unless BOTH are real dates (isIsoDate)
-rows  = getDailyProgress(userId, from, to)
+month = ?month ?? current UTC month              # 400 unless isIsoMonth (rejects 00/13 AND year 0000)
+rows  = getDailyProgress(userId, month-01, firstDayOfNextMonth(month))   # half-open range
 fold each row into its set: grid < 9x9 -> mini, else standard
 -> 200 { month, days: { "2026-08-01": { standard: {done,total}, mini: {done,total} } } }
 ```
@@ -20,26 +19,20 @@ fold each row into its set: grid < 9x9 -> mini, else standard
 **Why a month per request.** The archive calendar shows a month at a time; fetching per day would
 fire a request on every click, and the aggregate is one grouped query either way.
 
-**Why the month is validated twice.** The regex answers "is this the right shape?"; the two derived
-bounds answer "are these real dates?", which is the question the `date` column actually asks. The
-gap between them was a live 500: `ISO_MONTH` admits `0000-01`, which expanded to
-`0000-01-01 … 0000-01-31` and threw at the driver, because the SQL calendar runs 1 BC → AD 1 with no
-year zero. Validating the *derived* strings rather than adding a second regex means whatever
-`lastDayOfMonth` produces is checked, not just what the caller sent. See
-[`isIsoDate`](../../../../lib/db/daily-row.md), the shared guard the three `?date=` routes use.
+**How the month is validated (September 2026 — simplified onto the shared guard).** This route
+used to carry its own shape regex plus an `isIsoDate` check on two derived bound strings — a
+two-layer arrangement built around a local `lastDayOfMonth` helper whose `Date.UTC` call had its
+own era trap at years 0–99 (see this doc's history for the full account). Both layers are now one
+call: [`isIsoMonth`](../../../../lib/db/daily-row.md) (shared with `/api/daily/days`) rejects
+month `00`/`13` and year `0000` up front, and the year-zero 500 it exists to prevent stays
+covered by the regression test. With the month known-real, the derived bounds are real by
+construction.
 
-There is a second trap underneath that one, which is why the fix rejects the year rather than
-clamping the query: `lastDayOfMonth` used `Date.UTC(year, …)`, and `Date.UTC` maps years 0–99 to
-1900–1999 — so `0000-02` asked for February **1900** (28 days) when year 0 is a leap year (29).
-Stopping the crash while still admitting year 0 would have swapped a loud 500 for a silently wrong
-range. It now builds the date with `setUTCFullYear`, which takes the year literally.
-
-Note the order: `lastDayOfMonth` runs **first**, and the year check is `isIsoDate` applied to what
-it returned. So `0000-01` really is expanded to `0000-01-31` before anything rejects it — the
-rejection is of the derived string, not of the caller's month. That is what makes the check on
-`toIso` load-bearing rather than redundant: nothing else inspects the year. Year 0 is the only
-value in 0–99 where the `Date.UTC` mapping disagreed about leapness, so correcting it is
-defence-in-depth, not an observable fix — it stops the trap re-arming if that bound ever moves.
+**Why the range is half-open** — `[month-01, firstDayOfNextMonth(month))` rather than an
+inclusive last-day bound: day 1 of the next month always exists, so no month-length table, no
+leap-year guess, and no `Date` arithmetic at all. `firstDayOfNextMonth` is pure string arithmetic
+for exactly the era/overflow reasons its docblock records. Same bound shape as
+`getArchiveMonth` (`dailies.service.md`).
 
 **Why the denominator is counted, never assumed.** `N` is a property of the *date*:
 
