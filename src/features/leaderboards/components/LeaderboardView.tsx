@@ -186,17 +186,55 @@ export function LeaderboardView({
     else setInternalDifficulty(d);
   };
 
+  const sections = (
+    [
+      ['standard', 'Standard'],
+      ['mini', 'Minis'],
+    ] as const
+  ).filter(([section]) => slots.some((s) => s.section === section));
+
+  // Archived dates from the retired 30-key era (2026-07-20 → 07-31) hold 19–33 boards, which as
+  // chip rows is a wall of tabs that dwarfs the board it selects (QA finding D1). The shape is
+  // detected by COUNT, not by date: a slot key is not an identity and neither is a date — "too
+  // many boards to lay out as chips" is the actual property being handled, and it stays correct
+  // if the current model ever grows. Today's model is 6/day scaling to 10 (5+5), and no legacy
+  // day holds fewer than 19, so the cut sits safely between at 12. Every key stays selectable —
+  // retired keys must remain readable and replayable (a standing /pre-merge invariant), so this
+  // collapses the presentation to a grouped <select>, never the key set.
+  const legacyShaped = slots.length > 12;
+
   return (
     <div className="glass-panel p-6 max-w-lg w-full mx-auto">
       <div className="mb-5 space-y-2">
-        {(
-          [
-            ['standard', 'Standard'],
-            ['mini', 'Minis'],
-          ] as const
-        )
-          .filter(([section]) => slots.some((s) => s.section === section))
-          .map(([section, heading]) => (
+        {legacyShaped ? (
+          <div className="flex items-center justify-center gap-2">
+            <label
+              htmlFor="board-picker"
+              className="text-[11px] uppercase tracking-wide text-ink-soft"
+            >
+              Board
+            </label>
+            <select
+              id="board-picker"
+              value={difficulty}
+              onChange={(e) => selectDifficulty(e.target.value as DailyDifficulty)}
+              className="px-2.5 py-1 rounded-lg text-xs bg-paper border-2 border-ink"
+            >
+              {sections.map(([section, heading]) => (
+                <optgroup key={section} label={heading}>
+                  {slots
+                    .filter((s) => s.section === section)
+                    .map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {slotLabel(s)}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        ) : (
+          sections.map(([section, heading]) => (
           <div key={section} className="flex flex-wrap items-center justify-center gap-2">
             <span className="text-[11px] uppercase tracking-wide text-ink-soft w-16 text-right">{heading}</span>
             {slots.filter((s) => s.section === section).map((s) => (
@@ -212,7 +250,8 @@ export function LeaderboardView({
               </button>
             ))}
           </div>
-        ))}
+          ))
+        )}
       </div>
 
       {session && (streak !== null || me) && (

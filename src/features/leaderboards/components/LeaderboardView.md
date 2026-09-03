@@ -75,6 +75,23 @@ archived day shows the boards it actually had) and renders two sections, **Stand
 Labels use `slotLabel` ("Hard · Killer"), shared with the `/daily` picker so the same board reads
 identically on both surfaces.
 
+## Legacy-shaped days collapse the picker to a select (September 2026, QA D1)
+
+**Why:** archived dates from the retired 30-key era (2026-07-20 → 07-31) hold **19–33** boards.
+As chip rows that is a wall of tabs that dwarfs the leaderboard it selects. Over **12** slots the
+picker renders one labelled `<select>` with an `<optgroup>` per section instead of the chip rows.
+
+- **Detected by COUNT, not by date.** A slot key is not an identity and neither is a date — "too
+  many boards to lay out as chips" is the actual property being handled, and a count keeps the rule
+  correct if the current model grows. Today's model is 6/day scaling to 10 (5+5); no legacy day
+  holds fewer than 19; the cut sits between at 12.
+- **Presentation only.** Every key stays selectable and replayable — retired keys must remain
+  readable (the standing `/pre-merge` invariant), which is why the spec's cheap fallback
+  (legacy days go leaderboard-only) was not taken: it would have removed replay, a capability,
+  to fix a layout problem.
+- The `<select>` reuses `selectDifficulty`, so controlled (archive) and uncontrolled callers
+  behave identically to the chips.
+
 ## Personal best is scoped to the current tab (July 2026)
 
 **Why:** `/api/me/bests` returns the caller's best time for *every* board they've ever completed.

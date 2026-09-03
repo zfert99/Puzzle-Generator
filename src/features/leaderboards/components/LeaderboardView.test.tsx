@@ -117,3 +117,84 @@ describe('LeaderboardView — whose row is "(you)"', () => {
     ).toBe(before);
   });
 });
+
+/**
+ * QA finding D1: archived dates from the retired 30-key era (2026-07-20 → 07-31) hold 19–33
+ * boards, which as chip rows is a wall of tabs. Over 12 slots the picker collapses to a grouped
+ * <select> — presentation only: every key stays selectable, because retired keys must remain
+ * readable and replayable (a standing /pre-merge invariant).
+ */
+describe('LeaderboardView — legacy-shaped days collapse the picker', () => {
+  /** A legacy-era slot list: n unique keys split across both sections. */
+  function legacySlots(n: number) {
+    return Array.from({ length: n }, (_, i) => {
+      const mini = i % 3 === 2; // roughly a third minis, like the real legacy registry
+      return {
+        key: `legacy-${i}`,
+        variant: (['classic', 'killer', 'calc'] as const)[i % 3],
+        difficulty: ['easy', 'medium', 'hard', 'expert', 'extreme'][i % 5],
+        gridSize: mini ? 4 : 9,
+        section: mini ? 'mini' : 'standard',
+      };
+    });
+  }
+
+  function stubFetchWithSlots(slotCount: number) {
+    const mock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = url.includes('/api/leaderboard')
+        ? boardPayload(h.session.data !== null)
+        : url.includes('/api/daily/slots')
+          ? { date: '2026-07-25', slots: legacySlots(slotCount) }
+          : url.includes('/api/me/streak')
+            ? { streak: 1 }
+            : { bests: [] };
+      return { ok: true, json: async () => body } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', mock);
+    return mock;
+  }
+
+  it('renders a grouped select instead of chip rows when a day holds more than 12 boards', async () => {
+    stubFetchWithSlots(33); // the worst measured legacy day
+
+    render(<LeaderboardView date="2026-07-25" />);
+
+    const picker = await screen.findByRole('combobox', { name: 'Board' });
+    expect(picker.querySelectorAll('option')).toHaveLength(33);
+    // Grouped, not flat — the sections survive the collapse.
+    expect(screen.getByRole('group', { name: 'Standard' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Minis' })).toBeInTheDocument();
+    // No chip row remains alongside it.
+    expect(screen.queryByRole('button', { name: /·/ })).not.toBeInTheDocument();
+  });
+
+  it('every legacy key stays selectable, and selecting one refetches its board', async () => {
+    const mock = stubFetchWithSlots(20);
+
+    render(<LeaderboardView date="2026-07-25" />);
+    const picker = await screen.findByRole('combobox', { name: 'Board' });
+
+    const before = mock.mock.calls.filter((c) => String(c[0]).includes('/api/leaderboard')).length;
+    const { default: userEvent } = await import('@testing-library/user-event');
+    await userEvent.setup().selectOptions(picker, 'legacy-7');
+
+    await waitFor(() =>
+      expect(
+        mock.mock.calls.filter((c) => String(c[0]).includes('difficulty=legacy-7')).length,
+      ).toBeGreaterThan(0),
+    );
+    expect(
+      mock.mock.calls.filter((c) => String(c[0]).includes('/api/leaderboard')).length,
+    ).toBeGreaterThan(before);
+  });
+
+  it('keeps the chip rows for a current-model day (6 boards)', async () => {
+    stubFetchWithSlots(6);
+
+    render(<LeaderboardView date="2026-08-05" />);
+
+    expect((await screen.findAllByRole('button', { name: /·/ })).length).toBe(6);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+});
