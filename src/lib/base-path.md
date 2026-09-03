@@ -48,3 +48,8 @@ unset. The hardcoded constant plus this sync note is the pragmatic trade-off.
 Any new client-side `fetch('/api/...')` MUST be wrapped in `apiPath(...)`. A bare
 `fetch('/api/...')` is a latent 404 under the basePath. Server-side code (route handlers,
 cron) is unaffected — those receive the already-stripped path and never call `apiPath`.
+
+CSS `url()` is the same latent 404 (QA F2, fixed September 2026): a root-relative asset path in a
+stylesheet or Tailwind arbitrary value escapes the zone exactly like a bare `fetch`. Asset URLs
+used from CSS are composed once in the root layout as the `--bg-pattern` custom property, built
+from `BASE_PATH` — reference the variable, never a root-relative path (see `src/app/layout.md`).

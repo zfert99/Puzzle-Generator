@@ -243,7 +243,24 @@ selector turns the suite red.
 
 **Done when:** zero 404s in the network log on every route, and the background is visible.
 
-**Step-log:** *(pending)*
+##### Step-log — landed 2026-09-03 (`fix/bg-pattern-basepath`)
+
+- **Re-opened at the September resume:** the pause handoff listed 3b as next and never mentioned
+  Step 2, and its absence read as "done" — but the step-log here still said *(pending)*, all 7
+  pages still carried the unprefixed `url()`, and the 404 showed up live in the network log the
+  first time a page was opened during 3b verification. The step-log, not the handoff's silence,
+  was the truthful record.
+- **Process.** One composition point, per the spec: the root layout sets `--bg-pattern` on
+  `<body>` from the shared `BASE_PATH` constant; the 7 pages consume
+  `bg-[image:var(--bg-pattern)]`. `base-path.ts`'s doc block now names CSS `url()` alongside
+  `fetch()` as the two basePath gaps.
+- **Guard.** New e2e spec pins both halves — the asset serves 200 under the zone AND the page's
+  computed `background-image` points through the zone. Proven non-vacuous by a deliberately-broken
+  run (one page reverted → red; restored → green), per the pre-merge log's standing rule. A
+  blanket "no subresource 404s" guard was considered and rejected: `/api/daily` 404s are a
+  legitimate response for empty days, so it would false-positive.
+- Verified live: computed background `…/puzzles/bg-pattern.svg`, network 200, and the dot texture
+  visibly renders — for the first time since the multi-zone move.
 
 ---
 
