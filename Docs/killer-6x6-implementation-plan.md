@@ -1,9 +1,19 @@
 # 6×6 Killer Sudoku — Implementation Plan
 
 > **Status:** ✅ Done (July 2026) — all three gates met; see slice outcomes inline · **Branch:** `feature/killer-sudoku`
-> **Research:** [killer-grid-sizes.md](../research/killer-grid-sizes.md) ·
-> **Sibling plans:** [killer-sudoku-implementation-plan.md](killer-sudoku-implementation-plan.md),
-> [killer-expert-implementation-plan.md](killer-expert-implementation-plan.md)
+> **Research:** [killer-grid-sizes.md](research/killer-grid-sizes.md) ·
+> **Sibling plans:** [killer-sudoku-implementation-plan.md](archive/killer-sudoku-implementation-plan.md),
+> [killer-expert-implementation-plan.md](archive/killer-expert-implementation-plan.md)
+>
+> **Kept live, not archived (restored to `Docs/` root September 2026).** This plan was moved to
+> `archive/` on completion, which broke a live code citation: the `DIFFICULTY_CONFIG_6` JSDoc in
+> [`killer-sudoku.ts`](../src/features/engine/killer/killer-sudoku.ts) points here as the reason
+> the 6×6 score bands are cut at **16/28** rather than reusing the 9×9 cuts. Per AGENTS.md
+> Section 7 ("live source rationale outranks completed"), a doc that live source cites as the
+> rationale for current behavior stays in the root — same as
+> [kenken-implementation-plan.md](kenken-implementation-plan.md) and
+> [multi-zone-migration-plan.md](multi-zone-migration-plan.md). Nothing below was rewritten; only
+> the link paths above changed, because the file's depth did.
 
 Adds **6×6 Killer** (digits 1–6, mandatory 2×3 boxes, Rule of 21) as a beginner-friendly
 variant. The research is unambiguous about scope: *6×6 is the only non-9×9 Killer size with

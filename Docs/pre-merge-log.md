@@ -138,6 +138,87 @@ entries added. No archived doc touched.
 
 ---
 
+## 2026-08-07 — a dangling doc citation restored (landed 2026-09-03)
+
+Branch `claude/compassionate-pasteur-38d4f3` on `bb10da9`. Docs only; **no `.ts`/`.tsx` touched at
+all**, so no benchmarks and no test-count change.
+
+> **Salvage note (2026-09-03):** this run happened on 2026-08-07 but its diff was **never
+> committed** — it sat as uncommitted changes in the worktree, invisible to every branch and
+> commit listing, and `project-status.md` still carried the item as open at the pause. Found and
+> landed 2026-09-03 on `docs/restore-killer-6x6-plan`, with the gate re-run against current
+> `main` (507 vitest / lint / build / full markdownlint, all green; dates in the restored
+> banner updated to September). The entry below is otherwise as written on 2026-08-07.
+
+### The finding
+
+`killer-sudoku.ts:124` cited `Docs/killer-6x6-implementation-plan.md`, which had been archived to
+`Docs/archive/` on completion. Two repairs were possible: repoint the comment at `archive/`, or move
+the doc back. **Moved it back.** The citation is load-bearing — it is the `DIFFICULTY_CONFIG_6`
+JSDoc explaining why the 6×6 score bands cut at **16/28** instead of reusing the 9×9 cuts — which is
+exactly the case Section 7's "live source rationale outranks completed" exists to protect, alongside
+`kenken-implementation-plan.md` and `multi-zone-migration-plan.md`. Repointing the comment would
+have fixed the symptom and left the rule broken.
+
+The doc had **no** prior Archived banner, so nothing historical was overwritten; a "kept live"
+banner was added and its three depth-relative links fixed.
+
+### Mechanical (as of 2026-08-07, on `bb10da9`)
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **468 passed** (57 files) — baseline for `bb10da9`; no source touched, so unchanged by construction |
+| `npm run lint` · `npx tsc --noEmit` | both exit 0 |
+| markdownlint (`**/*.md`, the full CI sweep) | exit 0 — run whole-repo, not just touched files, because a doc changed *paths* |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- Repo-wide sweep found exactly **one** true dangling reference. The four
+  `Docs/multi-zone-cutover-log.md` hits are hub-repo (`Biscuit-Website`) citations and correctly
+  never resolve here.
+- **The "hub's" exclusion cannot be detected line-scoped** — worth knowing before anyone automates
+  this sweep. Three of those four say "the hub's `Docs/…`" on one line; the fourth
+  (`src/app/api/auth/[...all]/route.md:24`) wraps the phrase across a line break, so a line-scoped
+  filter silently mis-classifies it as dangling.
+- Moving the doc broke an inbound `roadmap.md` link into `archive/` — fixed here.
+
+### Invariants checked (§2)
+
+**Read, not run:** no authorization predicate, no migration, no economy write, no slot-key
+aggregate, no dependency change — this diff is documentation and one file move. Nothing executable
+changed, so there was nothing to re-derive.
+
+### Reviews
+
+`/code-review` **was** run this time (user-triggered) — see Lessons; it returned three findings, all
+against a CI guard that has since been dropped from this branch. Zero findings against the doc fix.
+
+`/security-review` **not run**: no auth, authz, or data-access surface is touched.
+
+### Lessons
+
+**Scope creep here came from trailing offers, not from the task.** The ask was a two-line doc-
+reference repair. Each reply ended with "say the word and I'll also…", and three accepted offers
+later the branch carried an 84-line shell script, a CI step and ~250 changed lines — and the only
+defects `/code-review` found were in code that would not have existed otherwise. Rule for next time:
+finish the ask, state what else is outstanding *once*, and let the owner raise it. A doc fix, a new
+CI guard, and a log entry are three slices, which AGENTS.md step 1 already says to split.
+
+**A break test that cannot fail manufactures confidence.** While verifying the (now-dropped) guard,
+the first deliberately-broken run *reported success* — a stale `cd Docs` from an earlier step made
+`git mv Docs/killer-6x6-…` resolve to a non-existent `Docs/Docs/…`, so it silently no-opped and the
+guard was checked against an unbroken tree. **Assert the break actually took effect before trusting
+the verdict on it.** This generalizes the log's existing `mockClear` rule to any guard, not just
+call-history assertions.
+
+**An "empty" worktree branch can still carry finished work** *(added at salvage, 2026-09-03)*: the
+branch showed "no unique commits" in every listing, and only a `git -C <worktree> status` revealed
+a complete, gate-passed diff. Check the working tree, not just the log, before writing one off —
+and commit a finished slice immediately, even if it never gets pushed.
+
+---
+
 ## 2026-08-07 — the archive stops handing out today's board unranked
 
 Branch `fix/archive-today-to-daily` on `1a1624b`. **Step 3a** of the QA remediation plan (F3).
