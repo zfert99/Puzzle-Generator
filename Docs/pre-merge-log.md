@@ -31,6 +31,43 @@ the diff under review.
 
 ---
 
+## 2026-09-03 — legacy days stop exploding the picker (QA Step 3c, D1)
+
+Branch `fix/legacy-picker-collapse` on `92f7cd9` (stacked on 3b). One component + its test file +
+mirror doc: over 12 slots, `LeaderboardView`'s chip rows collapse to a labelled `<select>` with an
+`<optgroup>` per section. Presentation only; every key stays selectable.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **546 passed** (65 files, was 543) — 3 new `LeaderboardView` specs |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (changed docs) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- None fixed-in-PR beyond the finding itself. The spec's cheap fallback (legacy days go
+  leaderboard-only) was rejected on the invariant's own grounds: it removes replay — a capability
+  — to fix a layout problem.
+
+### Invariants checked (§2)
+
+- **A slot key is not an identity — and neither is a date.** Legacy-shaped is detected by slot
+  COUNT (> 12), so the rule survives both the old 30-key era and any future growth of the current
+  model (6 → 10 planned). No key parsing, no date threshold.
+- **Retired keys stay readable and replayable:** verified live — selecting `killer-hard` on
+  2026-07-25 fetches its board (200) and the archive Play button follows.
+- No auth, migration, or write path touched.
+
+### Reviews
+
+`/security-review` **not run**: rendering-only change to a public read surface. The hosted
+`/code-review` has **not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-03 — archive calendar learns its bounds (QA Step 3b, U2)
 
 Branch `fix/archive-calendar-bounds` on `3137539`. A **port of the prior art**, not a rebuild:
@@ -44,7 +81,7 @@ bound; `getDailyProgress`'s upper bound is now exclusive (single caller, updated
 
 | Check | Result |
 |---|---|
-| `npx vitest run` | **543 passed** (68 files, was 507) — new route, Calendar, and date-helper suites |
+| `npx vitest run` | **543 passed** (65 files, was 507) — new route, Calendar, and date-helper suites |
 | `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 (`/api/daily/days` registered ƒ) |
 | markdownlint (`**/*.md`, full sweep) | exit 0 |
 | Benchmarks | **not run** — no engine/solver core touched |

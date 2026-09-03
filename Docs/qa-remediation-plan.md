@@ -418,6 +418,22 @@ days. Presentation only — **every key must stay readable and replayable** (a s
 invariant). Cheap fallback if grouping proves fiddly: render legacy days leaderboard-only, with a
 one-line note; record the choice and why in the step-log.
 
+##### Step-log — 3c landed 2026-09-03 (`fix/legacy-picker-collapse`, stacked on 3b)
+
+- **Chose the `<select>`, not four chip sections and not the leaderboard-only fallback.** Four
+  sections still lay out 33 chips — it reorganises the wall rather than removing it. The fallback
+  was rejected because it removes a capability (replay) to fix a layout problem, against the
+  spirit of the invariant it was meant to serve. One labelled `<select>` with an `<optgroup>` per
+  existing section (Standard/Minis) handles any count, keeps every key selectable, and reuses
+  `selectDifficulty`, so controlled/uncontrolled callers are unaffected.
+- **Legacy-shaped is detected by COUNT (> 12), never by date or key shape** — a slot key is not
+  an identity (the standing invariant's own reasoning). Current model 6/day scaling to 10; no
+  legacy day holds fewer than 19; the cut sits between.
+- **Verified live on 2026-07-25** (19 boards): grouped select renders, zero chip rows; selecting
+  `killer-hard` (a retired key) fetches `difficulty=killer-hard&date=2026-07-25` → 200 and the
+  archive's Play button follows to "Play Hard · Killer (practice)". Today's 6-board date keeps
+  its chips. 3 new unit tests.
+
 ### Step 4 — Reorganise the hub (U1) · XS (re-verify committed work) · order #3
 
 #### Spec
