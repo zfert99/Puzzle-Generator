@@ -15,18 +15,27 @@ import styles from './Board.module.css';
  * selection with a roving tabindex, digit keys enter values, Backspace/Delete clears,
  * and Space toggles pencil mode. Arrow/Space defaults are suppressed to stop the page
  * scrolling. Focus follows the selected cell so screen-reader users always hear the
- * active square.
+ * active square. Before any selection exists, the first editable cell holds the
+ * grid's Tab stop (WCAG 2.1.1) — see `entryIndex` below.
  */
 export function Board() {
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const { size, selectedR, selectedC, variant, cages } = useBoardStore(
+  const { size, selectedR, selectedC, variant, cages, entryIndex } = useBoardStore(
     useShallow((s) => ({
       size: s.config.size,
       selectedR: s.selectedCell?.r ?? null,
       selectedC: s.selectedCell?.c ?? null,
       variant: s.variant,
       cages: s.cages,
+      // Roving-tabindex seed: with no selection yet, no cell is `tabIndex 0`, so Tab
+      // would skip the grid entirely and a keyboard-only player could never start
+      // (WCAG 2.1.1). Until the first selection, the first editable cell holds the
+      // grid's single Tab stop; -1 once a selection owns it.
+      entryIndex:
+        s.selectedCell == null
+          ? Math.max(0, s.givens.flat().findIndex((given) => !given))
+          : -1,
     }))
   );
 
@@ -126,7 +135,9 @@ export function Board() {
         onKeyDown={handleKeyDown}
       >
         {Array.from({ length: size }, (_, r) =>
-          Array.from({ length: size }, (_, c) => <Cell key={`${r}-${c}`} r={r} c={c} />)
+          Array.from({ length: size }, (_, c) => (
+            <Cell key={`${r}-${c}`} r={r} c={c} isEntry={entryIndex === r * size + c} />
+          ))
         )}
         {variant !== 'classic' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
       </div>

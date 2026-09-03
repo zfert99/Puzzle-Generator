@@ -31,6 +31,50 @@ the diff under review.
 
 ---
 
+## 2026-09-03 — the board becomes reachable by keyboard (QA Step 6a, F4)
+
+Branch `fix/board-keyboard-entry` on `3137539`. First PR of the September resume, pulled ahead of
+the running order as the plan invites. ~30 LOC of source across `Board.tsx`/`Cell.tsx`, two new
+unit tests, mirrored docs + step-log + `project-status.md` updated in the same PR.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **507 passed** (64 files, was 505) — two new `Board.test.tsx` specs |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+| e2e | left to CI (flaky-table caveats apply); board specs click cells, which is unchanged behavior |
+
+### Findings
+
+- **The spec's "~10 lines" was half the defect.** Seeding `tabIndex 0` on the first editable cell
+  makes the board *reachable*, but typing still no-ops: `inputDigit` requires a store
+  `selectedCell`, and Tab-focus set none. Cells now select themselves `onFocus` (skipped when
+  already selected so the roving effect's `.focus()` doesn't echo a store write). Rule form:
+  **"reachable" and "operable" are separate assertions — test the keystroke after the Tab, not
+  the focus.**
+- Verified live in the browser as well as in jsdom: exactly one `[tabindex="0"]` gridcell
+  pre-selection, focus + a real `5` keypress places the value, Cmd+Z restores.
+- **Re-derived, not assumed:** a click now writes `selectCell` twice (focus fires before click).
+  Verified harmless against the store config — zundo `partialize`s to `grid`+`candidates` only,
+  so selection writes never enter the undo stack, and `useShallow` scalar selectors make the
+  second identical write render-free. Reverse-reference sweep found no live doc claiming the
+  board is keyboard-unreachable outside the QA docs updated here.
+
+### Invariants checked (§2)
+
+**Read, not run:** no authorization predicate, no migration, no economy write, no slot-key or
+daily-registry surface — this diff is client-side focus management on the shared board component.
+
+### Reviews
+
+`/security-review` **not run**: no auth/authz/data-access surface touched. The hosted
+`/code-review` has **not** been run — user-triggered and billed; owner may trigger it on the PR.
+
+---
+
 ## 2026-09-02 — hint agent: MCP server + eval harness over `HumanSolver`
 
 Branch `feat/hint-agent` on `b819184`. New feature folder `src/features/hint-agent/` (7 source

@@ -116,8 +116,23 @@ handler, not 81. `Board` attaches a single `keydown` listener and implements a r
 tabindex: only the selected cell is tabbable (`tabIndex 0`); arrows move the selection;
 DOM focus follows it.
 
+## Keyboard entry point (September 2026, QA finding F4)
+
+The roving tabindex used to activate only *after* a selection existed — before the first
+click, every cell was `tabIndex -1` and the grid container had no `tabindex`, so Tab
+skipped the board entirely and a keyboard-only player could not start at all (WCAG 2.1.1,
+High severity). The fix seeds the roving index instead of building anything new: while
+`selectedCell` is null, `Board` computes `entryIndex` — the first *editable* (non-given)
+cell — and that one cell renders `tabIndex 0` via a new `isEntry` prop. Cells also select
+themselves on focus (skipped when already selected, so the roving effect's own `.focus()`
+doesn't double-write the store): without that, tabbing onto the entry cell would focus a
+cell the store considers unselected, and digit entry would silently no-op. Once any
+selection exists, `entryIndex` is -1 and the selected cell owns the Tab stop as before.
+
 ```text
 Render <div role="grid"> with a CSS variable --size, containing size*size <Cell>s.
+entryIndex = no selection yet ? index of first non-given cell : -1
+Each Cell gets isEntry = (its index == entryIndex).
 
 On keydown:
   Arrow keys  -> move the selection one step (clamped), preventDefault (no scroll).

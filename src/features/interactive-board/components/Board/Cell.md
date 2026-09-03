@@ -37,8 +37,11 @@ no interior thick borders — the flags are gated on `config.hasBoxes`, K0).
 
 Render <div role="gridcell"> with:
   aria-label synthesized ("Given clue 7, row 2, column 4" / "Candidates 2, 5, 8" / "Empty…"),
-  aria-selected, tabIndex (0 if selected else -1),
-  onClick -> selectCell.
+  aria-selected, tabIndex (0 if selected OR isEntry, else -1),
+  onClick -> selectCell,
+  onFocus -> selectCell if not already selected (so tabbing onto the entry cell
+             selects it and digit entry works immediately; the roving effect's own
+             .focus() on an already-selected cell is skipped, no redundant store write).
   Body: the value if placed, else a mini grid of pencil-mark candidates from the mask.
         Cage-sum clearance (Killer) is a pure CSS concern now — see Board.md — not something
         this component computes per cell.

@@ -508,7 +508,22 @@ one-line note; record the choice and why in the step-log.
   the board was never scanned. Any e2e a11y coverage added here must scan a page with an
   **instantiated board**, otherwise it repeats the Step 1 mistake in miniature.
 
-**Step-log:** *(pending)*
+##### Step-log — 6a landed 2026-09-03 (`fix/board-keyboard-entry`); 6b/6c pending
+
+- **Process.** Pulled 6a ahead of the running order (as the plan itself invites) as the first PR
+  of the September resume. `Board`'s selector computes an `entryIndex` — the first *editable*
+  (non-given) cell — whenever `selectedCell` is null, and that one cell renders `tabIndex 0` via
+  a new `isEntry` prop on `Cell`. Once any selection exists, `entryIndex` is -1 and the selected
+  cell owns the Tab stop exactly as before. Two new unit tests in `Board.test.tsx` (tab-in +
+  type, and given-skipping).
+- **Learning — the spec's "~10 lines" missed one half of the defect.** Seeding `tabIndex 0` makes
+  the board *reachable*, but focus alone was still unusable: `inputDigit`/`clearCell` no-op
+  without a store `selectedCell`, so a player who tabbed in and typed would get silence. The fix
+  needed a second half — cells select themselves `onFocus` (skipped when already selected, so the
+  roving effect's own `.focus()` call doesn't echo a redundant store write). "Reachable" and
+  "operable" are separate assertions; test the keystroke *after* the Tab, not just the focus.
+- 6b (`role="row"` wrappers) and 6c (win-dialog focus) remain **pending** — same board context,
+  intentionally left for a follow-up slice to keep this PR at its actual size.
 
 ---
 
