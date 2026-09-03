@@ -79,6 +79,14 @@ export default function ArchiveExperience() {
   const [warnOpen, setWarnOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => todayIso.slice(0, 7));
   const [progress, setProgress] = useState<Record<string, DayProgress>>({});
+  // Which days actually hold boards, accumulated across every month paged to, plus the archive's
+  // first date. Public data (unlike progress), so this runs signed out too.
+  const [availableDays, setAvailableDays] = useState<ReadonlySet<string>>(() => new Set());
+  const [loadedMonths, setLoadedMonths] = useState<ReadonlySet<string>>(() => new Set());
+  const [firstDate, setFirstDate] = useState<string | undefined>(undefined);
+  // True once a request has SETTLED without yielding a floor — it failed, or the archive is empty.
+  // Distinguishing that from "still waiting" is what stops a broken endpoint freezing the calendar.
+  const [boundsUnavailable, setBoundsUnavailable] = useState(false);
 
   /**
    * Reconcile the selected board against the day actually being viewed. Only 3 of the 5 standard
@@ -121,6 +129,37 @@ export default function ArchiveExperience() {
       active = false;
     };
   }, [session, visibleMonth]);
+
+  /**
+   * The visible month's availability — which days hold boards, and the archive's first date.
+   * Fetched per month like the progress counts above, and accumulated the same way so paging back
+   * and forth doesn't discard what's known. Not gated on `session`: a signed-out visitor sees the
+   * same greyed-out empty days, because whether a day exists isn't personal.
+   */
+  useEffect(() => {
+    let active = true;
+    fetch(apiPath(`/api/daily/days?month=${visibleMonth}`))
+      .then((r) => {
+        // A non-2xx must reach the catch, not resolve to null — otherwise a 500 is
+        // indistinguishable from a request still in flight, which is the state that pins the floor.
+        if (!r.ok) throw new Error(`daily/days responded ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (!active || !d) return;
+        setAvailableDays((cur) => new Set([...cur, ...(d.days ?? [])]));
+        setLoadedMonths((cur) => new Set([...cur, visibleMonth]));
+        // `first` is global, so once known it sticks; a later month's failure must not wipe it.
+        if (d.first) setFirstDate(d.first);
+        else setBoundsUnavailable(true); // resolved, but the archive holds nothing at all
+      })
+      .catch(() => {
+        if (active) setBoundsUnavailable(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [visibleMonth]);
 
   // Both readings are gated on the session at RENDER time, not cleared in an effect: signing out
   // must drop the previous user's counts immediately (the tab is shared), and clearing state from
@@ -269,6 +308,24 @@ export default function ArchiveExperience() {
               value={selectedDate}
               onChange={setSelectedDate}
               maxDate={todayIso}
+              /*
+               * Three states, and the middle one is the whole point:
+               *   known   -> the real floor
+               *   waiting -> the month on screen, so "‹" can't outrun the bound it needs (a fast
+               *              double-click would otherwise land on a month the response then greys
+               *              out AND locks, leaving only "›" to escape)
+               *   settled without a floor (request failed, or the archive is empty) -> NO floor
+               *
+               * That last case is not cosmetic. Collapsing it into "waiting" pins the calendar to
+               * the current month forever on a single failed request — "‹" disabled by the
+               * provisional floor, "›" already disabled by `maxDate`, and the effect only re-runs
+               * on a month change that neither arrow can now produce. Both arrows dead, no
+               * recovery short of a reload. A broken endpoint has to degrade to the old unbounded
+               * behaviour, not lock the UI.
+               */
+              minDate={firstDate ?? (boundsUnavailable ? undefined : `${visibleMonth}-01`)}
+              availableDays={availableDays}
+              loadedMonths={loadedMonths}
               tallies={tallies}
               onMonthChange={setVisibleMonth}
             />

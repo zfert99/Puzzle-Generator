@@ -3,14 +3,12 @@ import { db } from '@/lib/db/client';
 import { requireUserId } from '@/features/auth/session';
 import { UnauthorizedError } from '@/features/auth/errors';
 import { getDailyProgress } from '@/features/leaderboards/attempts.service';
-import { isIsoDate, toUtcDateString } from '@/lib/db/daily-row';
+import { firstDayOfNextMonth, isIsoMonth, toUtcDateString } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
 // DB driver + session are Node-only; never Edge. Per-request (per-user) — never cached.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const ISO_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /** One day's X/N for both sets. `total` is the number of boards that day actually held. */
 interface SetProgress {
@@ -20,30 +18,6 @@ interface SetProgress {
 export interface DayProgress {
   standard: SetProgress;
   mini: SetProgress;
-}
-
-/**
- * Last calendar day of `YYYY-MM`, in UTC (day 0 of the next month).
- *
- * `setUTCFullYear` rather than `Date.UTC(year, …)`: `Date.UTC` maps years 0–99 to 1900–1999, so
- * `0000-02` asked it for February **1900** — 28 days — where year 0 is a leap year with 29.
- *
- * **This runs before the route's year check, not after.** The route rejects year 0 by validating
- * this function's *output* (`isIsoDate(toIso)`), so a day count is computed for every month the
- * shape regex admits, year 0 included — it just never reaches the query. Which is exactly why the
- * check downstream cannot be dropped as redundant: these derived strings are the only thing
- * examining the year at all.
- *
- * Year 0 is the only year in 0–99 where the mapping disagrees about leapness, so correcting it is
- * defence-in-depth rather than an observable fix today. It costs two lines and stops the trap
- * re-arming if that bound ever moves.
- */
-function lastDayOfMonth(month: string): string {
-  const year = Number(month.slice(0, 4));
-  const month0 = Number(month.slice(5, 7)) - 1;
-  const endOfMonth = new Date(0);
-  endOfMonth.setUTCFullYear(year, month0 + 1, 0);
-  return `${month}-${String(endOfMonth.getUTCDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -72,21 +46,18 @@ export async function GET(req: NextRequest) {
 
     const monthParam = req.nextUrl.searchParams.get('month');
     const month = monthParam ?? toUtcDateString(new Date()).slice(0, 7);
-    if (!ISO_MONTH.test(month)) {
+    // `isIsoMonth` (shared with /api/daily/days) rejects month 00/13 and year 0000 up front, so
+    // the derived bounds below are real dates by construction — this replaces the local shape
+    // regex + composed-string `isIsoDate` double-check this route used to carry.
+    if (!isIsoMonth(month)) {
       return NextResponse.json({ error: 'Invalid month: expected YYYY-MM' }, { status: 400 });
     }
 
-    // The regex above checks the month's SHAPE; these two strings are what actually reach the
-    // `date` column, so they get the existence check. `ISO_MONTH` admits `0000`, and the SQL
-    // calendar has no year zero — `0000-01` used to clear validation and 500 at the driver, the
-    // same failure this branch removed from the three `?date=` routes.
-    const fromIso = `${month}-01`;
-    const toIso = lastDayOfMonth(month);
-    if (!isIsoDate(fromIso) || !isIsoDate(toIso)) {
-      return NextResponse.json({ error: 'Invalid month: expected a real YYYY-MM month' }, { status: 400 });
-    }
-
-    const rows = await getDailyProgress(db, userId, fromIso, toIso);
+    // Half-open `[first of month, first of NEXT month)`. The previous inclusive bound derived the
+    // month's last day, which needs calendar arithmetic (month lengths, leap years, and a
+    // `Date.UTC` era trap at year 0–99); day 1 of the next month is pure string arithmetic and
+    // always exists. Same bound shape as `getArchiveMonth`.
+    const rows = await getDailyProgress(db, userId, `${month}-01`, firstDayOfNextMonth(month));
 
     const days: Record<string, DayProgress> = {};
     for (const row of rows) {

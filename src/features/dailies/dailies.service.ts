@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gte, lt, min } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { dailyPuzzles, solveAttempts, type DailyPuzzle } from '@/lib/db/schema';
 import {
@@ -7,6 +7,7 @@ import {
   getProfile,
   difficultyForKey,
   isEligible,
+  firstDayOfNextMonth,
   VARIANTS,
   type PlannedSlot,
   type Variant,
@@ -251,6 +252,47 @@ async function seedBotSolves(db: Database, isoDate: string): Promise<void> {
     .insert(solveAttempts)
     .values(attempts)
     .onConflictDoNothing({ target: [solveAttempts.userId, solveAttempts.puzzleId] });
+}
+
+/** Which dates in a month hold boards, plus the archive's global first date. */
+export interface ArchiveMonth {
+  /** ISO dates within the requested month that hold at least one board, ascending. */
+  days: string[];
+  /** Earliest date with any board at all, or `null` when the table is empty. */
+  first: string | null;
+}
+
+/**
+ * The calendar's availability data: which days of `month` actually have boards, and the earliest
+ * dated board in the whole table.
+ *
+ * **Why the archive needs this at all.** The calendar disabled only *future* days, so every day
+ * before the project existed was clickable and led to a dead end. Worse, the range is not
+ * contiguous: generation began 2026-07-11 and **2026-07-24 holds nothing** (the cron did not
+ * produce that day), so a lower bound alone would still leave a clickable hole in the middle. The
+ * days actually present are the only honest source, and they must be queried rather than assumed.
+ *
+ * **Why it is public and separate from `/api/me/progress`.** Progress is per-user (it powers the
+ * X/N markers) and returns nothing when signed out, but *whether a day exists* is not personal —
+ * a signed-out visitor needs the same greying. Distinct dates only; no board contents.
+ */
+export async function getArchiveMonth(db: Database, month: string): Promise<ArchiveMonth> {
+  const [firstRow] = await db.select({ first: min(dailyPuzzles.date) }).from(dailyPuzzles);
+
+  // Half-open range `[first of month, first of NEXT month)`. Deliberately not
+  // `lte(date, '${month}-31')`: that composes an invalid literal for short months (`2026-02-31`),
+  // which Postgres rejects outright — the same "shaped like a date, isn't one" trap `isIsoDate`
+  // exists for. The bound comes from `firstDayOfNextMonth` (pure string arithmetic) rather than
+  // `Date.UTC`, which mis-maps two-digit years and overflows past 9999 — see its docblock.
+  const nextMonthStart = firstDayOfNextMonth(month);
+
+  const rows = await db
+    .selectDistinct({ date: dailyPuzzles.date })
+    .from(dailyPuzzles)
+    .where(and(gte(dailyPuzzles.date, `${month}-01`), lt(dailyPuzzles.date, nextMonthStart)))
+    .orderBy(dailyPuzzles.date);
+
+  return { days: rows.map((r) => r.date), first: firstRow?.first ?? null };
 }
 
 /**

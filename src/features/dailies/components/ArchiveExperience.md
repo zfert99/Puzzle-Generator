@@ -66,6 +66,30 @@ endpoint twice it reports them up through `onSlotsLoaded`; this component applie
 fall back to the day's first board. The slot list is also kept in state so the Play button and the
 replay header can show the composed **"Hard · Killer"** label instead of a bare key.
 
+## Which days are selectable (September 2026)
+
+The calendar used to disable only future days, so every date back to year zero was clickable and
+dead-ended on "No daily puzzle for …". This component now fetches `GET /api/daily/days` for the
+visible month and hands `Calendar` three things: `minDate` (the archive's first board, which also
+stops the `‹` arrow), `availableDays` (the dates that hold boards), and `loadedMonths` (which
+months have been fetched, so an in-flight month isn't greyed out on spec).
+
+- **Not gated on the session,** unlike the X/N counts below. Whether a day exists is not personal,
+  and a signed-out visitor needs the same greying.
+- **The floor has three states, and the middle one is the point.** *Known* → the real `first`.
+  *Waiting* → the month on screen as a provisional floor, so `‹` cannot outrun the bound it needs
+  (a fast double-click would otherwise land on a month the response then greys out AND locks).
+  *Settled without a floor* (the request failed, or the archive is empty) → **no** `minDate` at
+  all. That last state is not cosmetic: collapsing it into *waiting* pins the calendar to the
+  current month forever on a single failed request — `‹` disabled by the provisional floor, `›`
+  by `maxDate`, and the fetch effect only re-runs on a month change neither arrow can now
+  produce. A broken endpoint must degrade to the old unbounded behaviour, not lock the UI.
+- **Accumulated across months** exactly like the progress map, so paging back and forth doesn't
+  discard what's already known (responses are keyed by ISO date, so months can't collide).
+- **Why availability isn't derived from the progress counts** — which do include a per-day `total`
+  and would look like a free source: they're sign-in-only, so empty-day greying would silently
+  become a logged-in feature.
+
 ## Completion counts (X/N)
 
 Under the date sits **"Standard 2/3 · Minis 1/3"** for the day being viewed, and each calendar day
@@ -97,7 +121,8 @@ which is consistent with it being practice.
 
 ```text
 view 'browse':
-  Calendar(value=date, maxDate=today, tallies, onMonthChange) → date
+  Calendar(value=date, maxDate=today, minDate=floor (3-state), availableDays, loadedMonths,
+           tallies, onMonthChange) → date
   "Standard X/N · Minis X/N" for the selected date        # signed in only
   LeaderboardView(date, difficulty, onDifficultyChange)   # that day's final board
   "Play {difficulty} (practice)" → warn if a game is parked, else fetch + startNewGame + play

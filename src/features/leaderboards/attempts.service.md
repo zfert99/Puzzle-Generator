@@ -42,7 +42,7 @@ SELECT difficulty, puzzle_id, time_ms
   WHERE user_id = userId AND completed AND date = isoDate
 ```
 
-## `getDailyProgress(db, userId, fromIso, toIso)`
+## `getDailyProgress(db, userId, fromIso, beforeIso)`
 
 **Why:** Backs the archive's **X/N** counts ("Standard 2/3 · Minis 1/3"). Returns, for every day in
 the range, how many boards of each grid size the day held and how many the caller completed. A
@@ -54,7 +54,7 @@ SELECT date, jsonb_array_length(grid) AS grid_size, COUNT(*) AS total, COUNT(a.i
   FROM daily_puzzles p
   LEFT JOIN solve_attempts a
     ON a.puzzle_id = p.id AND a.user_id = userId AND a.completed
-  WHERE p.date BETWEEN fromIso AND toIso
+  WHERE p.date >= fromIso AND p.date < beforeIso        # half-open, see below
   GROUP BY date, grid_size
 ```
 
@@ -75,6 +75,12 @@ row can join per puzzle.
 smaller than 9×9** — the same rule `/api/daily/slots` derives `section` from, and the only one that
 survives archived dates, whose retired keys (`mini4-*`, `killer6-*`, `calc4-*`) have prefixes that
 lie about the section. Folding size → set is left to the route so this stays a plain aggregate.
+
+**Why the upper bound is EXCLUSIVE (September 2026):** callers want a whole calendar month, and an
+inclusive bound has to know the month's length — which the route derived through `Date.UTC`, wrong
+for years 0–99 and overflowing past 9999 (see `firstDayOfNextMonth` in `daily-row.md`). Day 1 of the
+following month always exists, so `>= first, < first-of-next` needs no month-length table and
+covers a leap February by construction.
 
 ## `getPersonalBests(db, userId)`
 

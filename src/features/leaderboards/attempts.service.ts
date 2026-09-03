@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts, dailyPuzzles, type SolveAttempt } from '@/lib/db/schema';
 
@@ -109,7 +109,8 @@ export function getDailyProgress(
   db: Database,
   userId: string,
   fromIso: string,
-  toIso: string,
+  /** EXCLUSIVE upper bound — the first day of the following month (`firstDayOfNextMonth`). */
+  beforeIso: string,
 ): Promise<DailyProgressRow[]> {
   const gridSize = sql<number>`jsonb_array_length(${dailyPuzzles.grid})`;
   return db
@@ -128,7 +129,7 @@ export function getDailyProgress(
         eq(solveAttempts.completed, true),
       ),
     )
-    .where(and(gte(dailyPuzzles.date, fromIso), lte(dailyPuzzles.date, toIso)))
+    .where(and(gte(dailyPuzzles.date, fromIso), lt(dailyPuzzles.date, beforeIso)))
     .groupBy(dailyPuzzles.date, gridSize);
 }
 

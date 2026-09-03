@@ -6,10 +6,12 @@ import type { Grid } from './schema';
 import {
   countClues,
   difficultyForKey,
+  firstDayOfNextMonth,
   formatDailyKey,
   isDailyDifficulty,
   isEligible,
   isIsoDate,
+  isIsoMonth,
   getProfile,
   rollDailyAssignment,
   toDailyPuzzleRow,
@@ -293,5 +295,55 @@ describe('toDailyPuzzleRow', () => {
     expect(row.cages?.[0]).toHaveProperty('target');
     expect(row.clueCount).toBe(puzzle.cages.length);
     expect(row.grid.flat().every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe('isIsoMonth', () => {
+  it.each(['2026-08', '2026-01', '2026-12', '0001-01', '9999-12'])('accepts %p', (value) => {
+    expect(isIsoMonth(value)).toBe(true);
+  });
+
+  // Year zero for the same reason as isIsoDate: Postgres cannot build a date in it.
+  it.each(['2026-13', '2026-00', '2026-8', '2026', '2026-08-01', '', 'august', '0000-01', '0000-12'])(
+    'rejects %p',
+    (value) => {
+      expect(isIsoMonth(value)).toBe(false);
+    },
+  );
+});
+
+describe('firstDayOfNextMonth', () => {
+  it.each([
+    ['2026-08', '2026-09-01'],
+    ['2026-01', '2026-02-01'],
+    ['2026-02', '2026-03-01'], // short month: the whole reason the bound is exclusive
+    ['2024-02', '2024-03-01'], // leap February needs no special case
+    ['2026-09', '2026-10-01'], // zero-padding across the single/double digit boundary
+  ])('%p -> %p', (month, expected) => {
+    expect(firstDayOfNextMonth(month)).toBe(expected);
+  });
+
+  it('rolls the year over in December', () => {
+    expect(firstDayOfNextMonth('2026-12')).toBe('2027-01-01');
+  });
+
+  /**
+   * `new Date(Date.UTC(9999, 12, 1))` formats as `+010000-01-01T…` — an extended-year string
+   * Postgres rejects outright, turning a validator-permitted month into a 500.
+   */
+  it('does not overflow into an extended-year string at the top of the range', () => {
+    expect(firstDayOfNextMonth('9999-12')).toBe('10000-01-01');
+  });
+
+  /**
+   * `Date.UTC` maps years 0–99 onto 1900–1999, so a `Date`-based version answers `1950-04-01`
+   * for `0050-03` and silently queries the wrong century. Unreachable via the routes (isIsoMonth
+   * runs first), pinned so the helper stays safe if a caller ever skips validation.
+   */
+  it.each([
+    ['0050-03', '0050-04-01'],
+    ['0099-12', '0100-01-01'],
+  ])('keeps two-digit years in their own century: %p -> %p', (month, expected) => {
+    expect(firstDayOfNextMonth(month)).toBe(expected);
   });
 });

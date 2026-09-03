@@ -384,6 +384,30 @@ Build the endpoint the stash implies, then the UI on top of it.
 - Unavailable days must be distinguishable by more than colour (WCAG 1.4.1) — the existing tally
   dots set the precedent.
 
+##### Step-log — 3b landed 2026-09-03 (`fix/archive-calendar-bounds`)
+
+- **Process.** Ported, not rebuilt: the endpoint (`/api/daily/days` + tests + mirror doc),
+  `getArchiveMonth`, `Calendar`'s `minDate`/`availableDays`/`loadedMonths` (+ its new test file)
+  came from `fix/qa-findings-aug-2026` — `Calendar.*` wholesale since main never touched it,
+  `ArchiveExperience` re-wired by hand around the #72 hand-off changes, using **the stash's
+  three-state floor** (known / waiting-provisional / settled-without-a-floor) rather than the
+  branch's two-state version. The `isIsoMonth`/`firstDayOfNextMonth` helpers landed in
+  `daily-row.ts`, and `/api/me/progress` was folded onto them (its local `ISO_MONTH` regex +
+  `lastDayOfMonth` are gone; `getDailyProgress`'s upper bound is now exclusive). All three
+  paid-for decisions from the prior art held; nothing was re-derived.
+- **Verified live** against the real archive: July 1–10 greyed (floor 2026-07-11), **24 July
+  greyed mid-month** with aria-label "24 July 2026 — no puzzles" (the cron-outage hole, WCAG
+  1.4.1), `‹` disabled at the floor month, `/api/daily/days?month=2026-09` → 200 signed out.
+- **Learning — a wholesale file checkout can delete tests that postdate the prior art.** Taking
+  the QA branch's `progress/route.test.ts` silently dropped main's year-zero regression test
+  (added by #61 *after* the branch was cut). Caught by diffing the result against main before
+  committing; the test was re-added against the new bound. Rule form: **after
+  `git checkout <old-branch> -- <file>`, diff against main and re-apply what main gained since.**
+- **Observed in passing, out of scope:** `bg-pattern.svg` still 404s in dev (`/bg-pattern.svg`
+  without the basePath) — Step 2's own step-log is still *(pending)*, so F2 appears genuinely
+  open despite the handoff's silence; the e2e ≥400 guard only covers document navigations, not
+  subresource 404s. Left for Step 2, not smuggled into this slice.
+
 #### Step 3c — Legacy days do not explode the picker (D1) · M
 
 ##### Spec

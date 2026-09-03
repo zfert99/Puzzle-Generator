@@ -70,14 +70,24 @@ describe('GET /api/me/progress', () => {
     expect(days['2026-07-15']).toEqual({ standard: { done: 4, total: 15 }, mini: { done: 1, total: 15 } });
   });
 
-  it('queries the full calendar month, including a 31-day and a leap February', async () => {
+  /**
+   * The range is half-open — `[first of month, first of NEXT month)` — so the upper bound is a day
+   * that always exists and no month-length table is needed. February is the case that used to
+   * require one: an inclusive bound had to know whether the 28th or 29th was the last day, and it
+   * derived that through `Date.UTC`, which is wrong for years 0–99 and overflows past 9999.
+   */
+  it('queries the whole month via an exclusive next-month bound (leap February included)', async () => {
     setRows([]);
 
     await GET(buildRequest('?month=2026-08'));
-    expect(getDailyProgress).toHaveBeenLastCalledWith({}, 'test-user-id', '2026-08-01', '2026-08-31');
+    expect(getDailyProgress).toHaveBeenLastCalledWith({}, 'test-user-id', '2026-08-01', '2026-09-01');
 
     await GET(buildRequest('?month=2028-02'));
-    expect(getDailyProgress).toHaveBeenLastCalledWith({}, 'test-user-id', '2028-02-01', '2028-02-29');
+    // 2028-02-29 exists and is still covered: it sorts before the exclusive 2028-03-01 bound.
+    expect(getDailyProgress).toHaveBeenLastCalledWith({}, 'test-user-id', '2028-02-01', '2028-03-01');
+
+    await GET(buildRequest('?month=2026-12'));
+    expect(getDailyProgress).toHaveBeenLastCalledWith({}, 'test-user-id', '2026-12-01', '2027-01-01');
   });
 
   it('rejects a malformed month', async () => {
@@ -88,12 +98,11 @@ describe('GET /api/me/progress', () => {
   });
 
   /**
-   * Regression: `ISO_MONTH` validates the month's SHAPE, and `0000-01` has a valid shape. It used
-   * to expand to the range `0000-01-01 … 0000-01-31`, which reached the `date` column and threw at
-   * the driver — the SQL calendar runs 1 BC → AD 1, so there is no year zero. That is a 500 (with a
-   * stack in the logs) produced by input the route had already accepted, the same failure this
-   * branch removed from the three `?date=` routes. `0001-01` is a real month and must still work,
-   * so the guard has to reject the year, not the shape.
+   * Regression: a shape-only month check let `0000-01` through, and it expanded to a range that
+   * reached the `date` column and threw at the driver — the SQL calendar runs 1 BC → AD 1, so
+   * there is no year zero. That is a 500 (with a stack in the logs) produced by input the route
+   * had already accepted. `0001-01` is a real month and must still work, so the guard (now
+   * `isIsoMonth`, shared with /api/daily/days) has to reject the year, not the shape.
    */
   it('rejects year zero before it reaches the date column, but still serves year 0001', async () => {
     setRows([]);
@@ -104,7 +113,7 @@ describe('GET /api/me/progress', () => {
 
     const yearOne = await GET(buildRequest('?month=0001-01'));
     expect(yearOne.status).toBe(200);
-    expect(getDailyProgress).toHaveBeenCalledWith({}, 'test-user-id', '0001-01-01', '0001-01-31');
+    expect(getDailyProgress).toHaveBeenCalledWith({}, 'test-user-id', '0001-01-01', '0001-02-01');
   });
 
   it('requires a session (401) and never reaches the data layer without one', async () => {
@@ -126,6 +135,6 @@ describe('GET /api/me/progress', () => {
 
     // BOLA (AGENTS.md §6): the id is server-supplied. Reading it from the request — even as a
     // fallback — would show up here as the attacker-chosen value.
-    expect(getDailyProgress).toHaveBeenCalledWith({}, 'test-user-id', '2026-08-01', '2026-08-31');
+    expect(getDailyProgress).toHaveBeenCalledWith({}, 'test-user-id', '2026-08-01', '2026-09-01');
   });
 });

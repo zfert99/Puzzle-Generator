@@ -115,6 +115,29 @@ Select the row where date = isoDate AND difficulty = difficulty, limit 1.
 Return it, or null if none.
 ```
 
+## `getArchiveMonth(db, month)` (September 2026)
+
+**Why:** the archive calendar needs to know which days it may offer. It returns `days` (the distinct
+dates in `month` that hold at least one board, ascending) and `first` (the earliest dated board in
+the whole table). Backs `GET /api/daily/days`.
+
+**Why the days and not just a bound:** the archive is not contiguous. Boards begin `2026-07-11`, and
+`2026-07-24` holds none because the cron missed that day, so a lower bound alone would leave a
+clickable hole in the middle of a month.
+
+```text
+first = MIN(date) over daily_puzzles          # null when the table is empty
+days  = DISTINCT date WHERE date >= `${month}-01` AND date < first-of-next-month, ordered
+```
+
+**Why the half-open range** rather than `date <= '${month}-31'`: that composes an invalid literal
+for short months (`2026-02-31`), which Postgres rejects outright — the same "shaped like a date,
+isn't one" trap `isIsoDate` exists for (`daily-row.md`). Day 1 of the following month always exists,
+so the comparison needs no month-length table.
+
+The bound comes from `firstDayOfNextMonth` (pure string arithmetic), **not** `Date.UTC` — see its
+docblock in `daily-row.md` for why that distinction matters at years 0–99 and 9999.
+
 ## Security note
 
 All access is parameterized through Drizzle (AGENTS.md §6). Daily puzzles are shared,
