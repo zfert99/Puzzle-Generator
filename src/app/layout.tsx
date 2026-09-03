@@ -5,6 +5,7 @@ import { SETTINGS_PRE_PAINT_SCRIPT } from "@/features/settings/settings";
 import { AppHeader } from "@/features/chrome/AppHeader";
 import { Backdrop } from "@/features/chrome/Backdrop";
 import { WobbleDefs } from "@/features/chaos/Wobble";
+import { BASE_PATH } from "@/lib/base-path";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -79,7 +80,15 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${fredoka.variable} ${manrope.variable} ${spaceMono.variable} ${permanentMarker.variable} ${caveat.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body
+        className="min-h-full flex flex-col"
+        // Next prepends `basePath` to <Link>/next-image/router URLs but NOT to CSS `url()`, so a
+        // Tailwind `bg-[url('/bg-pattern.svg')]` resolved outside the `/puzzles` zone and 404'd on
+        // every page — the background never rendered anywhere (QA finding F2). The asset URL is
+        // composed HERE, once, from the same BASE_PATH constant `fetch()` uses; pages consume it
+        // as `bg-[image:var(--bg-pattern)]`, so no page carries a path that can drift.
+        style={{ "--bg-pattern": `url(${BASE_PATH}/bg-pattern.svg)` } as React.CSSProperties}
+      >
         {/* Applies data-theme before paint — must be the first thing to run. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_PRE_PAINT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: SETTINGS_PRE_PAINT_SCRIPT }} />

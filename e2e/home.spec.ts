@@ -67,3 +67,23 @@ test.describe('Hub and generator', () => {
     await expect(page.getByText(/only available for 9×9 grids/i)).toBeVisible();
   });
 });
+
+/**
+ * QA finding F2: Next does not prepend `basePath` to CSS `url()`, so the background texture
+ * 404'd on every page and never rendered — and nothing caught it, because the fixtures' ≥400
+ * guard covers document navigations, not subresources. This pins both halves: the asset is
+ * actually served under the zone, and the page actually points at it (via the `--bg-pattern`
+ * variable the root layout composes from BASE_PATH).
+ */
+test.describe('basePath-composed background asset (F2)', () => {
+  test('the background asset resolves and the page references it through the zone', async ({ page, request }) => {
+    const asset = await request.get('/puzzles/bg-pattern.svg');
+    expect(asset.status()).toBe(200);
+
+    await page.goto('/');
+    const background = await page
+      .locator('main')
+      .evaluate((el) => getComputedStyle(el).backgroundImage);
+    expect(background).toContain('/puzzles/bg-pattern.svg');
+  });
+});

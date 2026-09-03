@@ -7,10 +7,15 @@
  * and route handler lives under `/puzzles`, in dev and prod alike.
  *
  * Next auto-prepends `basePath` to `<Link>`, `next/image`, `router.push()`, and
- * `/_next/*` assets — **but NOT to `fetch()`**. A client `fetch('/api/generate')`
- * therefore targets `/api/generate`, which under the hub proxy escapes the puzzles
- * zone and 404s. Every same-origin `fetch()` to one of our own route handlers must
- * go through {@link apiPath} so the `/puzzles` prefix is applied.
+ * `/_next/*` assets — **but NOT to `fetch()` and NOT to CSS `url()`**. A client
+ * `fetch('/api/generate')` therefore targets `/api/generate`, which under the hub
+ * proxy escapes the puzzles zone and 404s. Every same-origin `fetch()` to one of our
+ * own route handlers must go through {@link apiPath} so the `/puzzles` prefix is
+ * applied. CSS is the same class of gap: a Tailwind `bg-[url('/bg-pattern.svg')]`
+ * escaped the zone on every page and the background never rendered (QA finding F2) —
+ * asset URLs used from CSS are composed once in the root layout as a custom property
+ * (`--bg-pattern`) built from this constant, and stylesheets reference the variable,
+ * never a root-relative path.
  *
  * `basePath` is build-time inlined by Next and is not exposed to client code at
  * runtime, so this constant is a hand-maintained mirror. **It MUST stay in sync with

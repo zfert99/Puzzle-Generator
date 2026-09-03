@@ -7,7 +7,7 @@ import PuzzleForm from '@/features/puzzle-configuration/components/PuzzleForm';
  */
 export default function GeneratePage() {
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[url('/bg-pattern.svg')] bg-cover bg-center">
+    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-10">
         <h1 className="text-5xl font-extrabold tracking-tight mb-4 text-ink">Print packs</h1>
         <p className="text-lg text-ink-soft max-w-xl mx-auto">

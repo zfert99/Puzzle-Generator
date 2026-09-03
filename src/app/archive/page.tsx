@@ -9,7 +9,7 @@ import ArchiveExperience from '@/features/dailies/components/ArchiveExperience';
  */
 export default function ArchivePage() {
   return (
-    <main className="flex-1 flex flex-col items-center p-8 bg-[url('/bg-pattern.svg')] bg-cover bg-center">
+    <main className="flex-1 flex flex-col items-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8 mt-4">
         <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Puzzle Archive</h1>
       </div>

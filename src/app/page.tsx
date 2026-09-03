@@ -10,7 +10,7 @@ import { RetroBadges } from '@/features/chaos/RetroBadges';
  */
 export default function Home() {
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[url('/bg-pattern.svg')] bg-cover bg-center">
+    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8">
         <h1 className="text-5xl font-extrabold tracking-tight mb-2 text-ink">Puzzle Lab</h1>
         <p

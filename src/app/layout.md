@@ -70,3 +70,14 @@ adds `/puzzles` exactly once. Verified live in dev under `basePath`:
 No page sets its own `alternates`, so none shadows the inherited canonical. (If one ever needs
 a custom `alternates`, it must re-include `canonical: './'` — Next replaces the whole
 `alternates` object, it does not deep-merge it.)
+
+## `--bg-pattern` — the one place a CSS asset URL is composed (September 2026, QA F2)
+
+Next prepends `basePath` to `<Link>`/`next/image`/router URLs and `/_next/*` assets — **not** to
+CSS `url()`. Every page used to carry `bg-[url('/bg-pattern.svg')]`, which resolved outside the
+`/puzzles` zone and 404'd, so the background texture never rendered anywhere, in dev or prod,
+since the multi-zone move. The layout now sets `--bg-pattern` on `<body>` as an inline style
+composed from the shared `BASE_PATH` constant, and pages consume `bg-[image:var(--bg-pattern)]` —
+the URL lives in exactly one place, next to the constant it must stay in sync with, instead of
+seven Tailwind class strings that each look correct in isolation. Same gap class as `fetch()`
+needing `apiPath` (see `base-path.md`).

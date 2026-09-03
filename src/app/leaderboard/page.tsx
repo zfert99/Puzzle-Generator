@@ -20,7 +20,7 @@ export default async function LeaderboardPage({
   const initialDifficulty = isDailyDifficulty(difficulty) ? difficulty : undefined;
 
   return (
-    <main className="flex-1 flex flex-col items-center p-8 bg-[url('/bg-pattern.svg')] bg-cover bg-center">
+    <main className="flex-1 flex flex-col items-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8 mt-4">
         <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Daily Leaderboard</h1>
       </div>

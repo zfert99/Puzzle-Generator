@@ -31,6 +31,42 @@ the diff under review.
 
 ---
 
+## 2026-09-03 — the background renders for the first time since the multi-zone move (QA Step 2, F2)
+
+Branch `fix/bg-pattern-basepath` on `1eb96b5` (stacked on 3c). Next prepends `basePath` to
+`<Link>`/`next/image`/router URLs — **not** to CSS `url()` — so `bg-[url('/bg-pattern.svg')]`
+escaped the `/puzzles` zone and 404'd on all 7 pages. Fixed once, not seven times: the root layout
+composes `--bg-pattern` from `BASE_PATH`; pages consume `bg-[image:var(--bg-pattern)]`.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **546 passed** (65 files, unchanged — no unit-testable logic) |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| New e2e guard | asset 200 under the zone + computed `background-image` through the zone; **deliberately-broken run went red** (one page reverted), restored green |
+| markdownlint (changed docs) | exit 0 |
+
+### Findings
+
+- **A step absent from a handoff's next-up list is not a step that is done.** F2 (High) sat
+  re-opened for a month because the pause handoff's silence read as completion; the plan's own
+  *(pending)* step-log was the truthful record. Rule form: **when resuming from a handoff,
+  reconcile its next-up list against the plan's per-step logs — trust the logs.**
+- A blanket "no subresource 404s" e2e guard was rejected: `/api/daily` 404s are legitimate
+  (empty days), so it would false-positive; the guard pins this asset + wiring specifically.
+
+### Invariants checked (§2)
+
+Chrome-only CSS change + one inline style in the layout; no data, auth, keys, or writes touched.
+
+### Reviews
+
+`/security-review` **not run** (no auth/authz/data-access surface). The hosted `/code-review` has
+**not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-03 — legacy days stop exploding the picker (QA Step 3c, D1)
 
 Branch `fix/legacy-picker-collapse` on `92f7cd9` (stacked on 3b). One component + its test file +
