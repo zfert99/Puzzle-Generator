@@ -2,12 +2,18 @@
 
 > **Read this first when picking the project back up.** It is a cold-start handoff: where things
 > stand, what to do next, and the traps that already cost time once. Written at the moment of
-> pausing, so treat dates as the last known truth rather than today's. **Resumed 2026-09-03**:
-> Step 6a landed first (`fix/board-keyboard-entry`), and the abandoned worktree below turned out
-> to hold a finished, gate-passed doc fix — salvaged as its own PR. The remaining running order
-> below is otherwise unchanged.
+> pausing, so treat dates as the last known truth rather than today's.
+>
+> **Resumed 2026-09-03 — six PRs landed in one session:** Step 6a board keyboard entry (#81), the
+> salvaged killer-6x6 doc restore (#86, from the abandoned worktree below), Step 3b calendar
+> bounds (#83), Step 3c legacy picker collapse (#84), and Step 2's `bg-pattern` basePath fix
+> (#85) — Step 2 turned out to be **silently still open**; this doc's own next-up list omitted it
+> and the omission read as done (lesson in `pre-merge-log.md`: reconcile a handoff against the
+> plan's per-step logs — trust the logs). Branches and stash cleaned up. The QA plan's remaining
+> work is Steps 6b/6c → 7 → 8 → 9 → 5; sections below are updated where they had gone stale and
+> otherwise left as the historical record of the pause.
 
-**`main` is at `331dc67`, green, and deployed.** Nothing is half-finished on `main`; every branch
+**`main` is at `fda4004` (2026-09-03), green, and deployed.** Nothing is half-finished on `main`; every branch
 listed below is either merged or explicitly parked. There is no work in progress to recover.
 
 ---
@@ -59,28 +65,25 @@ before a single test ran. CI never ran e2e, so nothing surfaced it. It now runs 
 
 ---
 
-## Next up
+## Next up (refreshed 2026-09-03)
 
-Step 3a is done. The running order from the plan, unchanged:
+Steps 2, 3a, 3b, 3c, and 6a are done and merged. The remaining running order from the plan:
 
 | # | Step | Size | Note |
 |---|---|---|---|
-| **1** | **Step 3b** — calendar bounds + grey out empty days | M | **Start here.** Has substantial prior art — see below |
-| 2 | **Step 3c** — legacy days do not explode the picker | M | Days 2026-07-20→07-31 render up to 33 tabs |
-| 3 | **Step 6** — board accessibility (F6, F7 remain) | S | **6a landed 2026-09-03** (`fix/board-keyboard-entry`); 6b/6c remain |
-| 4 | Step 7 — labels, page titles, toggle semantics | S | |
-| 5 | Step 8 — PDF bookmark/link parity for Killer + Keisan | S–M | |
-| 6 | Step 9 — polish (mobile nav, leaderboard `userId`, mini board size) | M | |
-| 7 | Step 5 — per-type rules dialogs | L | Last: net-new content, and depends on 6c |
-
-**Step 6a is done** (landed 2026-09-03, `fix/board-keyboard-entry`): the first editable cell now
-seeds the roving tabindex, and cells select themselves on focus so typing works immediately after
-tabbing in — the "ten lines" turned out to need that second half, since digit entry no-ops
-without a store selection. 6b/6c (grid rows, win-dialog focus) remain in Step 6.
+| **1** | **Step 6b/6c** — board `role="row"` structure; win-dialog focus (F6, F7) | S | **Start here** — same board context as the landed 6a |
+| 2 | Step 7 — labels, page titles, toggle semantics (F5, F8, F10) | S | |
+| 3 | Step 8 — PDF bookmark/link parity for Killer + Keisan (F9) | S–M | |
+| 4 | Step 9 — polish (mobile nav, mini board size; F12 already landed via #64) | M | |
+| 5 | Step 5 — per-type rules dialogs (U3) | L | Last: net-new content, and it copies 6c's fixed dialog pattern |
 
 ---
 
 ## ⚠ Step 3b has prior art — do not start from scratch
+
+> **✅ Landed 2026-09-03 (#83).** The port kept all three paid-for decisions below and used the
+> stash's three-state floor. The prior-art branch and `stash@{0}` have been deleted — their
+> content is on `main`. Kept as the record of what the port drew on.
 
 This is the single most valuable thing in this document.
 
@@ -134,20 +137,20 @@ fix/archive-today-to-daily (#72)    fix/nanoid-cve (#73)
 fix/cron-via-github-actions (#66)
 ```
 
-**Keep:**
+**All of the above were deleted 2026-09-03**, plus two the pause had said to keep, both now
+landed on `main`:
 
-- **`fix/qa-findings-aug-2026`** — the Step 3b prior art above. **Do not delete before 3b lands.**
-- `claude/compassionate-pasteur-38d4f3` — a worktree branch at `bb10da9`, no unique commits —
-  **but its working tree held a finished, gate-passed, never-committed doc fix** (the
-  killer-6x6 restore below), invisible to every branch/commit listing. Salvaged 2026-09-03 onto
-  `docs/restore-killer-6x6-plan`; the worktree and branch are now safe to delete. Lesson: an
-  "empty" worktree branch can still carry uncommitted work — `git -C <worktree> status` before
-  writing one off.
+- `fix/qa-findings-aug-2026` — the Step 3b prior art, ported and merged via #83.
+- `claude/compassionate-pasteur-38d4f3` — its worktree held a finished, gate-passed,
+  never-committed doc fix (the killer-6x6 restore), invisible to every branch/commit listing;
+  salvaged and merged via #86. Lesson: an "empty" worktree branch can still carry uncommitted
+  work — `git -C <worktree> status` before writing one off.
 
-**Stashes:** `stash@{0}` is the 3b refinement (keep). `stash@{1}` is "phase 7 roadmap section, wip"
-from `feature/strategy-courses` — a branch that no longer exists; check it before discarding.
+**Stashes:** `stash@{0}` (the 3b refinement) was dropped after landing in #83. `stash@{1}` —
+"phase 7 roadmap section, wip" from the deleted `feature/strategy-courses` branch — is **kept**;
+check it when Phase 7 starts.
 
-**Open PR:** [#65] Dependabot, `minor-and-patch` group, 4 updates. Untouched by the last session.
+**Open PRs:** Dependabot only — #80 (17 minor/patch npm bumps) and #74 (upload-artifact 4→7).
 
 ---
 
@@ -156,7 +159,7 @@ from `feature/strategy-courses` — a branch that no longer exists; check it bef
 | Item | Status |
 |---|---|
 | **`DATABASE_URL` as a repository secret** | ⏳ Owner action. Unlocks 4 skipped `/daily` e2e specs. **CI is green without it** — coverage, not a blocker. `ci.yml` already reads it and derives `E2E_HAS_DB` from its presence. |
-| **`killer-sudoku.ts:124` cites a moved doc** | ✅ Fix salvaged 2026-09-03 onto `docs/restore-killer-6x6-plan` — the abandoned worktree (see Branches) had already fixed it the right way per AGENTS.md §7: the doc moves *back* out of `archive/`, the citation stays. |
+| **`killer-sudoku.ts:124` cites a moved doc** | ✅ Merged 2026-09-03 (#86) — the abandoned worktree (see Branches) had already fixed it the right way per AGENTS.md §7: the doc moved *back* out of `archive/`, the citation stands. |
 | **The roller can be late** | 👀 Watch. On 2026-08-11 today had **zero boards** at ~02:00 UTC. Same class as the outage behind #66. `/archive` and `/daily` now degrade gracefully, but the cause is upstream. |
 
 ---
@@ -190,7 +193,6 @@ from `feature/strategy-courses` — a branch that no longer exists; check it bef
 - **Solo-dev QA hardening** (roadmap backlog) — branch protection, an AI reviewer, axe/Lighthouse in
   CI, property-based and mutation testing. #70 delivered the first slice of this by making e2e real.
 
-[#65]: https://github.com/zfert99/Puzzle-Generator/pull/65
 [#69]: https://github.com/zfert99/Puzzle-Generator/pull/69
 [#70]: https://github.com/zfert99/Puzzle-Generator/pull/70
 [#71]: https://github.com/zfert99/Puzzle-Generator/pull/71

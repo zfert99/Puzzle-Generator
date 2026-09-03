@@ -1,8 +1,11 @@
 # QA Remediation & UX Plan — August 2026
 
-> **Status:** 📋 Planning. Nothing is merged to `main`. **Step 4 (hub reorg) was built early and
-> is committed on `feat/hub-reorg` (`03152de`)** — code complete, e2e assertions unproven until
-> Step 1 lands; see its step-log. Everything else is unstarted. Living document: each **Step**
+> **Status (2026-09-03):** 🚧 In progress — most of the plan has landed. ✅ Done and merged:
+> Step 1 (e2e gate, #70), Step 2 (`bg-pattern` basePath, #85), Step 3a (archive hand-off, #72),
+> Step 3b (calendar bounds, #83), Step 3c (legacy picker collapse, #84), Step 4 (hub reorg, #69),
+> and Step 6a (board keyboard entry, #81). **Remaining:** 6b/6c (grid rows, win-dialog focus),
+> Step 7 (labels/titles/toggle semantics), Step 8 (PDF parity), Step 9 (polish), and Step 5
+> (per-type rules — last, it copies 6c's fixed dialog pattern). Living document: each **Step**
 > below carries its spec *and* its step-log (process / learnings / blockers), appended as that
 > step lands.
 >
