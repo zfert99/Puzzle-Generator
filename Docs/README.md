@@ -21,16 +21,25 @@ for the pattern.
 A finished plan normally moves to `archive/`. **But a doc that live source code cites as the
 rationale for current behavior stays in the root regardless of how complete its plan is** —
 archiving it would break the code's own explanatory links, which are the main way a reader gets
-from a puzzling line of code to the reason for it. Two docs are in the root for exactly this
-reason, and both say so in their own banners:
+from a puzzling line of code to the reason for it. Three docs are in the root for exactly this
+reason, and all three say so in their own banners:
 
 - [kenken-implementation-plan.md](kenken-implementation-plan.md) — `sudoku.ts`, `human-solver.ts`
   and `human-solver.test.ts` all point at its **K0** section for why 5×5/7×7 can't be box-Sudoku.
 - [multi-zone-migration-plan.md](multi-zone-migration-plan.md) — `next.config.ts`, `auth.ts`
   (rpID binding) and `base-path.ts` point here for why `basePath` and the passkey rpID look the
   way they do.
+- [killer-6x6-implementation-plan.md](killer-6x6-implementation-plan.md) — `killer-sudoku.ts`
+  points here from `DIFFICULTY_CONFIG_6` for why the 6×6 score bands cut at 16/28 instead of
+  reusing the 9×9 cuts.
 
 Before archiving any doc, grep for it in `src/` and `*.config.ts`, not just in `*.md`.
+
+**This rule has been broken once already.** `killer-6x6-implementation-plan.md` was archived on
+completion while `killer-sudoku.ts` was still citing it, leaving a dangling path in live source
+until it was restored in September 2026 — a docs-only sweep never could have caught it. Nothing
+enforces this yet, in either direction: moving a doc also breaks inbound `*.md` links and the
+table below, and both are yours to fix by hand.
 
 ## Active documents
 
@@ -48,6 +57,7 @@ Before archiving any doc, grep for it in `src/` and `*.config.ts`, not just in `
 | [performance-audit.md](performance-audit.md) | Core Web Vitals / RSC / caching findings | 📋 Analysis, unimplemented |
 | [kenken-implementation-plan.md](kenken-implementation-plan.md) | Keisan design — **live source rationale (K0)** | ✅ Complete, kept live |
 | [multi-zone-migration-plan.md](multi-zone-migration-plan.md) | `biscuitlab.net/puzzles` — **live source rationale** | ✅ Applied, kept live |
+| [killer-6x6-implementation-plan.md](killer-6x6-implementation-plan.md) | 6×6 Killer design — **live source rationale (16/28 bands)** | ✅ Complete, kept live |
 
 Also here: `design/` (design-system tokens + mockup) and `samples/` (example PDF output).
 
