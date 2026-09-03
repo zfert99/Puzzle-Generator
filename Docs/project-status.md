@@ -1,8 +1,11 @@
-# Project Status — PAUSED 2026-08-11
+# Project Status — resumed 2026-09-03 (paused 2026-08-11)
 
 > **Read this first when picking the project back up.** It is a cold-start handoff: where things
 > stand, what to do next, and the traps that already cost time once. Written at the moment of
-> pausing, so treat dates as the last known truth rather than today's.
+> pausing, so treat dates as the last known truth rather than today's. **Resumed 2026-09-03**:
+> Step 6a landed first (`fix/board-keyboard-entry`), and the abandoned worktree below turned out
+> to hold a finished, gate-passed doc fix — salvaged as its own PR. The remaining running order
+> below is otherwise unchanged.
 
 **`main` is at `331dc67`, green, and deployed.** Nothing is half-finished on `main`; every branch
 listed below is either merged or explicitly parked. There is no work in progress to recover.
@@ -64,16 +67,16 @@ Step 3a is done. The running order from the plan, unchanged:
 |---|---|---|---|
 | **1** | **Step 3b** — calendar bounds + grey out empty days | M | **Start here.** Has substantial prior art — see below |
 | 2 | **Step 3c** — legacy days do not explode the picker | M | Days 2026-07-20→07-31 render up to 33 tabs |
-| 3 | **Step 6** — board accessibility (F4, F6, F7) | S | **6a is the best value in the plan** |
+| 3 | **Step 6** — board accessibility (F6, F7 remain) | S | **6a landed 2026-09-03** (`fix/board-keyboard-entry`); 6b/6c remain |
 | 4 | Step 7 — labels, page titles, toggle semantics | S | |
 | 5 | Step 8 — PDF bookmark/link parity for Killer + Keisan | S–M | |
 | 6 | Step 9 — polish (mobile nav, leaderboard `userId`, mini board size) | M | |
 | 7 | Step 5 — per-type rules dialogs | L | Last: net-new content, and depends on 6c |
 
-**If you only do one thing, do Step 6a.** The puzzle board is unreachable by keyboard — every
-gridcell is `tabindex="-1"` and the grid container is not focusable, so a keyboard-only player
-cannot start at all (WCAG 2.1.1). Roving tabindex and arrow keys already work *after* a mouse
-click, so the fix is seeding the initial index: roughly ten lines for a High-severity defect.
+**Step 6a is done** (landed 2026-09-03, `fix/board-keyboard-entry`): the first editable cell now
+seeds the roving tabindex, and cells select themselves on focus so typing works immediately after
+tabbing in — the "ten lines" turned out to need that second half, since digit entry no-ops
+without a store selection. 6b/6c (grid rows, win-dialog focus) remain in Step 6.
 
 ---
 
@@ -134,8 +137,12 @@ fix/cron-via-github-actions (#66)
 **Keep:**
 
 - **`fix/qa-findings-aug-2026`** — the Step 3b prior art above. **Do not delete before 3b lands.**
-- `claude/compassionate-pasteur-38d4f3` — a worktree branch at `bb10da9`, no unique commits.
-  Its worktree is still registered; `git worktree remove` it if that tooling is no longer in use.
+- `claude/compassionate-pasteur-38d4f3` — a worktree branch at `bb10da9`, no unique commits —
+  **but its working tree held a finished, gate-passed, never-committed doc fix** (the
+  killer-6x6 restore below), invisible to every branch/commit listing. Salvaged 2026-09-03 onto
+  `docs/restore-killer-6x6-plan`; the worktree and branch are now safe to delete. Lesson: an
+  "empty" worktree branch can still carry uncommitted work — `git -C <worktree> status` before
+  writing one off.
 
 **Stashes:** `stash@{0}` is the 3b refinement (keep). `stash@{1}` is "phase 7 roadmap section, wip"
 from `feature/strategy-courses` — a branch that no longer exists; check it before discarding.
@@ -149,7 +156,7 @@ from `feature/strategy-courses` — a branch that no longer exists; check it bef
 | Item | Status |
 |---|---|
 | **`DATABASE_URL` as a repository secret** | ⏳ Owner action. Unlocks 4 skipped `/daily` e2e specs. **CI is green without it** — coverage, not a blocker. `ci.yml` already reads it and derives `E2E_HAS_DB` from its presence. |
-| **`killer-sudoku.ts:124` cites a moved doc** | 🔴 Open. Points at `Docs/killer-6x6-implementation-plan.md`; the file is in `Docs/archive/`. PR #71 fixed *different* stale pointers despite its title. |
+| **`killer-sudoku.ts:124` cites a moved doc** | ✅ Fix salvaged 2026-09-03 onto `docs/restore-killer-6x6-plan` — the abandoned worktree (see Branches) had already fixed it the right way per AGENTS.md §7: the doc moves *back* out of `archive/`, the citation stays. |
 | **The roller can be late** | 👀 Watch. On 2026-08-11 today had **zero boards** at ~02:00 UTC. Same class as the outage behind #66. `/archive` and `/daily` now degrade gracefully, but the cause is upstream. |
 
 ---

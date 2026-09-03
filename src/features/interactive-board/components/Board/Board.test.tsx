@@ -33,6 +33,32 @@ describe('Board', () => {
     expect(screen.getAllByRole('gridcell')).toHaveLength(16);
   });
 
+  it('is reachable by keyboard before any selection exists (F4)', async () => {
+    const user = userEvent.setup();
+    render(<Board />);
+
+    // (0,0) is empty/editable in the fixture, so it seeds the roving tabindex.
+    const entry = screen.getByRole('gridcell', { name: /empty, row 1, column 1/i });
+    expect(entry).toHaveAttribute('tabindex', '0');
+
+    await user.tab();
+    expect(entry).toHaveFocus();
+
+    // Focus selects the cell, so typing works immediately after tabbing in.
+    await user.keyboard('1');
+    expect(screen.getByRole('gridcell', { name: /value 1, row 1, column 1/i })).toBeInTheDocument();
+  });
+
+  it('seeds the entry Tab stop on the first editable cell, skipping givens', () => {
+    const withGivenCorner = puzzle();
+    withGivenCorner.grid[0][0] = 1; // (0,0) becomes a given; first editable is now (0,1)
+    useBoardStore.getState().startNewGame(withGivenCorner);
+    render(<Board />);
+
+    expect(screen.getByRole('gridcell', { name: /given clue 1, row 1, column 1/i })).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i })).toHaveAttribute('tabindex', '0');
+  });
+
   it('moves the selection with the arrow keys (roving tabindex)', async () => {
     const user = userEvent.setup();
     render(<Board />);

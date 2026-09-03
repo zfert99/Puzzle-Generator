@@ -10,6 +10,8 @@ import styles from './Board.module.css';
 interface CellProps {
   r: number;
   c: number;
+  /** This cell holds the grid's Tab stop before any selection exists (see Board's entryIndex). */
+  isEntry: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ interface CellProps {
  * the handful whose own store slice moved re-render (via their subscription). On a 9×9 that's
  * ~4–20 cells per keystroke instead of 81 (INP; `Docs/performance-audit.md`).
  */
-export const Cell = memo(function Cell({ r, c }: CellProps) {
+export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
   const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed } = useBoardStore(
@@ -123,9 +125,15 @@ export const Cell = memo(function Cell({ r, c }: CellProps) {
       aria-readonly={isGiven || undefined}
       data-index={r * size + c}
       data-highlight={isSameNumber ? 'same' : undefined}
-      tabIndex={isSelected ? 0 : -1}
+      tabIndex={isSelected || isEntry ? 0 : -1}
       className={className}
       onClick={() => selectCell(r, c)}
+      // Focus selects, so a player who Tabs onto the entry cell can type immediately —
+      // inputDigit is a no-op without a selectedCell. Already-selected focus (the roving
+      // effect calling .focus()) is skipped to avoid a redundant store write per move.
+      onFocus={() => {
+        if (!isSelected) selectCell(r, c);
+      }}
     >
       {value !== 0 ? (
         value
