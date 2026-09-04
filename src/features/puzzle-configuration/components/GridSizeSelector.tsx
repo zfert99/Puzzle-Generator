@@ -17,12 +17,18 @@ export function GridSizeSelector({ value, onChange, sizes }: Props) {
   const options = sizes ? GRID_SIZE_OPTIONS.filter((o) => sizes.includes(o.value)) : GRID_SIZE_OPTIONS;
   return (
     <div className="mb-6">
-      <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Grid Size</label>
-      <div className="flex justify-center gap-2">
+      {/* QA F10: the heading is a span (a <label> without a control is itself an a11y smell) tied
+          to the button group via aria-labelledby, and each button carries aria-pressed so the
+          selection is announced rather than conveyed by background colour alone. */}
+      <span id="grid-size-label" className="block text-sm font-medium text-ink-soft mb-2 text-center">
+        Grid Size
+      </span>
+      <div role="group" aria-labelledby="grid-size-label" className="flex justify-center gap-2">
         {options.map(({ value: optionValue, label }) => (
           <button
             key={optionValue}
             type="button"
+            aria-pressed={value === optionValue}
             onClick={() => onChange(optionValue)}
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
               value === optionValue

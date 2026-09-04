@@ -1,6 +1,10 @@
 import { LeaderboardView } from '@/features/leaderboards/components/LeaderboardView';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
 import { isDailyDifficulty } from '@/lib/db/daily-row';
+import type { Metadata } from 'next';
+
+// Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
+export const metadata: Metadata = { title: 'Leaderboard' };
 
 /**
  * /leaderboard — today's daily boards. Server Component shell; the interactive table and

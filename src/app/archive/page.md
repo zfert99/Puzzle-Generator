@@ -5,3 +5,5 @@ calendar, past leaderboard, and unranked replay all live in the client `ArchiveE
 leaf, so nothing puzzle-related runs during SSR (AGENTS.md §1), exactly like `/daily`.
 
 Nav lives in the global `AppHeader`; the hub links here via an Archive card.
+
+Exports `metadata.title: 'Archive'` (QA F8) — composed with the layout's `%s · Puzzle Lab` template.

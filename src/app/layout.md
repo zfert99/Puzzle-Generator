@@ -81,3 +81,14 @@ composed from the shared `BASE_PATH` constant, and pages consume `bg-[image:var(
 the URL lives in exactly one place, next to the constant it must stay in sync with, instead of
 seven Tailwind class strings that each look correct in isolation. Same gap class as `fetch()`
 needing `apiPath` (see `base-path.md`).
+
+## Per-page titles + brand (September 2026, QA F8)
+
+Six of eight routes used to share the single document title "Puzzle Generator" — a WCAG 2.4.2
+failure (titles must distinguish pages) and duplicate titles for SEO — and the brand itself had
+drifted: the UI has said **Puzzle Lab** since the Phase 5 redesign while the `<title>` still said
+"Puzzle Generator". `metadata.title` is now `{ default: 'Puzzle Lab', template: '%s · Puzzle Lab' }`;
+each route exports a short `metadata.title` string and the template appends the brand. The hub
+(`/`) uses the bare default. Deliberately untouched: the passkey `rpName` in `auth.ts` also says
+"Puzzle Generator", but that string is stored auth config shown in credential pickers — renaming
+it is a separate, auth-scoped change, not a document-title fix.

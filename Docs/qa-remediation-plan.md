@@ -3,8 +3,9 @@
 > **Status (2026-09-03):** 🚧 In progress — most of the plan has landed. ✅ Done and merged:
 > Step 1 (e2e gate, #70), Step 2 (`bg-pattern` basePath, #85), Step 3a (archive hand-off, #72),
 > Step 3b (calendar bounds, #83), Step 3c (legacy picker collapse, #84), Step 4 (hub reorg, #69),
-> and **all of Step 6** (6a keyboard entry #81; 6b/6c grid rows + dialog focus, 2026-09-04).
-> **Remaining:** Step 7 (labels/titles/toggle semantics), Step 8 (PDF parity), Step 9 (polish),
+> and **all of Step 6** (6a keyboard entry #81; 6b/6c grid rows + dialog focus, #88), plus
+> **Step 7** (labels/titles/toggle semantics, 2026-09-04).
+> **Remaining:** Step 8 (PDF parity), Step 9 (polish),
 > and Step 5 (per-type rules — last; it copies the dialog pattern 6c fixed, now the shared
 > `useDialogFocus` hook). Living document: each **Step**
 > below carries its spec *and* its step-log (process / learnings / blockers), appended as that
@@ -632,7 +633,24 @@ one-line note; record the choice and why in the step-log.
   single-select) and associate the `Grid Size` / `Difficulty` labels with the group via
   `fieldset`/`legend` or `aria-labelledby`.
 
-**Step-log:** *(pending)*
+##### Step-log — landed 2026-09-04 (`fix/names-titles-semantics`)
+
+- **7a.** `htmlFor`/`id` on the five count inputs; the axe `label-title-only` caveat from the
+  spec is now also recorded in the component's mirror doc for whoever wires a11y CI.
+- **7b.** Root layout: `title: { default: 'Puzzle Lab', template: '%s · Puzzle Lab' }`; the six
+  untitled routes export short titles (`Daily puzzles`, `Play`, `Leaderboard`, `Archive`,
+  `Print packs`; the hub takes the bare default). Verified live per route. **Left alone on
+  purpose:** the passkey `rpName` in `auth.ts` also still says "Puzzle Generator" — display-only
+  but *stored auth config* shown in credential pickers, so renaming it is a separate auth-scoped
+  change, not a document-title fix; recorded here so the inconsistency is a decision, not a miss.
+- **7c.** `aria-pressed` chosen over `radiogroup`/`radio`: radios demand roving-tabindex
+  arrow-key wiring per group for five groups across two surfaces, and pressed-state toggles in a
+  labelled `role="group"` deliver the announced-selection requirement at a fraction of the
+  surface. Headings became `span` + `aria-labelledby` (an unassociated `<label>` is itself an
+  a11y smell). The Keisan Mystery toggle already had `role="switch"` and is untouched.
+- **Scope note:** the daily picker and leaderboard chips share the colour-only pattern but were
+  not part of F10's audit; left for a future finding rather than smuggled in (the salvage entry's
+  scope-creep lesson).
 
 ---
 

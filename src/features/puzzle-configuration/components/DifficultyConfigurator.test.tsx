@@ -13,6 +13,19 @@ describe('DifficultyConfigurator', () => {
     expect(screen.getAllByRole('spinbutton')).toHaveLength(5);
   });
 
+  /**
+   * QA F5: the accessible name used to be the placeholder "0" for all five inputs — a
+   * screen-reader user could not tell Easy from Extreme. The visible text is now a real
+   * htmlFor/id label, which is exactly what getByLabelText resolves.
+   */
+  it('names each count input after its difficulty (F5)', () => {
+    render(<DifficultyConfigurator gridSize={9} counts={zeroCounts} onChange={() => {}} />);
+
+    for (const diff of ['easy', 'medium', 'hard', 'expert', 'extreme']) {
+      expect(screen.getByLabelText(diff)).toHaveAttribute('type', 'number');
+    }
+  });
+
   it('disables Expert and Extreme for mini grids and explains why', () => {
     render(<DifficultyConfigurator gridSize={4} counts={zeroCounts} onChange={() => {}} />);
 

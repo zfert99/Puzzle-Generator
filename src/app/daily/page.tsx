@@ -1,5 +1,9 @@
 import { Suspense } from 'react';
 import DailyExperience from '@/features/dailies/components/DailyExperience';
+import type { Metadata } from 'next';
+
+// Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
+export const metadata: Metadata = { title: 'Daily puzzles' };
 
 /**
  * /daily — the shared daily-puzzle route.

@@ -73,10 +73,15 @@ export function DifficultyConfigurator({ gridSize, counts, onChange, difficultie
         const isDisabled = !availableDifficulties.includes(diff);
         return (
           <div key={diff} className={`flex items-center justify-between ${isDisabled ? 'opacity-40' : ''}`}>
-            <label className="capitalize font-medium text-lg w-1/3">
+            {/* htmlFor/id pairing (QA F5): without it the five inputs' accessible name was the
+                placeholder "0" — five identical textboxes, Easy indistinguishable from Extreme.
+                (Placeholder-only naming passes axe's WCAG-tagged `label` rule; only the
+                best-practice `label-title-only` rule catches it — noted in the plan for a11y CI.) */}
+            <label htmlFor={`count-${diff}`} className="capitalize font-medium text-lg w-1/3">
               {diff}
             </label>
             <input
+              id={`count-${diff}`}
               type="number"
               min="0"
               max="50"

@@ -50,12 +50,14 @@ export default function PuzzleForm() {
         {title} Configuration
       </h2>
 
-      {/* Puzzle type toggle */}
-      <div className="flex gap-2 mb-6">
+      {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
+          not carried by background colour alone. */}
+      <div role="group" aria-label="Puzzle type" className="flex gap-2 mb-6">
         {(['classic', 'killer', 'calc'] as const).map((v) => (
           <button
             key={v}
             type="button"
+            aria-pressed={variant === v}
             onClick={() => setVariant(v)}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
               variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
@@ -68,11 +70,12 @@ export default function PuzzleForm() {
 
       {isKiller ? (
         <>
-          <div className="flex gap-2 mb-3 justify-center">
+          <div role="group" aria-label="Grid size" className="flex gap-2 mb-3 justify-center">
             {([6, 9] as const).map((size) => (
               <button
                 key={size}
                 type="button"
+                aria-pressed={killerSize === size}
                 onClick={() => setKillerSize(size)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
                   killerSize === size ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
@@ -89,11 +92,12 @@ export default function PuzzleForm() {
         </>
       ) : isCalc ? (
         <>
-          <div className="flex gap-2 mb-3 justify-center">
+          <div role="group" aria-label="Grid size" className="flex gap-2 mb-3 justify-center">
             {([4, 6, 9] as const).map((size) => (
               <button
                 key={size}
                 type="button"
+                aria-pressed={calcSize === size}
                 onClick={() => setCalcSize(size)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
                   calcSize === size ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'

@@ -23,3 +23,10 @@ selection and reports clicks upward.
 
 `sizes` (optional) restricts the offered options — Killer passes `[6, 9]` so both variants
 share one selector and one visual layout.
+
+## Selection is announced, not colour-only (September 2026, QA F10)
+
+Each size button carries `aria-pressed`, and the buttons sit in a `role="group"` labelled by the
+visible "Grid Size" text — which became a `span` + `aria-labelledby` (a `<label>` without a
+control is itself an a11y smell). Colour still shows the selection visually; the ARIA state is
+what a screen reader announces.
