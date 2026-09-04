@@ -1,13 +1,14 @@
 # QA Remediation & UX Plan — August 2026
 
-> **Status (2026-09-03):** 🚧 In progress — most of the plan has landed. ✅ Done and merged:
+> **Status (2026-09-04):** ✅ **Complete — all steps landed and merged.** For the record:
 > Step 1 (e2e gate, #70), Step 2 (`bg-pattern` basePath, #85), Step 3a (archive hand-off, #72),
 > Step 3b (calendar bounds, #83), Step 3c (legacy picker collapse, #84), Step 4 (hub reorg, #69),
 > and **all of Step 6** (6a keyboard entry #81; 6b/6c grid rows + dialog focus, #88), plus
 > **Step 7** (labels/titles/toggle semantics, 2026-09-04).
-> **Step 8** (PDF parity, 2026-09-04), and **Step 9** (polish, 2026-09-04; 9b had already landed
-> via #64). **Remaining:** only Step 5 (per-type rules — it copies the dialog pattern 6c fixed,
-> now the shared `useDialogFocus` hook). Living document: each **Step**
+> **Step 8** (PDF parity, 2026-09-04), **Step 9** (polish, 2026-09-04; 9b had already landed
+> via #64), and **Step 5** (per-type rules, 2026-09-04). **Every step in this plan has now
+> landed.** The deferred hardening (axe/Lighthouse CI, branch protection, etc.) remains tracked
+> as the roadmap's "Solo-dev QA hardening" backlog, not here. Living document: each **Step**
 > below carries its spec *and* its step-log (process / learnings / blockers), appended as that
 > step lands.
 >
@@ -545,7 +546,27 @@ one-line note; record the choice and why in the step-log.
   first paint taxes the ranked run. Show it on `/play` first-visit, and offer the header control on
   `/daily`.
 
-**Step-log:** *(pending)*
+##### Step-log — landed 2026-09-04 (`feat/per-type-rules`) — the plan's final step
+
+- **5a.** Net-new copy for all three types in the spec's shape (constraint, cage meaning, one
+  worked example). The Keisan section always includes the 🔮 Mystery explanation — the mode the
+  audit called out as unexplained anywhere — rather than gating it on detecting a Mystery board.
+- **5b/5c.** Both live in `GameHeader`: it is the one component on every playing surface and
+  already reads the store. Auto-open is gated `mode === 'play'` (which also excludes archive
+  replays — they run in mode `daily`), cannot collide with the new-game confirm by construction
+  (the confirm lives on the config screen; the header renders only during play), and persists
+  "seen" per type **on dismissal**, so a reload mid-dialog shows it again. Implemented as a
+  render-phase adjustment because `react-hooks/set-state-in-effect` bans the effect form.
+- **Divergence from the spec's dialog guidance, for the better:** the spec says to copy the
+  ConfirmModal pattern, but its a11y list includes *focus trapped* — which ConfirmModal never
+  actually did. Built on the native `<dialog>`/`showModal()` instead, which supplies the whole
+  list (trap included) natively. Two portability findings from that choice: jsdom lacks
+  `showModal` entirely (a minimal polyfill now lives in `vitest.setup.ts`, protecting every
+  jsdom test that renders `GameHeader`), and synthesized-input drivers may never surface Esc as
+  the native `cancel` (an explicit keydown handler with `preventDefault` makes Esc uniform).
+- **Verified live:** first `/play` game auto-opened with focus on "Got it"; Esc closed and
+  persisted `{"classic":true}`; the Rules button re-opens on demand; the daily board started
+  with **no** auto-open and the Rules button present.
 
 ---
 

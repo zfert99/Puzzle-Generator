@@ -84,6 +84,28 @@ export const test = base.extend({
 export { expect };
 
 /**
+ * Dismiss the first-play rules dialog if it auto-opened (QA Step 5b). The first free-play game
+ * of each type opens a MODAL `<dialog>` — `showModal()` makes everything behind it inert, so a
+ * spec that starts a game in a fresh browser context (every CI context is fresh) and then clicks
+ * the board or the menu times out against an inert page. Call this right after the board becomes
+ * visible; it is a no-op when the dialog did not open (type already seen, or a daily board,
+ * which never auto-opens). This is the same gesture a real first-time player makes.
+ */
+export async function dismissRulesIfShown(page: import('@playwright/test').Page): Promise<void> {
+  const rulesDialog = page.getByRole('dialog', { name: /how to play/i });
+  // The dialog opens in the same render as the board, so a short window is enough — a longer
+  // wait would tax every spec that (correctly) never sees it.
+  const appeared = await rulesDialog
+    .waitFor({ state: 'visible', timeout: 1_500 })
+    .then(() => true)
+    .catch(() => false);
+  if (appeared) {
+    await rulesDialog.getByRole('button', { name: 'Got it' }).click();
+    await rulesDialog.waitFor({ state: 'hidden' });
+  }
+}
+
+/**
  * Whether **today actually has daily boards**, which is the precondition for anything that plays or
  * links to today's daily.
  *

@@ -31,6 +31,65 @@ the diff under review.
 
 ---
 
+## 2026-09-04 — per-type rules dialogs (QA Step 5, U3) — the plan's final step
+
+Branch `feat/per-type-rules` on the Step 9 merge. Net-new rules copy for the three types (Keisan
+always includes the 🔮 Mystery explanation), first-play auto-open persisted per type, and an
+always-available Rules button in `GameHeader` — the one component on every playing surface.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **565 passed** (69 files, was 558) — dialog content/close, per-type persistence, auto-open + daily gate |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- **The spec's reference pattern couldn't meet the spec's own a11y bar.** It says to copy
+  ConfirmModal, but lists *focus trapped* — which ConfirmModal never did. Built on the native
+  `<dialog>`/`showModal()` instead: trap, Esc, modal semantics, and focus restore all come free.
+- **Two portability potholes around native `<dialog>`,** both now handled and worth remembering:
+  (1) jsdom has no `showModal`/`close` — a minimal polyfill in `vitest.setup.ts` protects every
+  jsdom test that renders `GameHeader`; (2) synthesized-input drivers may not surface Esc as the
+  native `cancel` close-request (observed live: the keydown reached the page, no cancel fired) —
+  an explicit Escape keydown handler with `preventDefault` makes the behaviour uniform and
+  driver-testable.
+- "Seen" persists on **dismissal**, not on open — a reload mid-dialog shows it again; a
+  same-session re-fire is stopped by component state.
+- **Caught by CI, missed by the local gate: a new auto-opening modal breaks every e2e spec that
+  interacts past the point it appears.** Every CI browser context is fresh, so the first-play
+  dialog opened in all of them, and `showModal()` made the page behind it inert — four play
+  specs and the /play confirm-modal overlay scenarios timed out (the first red CI of the
+  resume). Fixed with a shared `dismissRulesIfShown` fixture helper (the same gesture a real
+  first-time player makes) applied after each game start that interacts further; the canonical
+  first-game spec asserts the dialog outright instead of tolerating it. Rule form: **shipping a
+  new auto-opening dialog means sweeping e2e for every flow that interacts past its trigger —
+  specs that only read (counts, visibility) survive; specs that click do not.** Full suite
+  locally after the fix: 44 passed.
+
+### Invariants checked (§2)
+
+Client-side UI + one localStorage key (`pl-rules-seen`). No data, auth, board, or write paths.
+The daily gate (`mode !== 'play'` blocks auto-open) also covers archive replays, which run in
+mode `daily` — checked against the store, not assumed from the route.
+
+### Verified vs read
+
+Verified live: first `/play` game auto-opened with focus inside the dialog; Esc closed it and
+persisted the flag; the Rules button re-opens on demand; the ranked daily started with no
+auto-open and the button present. The unseen-variant-on-daily case is unit-tested (today's slots
+all rolled types already seen locally).
+
+### Reviews
+
+`/security-review` **not run**: no auth/authz/data-access surface. The hosted `/code-review` has
+**not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-04 — mobile nav overflow + mini board caps (QA Step 9, F11 + F13; F12 was already closed)
 
 Branch `fix/polish-step9` on the Step 8 merge. Two of the three findings needed work: a native

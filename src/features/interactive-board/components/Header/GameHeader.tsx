@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useSetting } from '@/features/settings/useSettings';
 import { setSetting } from '@/features/settings/settings';
+import { RulesDialog, hasSeenRules, markRulesSeen } from '../RulesDialog';
 
 function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -18,7 +20,7 @@ function formatTime(totalSeconds: number): string {
  * store so it survives a persisted refresh.
  */
 export function GameHeader() {
-  const { size, difficulty, elapsedTime, mistakes, status, mode } = useBoardStore(
+  const { size, difficulty, elapsedTime, mistakes, status, mode, variant } = useBoardStore(
     useShallow((s) => ({
       size: s.config.size,
       difficulty: s.difficulty,
@@ -26,8 +28,30 @@ export function GameHeader() {
       mistakes: s.mistakes,
       status: s.status,
       mode: s.mode,
+      variant: s.variant,
     }))
   );
+
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [autoOpenedFor, setAutoOpenedFor] = useState<string | null>(null);
+
+  /**
+   * First play of a TYPE auto-opens its rules, once, persisted per type (QA Step 5b). Free play
+   * only — `mode === 'daily'` covers both the ranked daily and archive replays, where a modal on
+   * first paint would tax a running clock. It cannot land on top of the "Start a new puzzle?"
+   * confirm by construction: that confirm lives on the config screen, and this header only
+   * renders once a game is actually being played.
+   *
+   * Render-phase adjustment rather than an effect — `react-hooks/set-state-in-effect` bans the
+   * effect form, and this is React's documented alternative. Safe on the server by the `status`
+   * guard: SSR renders the store's initial `configuring`, never `playing`, so the localStorage
+   * read below only ever runs client-side. "Seen" is persisted on DISMISSAL (in onClose), so a
+   * player who reloads mid-dialog sees it again; `autoOpenedFor` stops a same-session re-fire.
+   */
+  if (mode === 'play' && status === 'playing' && autoOpenedFor !== variant && !rulesOpen && !hasSeenRules(variant)) {
+    setAutoOpenedFor(variant);
+    setRulesOpen(true);
+  }
   const pause = useBoardStore((s) => s.pause);
   const resume = useBoardStore((s) => s.resume);
   // Error highlighting is an app-wide setting now (also in the Settings panel); this in-game
@@ -89,7 +113,27 @@ export function GameHeader() {
             Pause
           </button>
         )}
+        {/* Always-available rules entry point (QA Step 5c) — present wherever this header is:
+            /play, /daily, and archive replays alike. */}
+        <button
+          type="button"
+          onClick={() => setRulesOpen(true)}
+          aria-haspopup="dialog"
+          className="px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2"
+          title="How to play"
+        >
+          Rules
+        </button>
       </div>
+
+      <RulesDialog
+        variant={variant}
+        open={rulesOpen}
+        onClose={() => {
+          setRulesOpen(false);
+          markRulesSeen(variant);
+        }}
+      />
     </div>
   );
 }

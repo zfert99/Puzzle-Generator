@@ -69,12 +69,19 @@ before a single test ran. CI never ran e2e, so nothing surfaced it. It now runs 
 
 Steps 2, 3a, 3b, 3c, and 6a are done and merged. The remaining running order from the plan:
 
-| # | Step | Size | Note |
-|---|---|---|---|
-| **1** | Step 5 — per-type rules dialogs (U3) | L | **The last remaining step.** Net-new content; it copies the dialog pattern 6c fixed (`useDialogFocus`) |
+**The QA remediation plan is COMPLETE (2026-09-04)** — every step landed and merged; see the
+plan's own banner and per-step logs. The final sessions' order: Step 9 (`fix/polish-step9`:
+mobile nav overflow, mini board caps; 9b had already landed via #64) and Step 5
+(`feat/per-type-rules`: per-type rules dialogs on the native `<dialog>` element).
 
-**Step 9 landed 2026-09-04** (`fix/polish-step9`): mobile nav overflow menu (native details),
-mini board size caps (measured against the audit's 1280×720 fold); 9b was already closed by #64.
+**Next horizons** (nothing in-flight; pick from the roadmap):
+
+| Option | What it is |
+|---|---|
+| Phase 7 — Strategy Courses | The "crown jewel" (`strategy-courses-implementation-plan.md`; `stash@{0}` holds a roadmap-section wip) |
+| Puzzle type 4 | Kakuro research is complete (`research/kakuro.md`); the daily was restructured to absorb new types cheaply |
+| Solo-dev QA hardening | Roadmap backlog: branch protection, AI reviewer, axe/Lighthouse CI, property/mutation tests |
+| Phase 9 — Social & Economy | Gated on the solve-time-trust work for clock-based rules |
 
 **Step 8 landed 2026-09-04** (`fix/pdf-parity`): Killer/Keisan booklets gained the classic PDFs'
 bookmarks + puzzle↔answer links via shared nav helpers.
