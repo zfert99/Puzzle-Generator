@@ -134,11 +134,19 @@ export function Board() {
         style={{ '--size': size } as CSSProperties}
         onKeyDown={handleKeyDown}
       >
-        {Array.from({ length: size }, (_, r) =>
-          Array.from({ length: size }, (_, c) => (
-            <Cell key={`${r}-${c}`} r={r} c={c} isEntry={entryIndex === r * size + c} />
-          ))
-        )}
+        {/*
+          The ARIA grid pattern requires role="row" between grid and gridcell (QA finding F6) —
+          without it, screen readers cannot announce row position or navigate by row. The row
+          divs are `display: contents` (styles.row) so the cells stay direct CSS-grid items and
+          the layout is untouched; the rows exist only in the accessibility tree.
+        */}
+        {Array.from({ length: size }, (_, r) => (
+          <div key={`row-${r}`} role="row" aria-rowindex={r + 1} className={styles.row}>
+            {Array.from({ length: size }, (_, c) => (
+              <Cell key={`${r}-${c}`} r={r} c={c} isEntry={entryIndex === r * size + c} />
+            ))}
+          </div>
+        ))}
         {variant !== 'classic' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
       </div>
       <BoardAnnouncer />

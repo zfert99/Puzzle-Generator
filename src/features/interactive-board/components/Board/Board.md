@@ -149,3 +149,13 @@ matter which control has focus:
   Shift+Cmd/Ctrl+Z, Ctrl+Y -> redo
 It requires a modifier key, so ordinary typing is never affected.
 ```
+
+## Row structure (September 2026, QA finding F6)
+
+Gridcells used to be direct children of `role="grid"`, which breaks the ARIA grid pattern — the
+tree needs `role="row"` between grid and gridcell for screen readers to announce row position and
+navigate by row. Each row of cells is now wrapped in a `role="row"` div carrying `aria-rowindex`
+(1-based), and each cell carries `aria-colindex`. The wrappers are `display: contents`
+(`styles.row`), so the cells remain direct CSS-grid items of the board's `repeat(var(--size), 1fr)`
+tracks — the rows exist only in the accessibility tree, and the layout (including the uniform
+cell sizing note above) is untouched.

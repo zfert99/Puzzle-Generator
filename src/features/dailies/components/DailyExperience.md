@@ -165,3 +165,11 @@ to highlight (and announce) wrong cells on this daily for the rest of the attemp
 free-play `errorHighlight` setting would. This is a deliberate ask from the modal, not a
 passive default: the board otherwise stays hand-holding-free per the rule above, and
 `errorsRevealed` resets to `false` on the next `startNewGame` (see `useBoardStore.md`).
+
+## Dialogs take focus (September 2026, QA F7)
+
+Both overlay dialogs — "Daily solved" and the full-board "Not quite!" review — now move focus to
+their primary button on open via the shared `useDialogFocus` hook (see
+`interactive-board/hooks/useDialogFocus.md`), and restore it on close. For the review dialog the
+restore is the useful half: "Keep looking" returns focus to the exact gridcell the player was on,
+so they resume fixing cells without re-establishing position.

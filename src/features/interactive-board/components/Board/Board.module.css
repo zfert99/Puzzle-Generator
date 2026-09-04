@@ -73,6 +73,13 @@
   text-underline-offset: 2px;
 }
 
+/* ARIA row wrappers (F6). `display: contents` removes the row box from layout entirely, so the
+   cells remain direct grid items of `.board`'s repeat(var(--size), 1fr) tracks — the rows exist
+   for the accessibility tree, not for CSS. */
+.row {
+  display: contents;
+}
+
 .cell {
   position: relative;
   display: flex;

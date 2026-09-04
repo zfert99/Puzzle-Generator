@@ -31,6 +31,55 @@ the diff under review.
 
 ---
 
+## 2026-09-04 — grid rows + dialog focus (QA Step 6b/6c, F6 + F7) — Step 6 complete
+
+Branch `fix/board-rows-dialog-focus` on `3722aac`. Two halves: `role="row"` wrappers
+(`display: contents`) with `aria-rowindex`/`aria-colindex` in `Board`/`Cell`, and a shared
+`useDialogFocus(open)` hook applied to **four** dialogs plus `ConfirmModal` — the audit named one
+"Solved!" dialog, but the dialog shell is a repeated JSX pattern, so the same missing-focus defect
+existed everywhere it was pasted.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **551 passed** (66 files, was 546) — hook harness (2) + row structure + existing board specs |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- **A defect in a copy-pasted pattern exists once per paste.** F7 was filed against one dialog;
+  the fix landed as a hook because Play/Daily/Review/Archive all shared the flaw. Rule form:
+  **before fixing a finding in shell markup, grep for the shell — the finding count is the paste
+  count, not one.**
+- **Browser key names are not React-test key names.** Driving the live board with `"Down"` did
+  nothing (`e.key` must be `'ArrowDown'`); seven digits landed on one cell and incidentally
+  demonstrated that same-digit entry toggles a cell clear. The app was correct; the driver
+  wasn't. Treat an unexpectedly empty board as input that never arrived.
+
+### Invariants checked (§2)
+
+Client-side rendering/focus only — no data, auth, keys, migrations, or writes. Re-derived the two
+risky interactions: `display: contents` leaves cells as direct grid items (verified live —
+computed cell boxes identical), and the restore-to-opener half is a spec'd no-op when the opener
+unmounted (solved → config), which is the desired degradation.
+
+### Verified vs read
+
+Verified live: solved a real 4×4 by mouse+keyboard — Solved dialog took focus ("New puzzle");
+ConfirmModal Escape returned focus to its opener; 9 rows × 9 cells with correct indices and
+unchanged square layout in the real DOM. The Daily review + Archive solved dialogs use the same
+hook + ref wiring but were exercised only in jsdom/read, not live.
+
+### Reviews
+
+`/security-review` **not run**: no auth/authz/data-access surface. The hosted `/code-review` has
+**not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-03 — the background renders for the first time since the multi-zone move (QA Step 2, F2)
 
 Branch `fix/bg-pattern-basepath` on `1eb96b5` (stacked on 3c). Next prepends `basePath` to

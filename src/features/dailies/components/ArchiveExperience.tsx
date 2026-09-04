@@ -11,6 +11,7 @@ import { Numpad } from '@/features/interactive-board/components/Controls/Numpad'
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
+import { useDialogFocus } from '@/features/interactive-board/hooks/useDialogFocus';
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { LeaderboardView } from '@/features/leaderboards/components/LeaderboardView';
 import { useSession } from '@/features/auth/auth-client';
@@ -194,6 +195,9 @@ export default function ArchiveExperience() {
 
   const { loading, error, fetchDaily } = useDaily();
   const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
+
+  // F7: the solved dialog must take focus when it appears (see useDialogFocus).
+  const solvedPrimaryRef = useDialogFocus<HTMLButtonElement>(status === 'solved');
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const tick = useBoardStore((s) => s.tick);
   const saved = useSavedGame();
@@ -282,7 +286,7 @@ export default function ArchiveExperience() {
                 {useBoardStore.getState().mistakes === 1 ? '' : 's'}
               </p>
               <p className="text-xs text-ink-soft mb-6">Practice replay — not ranked.</p>
-              <button type="button" onClick={() => setView('browse')} className="btn-primary">
+              <button ref={solvedPrimaryRef} type="button" onClick={() => setView('browse')} className="btn-primary">
                 Back to archive
               </button>
             </div>

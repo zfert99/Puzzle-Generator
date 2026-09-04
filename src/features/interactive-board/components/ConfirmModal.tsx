@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -34,12 +35,13 @@ export function ConfirmModal({
   onCancel,
   onDismiss,
 }: ConfirmModalProps) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
+  // Shared dialog focus (F7): focus-in on open — which this modal always did — plus
+  // restore-to-opener on close, which it previously lacked.
+  const cancelRef = useDialogFocus<HTMLButtonElement>(open);
   const dismiss = onDismiss ?? onCancel;
 
   useEffect(() => {
     if (!open) return;
-    cancelRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dismiss();
     };

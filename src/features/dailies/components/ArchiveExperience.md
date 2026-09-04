@@ -139,3 +139,9 @@ leaderboard panel on the right (`md:grid-cols-2`, `max-w-4xl`) — so the page n
 scroll. Mobile stacks in the order calendar → practice button → types (the button moved
 between them deliberately). Archive also joined the header nav (`sm+`; mobile reaches it
 via the hub card).
+
+## Solved dialog takes focus (September 2026, QA F7)
+
+The practice-solved overlay moves focus to "Back to archive" on open and restores on close, via
+the shared `useDialogFocus` hook (`interactive-board/hooks/useDialogFocus.md`) — same F7 fix as
+the play and daily surfaces.
