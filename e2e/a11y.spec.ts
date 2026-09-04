@@ -1,4 +1,4 @@
-import { test, expect, todayHasBoards } from './fixtures';
+import { test, expect, todayHasBoards, dismissRulesIfShown } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
 
 /**
@@ -114,6 +114,9 @@ test.describe('responsive: overlay bounds stay inside the viewport', () => {
           await page.getByRole('button', { name: '4×4' }).click();
           await page.getByRole('button', { name: /^Play$/ }).click();
           await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible();
+          // Fresh context: the first-play rules dialog is modal and must go before the menu
+          // is clickable (see fixtures.dismissRulesIfShown).
+          await dismissRulesIfShown(page);
           await page.getByRole('button', { name: /menu/i }).click();
           await page.getByRole('button', { name: /^Play$/ }).click();
         },

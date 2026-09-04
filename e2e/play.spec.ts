@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, dismissRulesIfShown } from './fixtures';
 
 /**
  * End-to-end coverage of the interactive board flow (Phase 3): navigate in, generate
@@ -22,6 +22,13 @@ test.describe('Interactive play', () => {
 
     const grid = page.getByRole('grid', { name: /sudoku board/i });
     await expect(grid).toBeVisible();
+
+    // A fresh browser context has never seen the rules, so the first-play dialog auto-opens
+    // (QA Step 5b) as a MODAL — the board behind it is inert until it is dismissed. Assert it
+    // here (this spec is the suite's canonical first game) rather than just tolerating it.
+    await expect(page.getByRole('dialog', { name: 'How to play Sudoku' })).toBeVisible();
+    await page.getByRole('button', { name: 'Got it' }).click();
+
     await expect(grid.getByRole('gridcell')).toHaveCount(16);
 
     // Select an empty cell and enter a digit; it must appear on the board.
@@ -35,6 +42,7 @@ test.describe('Interactive play', () => {
     await page.getByRole('button', { name: '4×4' }).click();
     await page.getByRole('button', { name: /^Play$/ }).click();
     await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible();
+    await dismissRulesIfShown(page);
 
     await page.getByRole('button', { name: /menu/i }).click();
 
@@ -55,6 +63,7 @@ test.describe('Interactive play', () => {
     await page.getByRole('button', { name: '4×4' }).click();
     await page.getByRole('button', { name: /^Play$/ }).click();
     await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible();
+    await dismissRulesIfShown(page);
 
     // Hint fills one cell each; stop once the solved modal appears (it covers the pad).
     const hintButton = page.getByRole('button', { name: /hint/i });
@@ -81,6 +90,7 @@ test.describe('Interactive play', () => {
 
     const grid = page.getByRole('grid', { name: /sudoku board/i });
     await expect(grid).toBeVisible();
+    await dismissRulesIfShown(page);
     await grid.getByRole('gridcell', { name: /^Empty/ }).first().click();
     await page.keyboard.press('1');
     await expect(grid.getByRole('gridcell', { name: /value 1/i }).first()).toBeVisible();

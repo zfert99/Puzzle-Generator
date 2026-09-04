@@ -59,6 +59,16 @@ always-available Rules button in `GameHeader` — the one component on every pla
   driver-testable.
 - "Seen" persists on **dismissal**, not on open — a reload mid-dialog shows it again; a
   same-session re-fire is stopped by component state.
+- **Caught by CI, missed by the local gate: a new auto-opening modal breaks every e2e spec that
+  interacts past the point it appears.** Every CI browser context is fresh, so the first-play
+  dialog opened in all of them, and `showModal()` made the page behind it inert — four play
+  specs and the /play confirm-modal overlay scenarios timed out (the first red CI of the
+  resume). Fixed with a shared `dismissRulesIfShown` fixture helper (the same gesture a real
+  first-time player makes) applied after each game start that interacts further; the canonical
+  first-game spec asserts the dialog outright instead of tolerating it. Rule form: **shipping a
+  new auto-opening dialog means sweeping e2e for every flow that interacts past its trigger —
+  specs that only read (counts, visibility) survive; specs that click do not.** Full suite
+  locally after the fix: 44 passed.
 
 ### Invariants checked (§2)
 
