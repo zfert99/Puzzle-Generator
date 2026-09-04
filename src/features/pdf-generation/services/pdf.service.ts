@@ -203,12 +203,22 @@ export async function generateKillerPDF(puzzles: KillerPuzzle[]): Promise<Buffer
     doc.moveDown(1);
     doc.fontSize(14).text('No givens — the cage sums are the only clue.', { align: 'center' });
 
+    // Navigation parity with the classic booklet (F9): bookmarks + puzzle↔answer links. The
+    // outline is flat under each section — difficulty is in the page title — since this builder
+    // takes a flat list rather than classic's difficulty-grouped batches.
+    const puzzlesOutline = doc.outline.addItem('Puzzles');
+    const answersOutline = doc.outline.addItem('Answer Keys');
+
     const drawPage = (p: KillerPuzzle, i: number, answer: boolean) => {
       doc.addPage();
       const title = `Killer #${i + 1} (${p.difficulty})${answer ? ' — Answer' : ''}`;
       doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
       doc.moveDown(1);
-      drawKillerGrid(doc, p, (doc.page.width - gridDrawSize) / 2, doc.y, gridDrawSize, answer);
+      addPageNavigation(doc, answer ? answersOutline : puzzlesOutline, i, title, answer);
+      const startY = doc.y;
+      drawKillerGrid(doc, p, (doc.page.width - gridDrawSize) / 2, startY, gridDrawSize, answer);
+      doc.y = startY + gridDrawSize + 30;
+      drawCrossLink(doc, i, answer);
     };
 
     puzzles.forEach((p, i) => drawPage(p, i, false));
@@ -237,12 +247,20 @@ export async function generateCalcPDF(puzzles: CalcPuzzle[]): Promise<Buffer> {
     doc.moveDown(1);
     doc.fontSize(14).text('No givens — the cage arithmetic is the only clue.', { align: 'center' });
 
+    // Navigation parity with the classic booklet (F9) — see generateKillerPDF for the layout note.
+    const puzzlesOutline = doc.outline.addItem('Puzzles');
+    const answersOutline = doc.outline.addItem('Answer Keys');
+
     const drawPage = (p: CalcPuzzle, i: number, answer: boolean) => {
       doc.addPage();
       const title = `Keisan #${i + 1} (${p.gridSize}×${p.gridSize}, ${p.difficulty})${answer ? ' — Answer' : ''}`;
       doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
       doc.moveDown(1);
-      drawCalcGrid(doc, p, (doc.page.width - gridDrawSize) / 2, doc.y, gridDrawSize, answer);
+      addPageNavigation(doc, answer ? answersOutline : puzzlesOutline, i, title, answer);
+      const startY = doc.y;
+      drawCalcGrid(doc, p, (doc.page.width - gridDrawSize) / 2, startY, gridDrawSize, answer);
+      doc.y = startY + gridDrawSize + 30;
+      drawCrossLink(doc, i, answer);
     };
 
     puzzles.forEach((p, i) => drawPage(p, i, false));
@@ -252,8 +270,38 @@ export async function generateCalcPDF(puzzles: CalcPuzzle[]): Promise<Buffer> {
   });
 }
 
+/**
+ * Register a puzzle/answer page in the PDF's navigation metadata (QA F9): a named destination
+ * (the target the sibling page's link jumps to) plus a bookmark in the given outline section.
+ *
+ * Lifted out of `drawPuzzles` so all three booklet builders share one definition — classic PDFs
+ * carried `/Outlines` and puzzle↔answer `/Annots` from the start, but `generateKillerPDF` and
+ * `generateCalcPDF` re-created the page loop without them, and the roadmap advertises bookmarks
+ * and internal links as a shipped feature of "the PDFs", not of one variant.
+ */
+function addPageNavigation(
+  doc: PDFKit.PDFDocument,
+  sectionOutline: PDFKit.PDFOutline,
+  index: number,
+  title: string,
+  isAnswers: boolean,
+): void {
+  doc.addNamedDestination(isAnswers ? `ANSWER_${index}` : `PUZZLE_${index}`);
+  sectionOutline.addItem(title);
+}
+
+/** The centred puzzle↔answer cross link under a grid — the other half of {@link addPageNavigation}. */
+function drawCrossLink(doc: PDFKit.PDFDocument, index: number, isAnswers: boolean): void {
+  const linkText = isAnswers ? 'Back to Puzzle' : 'Go to Answer Key';
+  const linkTarget = isAnswers ? `PUZZLE_${index}` : `ANSWER_${index}`;
+
+  doc.fontSize(12).fillColor('blue')
+    .text(linkText, { align: 'center', goTo: linkTarget, underline: true });
+  doc.fillColor('black');
+}
+
 export function drawPuzzles(
-  doc: PDFKit.PDFDocument, 
+  doc: PDFKit.PDFDocument,
   grouped: Record<string, { puzzle: SudokuPuzzle, index: number }[]>,
   outlineRoot: PDFKit.PDFOutline,
   isAnswers = false,
@@ -276,21 +324,13 @@ export function drawPuzzles(
       doc.fontSize(24).text(isAnswers ? title + ' Answer' : title, { align: 'center' });
       doc.moveDown(2);
 
-      const targetName = isAnswers ? `ANSWER_${index}` : `PUZZLE_${index}`;
-      doc.addNamedDestination(targetName);
-      diffOutline.addItem(title);
+      addPageNavigation(doc, diffOutline, index, title, isAnswers);
 
       const startY = doc.y;
       drawGrid(doc, isAnswers ? puzzle.solution : puzzle.grid, startX, startY, gridDrawSize);
 
       doc.y = startY + gridDrawSize + 30;
-
-      const linkText = isAnswers ? 'Back to Puzzle' : 'Go to Answer Key';
-      const linkTarget = isAnswers ? `PUZZLE_${index}` : `ANSWER_${index}`;
-
-      doc.fontSize(12).fillColor('blue')
-        .text(linkText, { align: 'center', goTo: linkTarget, underline: true });
-      doc.fillColor('black');
+      drawCrossLink(doc, index, isAnswers);
     });
   }
 }

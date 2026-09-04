@@ -1,7 +1,20 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { generatePuzzlePDF } from './pdf.service';
+import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF } from './pdf.service';
 import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
+import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
+import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
+
+/**
+ * Structural navigation assertions (QA F9). PDFKit writes object dictionaries in ASCII, so the
+ * presence of an `/Outlines` tree (bookmarks) and `/Annots` arrays (the puzzle↔answer links) is
+ * checkable on the raw bytes — the level the spec asks for, deliberately not a byte snapshot.
+ */
+function expectNavigationMetadata(pdf: Buffer) {
+  const text = pdf.toString('latin1');
+  expect(text).toContain('/Outlines');
+  expect((text.match(/\/Annots/g) ?? []).length).toBeGreaterThan(0);
+}
 
 /**
  * Replaces the deleted ad-hoc `tests/test-pdfkit.js` spike scripts with a real,
@@ -26,5 +39,32 @@ describe('generatePuzzlePDF', () => {
     const pdf = await generatePuzzlePDF(puzzles);
 
     expect(pdf.subarray(0, 4).toString('ascii')).toBe('%PDF');
+  });
+
+  it('carries bookmarks and puzzle↔answer links (the F9 baseline the variants must match)', async () => {
+    const pdf = await generatePuzzlePDF(generatePuzzleBatch({ easy: 1 }));
+    expectNavigationMetadata(pdf);
+  });
+});
+
+/**
+ * F9 parity: classic booklets carried /Outlines + /Annots from the start; the Killer and Keisan
+ * builders re-created the page loop without them. These pin the parity per variant.
+ */
+describe('generateKillerPDF navigation parity (F9)', () => {
+  it('carries bookmarks and puzzle↔answer links', async () => {
+    const pdf = await generateKillerPDF([generateKillerSudoku('easy')]);
+
+    expect(pdf.subarray(0, 4).toString('ascii')).toBe('%PDF');
+    expectNavigationMetadata(pdf);
+  });
+});
+
+describe('generateCalcPDF navigation parity (F9)', () => {
+  it('carries bookmarks and puzzle↔answer links', async () => {
+    const pdf = await generateCalcPDF([generateCalcSudoku('easy', { gridSize: 4 })]);
+
+    expect(pdf.subarray(0, 4).toString('ascii')).toBe('%PDF');
+    expectNavigationMetadata(pdf);
   });
 });

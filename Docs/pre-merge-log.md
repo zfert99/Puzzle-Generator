@@ -31,6 +31,42 @@ the diff under review.
 
 ---
 
+## 2026-09-04 — Killer/Keisan PDFs gain bookmarks + links (QA Step 8, F9)
+
+Branch `fix/pdf-parity` on `767af75`. The spec's lift, exactly: `addPageNavigation` (named
+destination + bookmark) and `drawCrossLink` extracted from `drawPuzzles`; the Killer and Keisan
+builders call both. Variant outlines are flat under "Puzzles"/"Answer Keys" — those builders take
+a flat list, and the parity requirement is the navigation metadata, not classic's difficulty
+nesting.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **556 passed** (66 files, was 553) — structural `/Outlines` + `/Annots` per variant |
+| Deliberately-broken run | new tests against the **pre-fix** service → both variant tests **red**, classic green; restored → all green. Not vacuous |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched (PDF rendering only) |
+
+### Findings
+
+- None beyond the parity gap itself. Grid placement is unchanged by construction: the nav helper
+  writes no text (destinations and outline items are metadata), and the cross link lands in the
+  blank region below the 400pt grid, same as classic.
+
+### Invariants checked (§2)
+
+Rendering-only; no data, auth, keys, or writes. The generation inputs are the same
+already-generated puzzle arrays the builders always took.
+
+### Reviews
+
+`/security-review` **not run**: no auth/authz/data-access surface. The hosted `/code-review` has
+**not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-04 — names, titles, and toggle semantics (QA Step 7, F5 + F8 + F10)
 
 Branch `fix/names-titles-semantics` on `b54718c`. Three small a11y/SEO fixes: `htmlFor`/`id` on
