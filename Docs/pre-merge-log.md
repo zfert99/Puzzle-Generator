@@ -31,6 +31,50 @@ the diff under review.
 
 ---
 
+## 2026-09-04 — names, titles, and toggle semantics (QA Step 7, F5 + F8 + F10)
+
+Branch `fix/names-titles-semantics` on `b54718c`. Three small a11y/SEO fixes: `htmlFor`/`id` on
+the five generator inputs (F5), per-route `metadata.title` + a `%s · Puzzle Lab` template with
+the brand reconciled from "Puzzle Generator" (F8), and `aria-pressed` in labelled `role="group"`s
+for the type/size/difficulty toggles on `/generate` + `/play` (F10).
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **553 passed** (66 files, was 551) — labeled-inputs + pressed-state specs |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- **The brand sweep found one deliberate leave-alone:** the passkey `rpName` in `auth.ts` still
+  says "Puzzle Generator". Display-only, but it is stored auth configuration surfaced in
+  credential pickers — renaming it belongs to an auth-scoped change with its own review, not to
+  a document-title fix. Recorded in the step-log so it reads as a decision, not a miss.
+- `aria-pressed` over `radiogroup`/`radio`, deliberately: radios require arrow-key roving
+  tabindex per group (five groups, two surfaces) for no additional announced information here.
+
+### Invariants checked (§2)
+
+Markup/metadata only — no data, auth behavior, keys, or writes. The one auth-adjacent string
+(`rpName`) was inspected and deliberately not changed.
+
+### Verified vs read
+
+Verified live: `Play · Puzzle Lab` / `Print packs · Puzzle Lab` / `Archive · Puzzle Lab` /
+hub `Puzzle Lab` in real document titles; all five generator inputs resolve their difficulty
+name from the real DOM; `aria-pressed="true"` sits on exactly the selected chip per group.
+Daily/leaderboard titles asserted via the same mechanism, read not visited.
+
+### Reviews
+
+`/security-review` **not run**: no auth/authz/data-access change (`rpName` inspected, untouched).
+The hosted `/code-review` has **not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-04 — grid rows + dialog focus (QA Step 6b/6c, F6 + F7) — Step 6 complete
 
 Branch `fix/board-rows-dialog-focus` on `3722aac`. Two halves: `role="row"` wrappers

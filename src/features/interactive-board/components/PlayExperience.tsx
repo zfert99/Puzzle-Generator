@@ -172,12 +172,14 @@ export default function PlayExperience() {
           </div>
         )}
 
-        {/* Puzzle type toggle */}
-        <div className="flex gap-2 mb-6">
+        {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
+            not carried by background colour alone. */}
+        <div role="group" aria-label="Puzzle type" className="flex gap-2 mb-6">
           {(['classic', 'killer', 'calc'] as const).map((v) => (
             <button
               key={v}
               type="button"
+              aria-pressed={variant === v}
               onClick={() => handleVariantChange(v)}
               className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
                 variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
@@ -196,8 +198,11 @@ export default function PlayExperience() {
         />
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-ink-soft mb-2 text-center">Difficulty</label>
-          <div className="flex flex-wrap justify-center gap-2">
+          {/* Span + aria-labelledby + aria-pressed (QA F10) — same reasoning as GridSizeSelector. */}
+          <span id="play-difficulty-label" className="block text-sm font-medium text-ink-soft mb-2 text-center">
+            Difficulty
+          </span>
+          <div role="group" aria-labelledby="play-difficulty-label" className="flex flex-wrap justify-center gap-2">
             {(isCalc ? CALC_DIFFICULTIES : isKiller ? KILLER_DIFFICULTIES : ALL_DIFFICULTIES).map((d) => {
               const disabled = miniGrid && (d === 'expert' || d === 'extreme');
               return (
@@ -205,6 +210,7 @@ export default function PlayExperience() {
                   key={d}
                   type="button"
                   disabled={disabled}
+                  aria-pressed={difficulty === d}
                   onClick={() => setDifficulty(d)}
                   className={`px-3 py-2 rounded-lg text-sm capitalize transition-all ${
                     difficulty === d ? 'bg-butterscotch text-ink border-2 border-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'

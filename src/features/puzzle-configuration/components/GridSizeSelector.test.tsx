@@ -13,6 +13,18 @@ describe('GridSizeSelector', () => {
     expect(screen.getByRole('button', { name: '9×9' })).toBeInTheDocument();
   });
 
+  /**
+   * QA F10: selection used to be conveyed by background colour alone. The group is labelled
+   * "Grid Size" and each button announces its pressed state.
+   */
+  it('announces the selection via aria-pressed inside a labelled group (F10)', () => {
+    render(<GridSizeSelector value={6} onChange={() => {}} />);
+
+    expect(screen.getByRole('group', { name: 'Grid Size' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '6×6' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '9×9' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('reports the chosen size to onChange when a button is clicked', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

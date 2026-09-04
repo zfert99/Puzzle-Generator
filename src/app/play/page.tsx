@@ -1,5 +1,9 @@
 import { Suspense } from 'react';
 import PlayExperience from '@/features/interactive-board/components/PlayExperience';
+import type { Metadata } from 'next';
+
+// Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
+export const metadata: Metadata = { title: 'Play' };
 
 /**
  * /play — the interactive board route.

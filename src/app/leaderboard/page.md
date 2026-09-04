@@ -20,3 +20,5 @@ validated against `isDailyDifficulty` before being passed to `LeaderboardView` a
 through to `undefined` (the component's own "easy" default) rather than reaching the client.
 This exists so the daily's post-solve "Leaderboard" link
 (`DailyExperience.tsx`) can land directly on the board just played instead of always Easy.
+
+Exports `metadata.title: 'Leaderboard'` (QA F8) — composed with the layout's `%s · Puzzle Lab` template.

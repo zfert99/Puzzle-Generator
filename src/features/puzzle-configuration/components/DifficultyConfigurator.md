@@ -51,3 +51,11 @@ grid size. When omitted, availability falls back to the grid-size lookup (classi
 The 0-50 range and "at least one puzzle" rules are enforced here for fast UX
 feedback, but the server (`/api/generate`) re-validates them authoritatively —
 client-side checks are a convenience, never the security boundary.
+
+## Inputs are named by their difficulty (September 2026, QA F5)
+
+The five count inputs had no label association — their accessible name was the placeholder `"0"`,
+so the tree showed five identical textboxes and a screen-reader user could not tell Easy from
+Extreme. The visible difficulty text is now a real `htmlFor`/`id` label. Worth keeping for a11y
+CI: placeholder-only naming *passes* axe's WCAG-tagged `label` rule — only the best-practice
+`label-title-only` rule catches it, so the scan must include the best-practice tag.

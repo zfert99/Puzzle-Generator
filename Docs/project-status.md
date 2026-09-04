@@ -71,10 +71,12 @@ Steps 2, 3a, 3b, 3c, and 6a are done and merged. The remaining running order fro
 
 | # | Step | Size | Note |
 |---|---|---|---|
-| **1** | Step 7 — labels, page titles, toggle semantics (F5, F8, F10) | S | **Start here** |
-| 2 | Step 8 — PDF bookmark/link parity for Killer + Keisan (F9) | S–M | |
-| 3 | Step 9 — polish (mobile nav, mini board size; F12 already landed via #64) | M | |
-| 4 | Step 5 — per-type rules dialogs (U3) | L | Last: net-new content; it copies the dialog pattern 6c fixed (`useDialogFocus`) |
+| **1** | Step 8 — PDF bookmark/link parity for Killer + Keisan (F9) | S–M | **Start here** |
+| 2 | Step 9 — polish (mobile nav, mini board size; F12 already landed via #64) | M | |
+| 3 | Step 5 — per-type rules dialogs (U3) | L | Last: net-new content; it copies the dialog pattern 6c fixed (`useDialogFocus`) |
+
+**Step 7 landed 2026-09-04** (`fix/names-titles-semantics`): input labels, per-route titles under
+a `%s · Puzzle Lab` template (brand reconciled), `aria-pressed` toggle groups.
 
 **Step 6 completed 2026-09-04** (`fix/board-rows-dialog-focus`): 6b `role="row"` structure and 6c
 dialog focus — the latter generalized into a shared `useDialogFocus` hook because the dialog

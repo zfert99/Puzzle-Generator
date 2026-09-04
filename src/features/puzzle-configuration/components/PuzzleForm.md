@@ -109,3 +109,10 @@ Two segmented buttons switch `variant`. In **Killer** mode the form hides the gr
    - Draw a large, primary button.
    - If `loading` is true, disable the button and show a spinning SVG icon along with "Generating...".
    - If `loading` is false, make the button clickable and show "Generate PDF".
+
+## Toggle groups announce selection (September 2026, QA F10)
+
+The puzzle-type toggle and the Killer/Keisan size rows are `role="group"`s (labelled "Puzzle
+type" / "Grid size") whose buttons carry `aria-pressed` — selection was previously conveyed by
+background colour alone. The Mystery toggle already had proper `role="switch"`/`aria-checked`
+semantics and is unchanged.

@@ -97,3 +97,9 @@ gridcell behind the backdrop, so keyboard/screen-reader users were never told an
 into the board. The shared `useDialogFocus` hook (see `hooks/useDialogFocus.md`) now puts focus
 on the primary "New puzzle" button when the dialog opens and restores it on close (best-effort —
 leaving to the config view unmounts the board, and a detached opener is a spec'd no-op).
+
+## Config toggles announce selection (September 2026, QA F10)
+
+Same F10 treatment as `PuzzleForm`: the type toggle is a labelled `role="group"` with
+`aria-pressed` buttons, and the Difficulty heading became a `span` + `aria-labelledby` over its
+group (size buttons get theirs from the shared `GridSizeSelector`).

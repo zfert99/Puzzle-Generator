@@ -1,4 +1,8 @@
 import PuzzleForm from '@/features/puzzle-configuration/components/PuzzleForm';
+import type { Metadata } from 'next';
+
+// Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
+export const metadata: Metadata = { title: 'Print packs' };
 
 /**
  * /generate — the print-ready PDF puzzle-book generator (formerly the home page). Moved to

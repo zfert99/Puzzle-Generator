@@ -17,3 +17,5 @@ Render the page shell:
 ```
 
 > Nav, theme toggle, and account controls live in the global [AppHeader](../../features/chrome/AppHeader.md) (5.2); this shell just renders its title + content in a `flex-1` main.
+
+Exports `metadata.title: 'Daily puzzles'` (QA F8) — composed with the layout's `%s · Puzzle Lab` template.

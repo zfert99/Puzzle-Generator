@@ -55,7 +55,12 @@ export const metadata: Metadata = {
   // are the primary anti-index defense for the origin — NOT a Host-based noindex,
   // which would fire on the proxied response too (validation doc §1, §9).
   metadataBase: new URL("https://biscuitlab.net/puzzles"),
-  title: "Puzzle Generator",
+  // Per-page titles via template (QA F8): 6 of 8 routes used to share one document title, which
+  // fails WCAG 2.4.2 (pages need distinguishing titles) and duplicates titles for SEO. The brand
+  // is also reconciled here — the UI has said "Puzzle Lab" since the Phase 5 redesign while the
+  // title still said "Puzzle Generator". Routes export a plain `metadata.title` string and the
+  // template appends the brand; the hub itself gets `default`.
+  title: { default: "Puzzle Lab", template: "%s · Puzzle Lab" },
   description:
     "Daily sudoku, competitive leaderboards, and print-ready puzzle books.",
   // Per-page canonical. Next resolves a "./" canonical against the CURRENT route's

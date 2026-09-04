@@ -1,4 +1,8 @@
 import ArchiveExperience from '@/features/dailies/components/ArchiveExperience';
+import type { Metadata } from 'next';
+
+// Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
+export const metadata: Metadata = { title: 'Archive' };
 
 /**
  * /archive — browse and replay past daily puzzles and view their final leaderboards.
