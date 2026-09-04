@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { SettingsMenu } from '@/features/settings/SettingsMenu';
 import { AccountBadge } from '@/features/auth/components/AccountBadge';
+import { MobileNavMenu } from './MobileNavMenu';
 
 /**
  * The global app header — the design system's grape nav bar: a cream Fredoka wordmark, a
@@ -33,6 +34,8 @@ export function AppHeader() {
           <Link href="/play" className="text-paper/90 hover:underline">Play</Link>
           <Link href="/archive" className="text-paper/90 hover:underline hidden sm:inline">Archive</Link>
           <Link href="/generate" className="text-paper/90 hover:underline hidden md:inline">PDF</Link>
+          {/* Overflow for the links hidden above (QA F11) — see MobileNavMenu. */}
+          <MobileNavMenu />
           <SettingsMenu />
           <AccountBadge />
         </nav>

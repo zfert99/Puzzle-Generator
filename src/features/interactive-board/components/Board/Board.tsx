@@ -131,6 +131,7 @@ export function Board() {
         aria-label="Sudoku board"
         className={styles.board}
         data-variant={variant}
+        data-size={size}
         style={{ '--size': size } as CSSProperties}
         onKeyDown={handleKeyDown}
       >

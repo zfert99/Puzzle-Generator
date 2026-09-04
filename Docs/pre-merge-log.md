@@ -31,6 +31,52 @@ the diff under review.
 
 ---
 
+## 2026-09-04 — mobile nav overflow + mini board caps (QA Step 9, F11 + F13; F12 was already closed)
+
+Branch `fix/polish-step9` on the Step 8 merge. Two of the three findings needed work: a native
+`<details>` overflow menu for the header links hidden on mobile (F11), and per-size board width
+caps (F13). **F12 (`userId` on the public leaderboard) was already closed by #64** — the finding
+predates its fix landing under a different heading; recorded, nothing to do.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **558 passed** (67 files, was 556) — MobileNavMenu disclosure + close-on-navigate |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- **A persistent layout turns a stateless disclosure stateful.** The root layout's header
+  survives client navigations, so a plain `<details>` opened on `/play` would still be open on
+  `/daily`. The panel click-closes it — the only JavaScript in the component, and the only
+  reason it is a client leaf while `AppHeader` stays a Server Component. Rule form: **any
+  open/closed UI living in a persistent layout needs an explicit close on navigation.**
+- **The measurement picked the number.** The 4×4 cap is 320px, not a rounder 340, because at
+  the audit's exact 1280×720 the numpad bottom measured 739px under a 340 cap (19px below the
+  fold) and 719.2px under 320. F13 is a fold complaint; the fold decided.
+
+### Invariants checked (§2)
+
+Chrome + CSS only; no data, auth, keys, or writes. The menu's links are the same two `Link`s the
+inline nav renders, with the basePath applied by Next as everywhere else.
+
+### Verified vs read
+
+Verified live in emulated viewports: at 1280×720 the 4×4 board (320px) and full numpad both sit
+above the fold (numpad bottom 719.2px); at 375×812 the "More ▾" menu discloses Archive + PDF and
+closes on selection. The `sm..md` band (menu shows PDF only) is covered by breakpoint classes +
+read, not driven live.
+
+### Reviews
+
+`/security-review` **not run**: no auth/authz/data-access surface. The hosted `/code-review` has
+**not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-04 — Killer/Keisan PDFs gain bookmarks + links (QA Step 8, F9)
 
 Branch `fix/pdf-parity` on `767af75`. The spec's lift, exactly: `addPageNavigation` (named

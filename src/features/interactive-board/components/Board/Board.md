@@ -159,3 +159,11 @@ navigate by row. Each row of cells is now wrapped in a `role="row"` div carrying
 (`styles.row`), so the cells remain direct CSS-grid items of the board's `repeat(var(--size), 1fr)`
 tracks — the rows exist only in the accessibility tree, and the layout (including the uniform
 cell sizing note above) is untouched.
+
+## Mini boards cap smaller (September 2026, QA F13)
+
+The board's `min(92vw, 520px)` width gave a 4×4 grid 130px cells — so large that on a 1280×720
+desktop the last row and the numpad sat below the fold. `Board.tsx` stamps `data-size`, and the
+CSS caps minis per size (4×4 → 320px, 6×6 → 440px; measured: at 720px viewport height the
+board *and* the full numpad now fit above the fold). Mini cells stay a little larger than
+9×9's ~58px.
