@@ -80,6 +80,17 @@
   display: contents;
 }
 
+/* Mini grids cap smaller (QA F13): 520px across 4 columns is a 130px cell, which pushed the
+   board's last row and the numpad below the fold on a 1280×720 desktop. The caps keep mini cells
+   a little larger than 9×9's ~58px while returning the vertical space. Keyed on the `data-size`
+   attribute Board.tsx stamps alongside its `--size` variable. */
+.board[data-size='4'] {
+  width: min(92vw, 320px);
+}
+.board[data-size='6'] {
+  width: min(92vw, 440px);
+}
+
 .cell {
   position: relative;
   display: flex;

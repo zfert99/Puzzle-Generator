@@ -71,8 +71,10 @@ Steps 2, 3a, 3b, 3c, and 6a are done and merged. The remaining running order fro
 
 | # | Step | Size | Note |
 |---|---|---|---|
-| **1** | Step 9 — polish (mobile nav, mini board size; F12 already landed via #64) | M | **Start here** |
-| 2 | Step 5 — per-type rules dialogs (U3) | L | Last: net-new content; it copies the dialog pattern 6c fixed (`useDialogFocus`) |
+| **1** | Step 5 — per-type rules dialogs (U3) | L | **The last remaining step.** Net-new content; it copies the dialog pattern 6c fixed (`useDialogFocus`) |
+
+**Step 9 landed 2026-09-04** (`fix/polish-step9`): mobile nav overflow menu (native details),
+mini board size caps (measured against the audit's 1280×720 fold); 9b was already closed by #64.
 
 **Step 8 landed 2026-09-04** (`fix/pdf-parity`): Killer/Keisan booklets gained the classic PDFs'
 bookmarks + puzzle↔answer links via shared nav helpers.

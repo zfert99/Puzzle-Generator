@@ -5,9 +5,9 @@
 > Step 3b (calendar bounds, #83), Step 3c (legacy picker collapse, #84), Step 4 (hub reorg, #69),
 > and **all of Step 6** (6a keyboard entry #81; 6b/6c grid rows + dialog focus, #88), plus
 > **Step 7** (labels/titles/toggle semantics, 2026-09-04).
-> **Step 8** (PDF parity, 2026-09-04). **Remaining:** Step 9 (polish),
-> and Step 5 (per-type rules — last; it copies the dialog pattern 6c fixed, now the shared
-> `useDialogFocus` hook). Living document: each **Step**
+> **Step 8** (PDF parity, 2026-09-04), and **Step 9** (polish, 2026-09-04; 9b had already landed
+> via #64). **Remaining:** only Step 5 (per-type rules — it copies the dialog pattern 6c fixed,
+> now the shared `useDialogFocus` hook). Living document: each **Step**
 > below carries its spec *and* its step-log (process / learnings / blockers), appended as that
 > step lands.
 >
@@ -697,7 +697,23 @@ Batch into one PR; none is urgent.
 - **9c** A 4×4 board renders very large on a 1280×720 desktop, pushing its last row and the numpad
   below the fold. Cap the board size for mini grids.
 
-**Step-log:** *(pending)*
+#### Step-log — landed 2026-09-04 (`fix/polish-step9`)
+
+- **9a.** Chose the overflow menu, not the accept-and-document fallback: a native
+  `<details>`/`<summary>` disclosure costs ~40 lines with keyboard/SR semantics built in. The
+  menu is `md:hidden` and each panel link mirrors its inline twin's breakpoint, so exactly one
+  visible path to each page exists at every width. The one JS requirement was non-obvious: the
+  root layout's header persists across client navigations, so the panel click-closes the
+  disclosure or it would still be open on the next page (pinned by a test). Verified in the
+  mobile viewport: menu opens with Archive + PDF, closes on selection.
+- **9b.** Already closed by #64 (2026-08-06, `fix/leaderboard-dto`) — the endpoint ships
+  `isMe`/`isBot` booleans instead of any `userId`; no client reads remained. Nothing to do here
+  beyond recording that the finding predates its fix landing under a different heading.
+- **9c.** `Board.tsx` stamps `data-size`; CSS caps minis (4×4 → 320px, 6×6 → 440px). Measured at
+  exactly the audit's 1280×720: board bottom 595px and the full numpad bottom **719.2px vs the
+  720px fold** — both above it, where before the last board row alone was cut off. 320 rather
+  than a rounder 340 because 340 left the numpad 19px under the fold; the measurement, not the
+  aesthetic, picked the number.
 
 ---
 

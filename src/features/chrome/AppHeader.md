@@ -27,3 +27,9 @@ grape bar (ink bottom border):
 
 Archive joined the nav (`sm+` only — small screens stay uncrowded and reach it via the hub
 card).
+
+## Mobile overflow (September 2026, QA F11)
+
+The `hidden sm:inline` / `hidden md:inline` links (Archive, PDF) used to vanish on small screens
+with no other header path. A `MobileNavMenu` (native details/summary, `md:hidden`) now discloses
+whichever of them is hidden at the current width — see `MobileNavMenu.md`.
