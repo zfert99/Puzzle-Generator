@@ -5,7 +5,7 @@
 > Step 3b (calendar bounds, #83), Step 3c (legacy picker collapse, #84), Step 4 (hub reorg, #69),
 > and **all of Step 6** (6a keyboard entry #81; 6b/6c grid rows + dialog focus, #88), plus
 > **Step 7** (labels/titles/toggle semantics, 2026-09-04).
-> **Remaining:** Step 8 (PDF parity), Step 9 (polish),
+> **Step 8** (PDF parity, 2026-09-04). **Remaining:** Step 9 (polish),
 > and Step 5 (per-type rules — last; it copies the dialog pattern 6c fixed, now the shared
 > `useDialogFocus` hook). Living document: each **Step**
 > below carries its spec *and* its step-log (process / learnings / blockers), appended as that
@@ -669,7 +669,17 @@ one-line note; record the choice and why in the step-log.
 - Test at the structural level (assert `/Outlines` and an `/Annots` count > 0 per variant) rather
   than by snapshotting PDF bytes.
 
-**Step-log:** *(pending)*
+##### Step-log — landed 2026-09-04 (`fix/pdf-parity`)
+
+- **Process.** Exactly the spec's lift: the named-destination+bookmark half (`addPageNavigation`)
+  and the cross-link half (`drawCrossLink`) extracted from `drawPuzzles`; the Killer and Keisan
+  builders call both. Their outlines are flat under "Puzzles"/"Answer Keys" (difficulty is in
+  each page title) — those builders take a flat list, and the parity requirement is the
+  navigation metadata, not classic's difficulty nesting.
+- **Verification.** Structural tests per variant as specced; **proven non-vacuous by running
+  them against the pre-fix service** (both variant tests red, classic's green), per the standing
+  vacuous-assertion rule. Grid placement is unchanged — the nav helper writes no text, and the
+  cross link occupies the blank space below the 400pt grid.
 
 ---
 

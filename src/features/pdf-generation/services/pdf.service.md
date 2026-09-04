@@ -97,6 +97,19 @@ config and the label:
   `generateCalcPDF` builds the Keisan booklet (title "Keisan", one page per puzzle + one answer
   page each). Both reuse the shared `computeCageOutline` geometry.
 
+## Navigation parity (September 2026, QA F9)
+
+Classic booklets carried `/Outlines` (bookmarks) and puzzle↔answer `/Annots` (links) from the
+start, but the Killer and Keisan builders re-created the page loop without them — a parity gap,
+since the roadmap advertises bookmarks and links as a feature of *the PDFs*. The
+destination+bookmark half (`addPageNavigation`) and the blue cross-link half (`drawCrossLink`)
+are now lifted into shared helpers all three builders call. The variant booklets' outlines are
+**flat** under "Puzzles"/"Answer Keys" — difficulty is in each page title — because those
+builders take a flat list rather than classic's difficulty-grouped batches; the navigation
+metadata, not the nesting, is the parity requirement. Tests assert at the structural level
+(`/Outlines` present, `/Annots` count > 0 per variant) rather than snapshotting bytes, and were
+proven non-vacuous against the pre-fix builders (two red, classic green).
+
 ### `drawKillerGrid(puzzle, startX, startY, gridDrawSize, showSolution)`
 
 **Goal:** Draw a Killer board — the same base grid, plus the two Killer-specific marks: dashed
