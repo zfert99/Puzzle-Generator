@@ -37,7 +37,8 @@ no interior thick borders — the flags are gated on `config.hasBoxes`, K0).
 
 Render <div role="gridcell"> with:
   aria-label synthesized ("Given clue 7, row 2, column 4" / "Candidates 2, 5, 8" / "Empty…"),
-  aria-selected, tabIndex (0 if selected OR isEntry, else -1),
+  aria-selected, aria-colindex (1-based; the row wrapper in Board carries aria-rowindex — F6),
+  tabIndex (0 if selected OR isEntry, else -1),
   onClick -> selectCell,
   onFocus -> selectCell if not already selected (so tabbing onto the entry cell
              selects it and digit entry works immediately; the roving effect's own

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Board } from './Board';
@@ -31,6 +31,26 @@ describe('Board', () => {
   it('renders one gridcell per square', () => {
     render(<Board />);
     expect(screen.getAllByRole('gridcell')).toHaveLength(16);
+  });
+
+  /**
+   * F6: the ARIA grid pattern requires role="row" between grid and gridcell — gridcells used to
+   * be direct children of role="grid", so screen readers could not announce row position. The
+   * rows are display:contents, so this asserts the accessibility tree, not layout.
+   */
+  it('structures the grid as rows of gridcells with 1-based indices (F6)', () => {
+    render(<Board />);
+
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(4);
+    rows.forEach((row, i) => {
+      expect(row).toHaveAttribute('aria-rowindex', String(i + 1));
+      expect(within(row).getAllByRole('gridcell')).toHaveLength(4);
+    });
+    expect(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i })).toHaveAttribute(
+      'aria-colindex',
+      '2',
+    );
   });
 
   it('is reachable by keyboard before any selection exists (F4)', async () => {

@@ -123,6 +123,7 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
       aria-label={ariaLabel}
       aria-selected={isSelected}
       aria-readonly={isGiven || undefined}
+      aria-colindex={c + 1}
       data-index={r * size + c}
       data-highlight={isSameNumber ? 'same' : undefined}
       tabIndex={isSelected || isEntry ? 0 : -1}

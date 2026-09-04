@@ -7,6 +7,7 @@ import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
 import { useSavedGame, formatElapsed } from '../store/useSavedGame';
 import { usePuzzle } from '../hooks/usePuzzle';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import { Board } from './Board/Board';
 import { Numpad } from './Controls/Numpad';
 import { GameHeader } from './Header/GameHeader';
@@ -66,6 +67,10 @@ export default function PlayExperience() {
   const tick = useBoardStore((s) => s.tick);
 
   const saved = useSavedGame();
+
+  // F7: the solved dialog must take focus when it appears — without this the active element
+  // stays on a gridcell behind the backdrop and keyboard/screen-reader users are never told.
+  const solvedPrimaryRef = useDialogFocus<HTMLButtonElement>(status === 'solved' && !viewingSolved);
 
   // Deep link from the hub's Continue banner (`/play?resume=1`): jump straight into the saved
   // free-play game instead of the menu. Adjust state during render (once, after mount, when the
@@ -311,7 +316,7 @@ export default function PlayExperience() {
               mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}
             </p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={() => setView('config')} className="btn-primary">
+              <button ref={solvedPrimaryRef} type="button" onClick={() => setView('config')} className="btn-primary">
                 New puzzle
               </button>
               <button

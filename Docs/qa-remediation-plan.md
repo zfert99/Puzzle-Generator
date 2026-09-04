@@ -3,9 +3,10 @@
 > **Status (2026-09-03):** 🚧 In progress — most of the plan has landed. ✅ Done and merged:
 > Step 1 (e2e gate, #70), Step 2 (`bg-pattern` basePath, #85), Step 3a (archive hand-off, #72),
 > Step 3b (calendar bounds, #83), Step 3c (legacy picker collapse, #84), Step 4 (hub reorg, #69),
-> and Step 6a (board keyboard entry, #81). **Remaining:** 6b/6c (grid rows, win-dialog focus),
-> Step 7 (labels/titles/toggle semantics), Step 8 (PDF parity), Step 9 (polish), and Step 5
-> (per-type rules — last, it copies 6c's fixed dialog pattern). Living document: each **Step**
+> and **all of Step 6** (6a keyboard entry #81; 6b/6c grid rows + dialog focus, 2026-09-04).
+> **Remaining:** Step 7 (labels/titles/toggle semantics), Step 8 (PDF parity), Step 9 (polish),
+> and Step 5 (per-type rules — last; it copies the dialog pattern 6c fixed, now the shared
+> `useDialogFocus` hook). Living document: each **Step**
 > below carries its spec *and* its step-log (process / learnings / blockers), appended as that
 > step lands.
 >
@@ -584,6 +585,30 @@ one-line note; record the choice and why in the step-log.
   "operable" are separate assertions; test the keystroke *after* the Tab, not just the focus.
 - 6b (`role="row"` wrappers) and 6c (win-dialog focus) remain **pending** — same board context,
   intentionally left for a follow-up slice to keep this PR at its actual size.
+
+##### Step-log — 6b + 6c landed 2026-09-04 (`fix/board-rows-dialog-focus`) — Step 6 complete
+
+- **6b.** Each row of cells is wrapped in a `role="row"` div with `aria-rowindex`; cells carry
+  `aria-colindex`. The wrappers are `display: contents`, so cells stay direct CSS-grid items —
+  verified live that computed cell size is unchanged (perfect squares) and the row boxes exist
+  only in the accessibility tree.
+- **6c generalized past the spec's one dialog.** The audit named the "Solved!" dialog, but the
+  dialog shell is a *repeated JSX pattern*, so the same defect existed in four places: Play
+  solved, Daily solved, the Daily "Not quite!" review, and Archive practice-solved. A new shared
+  `useDialogFocus(open)` hook (in `interactive-board/hooks/`) now gives all of them — plus
+  `ConfirmModal`, which had the focus-in half already — focus-in on open *and* restore-to-opener
+  on close. Not a full focus trap, deliberately: parity with the ConfirmModal pattern the finding
+  holds up as the reference; a real trap should be the native `<dialog>`, not hand-rolled Tab
+  wrangling.
+- **Verified live end-to-end:** solved a real 4×4 (clicks + real keypresses) — the Solved dialog
+  appeared with `document.activeElement` on "New puzzle"; ConfirmModal's Escape returned focus to
+  the opener button. Unit: a `useDialogFocus` harness pins both halves; `Board.test.tsx` asserts
+  the row structure.
+- **Learning — browser key names are not React test key names.** Driving the real app with key
+  name `"Down"` did nothing (the handler matches `e.key === 'ArrowDown'`), so seven digits landed
+  on one cell and revealed in passing that same-digit entry *toggles the cell clear*. Harmless
+  here, but rule form: **when driving the real browser, send `ArrowDown`/`ArrowLeft`/…, and treat
+  an unexpectedly empty board as your input never arriving, not as an app bug.**
 
 ---
 

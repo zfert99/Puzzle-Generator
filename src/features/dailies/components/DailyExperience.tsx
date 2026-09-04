@@ -11,6 +11,7 @@ import { Numpad } from '@/features/interactive-board/components/Controls/Numpad'
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
+import { useDialogFocus } from '@/features/interactive-board/hooks/useDialogFocus';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
 import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { Sticker } from '@/features/chaos/Sticker';
@@ -155,6 +156,11 @@ export default function DailyExperience() {
     if (!isFull) setReviewDismissed(false);
   }
   const showReview = phase === 'playing' && isFull && status !== 'solved' && !reviewDismissed;
+
+  // F7: both overlay dialogs must take focus when they appear — the active element otherwise
+  // stays on a gridcell behind the backdrop, and typing keeps going into the board.
+  const solvedPrimaryRef = useDialogFocus<HTMLButtonElement>(status === 'solved');
+  const reviewPrimaryRef = useDialogFocus<HTMLButtonElement>(showReview);
 
   // Timer: one interval, active only while actively playing the daily (not on the picker).
   useEffect(() => {
@@ -513,7 +519,7 @@ export default function DailyExperience() {
             </div>
 
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={backToSelect} className="btn-primary">
+              <button ref={solvedPrimaryRef} type="button" onClick={backToSelect} className="btn-primary">
                 Back to difficulties
               </button>
               <Link
@@ -549,7 +555,7 @@ export default function DailyExperience() {
               still incorrect. Find and fix {wrongCount === 1 ? 'it' : 'them'} to solve the daily.
             </p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={() => setReviewDismissed(true)} className="btn-primary">
+              <button ref={reviewPrimaryRef} type="button" onClick={() => setReviewDismissed(true)} className="btn-primary">
                 Keep looking
               </button>
               {!errorsRevealed && (

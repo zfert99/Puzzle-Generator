@@ -8,6 +8,9 @@ erases your saved one" warning on both the `/play` menu and the `/daily` picker.
 The board store holds a single saved slot, so any new game destroys the parked one — that
 needs an explicit confirmation, not a silent overwrite. Design choices that matter:
 
+- **Focus is managed by the shared `useDialogFocus` hook** (September 2026, F7) — this modal's
+  own focus-in behaviour was extracted into it, and the modal gained the restore half: closing
+  now hands focus back to whatever opened it, instead of dropping it on the body.
 - **Focus lands on the safe button** (`Keep playing`) on open, so a stray Enter never destroys
   progress. The destructive action requires a deliberate press.
 - **`onCancel` vs `onDismiss`.** The safe *button* fires `onCancel`, which can do more than

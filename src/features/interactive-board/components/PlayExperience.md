@@ -89,3 +89,11 @@ ladder always visible with expert/extreme GRAYED at non-9×9 sizes (same rule an
 "only available for 9×9 grids" subtext as classic minis), and the variant-specific
 "no givens" blurb removed. The only Killer-specific line left is the extreme
 generation-time hint, shown only when extreme is selected.
+
+## Solved dialog takes focus (September 2026, QA F7)
+
+The solved overlay used to appear without moving focus — `document.activeElement` stayed on a
+gridcell behind the backdrop, so keyboard/screen-reader users were never told and kept typing
+into the board. The shared `useDialogFocus` hook (see `hooks/useDialogFocus.md`) now puts focus
+on the primary "New puzzle" button when the dialog opens and restores it on close (best-effort —
+leaving to the config view unmounts the board, and a detached opener is a spec'd no-op).
