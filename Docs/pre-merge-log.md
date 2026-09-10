@@ -31,6 +31,37 @@ the diff under review.
 
 ---
 
+## 2026-09-10 — Next.js critical-RCE advisories patched (next 16.2.12 → 16.3.4, sharp → 0.35.4)
+
+Branch `fix/next-critical-cves` on `5502712`. Surfaced by PR #93's red `security-audit` gate —
+the diff touched no dependencies; two advisory sets published upstream since main's last CI run:
+**next critical** (GHSA-p293-qw3h-jr36 unauthenticated RCE on Windows-hosted servers;
+GHSA-2xp9-vwfh-vxw4 unauthenticated RCE in the Image Optimization API via AVIF) and **sharp
+high** (libheif, GHSA-rgj7-g3m4-5g8c). Deployment is Vercel/Linux, so the Windows RCE is not
+directly reachable in prod, but the gate is red and the image-optimizer advisory is real.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npm audit --audit-level=high --omit=dev` | exit 1 → **exit 0** (remaining advisories are all moderate, below the gate) |
+| `npm ls sharp` | **one copy, 0.35.4** — the nested-`next` copy dedupes to it (the AGENTS §6 gotcha checked, not assumed); the `overrides` floor bumped to match |
+| `npx vitest run` | **565 passed** (69 files) |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 on next 16.3.4 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings
+
+- `npm install next@x sharp@^y` in one command trips `EOVERRIDE` when an `overrides` entry pins
+  the old range — bump the override floor in `package.json` first, then install.
+
+### Reviews
+
+`/security-review` **not run** (this IS the security fix; no app code changed). The hosted
+`/code-review` has **not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-04 — per-type rules dialogs (QA Step 5, U3) — the plan's final step
 
 Branch `feat/per-type-rules` on the Step 9 merge. Net-new rules copy for the three types (Keisan
