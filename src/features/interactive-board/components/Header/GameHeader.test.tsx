@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameHeader } from './GameHeader';
 import { useBoardStore } from '../../store/useBoardStore';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
@@ -46,6 +46,28 @@ describe('GameHeader rules integration', () => {
     useBoardStore.getState().startNewGame(puzzle(), 'play');
     render(<GameHeader />);
     expect(screen.queryByRole('heading', { name: 'How to play Sudoku' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Ultra-review finding on #92: `autoOpenedFor` must mark the variant as CHECKED on both
+   * outcomes — set only on the auto-open path, a returning player's guard never short-circuits
+   * and the localStorage read + JSON.parse re-runs on every render (once a second, via the
+   * timer tick). This pins "at most one storage read per variant per mount".
+   */
+  it('reads the seen-flags from storage once per mount, not per render', async () => {
+    const { markRulesSeen } = await import('../RulesDialog');
+    markRulesSeen('classic');
+    useBoardStore.getState().startNewGame(puzzle(), 'play');
+
+    const getItem = vi.spyOn(Storage.prototype, 'getItem');
+    const { rerender } = render(<GameHeader />);
+    rerender(<GameHeader />);
+    rerender(<GameHeader />);
+
+    const seenReads = getItem.mock.calls.filter(([key]) => key === 'pl-rules-seen').length;
+    getItem.mockRestore();
+    expect(seenReads).toBe(1);
+    expect(screen.queryByRole('heading', { name: /How to play/ })).not.toBeInTheDocument();
   });
 
   it('never auto-opens on a daily board, but keeps the Rules button available', () => {

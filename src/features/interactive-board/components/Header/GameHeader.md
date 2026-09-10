@@ -48,3 +48,8 @@ role, so the labels were invalid (axe `aria-prohibited-attr`) and some screen re
 them and read "✗ 3" as "ballot X three". The timer is now `role="timer"` (a role that accepts a
 name; its live behaviour stays off), and the mistakes counter uses real text — an `aria-hidden`
 glyph plus visually-hidden " mistakes" — instead of a label.
+
+`autoOpenedFor` marks the variant as **checked**, not as opened (ultra-review finding on #92,
+September 2026): set on both outcomes, so the localStorage read + JSON.parse behind
+`hasSeenRules` happens once per variant per mount instead of on every render of a component
+that re-renders each second on the timer tick. Pinned by a storage-read-count test.

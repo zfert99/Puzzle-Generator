@@ -65,6 +65,7 @@ now say what is true and point at the Phase 9 time-trust gate.
 | 6 | `visibleMonth` desync on Calendar remount (page → play → return): a stale provisional floor could grey the shown month + disable `‹` until a fetch settled (self-healing, but correct only by luck) | `backToBrowse()` re-syncs `visibleMonth` at every browse re-entry — by construction, in the handler (`set-state-in-effect` is banned) |
 | 7 | Three identical difficulty arrays in PlayExperience; the `CALC_DIFFICULTIES` comment described gating done elsewhere | Collapsed to one constant |
 | 8 | MobileNavMenu "▾" landed in the accessible name | `aria-hidden` span |
+| 9 | **From the hosted `/code-review ultra` on #92** (its one finding, folded in here): `autoOpenedFor` was set only on the auto-open path, so a returning player's guard never short-circuited and `hasSeenRules` (localStorage read + JSON.parse) re-ran on every render — once a second via the timer tick | Guard marks the variant as *checked* on both outcomes; storage-read-count test pins one read per mount |
 
 ### Reviewed and deliberately NOT changed
 
