@@ -50,8 +50,14 @@ disabled only once **its own month** is in `loadedMonths`; until then it renders
 ### Why the greyed state is in the accessible name
 
 A disabled day's only visual cue is opacity, and `disabled` alone doesn't distinguish "no puzzles
-that day" from "in the future". Days with no boards carry `"<day> <month> <year> — no puzzles"` as
-their `aria-label`, so the reason survives without colour (WCAG 1.4.1).
+that day" from "in the future". Every disabled case now names its reason in the `aria-label`
+(September 2026 review — the out-of-range cases had been left bare despite this very paragraph):
+`— no puzzles` for a hole in the range, `— in the future` past `maxDate`, `— before the archive
+begins` below `minDate`. Caveat that holds for all three: disabled buttons are unreachable by Tab,
+so the reason is discoverable via screen-reader browse mode, not keyboard focus — accepted.
+
+The **selected day is programmatic, not colour-only** (same review): day buttons carry
+`aria-pressed`, the same toggle pattern as the app's other selection groups (QA F10).
 
 ## Completion markers (`tallies`, optional)
 

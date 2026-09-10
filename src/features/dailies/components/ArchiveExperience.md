@@ -90,6 +90,16 @@ months have been fetched, so an in-flight month isn't greyed out on spec).
   and would look like a free source: they're sign-in-only, so empty-day greying would silently
   become a logged-in feature.
 
+## Returning to browse re-syncs the visible month (September 2026 review, C3)
+
+Every exit from the playing view goes through `backToBrowse()`, which resets `visibleMonth` to
+the selected date's month before showing the calendar. The remounted `Calendar` seeds its view
+from `selectedDate`, but `visibleMonth` was previously only updated by `onMonthChange` — page to
+another month, play a replay, come back, and the two could disagree, making the provisional
+floor (`${visibleMonth}-01`) grey the freshly-shown month and disable `‹` until a fetch settled.
+The sync makes "provisional floor == the month on screen" true by construction; it lives in the
+event handler because `set-state-in-effect` is banned.
+
 ## Completion counts (X/N)
 
 Under the date sits **"Standard 2/3 · Minis 1/3"** for the day being viewed, and each calendar day

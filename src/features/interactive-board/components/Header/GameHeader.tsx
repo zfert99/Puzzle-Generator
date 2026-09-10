@@ -71,16 +71,25 @@ export function GameHeader() {
       </span>
 
       <div className="flex items-center gap-3">
-        <span className="font-mono tabular-nums text-base" aria-live="off" aria-label="Elapsed time">
+        {/* role="timer" (September 2026 review): a bare span maps to the naming-prohibited
+            `generic` role, so its aria-label was invalid and inconsistently honoured. `timer`
+            accepts a name and is the semantically right role; its implicit live behaviour is
+            off, matching the explicit aria-live below. */}
+        <span
+          role="timer"
+          className="font-mono tabular-nums text-base"
+          aria-live="off"
+          aria-label="Elapsed time"
+        >
           {formatTime(elapsedTime)}
         </span>
         {showMistakes && (
-          <span
-            className="text-ink-soft tabular-nums"
-            aria-label={`${mistakes} mistake${mistakes === 1 ? '' : 's'}`}
-            title="Mistakes"
-          >
-            ✗ {mistakes}
+          // Same naming-prohibited fix: real (visually hidden) text instead of an aria-label on
+          // a generic span, so no screen reader falls back to reading "✗" as "ballot X".
+          <span className="text-ink-soft tabular-nums" title="Mistakes">
+            <span aria-hidden="true">✗ </span>
+            {mistakes}
+            <span className="sr-only"> mistake{mistakes === 1 ? '' : 's'}</span>
           </span>
         )}
       </div>

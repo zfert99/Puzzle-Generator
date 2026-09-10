@@ -40,3 +40,11 @@ every playing surface and it already reads the store:
   (`react-hooks/set-state-in-effect` bans the effect form); SSR-safe because the server renders
   the store's initial `configuring` status, so the localStorage read never runs server-side.
   "Seen" persists on dismissal, so a reload mid-dialog shows it again.
+
+## Timer + mistakes naming (September 2026 review)
+
+Both used to put `aria-label` on bare `<span>`s — a span maps to the naming-prohibited `generic`
+role, so the labels were invalid (axe `aria-prohibited-attr`) and some screen readers ignored
+them and read "✗ 3" as "ballot X three". The timer is now `role="timer"` (a role that accepts a
+name; its live behaviour stays off), and the mistakes counter uses real text — an `aria-hidden`
+glyph plus visually-hidden " mistakes" — instead of a label.
