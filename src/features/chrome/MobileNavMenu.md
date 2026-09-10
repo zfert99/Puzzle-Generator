@@ -23,3 +23,6 @@ The root layout's header **persists across client navigations**, so a plain `<de
 on one page would still be open on the next. The panel's click handler closes the disclosure
 before `Link` navigates — which is the only reason this leaf is a client component while
 `AppHeader` stays a Server Component. Pinned by a test.
+
+The "▾" glyph is `aria-hidden` so the disclosure's accessible name is just "More"
+(September 2026 review nit).

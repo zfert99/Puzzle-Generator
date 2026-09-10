@@ -34,8 +34,6 @@ function useHasMounted(): boolean {
  * The timer ticks only while actively on the board (`view === 'playing'`), so stepping back
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
-const KILLER_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
-const CALC_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme']; // expert/extreme are 9×9-only (gated below)
 
 type PlayVariant = 'classic' | 'killer' | 'calc';
 
@@ -203,7 +201,7 @@ export default function PlayExperience() {
             Difficulty
           </span>
           <div role="group" aria-labelledby="play-difficulty-label" className="flex flex-wrap justify-center gap-2">
-            {(isCalc ? CALC_DIFFICULTIES : isKiller ? KILLER_DIFFICULTIES : ALL_DIFFICULTIES).map((d) => {
+            {ALL_DIFFICULTIES.map((d) => {
               const disabled = miniGrid && (d === 'expert' || d === 'extreme');
               return (
                 <button

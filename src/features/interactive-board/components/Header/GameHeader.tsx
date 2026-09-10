@@ -46,11 +46,17 @@ export function GameHeader() {
    * effect form, and this is React's documented alternative. Safe on the server by the `status`
    * guard: SSR renders the store's initial `configuring`, never `playing`, so the localStorage
    * read below only ever runs client-side. "Seen" is persisted on DISMISSAL (in onClose), so a
-   * player who reloads mid-dialog sees it again; `autoOpenedFor` stops a same-session re-fire.
+   * player who reloads mid-dialog sees it again.
+   *
+   * `autoOpenedFor` marks the variant as CHECKED, not as opened (ultra-review finding on #92):
+   * it must be set on both outcomes, or a returning player's render never short-circuits the
+   * guard and `hasSeenRules` — a localStorage read + JSON.parse — re-runs on every render of a
+   * component that re-renders once a second on the timer tick. Setting it first makes the
+   * storage read exactly once per variant per mount.
    */
-  if (mode === 'play' && status === 'playing' && autoOpenedFor !== variant && !rulesOpen && !hasSeenRules(variant)) {
+  if (mode === 'play' && status === 'playing' && autoOpenedFor !== variant) {
     setAutoOpenedFor(variant);
-    setRulesOpen(true);
+    if (!hasSeenRules(variant)) setRulesOpen(true);
   }
   const pause = useBoardStore((s) => s.pause);
   const resume = useBoardStore((s) => s.resume);
@@ -71,16 +77,25 @@ export function GameHeader() {
       </span>
 
       <div className="flex items-center gap-3">
-        <span className="font-mono tabular-nums text-base" aria-live="off" aria-label="Elapsed time">
+        {/* role="timer" (September 2026 review): a bare span maps to the naming-prohibited
+            `generic` role, so its aria-label was invalid and inconsistently honoured. `timer`
+            accepts a name and is the semantically right role; its implicit live behaviour is
+            off, matching the explicit aria-live below. */}
+        <span
+          role="timer"
+          className="font-mono tabular-nums text-base"
+          aria-live="off"
+          aria-label="Elapsed time"
+        >
           {formatTime(elapsedTime)}
         </span>
         {showMistakes && (
-          <span
-            className="text-ink-soft tabular-nums"
-            aria-label={`${mistakes} mistake${mistakes === 1 ? '' : 's'}`}
-            title="Mistakes"
-          >
-            ✗ {mistakes}
+          // Same naming-prohibited fix: real (visually hidden) text instead of an aria-label on
+          // a generic span, so no screen reader falls back to reading "✗" as "ballot X".
+          <span className="text-ink-soft tabular-nums" title="Mistakes">
+            <span aria-hidden="true">✗ </span>
+            {mistakes}
+            <span className="sr-only"> mistake{mistakes === 1 ? '' : 's'}</span>
           </span>
         )}
       </div>

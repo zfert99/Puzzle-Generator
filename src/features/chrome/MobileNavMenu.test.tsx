@@ -9,8 +9,9 @@ describe('MobileNavMenu (QA F11)', () => {
     const user = userEvent.setup();
     render(<MobileNavMenu />);
 
-    expect(screen.getByText('More ▾')).toBeInTheDocument();
-    await user.click(screen.getByText('More ▾'));
+    // The "▾" glyph is aria-hidden (review nit), so the accessible text is just "More".
+    expect(screen.getByText('More')).toBeInTheDocument();
+    await user.click(screen.getByText('More'));
 
     expect(screen.getByRole('link', { name: 'Archive' })).toHaveAttribute('href', '/archive');
     expect(screen.getByRole('link', { name: 'PDF' })).toHaveAttribute('href', '/generate');
@@ -26,7 +27,7 @@ describe('MobileNavMenu (QA F11)', () => {
     const { container } = render(<MobileNavMenu />);
     const details = container.querySelector('details')!;
 
-    await user.click(screen.getByText('More ▾'));
+    await user.click(screen.getByText('More'));
     expect(details).toHaveAttribute('open');
 
     await user.click(screen.getByRole('link', { name: 'PDF' }));

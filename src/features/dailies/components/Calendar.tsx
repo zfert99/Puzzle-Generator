@@ -158,17 +158,26 @@ export function Calendar({
               type="button"
               disabled={disabled}
               onClick={() => onChange(dateIso)}
+              // Which day is selected must be programmatic, not colour-only (September 2026
+              // review): these are toggle-style selection buttons, same aria-pressed pattern as
+              // the app's other toggle groups (QA F10).
+              aria-pressed={selected}
               // The number alone doesn't say what the dot means, and colour must not be the only
               // channel carrying it (WCAG 1.4.1), so the count goes in the accessible name.
               // A greyed-out day must say WHY in its accessible name: opacity alone carries the
               // "nothing here" meaning visually, and `disabled` alone doesn't distinguish "no
-              // puzzles that day" from "in the future" (WCAG 1.4.1).
+              // puzzles that day" from "in the future" — so every disabled case names its reason
+              // (the review found the out-of-range cases had been left bare).
               aria-label={
                 marked
                   ? `${day} ${MONTHS[viewMonth]} ${viewYear} — ${tally.done} of ${tally.total} completed`
                   : !outOfRange && !hasBoards
                     ? `${day} ${MONTHS[viewMonth]} ${viewYear} — no puzzles`
-                    : undefined
+                    : dateIso > maxDate
+                      ? `${day} ${MONTHS[viewMonth]} ${viewYear} — in the future`
+                      : minDate !== undefined && dateIso < minDate
+                        ? `${day} ${MONTHS[viewMonth]} ${viewYear} — before the archive begins`
+                        : undefined
               }
               className={`aspect-square rounded-md text-sm transition-colors flex flex-col items-center justify-center gap-0.5 ${
                 selected

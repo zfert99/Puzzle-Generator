@@ -78,7 +78,8 @@ describe('Calendar availability bounds', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: '10' })).toBeDisabled(); // before the first board
+    // Before the first board — now also named as such (September 2026 review).
+    expect(screen.getByRole('button', { name: '10 July 2026 — before the archive begins' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '11' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '12' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '25' })).toBeEnabled();
@@ -117,6 +118,43 @@ describe('Calendar availability bounds', () => {
 
     expect(screen.getByRole('button', { name: '24' })).toBeEnabled();
     expect(screen.getByRole('button', { name: '11' })).toBeEnabled();
+  });
+
+  /**
+   * September 2026 review: the selected day was styling-only — no programmatic state — and the
+   * out-of-range disabled days carried no reason in their accessible name (only no-board days
+   * did, despite the code comment claiming otherwise).
+   */
+  it('announces the selected day via aria-pressed', () => {
+    render(
+      <Calendar
+        value="2026-07-12"
+        onChange={() => {}}
+        maxDate="2026-07-31"
+        minDate="2026-07-11"
+        availableDays={availableDays}
+        loadedMonths={loadedMonths}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '12', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '11' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('names WHY an out-of-range day is disabled, on both sides of the range', () => {
+    render(
+      <Calendar
+        value="2026-07-12"
+        onChange={() => {}}
+        maxDate="2026-07-20"
+        minDate="2026-07-11"
+        availableDays={availableDays}
+        loadedMonths={loadedMonths}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '10 July 2026 — before the archive begins' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '25 July 2026 — in the future' })).toBeDisabled();
   });
 
   it('stops paging back at the month holding the first board', () => {

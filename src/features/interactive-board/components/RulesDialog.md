@@ -31,3 +31,10 @@ Keyed **per type** (knowing Sudoku says nothing about Killer cages), same best-e
 as `pl-settings`: unreadable storage reads as "not seen", which merely re-shows a dismissible
 dialog. Persisted on **dismissal**, not on open — a player who reloads mid-dialog sees it
 again. The auto-open trigger itself lives in `GameHeader` (see its doc).
+
+## Deterministic initial focus (September 2026 review)
+
+The `autoFocus` attribute was inert: React applies it imperatively at MOUNT — and GameHeader
+mounts this dialog permanently closed — so no `autofocus` attribute ever reached the HTML dialog
+focusing steps, and focus landed inside the modal only by browser fallback. The open effect now
+calls `.focus()` on the primary button explicitly, right after `showModal()`.

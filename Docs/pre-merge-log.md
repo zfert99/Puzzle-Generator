@@ -31,6 +31,90 @@ the diff under review.
 
 ---
 
+## 2026-09-10 — three-agent review of the September resume + fixes (incl. the Step 3b retroactive security pass)
+
+Branch `fix/review-findings` on `5502712`. An agent-side review of the entire resume diff
+(`3137539..main`, 12 merged PRs, +2727/−202) by three parallel reviewers — correctness, security,
+a11y semantics — findings verified by hand before fixing. **This is not the hosted
+`/code-review`**, which remains user-triggered and billed and has not been run.
+
+### Security — statement of record
+
+**Zero findings requiring action** across every reviewed surface. Part A (the resume):
+`/api/daily/days` clean (validation anchored, parameterized, dates-only, no stack leakage;
+`9999-12` → `10000-01-01` is a *valid* Postgres exclusive bound, not a 500); `/api/me/progress`
+refactor clean (ownership in the JOIN, bound change cannot widen the window); `pl-rules-seen`
+clean. **Part B closes the debt recorded in memory since August: the retroactive review of the
+daily-restructure Step 3b surfaces** — `/api/solve` + `recordSolve` (floor axes come off the DB
+row, so a mismatched-profile attack is structurally impossible; legacy keys all resolve to real
+profile floors; the atomic conditional UPDATE is replay/race-safe), `/api/daily/slots`,
+`getPersonalBests` (BOLA-scoped, no request-supplied userId anywhere), and `/api/daily/start` —
+**all clean**. One informational note, fixed here as doc drift: the start stamp is written but
+never read at submit; the route's doc claimed server-clock timing the code doesn't do. The docs
+now say what is true and point at the Phase 9 time-trust gate.
+
+### Findings fixed in this PR
+
+| # | Finding (verified) | Fix |
+|---|---|---|
+| 1 | `attempts.service.test.ts` still passed the retired inclusive bound (`'2026-08-31'` ×3) — passes only because the DB stub never evaluates the filter; documents the wrong contract | Bounds → `'2026-09-01'` |
+| 2 | GameHeader timer + mistakes: `aria-label` on bare spans — `generic` is a naming-prohibited role (axe `aria-prohibited-attr`, serious); some SRs read "✗ 3" literally | Timer → `role="timer"`; mistakes → aria-hidden glyph + visually-hidden text |
+| 3 | Calendar's selected day was styling-only — no programmatic state | `aria-pressed` on day buttons (+ tests) |
+| 4 | Calendar out-of-range days had no "why" in their name, despite the code comment claiming all disabled cases did | `— in the future` / `— before the archive begins` labels (+ tests) |
+| 5 | RulesDialog `autoFocus` inert: React applies it at MOUNT and the dialog mounts closed, so no `autofocus` attribute ever reached the dialog focusing steps — focus landed inside only by browser fallback | Explicit `.focus()` on the primary button after `showModal()` |
+| 6 | `visibleMonth` desync on Calendar remount (page → play → return): a stale provisional floor could grey the shown month + disable `‹` until a fetch settled (self-healing, but correct only by luck) | `backToBrowse()` re-syncs `visibleMonth` at every browse re-entry — by construction, in the handler (`set-state-in-effect` is banned) |
+| 7 | Three identical difficulty arrays in PlayExperience; the `CALC_DIFFICULTIES` comment described gating done elsewhere | Collapsed to one constant |
+| 8 | MobileNavMenu "▾" landed in the accessible name | `aria-hidden` span |
+| 9 | **From the hosted `/code-review ultra` on #92** (its one finding, folded in here): `autoOpenedFor` was set only on the auto-open path, so a returning player's guard never short-circuited and `hasSeenRules` (localStorage read + JSON.parse) re-ran on every render — once a second via the timer tick | Guard marks the variant as *checked* on both outcomes; storage-read-count test pins one read per mount |
+
+### Reviewed and deliberately NOT changed
+
+- `aria-modal="true"` on non-inert overlays: the accepted ConfirmModal-parity posture; every
+  overlay now has focus-in + restore, no regression. A real trap = the native `<dialog>` (the
+  RulesDialog already uses it).
+- Boardless archive day keeps the previous date's picker ("as before" by design; empty days are
+  now mostly unreachable via the calendar greying; wrong-board selections return empty boards,
+  no wrong data).
+- `boundsUnavailable` is sticky per session after one failed fetch: matches the stated
+  degrade-don't-lock intent; a later success restores the floor via `firstDate`.
+- Cell aria-label bakes "row N, column N" while rows/cells carry `aria-rowindex`/`colindex` —
+  double announcement is verbosity, not wrong data.
+- Grid structure, `display:contents` rows, CageOverlay placement, MobileNavMenu breakpoints
+  (exactly one path per width), LeaderboardView select batching, PDF destination namespaces
+  (one document per builder — collision impossible), GameHeader render-phase trigger
+  (StrictMode + SSR safe by two independent gates): all verified clean.
+- Deferred as separate slices (scope rule): extract the triplicated solved-dialog shell into a
+  `SolvedDialog`; reuse `GridSizeSelector` for PuzzleForm's killer/calc size rows.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **567 passed** (69 files, was 565) — Calendar aria-pressed + range-label specs |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Lessons
+
+- **A stub that never evaluates a filter cannot defend a bound's semantics.** The exclusive-bound
+  migration updated the route test but not the service test, and nothing failed — the stale
+  fixtures survived as documentation of the wrong contract. When a parameter's *meaning* changes,
+  grep every call site including tests, not just the ones a failure points at.
+- **`aria-label` does not work on everything** — `generic` (bare span/div) is naming-prohibited;
+  labels belong on elements with naming-capable roles, or as real (visually hidden) text.
+- **React's `autoFocus` is not the HTML attribute.** It is an imperative mount-time `.focus()`;
+  on anything rendered hidden-then-shown (a closed `<dialog>`, a collapsed panel), it does
+  nothing — focus explicitly at show time.
+
+### Reviews
+
+`/security-review`-equivalent pass: **run** (the dedicated security agent above — its Part B
+serves as the recorded retroactive pass for Step 3b, closing that August debt). The hosted
+`/code-review` has **not** been run — user-triggered and billed.
+
+---
+
 ## 2026-09-10 — Next.js critical-RCE advisories patched (next 16.2.12 → 16.3.4, sharp → 0.35.4)
 
 Branch `fix/next-critical-cves` on `5502712`. Surfaced by PR #93's red `security-audit` gate —

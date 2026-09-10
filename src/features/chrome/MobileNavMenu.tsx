@@ -25,7 +25,7 @@ export function MobileNavMenu() {
   return (
     <details ref={detailsRef} className="relative md:hidden">
       <summary className="list-none cursor-pointer select-none text-paper/90 hover:underline">
-        More ▾
+        More <span aria-hidden="true">▾</span>
       </summary>
       <div
         className="absolute right-0 mt-2 z-50 flex flex-col gap-2 rounded-lg border-2 border-ink bg-grape p-3 shadow-chunky min-w-28"

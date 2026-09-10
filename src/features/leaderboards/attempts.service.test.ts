@@ -113,7 +113,7 @@ describe('getDailyProgress', () => {
     ];
     const { db, captured } = progressStub(rows);
 
-    const progress = await getDailyProgress(db, 'user-A', '2026-08-01', '2026-08-31');
+    const progress = await getDailyProgress(db, 'user-A', '2026-08-01', '2026-09-01');
 
     // The denominator belongs to the DAY, so an untouched day must still come back (0/N), which
     // is exactly what the LEFT JOIN buys — a WHERE-scoped inner join would drop it entirely.
@@ -130,9 +130,9 @@ describe('getDailyProgress', () => {
    */
   it('scopes the join to the caller: a different userId produces a different condition', async () => {
     const a = progressStub([]);
-    await getDailyProgress(a.db, 'user-A', '2026-08-01', '2026-08-31');
+    await getDailyProgress(a.db, 'user-A', '2026-08-01', '2026-09-01');
     const b = progressStub([]);
-    await getDailyProgress(b.db, 'user-B', '2026-08-01', '2026-08-31');
+    await getDailyProgress(b.db, 'user-B', '2026-08-01', '2026-09-01');
 
     expect(a.captured.joinOn).toBeDefined();
     expect(b.captured.joinOn).not.toStrictEqual(a.captured.joinOn);

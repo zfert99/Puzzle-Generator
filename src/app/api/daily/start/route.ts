@@ -11,8 +11,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * POST /api/daily/start — records the server-side start time for today's daily so a later
- * solve can be timed by the server clock (anti-cheat, 4.4). Sign-in required (ranked play).
+ * POST /api/daily/start — stamps the server-side start time for today's daily and enforces the
+ * one-ranked-attempt lock (4.4). Sign-in required (ranked play).
+ *
+ * **The stamp is recorded but not yet read at submit** (September 2026 review): `recordSolve`
+ * ranks on the client's in-game timer per the documented solve-time posture
+ * (`Docs/research/daily-solve-time-trust.md`), so nothing currently compares `timeMs` against
+ * wall-clock-since-stamp. The stamp exists so the Phase 9 time-trust gate (checks A + B in that
+ * research doc) has a server-side anchor to build on — this doc used to claim the solve "can be
+ * timed by the server clock", which overstated what the code does.
  *
  * Idempotent: starting again does not reset the clock. Body: `{ difficulty }`.
  */

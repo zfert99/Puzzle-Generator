@@ -76,6 +76,7 @@ export default function ArchiveExperience() {
    */
   const [slotsLoadedFor, setSlotsLoadedFor] = useState<string | null>(null);
   const [view, setView] = useState<'browse' | 'playing'>('browse');
+
   const [playedDate, setPlayedDate] = useState('');
   const [warnOpen, setWarnOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => todayIso.slice(0, 7));
@@ -88,6 +89,19 @@ export default function ArchiveExperience() {
   // True once a request has SETTLED without yielding a floor — it failed, or the archive is empty.
   // Distinguishing that from "still waiting" is what stops a broken endpoint freezing the calendar.
   const [boundsUnavailable, setBoundsUnavailable] = useState(false);
+  /**
+   * Every return to browse goes through here so `visibleMonth` is re-synced to the selected
+   * date's month (September 2026 review, C3): the remounted `Calendar` seeds its view from
+   * `selectedDate`, but `visibleMonth` was only ever updated by `onMonthChange` — after paging
+   * to another month and then playing, the two could disagree, and a provisional floor derived
+   * from the stale month would grey the freshly-shown month and disable "‹" until a fetch
+   * settled. Syncing at the transition keeps "provisional floor == the month on screen" true by
+   * construction. (Done in the event handler, not an effect — `set-state-in-effect` is banned.)
+   */
+  const backToBrowse = () => {
+    setVisibleMonth(selectedDate.slice(0, 7));
+    setView('browse');
+  };
 
   /**
    * Reconcile the selected board against the day actually being viewed. Only 3 of the 5 standard
@@ -245,7 +259,7 @@ export default function ArchiveExperience() {
         <div className="w-full max-w-[520px] mx-auto mb-2 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setView('browse')}
+            onClick={() => backToBrowse()}
             className="text-sm text-ink-soft hover:text-ink hover:underline"
           >
             ← Archive
@@ -286,7 +300,7 @@ export default function ArchiveExperience() {
                 {useBoardStore.getState().mistakes === 1 ? '' : 's'}
               </p>
               <p className="text-xs text-ink-soft mb-6">Practice replay — not ranked.</p>
-              <button ref={solvedPrimaryRef} type="button" onClick={() => setView('browse')} className="btn-primary">
+              <button ref={solvedPrimaryRef} type="button" onClick={() => backToBrowse()} className="btn-primary">
                 Back to archive
               </button>
             </div>

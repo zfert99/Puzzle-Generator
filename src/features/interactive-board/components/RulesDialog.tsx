@@ -119,12 +119,21 @@ export function RulesDialog({
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const primaryRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    else if (!open && dialog.open) dialog.close();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      // Deterministic initial focus (September 2026 review): React's `autoFocus` runs `.focus()`
+      // at MOUNT — and this dialog mounts closed — so it never renders an `autofocus` attribute
+      // for the HTML dialog focusing steps to find. Focus landed inside the modal only by
+      // browser fallback; this makes the primary action the target explicitly.
+      primaryRef.current?.focus();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
   }, [open]);
 
   return (
@@ -151,7 +160,7 @@ export function RulesDialog({
         <RulesBody variant={variant} />
       </div>
       <div className="mt-5 text-center">
-        <button type="button" autoFocus onClick={onClose} className="btn-primary">
+        <button ref={primaryRef} type="button" onClick={onClose} className="btn-primary">
           Got it
         </button>
       </div>
