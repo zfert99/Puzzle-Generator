@@ -1,6 +1,11 @@
 # Performance Audit & Plan
 
-> **Status:** 📋 Analysis (nothing implemented) · **Date:** July 2026
+> **Status:** ✅ **P1 + P2 shipped** (July 2026: Speed Insights + Analytics mounted; `Cell` is
+> `React.memo`'d); **P3–P6** deliberately wait on real-user data · **Date:** July 2026 (analysis)
+> **Kept live, not archived (September 2026):**
+> [`Cell.tsx`](../src/features/interactive-board/components/Board/Cell.tsx) and
+> [`bot-identity.ts`](../src/features/leaderboards/bot-identity.ts) cite this audit for the memo
+> boundary and for keeping Drizzle out of the client bundle, so per AGENTS.md §7 it stays in the root.
 > **Triggered by:** [nextjs-performance.md](research/nextjs-performance.md) (Core Web Vitals,
 > RSC boundaries, INP/grid tuning, caching, Neon/Vercel, monitoring), read against the codebase.
 

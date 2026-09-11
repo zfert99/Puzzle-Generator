@@ -7,7 +7,7 @@
 
 One-page summary of the regression that broke puzzle generation, the daily, and PDF
 export after the move to `biscuitlab.net/puzzles`, and how it was fixed. The deep
-write-up is [multi-zone-basepath-fetch-fix.md](../research/multi-zone-basepath-fetch-fix.md);
+write-up is [multi-zone-basepath-fetch-fix.md](multi-zone-basepath-fetch-fix.md);
 this is the executive version.
 
 ## What was broken
@@ -103,6 +103,6 @@ explanation stands as the working root cause rather than a log-confirmed one.
 
 ## Related docs
 
-- Deep write-up: [research/multi-zone-basepath-fetch-fix.md](../research/multi-zone-basepath-fetch-fix.md)
+- Deep write-up: [multi-zone-basepath-fetch-fix.md](multi-zone-basepath-fetch-fix.md)
 - Migration plan (regression folded into §3/§4): [multi-zone-migration-plan.md](../multi-zone-migration-plan.md)
 - Roadmap entry: [roadmap.md](../roadmap.md) (§ "Multi-zone cutover regression")

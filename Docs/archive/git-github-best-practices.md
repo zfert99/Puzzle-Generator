@@ -1,5 +1,10 @@
 # Architecting Excellence in Version Control: An Exhaustive Analysis of Git and GitHub Best Practices
 
+> **📦 Archived 2026-09-11 — superseded by
+> [git-github-best-practices-solo-multi-repo.md](../research/git-github-best-practices-solo-multi-repo.md).**
+> This is the earlier, organisation-scale survey; the successor re-derives the same ground for a solo
+> multi-repo developer and is the one to read. Neither doc was cited anywhere. Not rewritten.
+
 Modern software engineering relies on version control systems not merely as historical archives, but as the operational backbone for continuous integration, continuous delivery (CI/CD), security enforcement, and global team collaboration. As organizations scale, the complexity of managing source code grows exponentially. Without rigid standards, repositories devolve into disjointed histories plagued by merge conflicts, deployment bottlenecks, and severe security vulnerabilities. This comprehensive analysis evaluates the architectural best practices for Git and GitHub, covering branching topologies, commit anatomy, code review heuristics, conflict resolution, repository governance, large-scale repository management, and DevSecOps integrations.
 
 ## Version Control Topologies and Branching Architecture

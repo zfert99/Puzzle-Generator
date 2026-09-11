@@ -1,5 +1,10 @@
 # Multi-zone cutover regression — client `fetch()` did not carry the basePath
 
+> **📦 Archived 2026-09-11 — closed incident record (fixed 2026-07-30).** The rule it produced —
+> every client `fetch()` goes through `apiPath()` — lives in the code and in `src/lib/base-path.md`,
+> which still cites this write-up. Its executive summary was archived earlier as
+> [multi-zone-cutover-fix-summary.md](multi-zone-cutover-fix-summary.md). Not rewritten.
+
 **Date:** 2026-07-30
 **Status:** ✅ Fixed and verified (dev smoke + full test suite).
 **Scope:** Puzzle generation (`/play`), the daily (`/daily`), PDF export (`/generate`),

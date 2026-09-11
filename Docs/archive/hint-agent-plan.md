@@ -1,5 +1,11 @@
 # Hint Agent — MCP server, agent, eval harness
 
+> **📦 Archived 2026-09-11 — completed build, kept for the record.** Everything below shipped in
+> #78 and the writeup is published; the one follow-up it names (a singles-free state population) is
+> not scheduled. The live pointer is the "Hint agent" entry in [roadmap.md](../roadmap.md). Nothing
+> below was rewritten; the single relative link to `deductions.md` was re-pathed because the file's
+> depth changed.
+>
 > **Status (September 2, 2026):** ✅ Complete. All four pieces shipped in
 > [#78](https://github.com/zfert99/Puzzle-Generator/pull/78); the full 52-state eval ran live on
 > `claude-opus-5` (raw report under `src/features/hint-agent/eval-results/`); the writeup is
@@ -26,7 +32,7 @@ The scope was cut deliberately to one weekend and four pieces:
 Explicit cut list: puzzle generation through tools, session state, move application,
 before/after intervention, any UI, public demo.
 
-Related: [`deductions.md`](../src/features/engine/deductions.md) (the enumerator that made
+Related: [`deductions.md`](../../src/features/engine/deductions.md) (the enumerator that made
 this possible), the per-file docs under `src/features/hint-agent/*.md`, and AGENTS.md's
 Build Log rule for where the writeup publishes.
 

@@ -1,5 +1,10 @@
 # Validating the Puzzle Lab Subdomain→Subfolder Multi-Zone Migration (Next.js 16.2.12 on Vercel)
 
+> **📦 Archived 2026-09-11 — pre-cutover validation of a migration that has since been applied.**
+> [multi-zone-migration-plan.md](../multi-zone-migration-plan.md) was corrected against this review
+> before the July 2026 cutover and still cites it. Its findings are folded in; the doc is kept as the
+> record. Not rewritten.
+
 ## TL;DR
 
 - **The single most dangerous item in the plan — a `Host`-header-based `X-Robots-Tag: noindex` on the Puzzle Lab origin — is a self-defeating trap and must NOT be shipped as designed.** When Vercel proxies `biscuitlab.net/puzzles/*` to an external origin deployment, the upstream receives its OWN hostname in both `Host` and `x-forwarded-host` (the public hub host is not reliably preserved), so a Host-based noindex would also fire on the proxied response and deindex the public URLs. Use a canonical tag as the primary mitigation, rely on Vercel's automatic noindex on `.vercel.app`, and gate any residual noindex on a custom header you inject at the hub — never on `Host`.

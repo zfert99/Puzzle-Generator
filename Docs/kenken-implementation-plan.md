@@ -11,7 +11,7 @@
 > [calcudoku/keisan walkthrough](archive/keisan-walkthrough.md).
 > **Research:** [kenken-engine-reference.md](research/kenken-engine-reference.md) ·
 > [puzzle-grid-size-landscape.md](research/puzzle-grid-size-landscape.md) ·
-> [kenken-plan-review.md](research/kenken-plan-review.md) (external review of THIS plan —
+> [kenken-plan-review.md](archive/kenken-plan-review.md) (external review of THIS plan —
 > verdict: GREEN) · [kenken-difficulty-calibration.md](research/kenken-difficulty-calibration.md)
 > (keen.c/KSudoku/billabob difficulty levers — drove the difficulty rebalance) ·
 > [keisan-difficulty-levers.md](research/keisan-difficulty-levers.md) (per-size lever tables) ·

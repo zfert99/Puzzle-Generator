@@ -65,7 +65,7 @@ scheduled run. A transient delivery failure — possible for one night, but it d
 ## Why this was hard to see coming
 
 Re-enabling Deployment Protection was **mitigation #1** of
-[multi-zone-migration-safety-review.md](multi-zone-migration-safety-review.md) — a deliberate,
+[multi-zone-migration-safety-review.md](../archive/multi-zone-migration-safety-review.md) — a deliberate,
 correct security improvement, and it was reported as a win the day before the outage. Nothing in
 that review connected it to the cron, and the hub's `next.config.ts` comment explicitly notes the
 generated alias "stays locked" as the intended outcome. The dependency ran the other way: locking
