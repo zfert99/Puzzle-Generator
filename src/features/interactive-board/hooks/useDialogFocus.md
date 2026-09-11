@@ -4,13 +4,17 @@ Focus management for the app's inline dialogs — QA finding **F7** (September 2
 
 ## Why it exists
 
-The dialog shell here is a repeated JSX pattern, not a component: the "Solved!" dialogs
-(`PlayExperience`, `DailyExperience`, `ArchiveExperience`), the daily "Not quite!" review, and
-the new-game `ConfirmModal` each re-create the backdrop/panel markup. Every one of them except
-`ConfirmModal` left `document.activeElement` sitting on a board gridcell *behind* the backdrop —
-so a keyboard or screen-reader user was never told a dialog appeared, and keystrokes kept going
-into the board. `ConfirmModal` had the focus-in half right from the start; this hook extracts
-that behaviour (plus the restore half it lacked) so every dialog gets both from one place.
+The dialog shell here was originally a repeated JSX pattern, not a component: the "Solved!"
+dialogs (`PlayExperience`, `DailyExperience`, `ArchiveExperience`), the daily "Not quite!"
+review, and the new-game `ConfirmModal` each re-created the backdrop/panel markup. Every one of
+them except `ConfirmModal` left `document.activeElement` sitting on a board gridcell *behind*
+the backdrop — so a keyboard or screen-reader user was never told a dialog appeared, and
+keystrokes kept going into the board. `ConfirmModal` had the focus-in half right from the
+start; this hook extracts that behaviour (plus the restore half it lacked) so every dialog gets
+both from one place. The three solved shells have since been folded into the shared
+[SolvedDialog](../components/SolvedDialog.md) component, which calls this hook itself; the hook
+remains the shared wiring for the dialogs that still own their own markup (`ConfirmModal`, the
+daily review dialog).
 
 ## What it does
 
@@ -32,4 +36,6 @@ effect on `open`:
   reference. If a real trap is ever wanted, prefer the native `<dialog>` element over
   hand-rolled Tab wrangling.
 - Callers pass `open` and attach the ref, so the hook runs unconditionally at the top of
-  components whose dialogs render conditionally — no extracted dialog component required.
+  components whose dialogs render conditionally. `SolvedDialog` instead passes a constant
+  `true` — it is itself conditionally mounted, so the mount/unmount cycle drives the same
+  focus-in / restore pair.

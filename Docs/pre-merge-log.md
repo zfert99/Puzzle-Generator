@@ -31,6 +31,47 @@ the diff under review.
 
 ---
 
+## 2026-09-11 — SolvedDialog extraction (September review quality item 1)
+
+Branch `claude/elastic-bhabha-4aa78a` on `b00f105`. Slice: 9 files touched + 3 new,
++115/−132 tracked plus ~250 new lines (component, test, mirror doc) — well under 400 LOC.
+
+The triplicated solved-dialog shell (Play / Daily / Archive — each hand-rolling the fixed
+backdrop, panel, `SolvedStamp`, time·mistakes pluralization, and its own `useDialogFocus`
+wiring) is now one `SolvedDialog` component next to `ConfirmModal`. The primary-action ref
+never leaves the component, so a new caller cannot re-create the F7 missing-focus bug; a
+native-`<dialog>` upgrade is now a one-place change. Deliberately no `open` prop: callers
+mount it only when solved (confetti fires on mount; mount/unmount drives the focus hook with a
+constant `true`). The daily "Not quite!" review and `ConfirmModal` stay on their own markup by
+design (no stamp/stats content).
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **573 passed** (70 files) — 5 new `SolvedDialog` specs incl. mount-focus/unmount-restore through the component |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 (build with a placeholder `DATABASE_URL` — the worktree has no `.env.local`) |
+| markdownlint (full sweep) | exit 0 |
+
+- **Findings:** none — refactor only; no solver, data-access, auth, slot-key, or migration
+  surface touched, so `/security-review` not required and the §2 invariants don't apply. Only
+  deliberate behavioral deltas: stats-line margins unified (daily `mb-3`→`mb-2`), and the
+  daily's local `formatTime` replaced by the identical `formatElapsed` in the dialog.
+- **Docs:** mirrored `.md` for all 4 touched + 1 new source file; reverse sweep on the
+  "repeated JSX pattern" claim updated `useDialogFocus` (ts + md) and `SolvedStamp.md`;
+  dated step-logs (qa-remediation-plan, project-status, this log's 2026-09-10 deferred list)
+  left as historical record.
+- **Verified vs read:** unit-tested focus contract, pluralization, children/secondary slots;
+  build/type gates run. **Verified live** (worktree dev server on an auto-assigned port —
+  port 3000 was held by another session's server on the main checkout, so `puzzles-dev` got
+  `autoPort: true`): solved a real 4×4 easy; the play `SolvedDialog` appeared with
+  `role="dialog"` name "Solved", the stamp, "0:17 · 0 mistakes", and
+  `document.activeElement` on "New puzzle". Daily/archive dialogs verified by test + read
+  only (no `.env.local` in the worktree, so DB-backed surfaces 500) — owner eyeball still
+  worthwhile there.
+- **`/code-review` has NOT been run** — it is user-triggered and billed; an agent cannot
+  launch it.
+
+---
+
 ## 2026-09-10 — three-agent review of the September resume + fixes (incl. the Step 3b retroactive security pass)
 
 Branch `fix/review-findings` on `5502712`. An agent-side review of the entire resume diff

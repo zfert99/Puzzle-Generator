@@ -152,6 +152,8 @@ via the hub card).
 
 ## Solved dialog takes focus (September 2026, QA F7)
 
-The practice-solved overlay moves focus to "Back to archive" on open and restores on close, via
-the shared `useDialogFocus` hook (`interactive-board/hooks/useDialogFocus.md`) — same F7 fix as
-the play and daily surfaces.
+The practice-solved overlay is the shared
+[SolvedDialog](../../interactive-board/components/SolvedDialog.md) (with the "Practice replay —
+not ranked." note as its children), which moves focus to "Back to archive" on open and restores
+it on close — the same F7 wiring as the play and daily surfaces, now carried by the component
+rather than re-wired here.
