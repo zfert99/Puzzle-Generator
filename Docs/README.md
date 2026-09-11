@@ -64,7 +64,7 @@ table below, and both are yours to fix by hand.
 | [project-status.md](project-status.md) | **START HERE** — cold-start handoff: state, next horizons, traps that already cost time | 🚧 Living |
 | [roadmap.md](roadmap.md) | The plan of record — phases, tracks, backlog | 🚧 Living |
 | [pre-merge-log.md](pre-merge-log.md) | One entry per pre-merge run + **known flaky tests** + **standing lessons**. Runs older than the current month rotate to `archive/pre-merge-log-<yyyy-mm>.md` | 🚧 Living |
-| [kakuro-implementation-plan.md](kakuro-implementation-plan.md) | Phase 10 — Kakuro (Cross Sums): reuse map, D#/G# decisions, slices X0–X7 with step-logs | 📋 Planned (Sept 2026) |
+| [kakuro-implementation-plan.md](kakuro-implementation-plan.md) | Phase 10 — Kakuro (Cross Sums): reuse map, D#/G# decisions, slices V1–V3 → E1–E5 → R1 (visual first, engine underneath) with step-logs | 📋 Planned (Sept 2026) |
 | [kakuro-log.md](kakuro-log.md) | Kakuro running log — decisions, research gaps, bugs, learnings, measurements (newest first) | 🚧 Living |
 | [daily-redesign-plan.md](daily-redesign-plan.md) | Daily restructure (type-as-slot) — spec + step-log per step; `dailies.service.ts` and `daily-row.ts` cite it | 🚧 Step 4 polish left |
 | [social-progression-economy-plan.md](social-progression-economy-plan.md) | Phase 9 — crumbs, achievements, streaks, shop, social | 📋 Planned |

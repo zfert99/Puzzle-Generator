@@ -79,7 +79,7 @@ mobile nav overflow, mini board caps; 9b had already landed via #64) and Step 5
 | Option | What it is |
 |---|---|
 | Phase 7 — Strategy Courses | The "crown jewel" (`strategy-courses-implementation-plan.md`; `stash@{0}` holds a roadmap-section wip) |
-| Puzzle type 4 — Kakuro (Phase 10) | **Plan written 2026-09-11** (`kakuro-implementation-plan.md` + `kakuro-log.md`); research in `research/kakuro.md`. First step is X0, a yield/timing spike — no production code yet. Open owner calls: D4 (daily minis at 4 types), D5 (top-tier mechanism) |
+| Puzzle type 4 — Kakuro (Phase 10) | **Plan written 2026-09-11** (`kakuro-implementation-plan.md` + `kakuro-log.md`); research in `research/kakuro.md`. Build order is **visual first**: V1/V2 put a hand-baked Kakuro on the real board, the engine lands underneath it afterwards (yield spike = E3). No production code yet. Owner calls still open: D4 (daily mini slot count), confirm D5′ (chain top tiers) |
 | Solo-dev QA hardening | Roadmap backlog: branch protection, AI reviewer, axe/Lighthouse CI, property/mutation tests |
 | Phase 9 — Social & Economy | Gated on the solve-time-trust work for clock-based rules |
 

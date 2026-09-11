@@ -607,11 +607,13 @@ Raising the floors is **not** a substitute and buys nothing; the research doc ex
 > **Status:** 📋 Planned — plan written 2026-09-11, nothing built. Full plan:
 > [kakuro-implementation-plan.md](kakuro-implementation-plan.md) · running log (decisions, research
 > gaps, bugs, learnings, measurements): [kakuro-log.md](kakuro-log.md)
-> **Research:** [kakuro.md](research/kakuro.md)
+> **Research:** [kakuro.md](research/kakuro.md) ·
+> [kakuro-research-gaps-findings.md](research/kakuro-research-gaps-findings.md) (answers to nine of
+> the plan's research gaps — flipped the top tier from bounded T&E to chains)
 > **Estimated effort:** Large (a genuinely new engine — no house constraint to reuse; generation is
 > the hard part)
 > **Prerequisite:** Phase 8 (the daily's type-as-slot registry, the two-factor scorer pattern, the
-> bounded-recursion top-tier pattern this plan proposes to transplant)
+> two-factor scorer and generate-and-grade pipeline patterns)
 
 A **fourth puzzle type**, not a cage variant: a grid of black clue cells and white cells where each
 maximal horizontal/vertical *run* must sum to its clue with no repeated digit — no row, column, or
@@ -619,12 +621,18 @@ box constraint at all, and digits are 1–9 at every size. Solution-first genera
 black-cell layout → digit fill → derive clues → counting-solver uniqueness) because
 finding-another-solution is ASP-complete and naive generation is empirically hopeless. Difficulty
 is calibrated *within* a size from a technique classifier (unique combinations → singles →
-pairs/triples + min/max → surface sums → a bounded top tier), never from parameters. Slices
-**X0–X7**: a **measurement spike first** (yield + verify time at 6×6/9×9 — the K7 lesson) → types +
-combination table (reusing the Killer distinct-digit table) → exact solver + uniqueness → layout +
-fill → logical solver + instrumentation → measured difficulty bands + benchmark → surfaces
-(board with blocked/clue cells and a 1–9 numpad, PDF, hub, APIs) → the daily as the fourth type,
+pairs/triples + min/max → whip chains by depth, surface sums as an accelerator — every tier
+logic-only, no guessing), never from parameters. Slices run
+**visual first, then the engine underneath** (owner, for learning): a hand-baked Kakuro on the
+real board and in the PDF (V1–V3) → exact solver + uniqueness driving the Hint button (E1) →
+logical solver + classifier driving the difficulty badge (E2) → the **yield measurement spike**
+before any generator code (E3 — the K7 lesson) → layout + fill behind "New puzzle" (E4) →
+measured difficulty bands, pickers and hub card live (E5) → the daily as the fourth type (R1),
 which forces the daily plan's "3 mini slots vs 4 types" open question (decision D4 in the log).
+**Sizes are Kakuro's own** (owner rule D11, September 2026: every type gets its own mini /
+standard / large instead of the inherited 4/6/9) — a mini of 6×6 or 7×7 picked by measurement,
+9×9 standard, 13×13 large; the daily registry goes per-type so Classic/Killer/Keisan can be
+revisited under the same rule later.
 
 ---
 
@@ -777,8 +785,9 @@ its own engine module rather than an extension of `killer/`. Headlines from the 
 
 - **The name looks usable.** Nikoli's two U.S. "KAKURO" word marks were abandoned in 2007 for
   failure to respond, so there is no live U.S. registration; "Cross Sums" is the generic fallback.
-  Shipping as "Kakuro (Cross Sums)" is the recommendation — pending a counsel check on
-  common-law/foreign marks.
+  Shipping as "Kakuro (Cross Sums)" is the recommendation. **Follow-up research (Sept 2026)**
+  found every U.S. filing dead and the EU bare-word application refused, but the Japanese mark is
+  live and asserted by Nikoli — so "Cross Sums" stays wired as a one-constant fallback title.
 - **Generation is far harder than solving** (finding-another-solution is ASP-complete), so it needs
   a solution-first pipeline — symmetric black-cell layout → digit fill → derive clues → erase and
   verify with a counting solver that early-terminates at two solutions. Naive random generation is
