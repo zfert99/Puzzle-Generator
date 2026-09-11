@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PuzzleForm from './PuzzleForm';
@@ -47,6 +47,30 @@ describe('PuzzleForm Component', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0, gridSize: 9 }),
+    }));
+  });
+
+  it('offers Killer sizes through the shared Grid Size selector and submits the chosen size', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['%PDF'], { type: 'application/pdf' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<PuzzleForm />);
+
+    await user.click(screen.getByRole('button', { name: 'Killer' }));
+
+    // Killer offers only 6×6 and 9×9 — the selector's sizes prop must hide 4×4.
+    const sizeGroup = screen.getByRole('group', { name: /grid size/i });
+    expect(within(sizeGroup).queryByRole('button', { name: '4×4' })).not.toBeInTheDocument();
+
+    await user.click(within(sizeGroup).getByRole('button', { name: '6×6' }));
+    await user.click(screen.getByRole('button', { name: /generate pdf/i }));
+
+    expect(fetchMock).toHaveBeenCalledWith('/puzzles/api/generate', expect.objectContaining({
+      body: JSON.stringify({ variant: 'killer', gridSize: 6, easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0 }),
     }));
   });
 

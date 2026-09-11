@@ -70,21 +70,12 @@ export default function PuzzleForm() {
 
       {isKiller ? (
         <>
-          <div role="group" aria-label="Grid size" className="flex gap-2 mb-3 justify-center">
-            {([6, 9] as const).map((size) => (
-              <button
-                key={size}
-                type="button"
-                aria-pressed={killerSize === size}
-                onClick={() => setKillerSize(size)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
-                  killerSize === size ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
-                }`}
-              >
-                {size}×{size}
-              </button>
-            ))}
-          </div>
+          <GridSizeSelector
+            value={killerSize}
+            // The sizes prop never offers 4×4, so the guard only narrows the callback type to 6 | 9.
+            onChange={(size) => { if (size !== 4) setKillerSize(size); }}
+            sizes={[6, 9]}
+          />
           <p className="text-xs text-ink-soft text-center mb-6">
             No givens — the cage sums are the only clue.
             {killerSize === 6 && ' 6×6 is the beginner size: digits 1–6, easy/medium/hard.'}
@@ -92,21 +83,7 @@ export default function PuzzleForm() {
         </>
       ) : isCalc ? (
         <>
-          <div role="group" aria-label="Grid size" className="flex gap-2 mb-3 justify-center">
-            {([4, 6, 9] as const).map((size) => (
-              <button
-                key={size}
-                type="button"
-                aria-pressed={calcSize === size}
-                onClick={() => setCalcSize(size)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
-                  calcSize === size ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
-                }`}
-              >
-                {size}×{size}
-              </button>
-            ))}
-          </div>
+          <GridSizeSelector value={calcSize} onChange={setCalcSize} sizes={[4, 6, 9]} />
           <p className="text-xs text-ink-soft text-center mb-3">
             Calcudoku — a Latin square with arithmetic cages (+ − × ÷); no givens, the math is the clue.
           </p>
