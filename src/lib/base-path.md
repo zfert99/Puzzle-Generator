@@ -20,7 +20,7 @@ the server logic was intact, but the client could no longer reach it.
 
 The auth layer already handled this (`auth-client.ts` sets `basePath: '/puzzles/api/auth'`);
 the app's own data-fetch calls were the ones missed. See
-`Docs/research/multi-zone-basepath-fetch-fix.md` for the full incident write-up.
+`Docs/archive/multi-zone-basepath-fetch-fix.md` for the full incident write-up.
 
 ## What it provides
 

@@ -1,6 +1,10 @@
 # Mobile / Accessibility Audit & Plan
 
-> **Status:** 📋 Analysis (nothing implemented) · **Date:** July 2026
+> **Status:** ✅ Quick wins **G1–G4 shipped** (see the ✅ marks below: board live region, the
+> Playwright reflow + axe suite, `100svh`, a non-color conflict cue); **G5–G8** fold into normal work
+> as those surfaces are touched; **G9 (PWA)** is unscheduled · **Date:** July 2026 (analysis)
+> **Kept live, not archived (September 2026):** [`e2e/a11y.spec.ts`](../e2e/a11y.spec.ts) cites gap
+> G2 as the reason the reflow loop exists, so per AGENTS.md §7 this stays in the root.
 > **Triggered by:** two research docs —
 > [accessibility-responsive-qa.md](research/accessibility-responsive-qa.md) (WCAG 2.2 AA,
 > ARIA grid pattern, color semantics, automated a11y/overflow testing) and

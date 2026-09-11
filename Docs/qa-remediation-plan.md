@@ -1,5 +1,10 @@
 # QA Remediation & UX Plan — August 2026
 
+> **Kept live, not archived (September 2026).** Every step below has shipped, but
+> [`PuzzleHub.tsx`](../src/features/hub/PuzzleHub.tsx) cites this plan's Step 4 as the reason the
+> hub is grouped Play / Compete / Print — so per AGENTS.md §7 (live source rationale outranks
+> "completed") it stays in the root rather than moving to `archive/`.
+>
 > **Status (2026-09-04):** ✅ **Complete — all steps landed and merged.** For the record:
 > Step 1 (e2e gate, #70), Step 2 (`bg-pattern` basePath, #85), Step 3a (archive hand-off, #72),
 > Step 3b (calendar bounds, #83), Step 3c (legacy picker collapse, #84), Step 4 (hub reorg, #69),
@@ -94,7 +99,7 @@ legacy rows.** The work is to stop the *calendar* offering days that hold nothin
 - [research/accessibility-responsive-qa.md](research/accessibility-responsive-qa.md) — the QA
   method this pass followed; the source for the ARIA grid pattern, focus-management and
   automated-tooling requirements in Steps 6 and 7.
-- [mobile-a11y-audit.md](mobile-a11y-audit.md) — earlier, still-unimplemented mobile/WCAG analysis.
+- [mobile-a11y-audit.md](mobile-a11y-audit.md) — the earlier mobile/WCAG analysis; its quick wins G1–G4 have shipped, G5–G9 remain open.
   Steps 6–7 overlap it; fold anything still true from there into those steps rather than duplicating.
 - [daily-redesign-plan.md](daily-redesign-plan.md) — why a daily slot key is *not* a puzzle type.
 - [multi-zone-migration-plan.md](multi-zone-migration-plan.md) — why `basePath` exists (Steps 1, 2).

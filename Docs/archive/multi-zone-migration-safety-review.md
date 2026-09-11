@@ -1,5 +1,11 @@
 # Safety, Security & Viability Review: Puzzle Lab Multi-Zone Migration on Vercel
 
+> **📦 Archived 2026-09-11 — GO/NO-GO review for a migration that has since been applied.** Its one
+> durable operational point — Vercel Deployment Protection never covers a custom production domain,
+> so disabling it was unnecessary — is carried by the live
+> [vercel-cron-deployment-protection-outage.md](../research/vercel-cron-deployment-protection-outage.md),
+> which the daily-puzzles workflow cites. Not rewritten.
+
 ## TL;DR
 
 - **GO — with one mandatory change first.** Finish the multi-zone migration; you are one auth fix from done and the marginal cost to complete now is lower than any alternative. But **before** the auth fix, re-enable Vercel Deployment Protection and reach the Puzzle Lab origin through a **dedicated custom origin host** (e.g. `origin-puzzles.biscuitlab.net`) instead of the generated `*.vercel.app` alias.

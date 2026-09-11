@@ -19,7 +19,7 @@ changes only.
 > ordered sequence in the runbook, and only after PR #25 (security hardening) merges. The rpID step
 > is disruptive to existing passkeys — read §1 first.")*
 >
-> **Validated & corrected** against `Docs/research/multi-zone-migration-validation.md`.
+> **Validated & corrected** against `Docs/archive/multi-zone-migration-validation.md`.
 > Corrections from the first draft: the Host-based origin `noindex` is removed
 > (self-defeating — it fires on the proxied response too; use canonicals), the
 > `.biscuitlab.net` cookie is dropped (host-only cookies work — same apex host),
@@ -199,7 +199,7 @@ route handler moves to `/puzzles/api/cron/daily`:
   after cutover. Fix: `src/lib/base-path.ts` (`apiPath()`), applied to all nine app
   fetch calls. This is the *relative*-URL counterpart to the absolute-URL audit above
   — it looks correct precisely because it's relative. See
-  `Docs/research/multi-zone-basepath-fetch-fix.md`. **Guardrail:** any new client
+  `Docs/archive/multi-zone-basepath-fetch-fix.md`. **Guardrail:** any new client
   `fetch('/api/...')` MUST go through `apiPath()`.
 
 ---
@@ -232,7 +232,7 @@ route handler moves to `/puzzles/api/cron/daily`:
        calls did not carry the `/puzzles` basePath, 404ing generation, the daily,
        and PDF export. Wrapped all nine in `apiPath()` (`src/lib/base-path.ts`);
        verified via dev smoke (`/puzzles/api/puzzle` → 200, bare path → 404) + full
-       suite. Write-up: [multi-zone-basepath-fetch-fix.md](research/multi-zone-basepath-fetch-fix.md).
+       suite. Write-up: [multi-zone-basepath-fetch-fix.md](archive/multi-zone-basepath-fetch-fix.md).
 10. [x] **Sitemap + noindex hygiene (2026-07-30):** added `app/sitemap.ts`
        (`/puzzles/sitemap.xml` — 6 curated absolute URLs, no `lastmod`) and
        `robots: { index: false }` on `/signin` + `/account` (excluded from the

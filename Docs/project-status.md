@@ -22,7 +22,7 @@ listed below is either merged or explicitly parked. There is no work in progress
 
 | | |
 |---|---|
-| Plan of record | [qa-remediation-plan.md](qa-remediation-plan.md) — 9 ordered steps, per-step logs |
+| Plan of record | Nothing in flight — the QA plan is complete. Newest plan: [kakuro-implementation-plan.md](kakuro-implementation-plan.md) (Phase 10, unstarted); otherwise pick from **Next horizons** below |
 | Gate before any merge | [pre-merge-log.md](pre-merge-log.md) — **read its Known flaky tests table first** |
 | Doc index | [README.md](README.md) |
 | Longer-term phases | [roadmap.md](roadmap.md) |
@@ -40,7 +40,7 @@ listed below is either merged or explicitly parked. There is no work in progress
 against the solver as ground truth (100% valid / 0% leak / 12 of 12 refusals on Opus 5, with a
 recorded ceiling effect — every hint was a single). New engine file `deductions.ts` gives
 `listDeductions()`, the first way to ask the solver "what are *all* my options here?"; nothing is
-routed into the app. Living doc: [hint-agent-plan.md](hint-agent-plan.md). Devlog:
+routed into the app. Living doc: [hint-agent-plan.md](archive/hint-agent-plan.md). Devlog:
 [https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver](https://biscuitlab.net/log/grading-a-hint-agent-with-the-solver). Running the eval needs `ANTHROPIC_API_KEY` **and** `ANTHROPIC_WORKSPACE_ID` (the
 Console's keys are identity-linked now). The Next-up table below is unchanged by this.
 
@@ -79,7 +79,7 @@ mobile nav overflow, mini board caps; 9b had already landed via #64) and Step 5
 | Option | What it is |
 |---|---|
 | Phase 7 — Strategy Courses | The "crown jewel" (`strategy-courses-implementation-plan.md`; `stash@{0}` holds a roadmap-section wip) |
-| Puzzle type 4 | Kakuro research is complete (`research/kakuro.md`); the daily was restructured to absorb new types cheaply |
+| Puzzle type 4 — Kakuro (Phase 10) | **Plan written 2026-09-11** (`kakuro-implementation-plan.md` + `kakuro-log.md`); research in `research/kakuro.md`. Build order is **visual first**: V1/V2 put a hand-baked Kakuro on the real board, the engine lands underneath it afterwards (yield spike = E3). No production code yet. Owner calls still open: D4 (daily mini slot count), confirm D5′ (chain top tiers) |
 | Solo-dev QA hardening | Roadmap backlog: branch protection, AI reviewer, axe/Lighthouse CI, property/mutation tests |
 | Phase 9 — Social & Economy | Gated on the solve-time-trust work for clock-based rules |
 

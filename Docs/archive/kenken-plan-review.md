@@ -1,5 +1,10 @@
 # Engineering Plan Review: KenKen/Calcudoku Implementation Plan
 
+> **📦 Archived 2026-09-11 — one-time external review of a plan that has since shipped.** The plan
+> it reviews, [kenken-implementation-plan.md](../kenken-implementation-plan.md), is feature-complete
+> and stays in the root as live source rationale (K0). This review's corrections were folded into
+> that plan at the time; it is kept as the record of what was checked and why. Not rewritten.
+
 ## TL;DR
 
 - **This is a strong, well-scoped, technically sound plan.** Its core domain claims about KenKen/Calcudoku are accurate, its slice ordering (K0→K5) is logically gated, and it correctly identifies the single most dangerous domain-specific pitfall (multiset vs. set cage tables). It is ready to start, with a handful of corrections and additions noted below.
