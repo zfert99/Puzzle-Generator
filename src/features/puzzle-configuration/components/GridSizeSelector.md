@@ -21,8 +21,9 @@ selection and reports clicks upward.
 5. When a button is clicked, call `onChange` with that option's value. The parent
    owns the state and decides what to do.
 
-`sizes` (optional) restricts the offered options — Killer passes `[6, 9]` so both variants
-share one selector and one visual layout.
+`sizes` (optional) restricts the offered options — Killer passes `[6, 9]`, Keisan `[4, 6, 9]` —
+so every variant, in both the `/play` menu (`PlayExperience`) and the PDF form (`PuzzleForm`),
+shares one selector and one visual layout.
 
 ## Selection is announced, not colour-only (September 2026, QA F10)
 

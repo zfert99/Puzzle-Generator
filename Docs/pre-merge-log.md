@@ -31,6 +31,53 @@ the diff under review.
 
 ---
 
+## 2026-09-11 — PuzzleForm size rows reuse GridSizeSelector (Sept review quality item 3)
+
+Branch `claude/sweet-bohr-f1946e` on `b00f105`. The deferred slice from the 2026-09-10 review:
+replaced PuzzleForm's two hand-rolled inline size-button rows (Killer 6/9, Keisan 4/6/9) with the
+shared `GridSizeSelector` + `sizes` prop, exactly as `PlayExperience` already does. Slice: 4 files,
++62/−44.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | **569 passed** (69 files, +1: Killer-branch selector/payload spec) |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` | all exit 0 |
+| markdownlint (`**/*.md`, full sweep) | exit 0 |
+| Benchmarks | **not run** — no engine/solver core touched |
+
+### Findings / notes
+
+- No slot-key, DB-write, ownership, or migration surface in the diff — UI + tests + docs only.
+- Killer's `onChange` gained an `if (size !== 4)` guard: `GridSizeSelector`'s callback type is
+  `4 | 6 | 9` while `killerSize` is `6 | 9`; the guard narrows without a cast and is unreachable
+  because `sizes={[6, 9]}` never renders a 4×4 button (verified against the component's filter).
+- **Deliberate visible change:** `/generate`'s Killer/Keisan branches now show the "Grid Size"
+  heading and the shared selector's styling (px-4, borderless unselected) instead of the old
+  bordered `text-sm` rows — matches `/play`. Owner to eyeball before merge per the visual-check
+  preference; not self-certified.
+- Environment note, not a finding: `npm run build` initially failed in the worktree because
+  `.env.local` (with `DATABASE_URL`) is not copied into git worktrees; copied from the main
+  checkout, after which the build passed. Rule for next run: **a worktree build failing at
+  "Collecting page data" with a missing-env error implicates the worktree, not the diff.**
+
+### Docs
+
+Mirrored: `PuzzleForm.md` (toggle section rewritten current — it still described Killer v1 hiding
+the selector — plus a dated reuse note), `GridSizeSelector.md` (`sizes` now cited for both call
+sites). Reverse sweep for the removed inline groups (`aria-label="Grid size"`, "size rows"): only
+live hits were the 2026-09-10 log entry naming this slice as deferred (historical, kept) and the
+docs updated here.
+
+### Reviews
+
+`/security-review`: **not run — not required**, no auth/authz/data-access change in the diff.
+The hosted `/code-review` has **NOT** been run — it is user-triggered and billed and an agent
+cannot launch it.
+
+---
+
 ## 2026-09-11 — SolvedDialog extraction (September review quality item 1)
 
 Branch `claude/elastic-bhabha-4aa78a` on `b00f105`. Slice: 9 files touched + 3 new,

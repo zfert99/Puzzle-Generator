@@ -31,13 +31,21 @@ A lookup table defining which difficulties are available for each grid size:
    - `counts`: An object storing the desired quantity for each difficulty level. Easy, Medium, and Hard default to 2. Expert and Extreme default to 0.
    - `error`: A text string to hold any error messages.
 
-### The Sudoku / Killer toggle
+### The Sudoku / Killer / Keisan toggle
 
-Two segmented buttons switch `variant`. In **Killer** mode the form hides the grid-size selector
-(Killer is 9×9), shows a "no givens — the cage sums are the only clue" note, and passes
-`difficulties={['easy','medium','hard']}` to the configurator (Killer v1 grades only those three).
-`handleGenerate` then sends `{ variant: 'killer', easy, medium, hard }`; classic mode sends
-`{ ...counts, gridSize }` as before.
+Three segmented buttons switch `variant`. Every variant picks its size through the shared
+`GridSizeSelector`, differing only in the `sizes` prop it passes: classic offers all three
+(4/6/9), **Killer** offers `[6, 9]`, and **Keisan** (calc) offers `[4, 6, 9]`. The two
+non-classic variants keep their own size state (`killerSize`, `calcSize`) so switching types
+doesn't clobber the classic selection. Killer's `onChange` carries a guard that ignores a `4`:
+the selector never offers 4×4 there, but its callback type is `4 | 6 | 9` and the guard narrows
+it to Killer's `6 | 9` without a cast.
+
+Killer shows a "no givens — the cage sums are the only clue" note; Keisan shows its own note
+plus the Mystery (hide-operators) switch. `handleGenerate` sends
+`{ variant, gridSize, easy, medium, hard, expert, extreme }` for both (expert/extreme forced to
+0 below 9×9, and `noOp` added for Keisan); classic mode sends `{ ...counts, gridSize }` as
+before.
 
 ---
 
@@ -112,7 +120,15 @@ Two segmented buttons switch `variant`. In **Killer** mode the form hides the gr
 
 ## Toggle groups announce selection (September 2026, QA F10)
 
-The puzzle-type toggle and the Killer/Keisan size rows are `role="group"`s (labelled "Puzzle
-type" / "Grid size") whose buttons carry `aria-pressed` — selection was previously conveyed by
-background colour alone. The Mystery toggle already had proper `role="switch"`/`aria-checked`
-semantics and is unchanged.
+The puzzle-type toggle is a `role="group"` (labelled "Puzzle type") whose buttons carry
+`aria-pressed` — selection was previously conveyed by background colour alone. The size rows get
+the same treatment for free from `GridSizeSelector` (span + `aria-labelledby` + `aria-pressed`).
+The Mystery toggle already had proper `role="switch"`/`aria-checked` semantics and is unchanged.
+
+## Size rows reuse GridSizeSelector (September 2026, review quality item 3)
+
+The Killer and Keisan branches used to hand-roll their own inline size-button rows, duplicating
+what `GridSizeSelector` already does via its `sizes` prop — and `PlayExperience` was already
+using exactly that for the same variants. Both inline groups were replaced with the shared
+component, which also swapped their bare `aria-label` groups for its labelled-heading pattern
+and made the visible "Grid Size" heading appear on `/generate`'s Killer/Keisan branches.
