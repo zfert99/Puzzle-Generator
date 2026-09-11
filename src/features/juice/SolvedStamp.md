@@ -22,5 +22,6 @@ render:
 ## Reduced motion
 
 Gated on the single [`useReducedMotion`](./useReducedMotion.md) switch: renders the badge
-**instantly** with no animation, no confetti, no flash. Used by the `/play` and `/daily`
-solved modals.
+**instantly** with no animation, no confetti, no flash. Used by the shared
+[`SolvedDialog`](../interactive-board/components/SolvedDialog.md) — the `/play`, `/daily`
+and `/archive` solved modals.

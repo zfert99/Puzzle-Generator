@@ -100,9 +100,11 @@ when selected, a "✓ Solved in m:ss · come back tomorrow" panel with a leaderb
 **Why:** The game view renders `<Numpad showHint={false} />` — hints are disabled for the
 competitive daily (they'd hand out answers), while free play keeps them.
 
-> The solved modal now renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky
+> The solved modal is the shared
+> [SolvedDialog](../../interactive-board/components/SolvedDialog.md) (September 2026
+> extraction), which renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky
 > stamp badge + confetti + screen-flash, reduced-motion-safe) in place of the old
-> emoji/`celebrate` CSS (5.3a). Chaos layer (5.5): the select screen also adds a
+> emoji/`celebrate` CSS (5.3a); the ranked-result block rides in as its children. Chaos layer (5.5): the select screen also adds a
 > MarqueeTicker, a corner Sticker ("play me!"), and a Tape strip on the card — chrome
 > decoration only; the board itself stays clean.
 
@@ -168,8 +170,10 @@ passive default: the board otherwise stays hand-holding-free per the rule above,
 
 ## Dialogs take focus (September 2026, QA F7)
 
-Both overlay dialogs — "Daily solved" and the full-board "Not quite!" review — now move focus to
-their primary button on open via the shared `useDialogFocus` hook (see
-`interactive-board/hooks/useDialogFocus.md`), and restore it on close. For the review dialog the
-restore is the useful half: "Keep looking" returns focus to the exact gridcell the player was on,
-so they resume fixing cells without re-establishing position.
+Both overlay dialogs — "Daily solved" and the full-board "Not quite!" review — move focus to
+their primary button on open and restore it on close. The solved dialog gets this from inside
+the shared [SolvedDialog](../../interactive-board/components/SolvedDialog.md); the review
+dialog still wires the `useDialogFocus` hook directly (see
+`interactive-board/hooks/useDialogFocus.md`). For the review dialog the restore is the useful
+half: "Keep looking" returns focus to the exact gridcell the player was on, so they resume
+fixing cells without re-establishing position.

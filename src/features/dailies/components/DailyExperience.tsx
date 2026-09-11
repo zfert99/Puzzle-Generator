@@ -11,9 +11,9 @@ import { Numpad } from '@/features/interactive-board/components/Controls/Numpad'
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
+import { SolvedDialog } from '@/features/interactive-board/components/SolvedDialog';
 import { useDialogFocus } from '@/features/interactive-board/hooks/useDialogFocus';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
-import { SolvedStamp } from '@/features/juice/SolvedStamp';
 import { Sticker } from '@/features/chaos/Sticker';
 import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
@@ -157,9 +157,9 @@ export default function DailyExperience() {
   }
   const showReview = phase === 'playing' && isFull && status !== 'solved' && !reviewDismissed;
 
-  // F7: both overlay dialogs must take focus when they appear — the active element otherwise
-  // stays on a gridcell behind the backdrop, and typing keeps going into the board.
-  const solvedPrimaryRef = useDialogFocus<HTMLButtonElement>(status === 'solved');
+  // F7: the review dialog must take focus when it appears — the active element otherwise
+  // stays on a gridcell behind the backdrop, and typing keeps going into the board. (The
+  // solved dialog gets the same wiring from inside `SolvedDialog`.)
   const reviewPrimaryRef = useDialogFocus<HTMLButtonElement>(showReview);
 
   // Timer: one interval, active only while actively playing the daily (not on the picker).
@@ -483,54 +483,44 @@ export default function DailyExperience() {
       <KeyboardHints />
 
       {status === 'solved' && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Daily solved"
+        <SolvedDialog
+          ariaLabel="Daily solved"
+          stampLabel="Daily solved!"
+          elapsedSeconds={useBoardStore.getState().elapsedTime}
+          mistakes={useBoardStore.getState().mistakes}
+          primaryLabel="Back to difficulties"
+          onPrimary={backToSelect}
+          secondaryAction={
+            <Link
+              href={`/leaderboard?difficulty=${difficulty}`}
+              className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
+            >
+              Leaderboard
+            </Link>
+          }
         >
-          <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
-            <SolvedStamp label="Daily solved!" />
-            <p className="text-sm text-ink-soft mb-3">
-              {formatTime(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
-              mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}
-            </p>
-
-            {/* Ranked-flow result — derived from session + submit (no synchronous setState). */}
-            <div className="mb-6 min-h-[1.5rem] text-sm">
-              {isExpiredDaily ? (
-                <span className="text-butterscotch-dark">This daily has expired — play today’s for a rank.</span>
-              ) : !session ? (
-                <span className="text-ink-soft">
-                  <Link href="/signin" className="text-grape hover:underline">
-                    Sign in
-                  </Link>{' '}
-                  to be ranked on the leaderboard.
-                </span>
-              ) : submit.status === 'done' ? (
-                <span className="rank-reveal text-grape font-semibold">
-                  {submit.rank ? `🏆 Ranked #${submit.rank} today` : 'Time recorded!'}
-                </span>
-              ) : submit.status === 'error' ? (
-                <span className="text-butterscotch-dark">{submit.message}</span>
-              ) : (
-                <span className="text-ink-soft">Submitting your time…</span>
-              )}
-            </div>
-
-            <div className="flex gap-3 justify-center">
-              <button ref={solvedPrimaryRef} type="button" onClick={backToSelect} className="btn-primary">
-                Back to difficulties
-              </button>
-              <Link
-                href={`/leaderboard?difficulty=${difficulty}`}
-                className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
-              >
-                Leaderboard
-              </Link>
-            </div>
+          {/* Ranked-flow result — derived from session + submit (no synchronous setState). */}
+          <div className="min-h-[1.5rem] text-sm">
+            {isExpiredDaily ? (
+              <span className="text-butterscotch-dark">This daily has expired — play today’s for a rank.</span>
+            ) : !session ? (
+              <span className="text-ink-soft">
+                <Link href="/signin" className="text-grape hover:underline">
+                  Sign in
+                </Link>{' '}
+                to be ranked on the leaderboard.
+              </span>
+            ) : submit.status === 'done' ? (
+              <span className="rank-reveal text-grape font-semibold">
+                {submit.rank ? `🏆 Ranked #${submit.rank} today` : 'Time recorded!'}
+              </span>
+            ) : submit.status === 'error' ? (
+              <span className="text-butterscotch-dark">{submit.message}</span>
+            ) : (
+              <span className="text-ink-soft">Submitting your time…</span>
+            )}
           </div>
-        </div>
+        </SolvedDialog>
       )}
 
       {/* Board full but not correct — tell the player how many cells are wrong (not which), and

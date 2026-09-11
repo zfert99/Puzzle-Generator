@@ -58,7 +58,9 @@ persisted store, so a resumed game never causes an SSR/client mismatch.
 > hence the warning. A daily parked in the store never renders here because the board only
 > shows via Continue (gated on `saved.mode === 'play'`) or a fresh play.
 >
-> The solved modal renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge + confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).
+> The solved modal is the shared [SolvedDialog](SolvedDialog.md) (September 2026 extraction),
+> which renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge +
+> confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).
 
 ## Deep link: `/play?variant=killer`
 
@@ -94,9 +96,10 @@ generation-time hint, shown only when extreme is selected.
 
 The solved overlay used to appear without moving focus — `document.activeElement` stayed on a
 gridcell behind the backdrop, so keyboard/screen-reader users were never told and kept typing
-into the board. The shared `useDialogFocus` hook (see `hooks/useDialogFocus.md`) now puts focus
-on the primary "New puzzle" button when the dialog opens and restores it on close (best-effort —
-leaving to the config view unmounts the board, and a detached opener is a spec'd no-op).
+into the board. Focus now lands on the primary "New puzzle" button on open and is restored on
+close (best-effort — leaving to the config view unmounts the board, and a detached opener is a
+spec'd no-op). That wiring lives inside the shared [SolvedDialog](SolvedDialog.md), so this
+component no longer touches `useDialogFocus` itself.
 
 ## Config toggles announce selection (September 2026, QA F10)
 

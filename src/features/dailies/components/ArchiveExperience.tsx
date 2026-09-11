@@ -5,14 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
-import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
+import { useSavedGame } from '@/features/interactive-board/store/useSavedGame';
 import { Board } from '@/features/interactive-board/components/Board/Board';
 import { Numpad } from '@/features/interactive-board/components/Controls/Numpad';
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
-import { useDialogFocus } from '@/features/interactive-board/hooks/useDialogFocus';
-import { SolvedStamp } from '@/features/juice/SolvedStamp';
+import { SolvedDialog } from '@/features/interactive-board/components/SolvedDialog';
 import { LeaderboardView } from '@/features/leaderboards/components/LeaderboardView';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
@@ -210,8 +209,6 @@ export default function ArchiveExperience() {
   const { loading, error, fetchDaily } = useDaily();
   const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
 
-  // F7: the solved dialog must take focus when it appears (see useDialogFocus).
-  const solvedPrimaryRef = useDialogFocus<HTMLButtonElement>(status === 'solved');
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const tick = useBoardStore((s) => s.tick);
   const saved = useSavedGame();
@@ -286,25 +283,16 @@ export default function ArchiveExperience() {
         <KeyboardHints />
 
         {status === 'solved' && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Practice solved"
+          <SolvedDialog
+            ariaLabel="Practice solved"
+            stampLabel="Solved!"
+            elapsedSeconds={useBoardStore.getState().elapsedTime}
+            mistakes={useBoardStore.getState().mistakes}
+            primaryLabel="Back to archive"
+            onPrimary={backToBrowse}
           >
-            <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
-              <SolvedStamp label="Solved!" />
-              <p className="text-sm text-ink-soft mb-2">
-                {formatElapsed(useBoardStore.getState().elapsedTime)} ·{' '}
-                {useBoardStore.getState().mistakes} mistake
-                {useBoardStore.getState().mistakes === 1 ? '' : 's'}
-              </p>
-              <p className="text-xs text-ink-soft mb-6">Practice replay — not ranked.</p>
-              <button ref={solvedPrimaryRef} type="button" onClick={() => backToBrowse()} className="btn-primary">
-                Back to archive
-              </button>
-            </div>
-          </div>
+            <p className="text-xs text-ink-soft">Practice replay — not ranked.</p>
+          </SolvedDialog>
         )}
       </div>
     );

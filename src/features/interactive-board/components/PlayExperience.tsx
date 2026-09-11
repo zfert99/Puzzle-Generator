@@ -7,12 +7,11 @@ import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
 import { useSavedGame, formatElapsed } from '../store/useSavedGame';
 import { usePuzzle } from '../hooks/usePuzzle';
-import { useDialogFocus } from '../hooks/useDialogFocus';
 import { Board } from './Board/Board';
 import { Numpad } from './Controls/Numpad';
 import { GameHeader } from './Header/GameHeader';
 import { KeyboardHints } from './KeyboardHints';
-import { SolvedStamp } from '@/features/juice/SolvedStamp';
+import { SolvedDialog } from './SolvedDialog';
 import { ConfirmModal } from './ConfirmModal';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
@@ -65,10 +64,6 @@ export default function PlayExperience() {
   const tick = useBoardStore((s) => s.tick);
 
   const saved = useSavedGame();
-
-  // F7: the solved dialog must take focus when it appears — without this the active element
-  // stays on a gridcell behind the backdrop and keyboard/screen-reader users are never told.
-  const solvedPrimaryRef = useDialogFocus<HTMLButtonElement>(status === 'solved' && !viewingSolved);
 
   // Deep link from the hub's Continue banner (`/play?resume=1`): jump straight into the saved
   // free-play game instead of the menu. Adjust state during render (once, after mount, when the
@@ -307,32 +302,23 @@ export default function PlayExperience() {
       <KeyboardHints />
 
       {status === 'solved' && !viewingSolved && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Solved"
-        >
-          <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
-            <SolvedStamp label="Solved!" />
-            <p className="text-sm text-ink-soft mb-6">
-              {formatElapsed(useBoardStore.getState().elapsedTime)} · {useBoardStore.getState().mistakes}{' '}
-              mistake{useBoardStore.getState().mistakes === 1 ? '' : 's'}
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button ref={solvedPrimaryRef} type="button" onClick={() => setView('config')} className="btn-primary">
-                New puzzle
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewingSolved(true)}
-                className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
-              >
-                View puzzle
-              </button>
-            </div>
-          </div>
-        </div>
+        <SolvedDialog
+          ariaLabel="Solved"
+          stampLabel="Solved!"
+          elapsedSeconds={useBoardStore.getState().elapsedTime}
+          mistakes={useBoardStore.getState().mistakes}
+          primaryLabel="New puzzle"
+          onPrimary={() => setView('config')}
+          secondaryAction={
+            <button
+              type="button"
+              onClick={() => setViewingSolved(true)}
+              className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
+            >
+              View puzzle
+            </button>
+          }
+        />
       )}
     </div>
   );

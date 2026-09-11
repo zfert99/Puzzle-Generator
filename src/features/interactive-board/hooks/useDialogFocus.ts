@@ -7,12 +7,15 @@ import { useEffect, useRef, type RefObject } from 'react';
  * focus onto the dialog's primary action (attach the returned ref to it), and when the dialog
  * closes, hand focus back to whatever had it before opening.
  *
- * Exists because the dialog shell here is a repeated JSX pattern, not a component — the "Solved!"
- * dialogs each re-created the backdrop/panel markup and every one of them left
+ * Exists because the dialog shell here was originally a repeated JSX pattern, not a component —
+ * the "Solved!" dialogs each re-created the backdrop/panel markup and every one of them left
  * `document.activeElement` sitting on a board gridcell behind the backdrop, so a keyboard or
  * screen-reader user was never told the dialog appeared and could keep typing into the board.
  * The new-game `ConfirmModal` had the focus-in half right from the start; this extracts that
- * behavior (plus the restore half) so every dialog gets it from one place.
+ * behavior (plus the restore half) so every dialog gets it from one place. The solved shells
+ * have since been folded into `SolvedDialog` (which calls this hook itself); the hook remains
+ * the shared wiring for the dialogs that still own their own markup (ConfirmModal, the daily
+ * review dialog).
  *
  * Restore is best-effort by design: closing a solved dialog often unmounts the board it came
  * from, and calling `.focus()` on a detached element is a spec'd no-op — the browser then falls
