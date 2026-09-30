@@ -1,7 +1,8 @@
 # Kakuro (Cross Sums) — Implementation Plan
 
-> **Status:** 📋 Planned (plan written 2026-09-11; nothing built) · **Branch:** fresh
-> (`feature/kakuro`) · **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
+> **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 with V0, the
+> looks-only board) · **Branch:** `feature/kakuro` (cut from `main` at `d0333d5`) ·
+> **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
 > **Research:** [kakuro.md](research/kakuro.md) (the deep report this plan is built from) ·
@@ -155,7 +156,7 @@ means Kakuro needs its own.
 | D5 | ~~T5 = bounded depth-1 recursion (Keisan transplant)~~ → **Every published tier is logic-only. T1–T3 by the technique ladder; T4 = whips of bounded length; T5 = longer whips / g-whips.** Surface sums (1-cuts) are an accelerator inside T4+, not a rung. Bounded T&E survives only as an optional, labelled *experimental* tier outside the daily | **Superseded 2026-09-11 by G5** — new form proposed, confirm |
 | D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** a **mini** (smallest size that carries an honest easy/medium/hard — 6×6 or 7×7, E3 decides), a **standard** (9×9 interior — the research's 8–10 sweet spot, odd for the edges-inward centre line, and what the standard daily slot expects), and a **large** (13×13 proposed — odd, near the Krazydad 13×17 print size; play + PDF, daily later). **No 4×4.** | Proposed — mini size decided by E3 (G6) |
 | D11 | **Sizes are per puzzle type.** Each type ships three: the smallest size that is genuinely interesting for *that* puzzle, its standard size, and a large size. Minis in menus and the daily are "the type's smallest size", not a fixed 4×4/6×6. Kakuro is the first type built this way; revisiting Classic/Killer/Keisan under the same rule is deferred (4×4 is trivial for most of them) | Locked by owner 2026-09-11 (principle); Kakuro sizes per D6 |
-| D12 | **Build order is visual first, simplest → hardest:** a hand-baked puzzle is playable and printable (V1–V3) before any engine code; each engine slice lands on that board and is judged by what it makes visible. The **hub card goes live only at E5** (when "New puzzle" is real); until then `/play?variant=kakuro` is reachable by URL for building and E2E, so `main` never advertises a one-puzzle type | Locked by owner 2026-09-11 (order); hub timing proposed |
+| D12 | **Build order is visual first, simplest → hardest:** a hand-baked puzzle is playable and printable (V1–V3) before any engine code; each engine slice lands on that board and is judged by what it makes visible. The **hub card goes live only at E5** (when "New puzzle" is real); until then `/play?variant=kakuro` is reachable by URL for building and E2E, so `main` never advertises a one-puzzle type. *Amended 2026-09-30: a looks-only static board (V0, at the unlinked workbench route `/kakuro`) precedes V1* | Locked by owner 2026-09-11 (order), amended 2026-09-30; hub timing proposed |
 | D7 | Roadmap: **Phase 10**, engine-first like Phase 6/8 | Applied (this PR) |
 | D8 | Difficulty label comes from the classifier **post-generation**; generator parameters only bias | Locked (research) |
 | D9 | Shipped layouts are **180° rotationally symmetric**, white-connected, runs 2–9, no *contiguous* all-white rectangle ≥ 2×9 / 3×8 / 4×7 / 5×5, and within Mathimagics' min-hints / max-blanks bounds per size | Locked (research + G10) |
@@ -177,6 +178,7 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 
 | Order | Slice | What becomes visible |
 |---|---|---|
+| 0 | V0 — Looks-only static board | An empty 7×7 Kakuro shape at `/kakuro` — no sums, no input |
 | 1 | V1 — Types + baked fixtures | Nothing yet — the data a board can render |
 | 2 | V2 — Board on the baked puzzle | A playable Kakuro at `/play?variant=kakuro` |
 | 3 | V3 — PDF on the baked puzzle | A printable Kakuro page in the booklet |
@@ -186,6 +188,41 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | 7 | E4 — Layout + fill + clue derivation | "New puzzle" produces a fresh board |
 | 8 | E5 — Difficulty configs + `generateKakuro` + benchmark | The difficulty and size pickers go live; hub card live |
 | 9 | R1 — Daily rotation (4 types) | Kakuro in the daily |
+
+### V0 — Looks-only static board 🚧
+
+Added 2026-09-30 at the owner's request, *ahead of* V1: before any types, fixtures or store work,
+get a page on screen that only **looks** like a Kakuro, so the visual design is settled first and
+everything after it lands on something visible (D12 taken one step further).
+
+- `/kakuro` — a workbench route (Server Component, `robots: noindex`, not in the sitemap, no hub
+  card or header link). Deleted when V2 makes `/play?variant=kakuro` real.
+- `KakuroBoard` (`src/features/interactive-board/components/KakuroBoard/`) — a static Server
+  Component taking an interior layout (`.` white / `#` black, one string per row). Draws the D2
+  clue gutter, white cells, black cells, and the G7 diagonal on black cells that start a run.
+  **No sums, no selection, no input, no store.** Carries the WAI-ARIA grid skeleton already.
+- `sample-layout.ts` — one hand-drawn **7×7** shape obeying D9 (180° symmetric, connected, runs
+  2–7, 32 whites against the N=7 ceiling of 34). 7×7 over 6×6 only because odd N has a
+  self-symmetric centre line; this is *not* the D6′ mini-size decision, which E3 still measures.
+
+**Gate:** the owner is happy with how the empty board looks in both themes.
+
+**Step-log (2026-09-30, not yet merged):**
+
+- *Process:* cut `feature/kakuro` from `main`; built the route, component, CSS module, sample
+  layout, mirrored docs, and 4 tests (gutter dimensions, clue-vs-blocked marking, the sample's
+  cell counts and symmetry). Lint, `tsc` and the new tests green; page renders with no console
+  errors. Visual verdict handed to the owner.
+- *Learnings:* (1) drawing grid lines with a 1px `gap` over a line-coloured board background
+  handles white/white, black/black and white/black boundaries with one rule — per-cell borders
+  (the Sudoku board's approach) would need three. (2) The dark theme needs its own block colour:
+  `--ink` is cream there, so "black cell = mostly ink" becomes a bright slab. (3) The first
+  sketch of the sample had 35 whites — one over the G10 ceiling for N=7 — which is a reminder
+  that hand-authored fixtures in V1 need `deriveRuns`-style validation, not eyeballing.
+- *Blockers:* none.
+- *Carried into V1/V2:* the sample layout is a shape only; V1's fixtures replace it. The
+  component's `buildDisplayCells` is a drawing helper — V1's `deriveRuns` owns real run
+  derivation and validation.
 
 ### V1 — Types + baked fixtures ⏳
 

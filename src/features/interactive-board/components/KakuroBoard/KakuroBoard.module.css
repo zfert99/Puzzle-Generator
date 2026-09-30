@@ -1,0 +1,55 @@
+.board {
+  display: grid;
+  grid-template-columns: repeat(var(--tracks), 1fr);
+  /* Rows matched to columns so empty cells stay square (same reason as Board.module.css). */
+  grid-template-rows: repeat(var(--tracks), 1fr);
+  /* The board's own background shows through the gaps, which draws every grid line in one
+     place — between two white cells, between two black cells, and where they meet — instead
+     of per-cell borders that would need a rule for each of those three cases. */
+  gap: 1px;
+  background: var(--grid-line);
+  width: min(92vw, 520px);
+  aspect-ratio: 1 / 1;
+  border: 3px solid var(--ink);
+  /* Derived from the global theme tokens so the board flips with [data-theme]. */
+  --grid-line: color-mix(in srgb, var(--ink) 45%, var(--paper));
+  --cell-bg: var(--paper);
+  --block-bg: color-mix(in srgb, var(--ink) 82%, var(--paper));
+  --block-line: color-mix(in srgb, var(--paper) 60%, transparent);
+}
+
+/* In the dark theme `--ink` is cream, so the light-theme mix would turn every black cell into
+   a bright slab on a dark page. Blocks become a muted step above the paper instead, and the
+   diagonal takes the ink side so it still reads against them. */
+:global(:root[data-theme='dark']) .board {
+  --block-bg: color-mix(in srgb, var(--ink) 24%, var(--paper));
+  --block-line: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+/* ARIA row wrappers — out of layout, so cells stay direct grid items (see Board.module.css). */
+.row {
+  display: contents;
+}
+
+.cell {
+  background: var(--cell-bg);
+}
+
+.block {
+  background: var(--block-bg);
+}
+
+/* The clue diagonal, upper-left to lower-right: a `to top right` gradient's 50% line passes
+   through exactly those two corners. Upper-right triangle = down sum, lower-left = across sum
+   (research G7) once there are sums to draw. */
+.clue {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 0.75px),
+      var(--block-line) calc(50% - 0.75px),
+      var(--block-line) calc(50% + 0.75px),
+      transparent calc(50% + 0.75px)
+    ),
+    var(--block-bg);
+}

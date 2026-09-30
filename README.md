@@ -97,7 +97,7 @@ We're evolving from a PDF generator into a full interactive puzzle platform. See
 | **7** | **Strategy Courses** — Visual solver teaching | 🎨 UI + 🧮 Engine | 📋 Planned |
 | **8** | **Keisan** 🔢 — Latin-square cage arithmetic (Calcudoku-style; [plan](Docs/kenken-implementation-plan.md)) | 🧮 Engine → 🎨 UI | ✅ Done |
 | **9** | **Social & Economy** 🍪 — Crumbs, achievements, friends, battles ([plan](Docs/social-progression-economy-plan.md)) | 🗄️ Infra + 🎨 UI | 📋 Planned |
-| **10** | **Kakuro** ➕ — Cross Sums: runs, sum + all-different, no houses ([plan](Docs/kakuro-implementation-plan.md) · [log](Docs/kakuro-log.md)) | 🧮 Engine → 🎨 UI | 📋 Planned |
+| **10** | **Kakuro** ➕ — Cross Sums: runs, sum + all-different, no houses ([plan](Docs/kakuro-implementation-plan.md) · [log](Docs/kakuro-log.md)) | 🧮 Engine → 🎨 UI | 🚧 In Progress |
 
 > Phases 1 & 2 ran in parallel. Phase 6 (Killer Sudoku) shipped — graded engine, `/play` board, PDF export, and a Killer daily ([plan](Docs/archive/killer-sudoku-implementation-plan.md)); expert/extreme tiers shipped later as the K10 follow-up ([plan](Docs/archive/killer-expert-implementation-plan.md)). Phase 7 (strategy courses) follows and builds on the Phase 5 design system.
 >
