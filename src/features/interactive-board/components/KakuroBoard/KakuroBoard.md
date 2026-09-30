@@ -1,53 +1,59 @@
 # KakuroBoard: Plain English Pseudocode
 
-The **looks-only** Kakuro board (plan slice V0 in
-[kakuro-implementation-plan.md](../../../../../Docs/kakuro-implementation-plan.md)). It draws the
-shape of a Kakuro — white cells, black cells, diagonal-split clue cells — and nothing else: no
-sums, no selection, no input, no store. It exists so the visual design can be settled before any
-puzzle logic is written; V2 replaces it with the interactive board on `useBoardStore`.
+The **static** Kakuro board (plan slices V0–V1 in
+[kakuro-implementation-plan.md](../../../../../Docs/kakuro-implementation-plan.md)). It draws a
+puzzle — white cells, black cells, and clue cells with their sums — and nothing else: no
+selection, no input, no store, and never a solution digit. It exists so the visual design can be
+settled before the board is interactive; V2 replaces it with the real one on `useBoardStore`.
 
 ## Why a Server Component
 
-There is no state to own and the layout is static data, so there is nothing to hydrate and no
-server/client mismatch to worry about. It gains `"use client"` only when it becomes interactive.
+There is no state to own and the puzzle is static data, so there is nothing to hydrate and no
+server/client mismatch to worry about. A side benefit: the puzzle object (which includes the
+solution) never leaves the server — only the rendered cells do. It gains `"use client"` only when
+it becomes interactive.
 
-## `buildDisplayCells(layout)`
+## `buildDisplayCells(puzzle)`
 
-The layout is stored as the **interior** N×N only (plan decision D2), because the rest of the
-codebase keys on `grid.length` being the puzzle's named size. A player, though, sees an extra
-strip of clue cells along the top and left. This helper produces that picture: an (N+1)×(N+1)
-grid where display row/column 0 is the gutter.
+The puzzle stores the **interior** N×N only (plan decision D2). A player sees an extra strip of
+clue cells along the top and left. This helper produces that picture: an (N+1)×(N+1) grid where
+display row/column 0 is the gutter, so interior (r, c) is display (r + 1, c + 1).
 
-A black cell gets the diagonal only if it actually starts a run — a white cell directly to its
-right (across) or directly below it (down). Drawing a diagonal on every black cell would make
-dead cells look like they are waiting for a clue. This is a *drawing* rule; the real run
-derivation (with validation) is V1's job and lives in the engine.
+It is driven entirely by the runs, in two passes:
 
 ```text
-tracks = N + 1
-isWhite(r, c) = r and c are both past the gutter AND layout[r-1][c-1] is "."
+start with every display cell as a plain block
 
-for each display row r, column c:
-    if isWhite(r, c):            a white cell
-    else:                        a block, with
-        across = isWhite(r, c+1)
-        down   = isWhite(r+1, c)
+pass 1 — for each run, for each of its cells:
+    mark that display cell white          (D3: a cell is black exactly when it is in no run)
+
+pass 2 — for each run:
+    find the display cell just before the run's first cell
+        across run → one step left
+        down run   → one step up
+    store the run's sum on that cell as its across / down clue
 ```
 
-## `KakuroBoard({ layout })`
+Two passes because a clue cell must be looked up *after* all whites are known. The cell before a
+run's first cell is always a block or the gutter — if it were white, the run would have started
+one cell earlier. The `+1` gutter offset is what makes "one step left/up" always land inside the
+display grid, even for runs that start at the interior's edge.
 
-Renders the display cells as a CSS grid. It already uses the WAI-ARIA grid skeleton
-(`grid` → `row` → `gridcell`, marked read-only) because V2 needs exactly that structure, and it
-lets the tests query cells by role instead of by class name.
+## `KakuroBoard({ puzzle })`
+
+Renders the display cells as a CSS grid, using the WAI-ARIA grid skeleton (`grid` → `row` →
+`gridcell`, marked read-only). V2 needs exactly that structure, and it lets the tests query
+cells by role instead of by class name.
 
 ```text
-render a grid labelled "Kakuro board", read-only, with --tracks = N + 1
+render a grid labelled "Kakuro board, N by N", read-only, with --tracks = N + 1
 for each display row:
     render a row wrapper (out of layout — cells stay direct grid items)
     for each cell:
-        label it "Row r, column c, empty" / "Clue cell" / "Blocked cell"
-        white → the plain cell style
-        block → the block style, plus the diagonal if it starts a run
+        white → an empty cell labelled "Row r, column c, empty"
+        block with a clue → the diagonal, the down sum and/or across sum,
+                            labelled "Clue: across 17, down 23" (whichever exist)
+        block without     → labelled "Blocked cell"
 ```
 
 ## Styling (`KakuroBoard.module.css`)
@@ -58,7 +64,12 @@ for each display row:
   those three cases.
 - **The diagonal is a background gradient.** A `to top right` linear gradient's 50% line runs
   from the upper-left corner to the lower-right one, so a hard-stopped 1.5px band at 50% is the
-  clue split. Convention (research G7): upper-right triangle = down sum, lower-left = across.
-- **Dark theme overrides the block colour.** `--ink` is cream in the dark theme, so the
+  clue split.
+- **Clue placement (research G7).** The down sum sits in the upper-right triangle, the across
+  sum in the lower-left — each nearest the run it heads.
+- **Clue text is sized from the cell, not the viewport.** The board is a size container, so
+  `--cell-size` (`100cqw / tracks`) is one cell's width and the clue font is 30% of it. The
+  numbers stay in proportion on a 7×7, a 9×9, or a phone, with no per-size rules.
+- **Dark theme overrides the block colours.** `--ink` is cream in the dark theme, so the
   light-theme mix would turn every black cell into a bright slab. Blocks become a muted step
-  above the paper instead.
+  above the paper instead, and the clue text takes the ink side.
