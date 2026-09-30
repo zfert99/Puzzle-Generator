@@ -855,7 +855,8 @@ reward-granting endpoints worth rate-limiting hardest:
   ~90-minute lag between an advisory's publication and `npm audit` reporting it is registry
   propagation or a client cache. Both in
   [security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md).
-  The daily scheduled `security-audit` run on main from that PR is the shipped half.
+  (The same PR shipped the incident's other follow-up: a daily scheduled `security-audit` run
+  on main that opens an issue when it fails.)
 
 ### Solo-dev QA hardening (Stage 1–3) 🔜 Up next (recorded July 2026)
 

@@ -97,8 +97,9 @@ touched no dependencies. Eleven `undici` advisories (npm range 8.0.0 – 8.10.1)
 main's last CI run (09-11): one on 09-28, ten on 09-29; three are **high** (GHSA-rfgv-xxqx-mfg5,
 GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 51 of
 `package-lock.json`** — `undici` (lockfile only); `next` + `eslint-config-next` floors raised to
-16.3.8. No `overrides` entry. Second commit after review: a daily `schedule:` on the
-`security-audit` job in `ci.yml` (build/e2e gated off it), plus doc corrections. Full account of the divergence:
+16.3.8. No `overrides` entry. Later commits after review: a daily `schedule:` on the
+`security-audit` job in `ci.yml` (build/e2e gated off it; a red scheduled run opens an issue;
+`npm ci` dropped for `--package-lock-only`), plus doc corrections. Full account of the divergence:
 [research/security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md).
 
 ### Mechanical
@@ -113,6 +114,7 @@ GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 
 | `npm run lint` · `npm run build` | both exit 0 on 16.3.8 (lint on the new `eslint-config-next`); same 25 routes (CI's placeholder `DATABASE_URL`) |
 | Playwright e2e, production build (`CI=1`, own port) | **37 passed, 9 skipped, 0 failed, 0 flaky** on next 16.3.8. The 9 are the DB-gated specs — no database in this worktree |
 | Benchmarks | not run — no engine/solver core touched |
+| `ci.yml` schedule, job gates, failure-issue step | **parsed only** (js-yaml; gates read back as `build-and-test`/`e2e`: `!= schedule`). No scheduled or gated run executed before merge; the `--package-lock-only` audit verified locally in a directory with no `node_modules` (exit 0) |
 
 ### Findings
 
@@ -148,6 +150,10 @@ GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 
   the research doc sat in `research/` with no banner saying why, the scheduled-audit fix was left
   as an open question, the review status was stale, and the `libc` hazard had no backlog entry.
   All fixed in the second commit; the roadmap now carries the two open questions.
+- **Third review, on the `ci.yml` commit:** six findings — no notification path for a red scheduled
+  run, the 60-day schedule auto-disable, the log not stating the schedule was only parsed, a stale
+  header comment, an unneeded `npm ci` in the audit job, and an unclear roadmap sentence. Fixed in
+  the third commit; reviews stop here by the owner's decision.
 - **The first e2e run failed 41/41 on a missing browser, not on the diff.** Playwright 1.63.0 wants
   Chromium build 1243; the machine had 1234 from before #95. `npx playwright install chromium`
   fixed it.
@@ -185,9 +191,9 @@ scripts, `use cache` prerender, a Turbopack hang; two security releases) — no 
 ### Reviews
 
 `/security-review` **not run** (this is the security fix; no app code changed). `/code-review` (the
-in-session command, high effort, run by the owner) **was run twice**: on the lockfile-only cut
-(seven findings) and on the final diff (five findings) — all addressed above. Not re-run after the
-second commit (`ci.yml` schedule + docs).
+in-session command, high effort, run by the owner) **was run three times**: on the lockfile-only
+cut (seven findings), on the floors + docs (five), and on the `ci.yml` schedule (six) — all
+addressed above. Not re-run after the third commit; the owner called the loop closed there.
 
 ---
 

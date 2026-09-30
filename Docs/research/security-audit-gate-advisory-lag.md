@@ -82,6 +82,15 @@ gate as soon as it is published.
   advisory data). Before this, a new advisory surfaced as a red check on whichever unrelated PR ran
   CI next — here, 19 days after main's last run. Code review asked for the root-cause fix rather
   than the open question it was first recorded as.
+- **A red scheduled run opens a GitHub issue** (or comments on the open one). GitHub's own
+  notification for a scheduled failure is an email to the workflow file's last committer, subject
+  to their settings — the "nothing alerted" shape of the
+  [2026-08 cron outage](vercel-cron-deployment-protection-outage.md). The issue is the visible
+  artefact. Two caveats live in the workflow comments: GitHub disables a schedule after 60 days
+  without a commit, and the audit job no longer installs anything (`--package-lock-only`).
+- **Verification level, stated plainly:** the workflow was parsed and its job gates read back;
+  **no scheduled run and no gated run had executed** when this merged. The first real test is the
+  06:23 UTC run after merge — check the Actions tab for it.
 
 ## Open questions
 
