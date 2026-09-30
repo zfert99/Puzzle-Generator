@@ -1,7 +1,8 @@
 # Kakuro (Cross Sums) — Implementation Plan
 
-> **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 with V0, the
-> looks-only board) · **Branch:** `feature/kakuro` (cut from `main` at `d0333d5`) ·
+> **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 — V0 in PR
+> [#104](https://github.com/zfert99/Puzzle-Generator/pull/104), V1 built on top of it, not yet
+> committed) · **Branch:** `feature/kakuro` (cut from `main` at `d0333d5`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -150,8 +151,8 @@ means Kakuro needs its own.
 | # | Decision | Status |
 |---|---|---|
 | D1 | Display **Kakuro**, subtitle **Cross Sums**; engine/slug `kakuro`; "Cross Sums" wired as a **one-constant fallback title** (Japan mark is live; US dead, EU refused) | Locked (G1 resolved; re-verify TSDR/eSearch before paid marketing) |
-| D2 | **Interior N×N storage + explicit runs list**; clue cells render in a one-cell gutter (top + left) plus inside interior black cells. `grid.length === N` stays true everywhere (`DailySize`, profile lookup, board config) | Proposed — confirm |
-| D3 | Black cells are `0` in both `grid` and `solution`; **blocked = "in no run"**, derived from `runs` at game start (like `cellToCage`). No `-1` sentinel leaks into `Grid` consumers | Proposed — confirm at V1 |
+| D2 | **Interior N×N storage + explicit runs list**; clue cells render in a one-cell gutter (top + left) plus inside interior black cells. `grid.length === N` stays true everywhere (`DailySize`, profile lookup, board config) | Applied in V1 (2026-09-30) — owner confirmation still open |
+| D3 | Black cells are `0` in both `grid` and `solution`; **blocked = "in no run"**, derived from `runs` at game start (like `cellToCage`). No `-1` sentinel leaks into `Grid` consumers | Applied in V1 (2026-09-30) — owner confirmation still open |
 | D4 | Daily at 4 types: **keep 3 mini slots and roll 3 of the 4 types** each day; a mini slot holding a type is played at **that type's mini size** (D11), so the "easy/medium = 4×4, hard = random(4/6)" rule is retired for types with a single mini size | Open — owner (slot count); size part follows D11 |
 | D5 | ~~T5 = bounded depth-1 recursion (Keisan transplant)~~ → **Every published tier is logic-only. T1–T3 by the technique ladder; T4 = whips of bounded length; T5 = longer whips / g-whips.** Surface sums (1-cuts) are an accelerator inside T4+, not a rung. Bounded T&E survives only as an optional, labelled *experimental* tier outside the daily | **Superseded 2026-09-11 by G5** — new form proposed, confirm |
 | D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** a **mini** (smallest size that carries an honest easy/medium/hard — 6×6 or 7×7, E3 decides), a **standard** (9×9 interior — the research's 8–10 sweet spot, odd for the edges-inward centre line, and what the standard daily slot expects), and a **large** (13×13 proposed — odd, near the Krazydad 13×17 print size; play + PDF, daily later). **No 4×4.** | Proposed — mini size decided by E3 (G6) |
@@ -179,7 +180,7 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | Order | Slice | What becomes visible |
 |---|---|---|
 | 0 | V0 — Looks-only static board | An empty 7×7 Kakuro shape at `/kakuro` — no sums, no input |
-| 1 | V1 — Types + baked fixtures | Nothing yet — the data a board can render |
+| 1 | V1 — Types + baked fixtures | Real clue sums on the static boards at `/kakuro` (7×7 and 9×9) |
 | 2 | V2 — Board on the baked puzzle | A playable Kakuro at `/play?variant=kakuro` |
 | 3 | V3 — PDF on the baked puzzle | A printable Kakuro page in the booklet |
 | 4 | E1 — Combination table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixture |
@@ -207,7 +208,7 @@ everything after it lands on something visible (D12 taken one step further).
 
 **Gate:** the owner is happy with how the empty board looks in both themes.
 
-**Step-log (2026-09-30, not yet merged):**
+**Step-log (2026-09-30 — PR [#104](https://github.com/zfert99/Puzzle-Generator/pull/104), open):**
 
 - *Process:* cut `feature/kakuro` from `main`; built the route, component, CSS module, sample
   layout, mirrored docs, and 4 tests (gutter dimensions, clue-vs-blocked marking, the sample's
@@ -222,9 +223,10 @@ everything after it lands on something visible (D12 taken one step further).
 - *Blockers:* none.
 - *Carried into V1/V2:* the sample layout is a shape only; V1's fixtures replace it. The
   component's `buildDisplayCells` is a drawing helper — V1's `deriveRuns` owns real run
-  derivation and validation.
+  derivation and validation. *(Done in V1: `sample-layout.ts` is deleted and the board now takes
+  a `KakuroPuzzle`.)*
 
-### V1 — Types + baked fixtures ⏳
+### V1 — Types + baked fixtures 🚧
 
 - `kakuro-types.ts`: `KakuroPuzzle { variant: 'kakuro'; gridSize; grid; solution; runs; difficulty }`,
   `Run { id; cells: number[]; sum; dir: 'across' | 'down' }` (flat `row * size + col` indices, the
@@ -241,6 +243,37 @@ everything after it lands on something visible (D12 taken one step further).
   against a brute-force strip scanner; the fixture parser round-trips.
 
 **Gate:** fixtures valid by test; mirrored `.md` files in place.
+
+**Step-log (2026-09-30 — built, not yet committed):**
+
+- *Process:* `src/features/engine/kakuro/` now holds `kakuro-types.ts` (`Run`, `KakuroPuzzle`,
+  `validateKakuroRuns`), `kakuro-layout.ts` (`deriveRuns`, `validateKakuroLayout`, `whiteMaskOf`)
+  and `kakuro-fixtures.ts` (`parseKakuroFixture` + a 7×7 and a 9×9), each with a mirrored `.md`
+  and tests (29). To give the slice something to look at (L5), the static `KakuroBoard` now takes
+  a `KakuroPuzzle` and draws the **clue sums** in their triangles; `/kakuro` shows both fixtures.
+  `sample-layout.ts` (V0) is deleted.
+- *Divergences from the spec above, and why:*
+  1. **Fixtures are authored as the solved grid, not in clue form.** Digits for whites, `#` for
+     blacks; the clues are derived by `deriveRuns`. One source of truth — a hand-typed clue that
+     disagreed with the solution would look exactly like a correct one. So there is no
+     `across\down` text parser and no round-trip test; the parser test asserts the parsed
+     solution and runs directly.
+  2. **`deriveRuns` takes the solved grid and does not validate.** Validation is split out:
+     `validateKakuroLayout(mask)` for the D9 shape rules (static, solver-free — E4 reuses it as
+     the pre-solver rejection step) and `validateKakuroRuns(runs, solution)` for the digits.
+     `deriveRuns` lives in `kakuro-layout.ts`, the module E4's generator will extend.
+  3. **The fixture digits were found by a throwaway script, not typed.** See Learnings.
+  4. **The board renders clues already** (spec'd for V2). It is still static — no input.
+- *Learnings:* (1) **Random fills of a fixed layout were never unique: 0 of 3,000** on the 7×7
+  (32 whites). A hill-climb on the fill — change one cell, keep the change if the solution count
+  does not rise — reached a unique fill in ~2 s for the 7×7 and ~105 s for the 9×9 (55 whites),
+  with a crude unoptimised counter. This is the research's "naive generation is hopeless"
+  warning showing up at mini size, and an early hint that E4 may want *fill repair* rather than
+  *fill-and-retry*. **E3 must measure this properly** — logged under Measurements. (2) Flat
+  indices hide row wrap: the last cell of a row and the first of the next differ by 1, so an
+  "across step is +1" check needs an explicit wrap guard (tested).
+- *Blockers:* none. **Owed to E1:** the repo does not yet prove the fixtures are unique — only
+  the throwaway counter did. E1's solver adds that test.
 
 ### V2 — Board on the baked puzzle ⏳
 

@@ -90,6 +90,78 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-09-30 — Kakuro V1: types, layout rules, baked fixtures, clue sums on the board
+
+Branch `feature/kakuro-v1`, stacked on `feature/kakuro` (V0, PR #104) at `bfa0fcb`. Adds
+`src/features/engine/kakuro/` (`kakuro-types`, `kakuro-layout`, `kakuro-fixtures`, each with tests
+and a mirrored `.md`), and the static `KakuroBoard` now takes a `KakuroPuzzle` and draws clue
+sums; `sample-layout.ts` deleted. ~960 code/CSS/test lines (≈360 of them tests) + 380 doc lines —
+**over the ~400 guideline.** Not split because types, layout derivation and fixtures only become
+testable together (a fixture is validated by both), and the board change is what makes the slice
+visible (L5).
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 74 files, **607 passed**, 0 failed (53 s) — 29 new engine tests + 4 board tests |
+| `npm run build` | green; `/kakuro` still prerendered static |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | not run — no solver/generator core; the new code is validators and a strip scanner |
+
+### Findings
+
+None blocking. Two things established while building:
+
+- **Random fills of a fixed layout are never unique at these sizes** (0 / 3,000 on the 7×7) —
+  recorded in `kakuro-log.md` → Measurements with the hill-climb timings that did work. A signal
+  for E3, not a roadblock for V1.
+- **Uniqueness of the two fixtures is proven only by a throwaway script**, not by anything in the
+  repo. Stated in `kakuro-fixtures.md`; E1 owes the in-repo test.
+
+### Invariants checked
+
+None of the standing ones apply — no slot key, no write, no query, no migration, no dependency.
+AI-written logic re-derived:
+
+- `deriveRuns` — fuzzed 200× against an independent per-cell walk (different algorithm, same
+  answer required), plus a fixed 3×3 with every run's cells and sum spelled out.
+- `validateKakuroLayout` — each rule has a test that trips it *and* the 5×5 rule has a test that
+  a black cell inside the block clears it (the contiguous-not-bounding-box nuance from G10).
+- `validateKakuroRuns` — the row-wrap trap (flat indices 2 and 3 look adjacent) has its own test.
+- `buildDisplayCells` — clue placement pinned on the 3×3 (which cell carries `across 4, down 4`,
+  which gutter cells carry what) and spot-checked in the browser against the 7×7 solution by hand
+  (23 = 6+8+9, 39 = 5+8+7+9+6+4, 24 = 8+7+5+4).
+
+### Docs sweep
+
+Mirrored `.md` for every source file; `KakuroBoard.md` and `page.md` rewritten for the puzzle
+prop. Reverse sweep for `sample-layout` / `KAKURO_SAMPLE`: only hits are the plan's V0 step-log
+(historical; annotated "deleted in V1"). Plan: V1 step-log with its four spec divergences; D2/D3
+marked applied **with owner confirmation still open**; running log journal, measurements, L7;
+roadmap + project-status status lines.
+
+### Verified vs read
+
+- **Verified:** everything in the table; page loads with no console errors; the served HTML
+  never contains the word `solution` and every white cell is empty (the puzzle object, solution
+  included, stays server-side because the board is a Server Component).
+- **Read / reasoned only:** the 9×9 fixture's layout was drawn by hand and is only *validated*
+  by code (legal shape), never *chosen* by code. Light theme not looked at by the agent.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lesson
+
+- **When a fixture's correctness is established outside the repo, write that down where the
+  fixture lives** — a future test that "proves" uniqueness must not be assumed to already exist
+  because the fixture was authored carefully.
+
+---
+
 ## 2026-09-30 — undici high + next critical advisories patched (undici → 8.11.2, next → 16.3.8)
 
 Branch `fix/undici-next-cves` on `d0333d5`. Surfaced by PR #104's red `security-audit` gate — that diff
