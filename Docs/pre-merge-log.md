@@ -97,7 +97,8 @@ touched no dependencies. Eleven `undici` advisories (npm range 8.0.0 – 8.10.1)
 main's last CI run (09-11): one on 09-28, ten on 09-29; three are **high** (GHSA-rfgv-xxqx-mfg5,
 GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 51 of
 `package-lock.json`** — `undici` (lockfile only); `next` + `eslint-config-next` floors raised to
-16.3.8. No `overrides` entry. Full account of the divergence:
+16.3.8. No `overrides` entry. Second commit after review: a daily `schedule:` on the
+`security-audit` job in `ci.yml` (build/e2e gated off it), plus doc corrections. Full account of the divergence:
 [research/security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md).
 
 ### Mechanical
@@ -123,8 +124,9 @@ GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 
 - **`npm audit` answered clean ~90 minutes after that advisory was public.** First post-fix run
   (≈16:15–16:20 UTC, not timestamped): exit 0. Same lockfile at 16:21:50: exit 1. Cause not
   established — registry propagation or a client cache.
-- **16.3.8, not the minimum 16.3.6.** 16.3.8 (published 16:07 UTC the same day) lists six more
-  security fixes, one high (GHSA-cjq9-62q9-8jv4, SSRF in Image Optimization). That advisory was not
+- **16.3.8, not the minimum 16.3.6.** 16.3.8 (published 16:07 UTC the same day) lists seven more
+  security fixes: one high (GHSA-cjq9-62q9-8jv4, SSRF in Image Optimization), five medium, one
+  low. That advisory was not
   in GitHub's global database shortly after 17:00 UTC, so the audit cannot see it yet.
 - **Floors raised after review.** The first cut was lockfile-only; `/code-review` flagged that the
   patched minimum then lived only in the lockfile and that `eslint-config-next` lagged `next` by
@@ -141,6 +143,11 @@ GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 
   patch is 8.10.2, so the existing range already admits it.
 - **`npm update` / `npm install` on macOS (npm 11.8.0) stripped the `libc` field from four
   `@node-rs/argon2-linux-*` entries** on all three installs. Reverted each time.
+- **Second review, on the final diff:** five findings, all docs/metadata — the 16.3.8 advisory
+  count was written as six (it is seven; also wrong in the first commit message, which stands),
+  the research doc sat in `research/` with no banner saying why, the scheduled-audit fix was left
+  as an open question, the review status was stale, and the `libc` hazard had no backlog entry.
+  All fixed in the second commit; the roadmap now carries the two open questions.
 - **The first e2e run failed 41/41 on a missing browser, not on the diff.** Playwright 1.63.0 wants
   Chromium build 1243; the machine had 1234 from before #95. `npx playwright install chromium`
   fixed it.
@@ -166,7 +173,9 @@ GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 
 
 No `.ts`/`.tsx` touched, no symbol renamed. Reverse sweep: `undici` and `16.3.4` appear only in
 dated log entries (this file, the August archive) and the new research record — no other live doc
-states either version. Research record written: [research/security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md).
+states either version. Research record written: [research/security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md);
+`roadmap.md` "Security Hardening, Stage 1+" carries the two open questions. `ci.yml` has no
+mirrored doc; its new `schedule:` block explains itself inline and cites the research record.
 
 **Executed:** everything in the Mechanical table; the audit of #103's lockfile in a scratch copy;
 publish dates of all twelve advisories (GitHub advisory API). **Read only:** the next 16.3.5 –
@@ -175,10 +184,10 @@ scripts, `use cache` prerender, a Turbopack hang; two security releases) — no 
 
 ### Reviews
 
-`/security-review` **not run** (this is the security fix; no app code changed). `/code-review` **was
-run by the owner** at high effort on the lockfile-only cut: seven findings, none a lockfile
-correctness bug, all addressed above. It has **not** been re-run on the final diff (floors, research
-doc).
+`/security-review` **not run** (this is the security fix; no app code changed). `/code-review` (the
+in-session command, high effort, run by the owner) **was run twice**: on the lockfile-only cut
+(seven findings) and on the final diff (five findings) — all addressed above. Not re-run after the
+second commit (`ci.yml` schedule + docs).
 
 ---
 

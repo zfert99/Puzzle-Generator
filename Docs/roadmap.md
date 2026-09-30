@@ -846,6 +846,16 @@ reward-granting endpoints worth rate-limiting hardest:
 - **`drizzle-kit`/`esbuild` moderate dev-only advisory** — low priority; the only fix path
   downgrades `drizzle-kit` to 0.18.1 (breaking), and the exposure is local-dev-only
   (`drizzle-kit studio` invoked while an attacker shares your network).
+- **Lockfile `libc` stripping on macOS** (recorded September 2026) — `npm install` / `npm update`
+  with npm 11.8.0 on macOS drops the `libc` field from the four `@node-rs/argon2-linux-*` entries
+  in `package-lock.json` every time; it was reverted by hand on three installs in
+  [PR #105](https://github.com/zfert99/Puzzle-Generator/pull/105). Unresolved: npm bug, or a
+  lockfile written by a different npm major? Until it is pinned down, diff the lockfile after any
+  install and keep only the intended hunks. Also open from the same incident: whether the
+  ~90-minute lag between an advisory's publication and `npm audit` reporting it is registry
+  propagation or a client cache. Both in
+  [security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md).
+  The daily scheduled `security-audit` run on main from that PR is the shipped half.
 
 ### Solo-dev QA hardening (Stage 1–3) 🔜 Up next (recorded July 2026)
 

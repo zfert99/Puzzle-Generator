@@ -8,9 +8,17 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  # The audit alone also runs daily against main. Advisories are published against packages we
+  # already lock, so without this a new one only surfaces as a red check on whichever unrelated
+  # PR runs CI next — in September 2026 that was 19 days after main's last run, on a diff that
+  # touched no dependencies. See Docs/research/security-audit-gate-advisory-lag.md. The other
+  # jobs are gated off the schedule below: main's code has not changed, only the advisory data.
+  schedule:
+    - cron: "23 6 * * *"
 
 jobs:
   build-and-test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,6 +48,7 @@ jobs:
     # passed against Next's 404 page, and the `webServer` readiness probe never got a 2xx — the run
     # aborted before a single test. Wiring it into CI is what keeps that from silently recurring;
     # `e2e/fixtures.ts` fails any test whose navigation returns >= 400.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
