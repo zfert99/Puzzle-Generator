@@ -55,11 +55,16 @@ size and level.
    validate → mutate"): `gridSize` is `7 | 9` (Kakuro's own sizes, D11 — a Sudoku-family 4/6 is
    rejected), each level count is an integer `0..1`. A count of 2 would print the same fixture
    twice, so it is a `400` with a message that says why, not a silent clamp.
-2. For each level with a count of 1, `findKakuroFixture(size, level)`; none selected → `400`.
-3. `generateKakuroPDF(puzzles)` → the booklet; return it as `Kakuro.pdf`.
+2. All counts zero → `400`; otherwise `selectKakuroBatch(counts, { gridSize })` (the fixtures
+   module's service — the Kakuro counterpart of `generateKillerBatch`, so the route stays a
+   controller per AGENTS.md §1; review follow-up 5 moved the selection out of the route).
+3. `generateKakuroPDF(puzzles)` → the booklet; return it as `Kakuro.pdf`. The log line carries
+   the five counts under `counts` and the size at the top level, the same shape as the other
+   branches.
 
 No generation runs, so none of the Extreme sub-count or total caps apply; the Zod maximum is the
-only ceiling. When E5 ships, step 2 becomes a `generateKakuroBatch` call and the `max(1)` goes.
+only ceiling. When E5 ships, `selectKakuroBatch` becomes `generateKakuroBatch` and the `max(1)`
+goes.
 
 ---
 

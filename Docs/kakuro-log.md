@@ -28,6 +28,12 @@
 
 ## Journal
 
+- **2026-10-01 (review 5)** V3 merged (#118). Owner ran `/code-review high` over it: **8
+  findings, all addressed** (table in the plan under V3). No bug class this time; the one
+  behaviour fix was the configurator's "9×9 only" note, which had read classic's size for every
+  variant since Killer — it now follows the ladder offered. `[decision]` fixture selection is a
+  service (`selectKakuroBatch`) like the other variants' batches, so E5 swaps one function;
+  `KAKURO_LADDER` is the one ladder list. `[learning]` L18.
 - **2026-10-01 (V3)** Review follow-up 4 merged (#117). **V3 built** (#118): `drawKakuroGrid` +
   `generateKakuroPDF` (gutter, shaded blocks, diagonals, down/across sums, answer pages);
   Kakuro on `/generate` at 7×7 / 9×9 with the full ladder, **one baked puzzle per level** until
@@ -179,6 +185,7 @@
 | L7 | **Don't fill-and-retry a fixed layout; repair the fill.** Independent random fills of one layout were unique 0 times in 3,000, while a one-cell-at-a-time hill-climb on the same layout converged. Treat "P(unique) per random fill" as ≈ 0 until E3 measures otherwise | V1 fixture authoring, 2026-09-30 |
 | L8 | **Never mutate hydrated store state to "finish" it — derive in `merge` or `setState`.** A mutation after hydration notifies no subscriber, so whatever rendered first keeps the stale slice; the bug only shows for a field a component reads on first paint, which is why `peers` (read only inside actions) hid it for months | B1, V2, 2026-10-01 |
 | L9 | **A hint from a solver must be re-checked against the answer before it is placed.** Propagation from a board that already holds a wrong digit can force a digit that is consistent with the mistake and wrong against the solution; "the solver said so" is not "it is correct" once the premises are the player's | E1, 2026-10-01 |
+| L18 | **A prop that every caller passes from the same stale variable is a bug waiting for its third caller.** The configurator's `gridSize` was classic's size for Killer and Keisan too; the note it drove was wrong in both directions and nobody noticed until a fourth variant needed an exception. When a shared component's input only makes sense per caller, pass the caller's value and derive the display from what is actually offered | Review 5, 2026-10-01 |
 | L17 | **A one-way link is half a link — rate nothing until the model's links run both ways.** The g-link was implemented as "true combination → its digits need holders" and the bounds, the extreme fixtures and E3's tier distribution were all measured on that; adding the contrapositive cut chain lengths by 2–3× and re-graded two fixtures. Before setting a bound from chain lengths, list every link of the model and check each is applied in both directions | B9, 2026-10-01 |
 | L16 | **A spike needs a wall-clock cap per attempt from the first run.** The 13×13 repair ran unbounded for 52 minutes (its objective — counting up to 50 solutions of a 103-cell grid — cost the whole node budget per step); a 60 s cap gave the same answer in 6 minutes | E3, 2026-10-01 |
 | L15 | **At every size, uniqueness is *repaired into* a fill, not found by retrying fills — and the repair's objective must be cheap at the size in question.** P(unique) ≈ 0.1% everywhere; one-cell repair converges in ms at 6–9 but "count solutions" is no longer cheap at 13 | E3, 2026-10-01 |

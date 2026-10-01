@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_KAKURO_FIXTURES, KAKURO_FIXTURES, KAKURO_FIXTURE_7X7_CHAINS, KAKURO_FIXTURE_9X9_CHAINS, findKakuroFixture, parseKakuroFixture } from './kakuro-fixtures';
+import { ALL_KAKURO_FIXTURES, KAKURO_FIXTURES, KAKURO_FIXTURE_7X7_CHAINS, KAKURO_FIXTURE_9X9_CHAINS, findKakuroFixture, parseKakuroFixture, selectKakuroBatch } from './kakuro-fixtures';
 import { classifyKakuro } from './kakuro-logical-solver';
 import { validateKakuroLayout, whiteMaskOf } from './kakuro-layout';
 import { validateKakuroRuns } from './kakuro-types';
@@ -43,6 +43,18 @@ describe('parseKakuroFixture', () => {
     expect(() => parseKakuroFixture(['#13', '124', '356'], 'easy')).toThrow(
       'layout is not 180° rotationally symmetric'
     );
+  });
+});
+
+describe('selectKakuroBatch', () => {
+  it('serves the requested levels in ladder order, `count` times each, at the requested size', () => {
+    const batch = selectKakuroBatch({ extreme: 1, easy: 2 }, { gridSize: 9 });
+    expect(batch.map((p) => `${p.gridSize}:${p.difficulty}`)).toEqual(['9:easy', '9:easy', '9:extreme']);
+  });
+
+  it('is empty for no counts and throws for a size with no fixtures (a programmer error, not a short batch)', () => {
+    expect(selectKakuroBatch({}, { gridSize: 7 })).toEqual([]);
+    expect(() => selectKakuroBatch({ easy: 1 }, { gridSize: 6 })).toThrow(RangeError);
   });
 });
 

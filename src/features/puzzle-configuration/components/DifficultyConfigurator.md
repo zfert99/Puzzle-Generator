@@ -27,9 +27,20 @@ grid size. When omitted, availability falls back to the grid-size lookup (classi
 
 Kakuro serves one baked puzzle per level until its generator lands, so the form passes
 `maxPerDifficulty={1}`: the inputs' `max` and the `onChange` clamp both honour it, the "1–50
-total" sentence becomes "one per level", the "Expert and Extreme are only available for 9×9"
-note is suppressed (a 7×7 Kakuro carries the full ladder), and the slow-generation warning is
-`null` (nothing is generated). Default `50`, which is the pre-existing behaviour.
+total" sentence becomes "one per level" (keyed on the cap, not the variant), and the
+slow-generation warning is `null` for Kakuro (nothing is generated). Default `50`, which is the
+pre-existing behaviour.
+
+## The "Expert and Extreme are only available for 9×9" note
+
+Shown when the ladder actually offered has no `expert` — derived from `availableDifficulties`,
+not from `gridSize`. Review follow-up 5: the note used to test `gridSize !== 9`, but the form
+passed its *classic* size for every variant, so Killer 6×6 / Keisan 4×4 lost the note while
+classic sat at 9×9 and got it wrongly when classic sat at 4×4; V3 had added a Kakuro exception
+on top. Now the form passes the active variant's size (`activeSize`) and the note follows the
+ladder, so there is no per-variant case. `gridSize` is a `SelectableSize` (4 | 6 | 7 | 9); the
+7×7 row of the fallback table exists only for Kakuro, which always passes `difficulties`
+explicitly anyway.
 
 ## What it does
 

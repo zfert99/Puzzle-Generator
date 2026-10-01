@@ -152,6 +152,18 @@ describe('Sad Paths', () => {
     expect(body.error).toMatch(/7 or 9/);
   });
 
+  test('Kakuro: gridSize and absent levels default (7×7, 0) — one easy puzzle makes a 3-page PDF', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', easy: 1 }));
+    expect(res.status).toBe(200);
+    const text = Buffer.from(await res.arrayBuffer()).toString('latin1');
+    expect((text.match(/\/Type \/Page[^s]/g) ?? []).length).toBe(3); // title + puzzle + answer
+  }, 30_000);
+
+  test('Kakuro: a non-numeric count is rejected', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 7, easy: 'apple' }));
+    expect(res.status).toBe(400);
+  });
+
   test('Kakuro: all zeros returns 400', async () => {
     const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 7 }));
     expect(res.status).toBe(400);

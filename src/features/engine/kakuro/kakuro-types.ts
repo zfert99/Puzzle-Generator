@@ -18,6 +18,10 @@ import type { GridConfig, GridSize } from '../sudoku';
  */
 export type KakuroDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme' | 'unrated';
 
+/** The five published tiers in order — the one list the form, the route and the fixtures share. */
+export const KAKURO_LADDER = ['easy', 'medium', 'hard', 'expert', 'extreme'] as const satisfies readonly KakuroDifficulty[];
+export type KakuroLevel = (typeof KAKURO_LADDER)[number];
+
 export type RunDirection = 'across' | 'down';
 
 /**

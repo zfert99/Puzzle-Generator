@@ -1,13 +1,16 @@
 import React from 'react';
+import type { SelectableSize } from './GridSizeSelector';
 
 const DIFFICULTIES_BY_SIZE: Record<number, string[]> = {
   4: ['easy', 'medium', 'hard'],
   6: ['easy', 'medium', 'hard'],
+  7: ['easy', 'medium', 'hard', 'expert', 'extreme'], // only Kakuro is 7×7, and it carries the full ladder
   9: ['easy', 'medium', 'hard', 'expert', 'extreme'],
 };
 
 interface Props {
-  gridSize: 4 | 6 | 9;
+  /** The active variant's size — drives the fallback ladder when `difficulties` is not given. */
+  gridSize: SelectableSize;
   counts: Record<string, number>;
   onChange: (difficulty: string, value: number) => void;
   /** Override the available difficulties (e.g. Killer offers only easy/medium/hard). */
@@ -70,7 +73,7 @@ function slowGenerationWarning(
 export function DifficultyConfigurator({ gridSize, counts, onChange, difficulties, variant = 'classic', mystery = false, maxPerDifficulty = 50 }: Props) {
   const availableDifficulties = difficulties ?? DIFFICULTIES_BY_SIZE[gridSize];
   const warning = slowGenerationWarning(variant, counts, mystery);
-  const isKakuro = variant === 'kakuro';
+  const topTiersLocked = !availableDifficulties.includes('expert');
 
   return (
     <div className="space-y-4 mb-8">
@@ -100,11 +103,11 @@ export function DifficultyConfigurator({ gridSize, counts, onChange, difficultie
         );
       })}
       <p className="text-sm text-ink-soft text-center mt-2">
-        {isKakuro
+        {maxPerDifficulty === 1
           ? 'Hand-made puzzles until the Kakuro generator lands — one per level.'
           : 'You can generate 1–50 puzzles total per request.'}
       </p>
-      {gridSize !== 9 && !isKakuro && (
+      {topTiersLocked && (
         <p className="text-sm text-ink-soft text-center">
           Expert and Extreme are only available for 9×9 grids.
         </p>
