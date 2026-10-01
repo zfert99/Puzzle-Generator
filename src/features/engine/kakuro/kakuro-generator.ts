@@ -388,20 +388,25 @@ export interface WalkOptions extends ClimbOptions {
  * ```text
  * not unique                      → 1000            (never kept over a unique fill)
  * unique, ladder cannot finish it → 500 + undecided cells
- * unique, harder than the target  → 100 + steps above the target tier   ← fewer is closer
- * unique, easier than the target  → 50 − cells the tier-below ladder leaves undecided  ← more is closer
+ * unique, harder than the target  → 100 + steps above the target tier         ← fewer is closer
+ * unique, easier than the target  → 50 + 10·(target − h) − lean(h)             ← nearer tier, then leaning harder on it
  * unique, exactly the target      → 0
  * ```
  *
- * The gradients inside each band are what make it a climb rather than a lottery: a hard
- * puzzle walking to easy sheds its above-tier steps one by one; an easy one walking to expert
- * gets harder for the tier-3 ladder step by step until a chain is needed. Measured (E5): 9×9
- * easy in ~0.2 s, extreme in ~0.5 s, every target at every size reached — see
- * `kakuro-generator.md`.
+ * where `h` is the puzzle's hardest tier and `lean(h)` ∈ 0..9 is the share of white cells the
+ * ladder capped at `h − 1` leaves undecided — how much the puzzle already depends on its top
+ * technique. The gradients inside each band are what make it a climb rather than a lottery: a
+ * hard puzzle walking to easy sheds its above-tier steps one by one; an easy one walking to
+ * expert first gains a tier whenever a mutation does, and between those jumps grows the part of
+ * the grid its top tier carries. (The first version capped the ladder at `target − 1` instead of
+ * `h − 1`; a ladder that never needed more than `h` finishes under any cap ≥ `h`, so that band
+ * was a constant 50 and the up-walks were plateau random walks — a review finding.) Measured
+ * before/after in `kakuro-generator.md`.
  */
 export function walkToTier(start: readonly number[][], target: KakuroTier, options: WalkOptions = {}): ClimbResult {
   const { countBudget = 20_000, ...climb } = options;
   const size = start.length;
+  const whiteCount = whiteMaskOf(start).flat().filter(Boolean).length;
   const undecided = (solver: KakuroLogicalSolver) => {
     let cells = 0;
     for (let cell = 0; cell < size * size; cell++) {
@@ -418,12 +423,13 @@ export function walkToTier(start: readonly number[][], target: KakuroTier, optio
       const solver = new KakuroLogicalSolver({ gridSize: size, runs });
       const result = solver.solve({ recordSteps: true });
       if (!result.solved) return 500 + undecided(solver);
-      const hardest = result.hardestTier === 0 ? 1 : result.hardestTier;
+      const hardest = (result.hardestTier === 0 ? 1 : result.hardestTier) as KakuroTier;
       if (hardest === target) return 0;
       if (hardest > target) return 100 + result.steps.filter((step) => step.tier > target).length;
       const below = new KakuroLogicalSolver({ gridSize: size, runs });
-      below.solve({ maxTier: (target - 1) as KakuroTier });
-      return 50 - Math.min(49, undecided(below));
+      below.solve({ maxTier: (hardest - 1) as KakuroTier });
+      const lean = Math.min(9, Math.floor((9 * undecided(below)) / whiteCount));
+      return 50 + 10 * (target - hardest) - lean;
     },
     climb
   );
@@ -441,15 +447,21 @@ export interface GenerateUniqueOptions {
   repair?: RepairOptions;
   /** Walk the repaired fill to this tier before accepting it (E5); absent = accept whatever tier came out. */
   targetTier?: KakuroTier;
+  /** The tier walk's own caps — independent of the repair's. */
+  walk?: WalkOptions;
 }
 
 /**
- * A fresh, unique Kakuro: layout → fill → repair → verify, labelled by the classifier with
- * whatever tier it came out as. `null` when every round failed to repair (the caller decides
- * whether to retry at another density or fall back).
+ * A fresh, unique Kakuro: layout → fill → repair → (with `targetTier`) walk → exact verify →
+ * label. With a target, the label is the target — the walk accepts only a state whose full
+ * ladder solve reports exactly that tier, which is the classifier's own computation — and a
+ * walk that stalls discards the puzzle and starts a fresh round. Without one, the classifier
+ * says what came out (`'unrated'` when the ladder cannot finish it, D8). Every stage shares
+ * `timeBudgetMs`; `null` when the rounds or the budget run out, which `generateKakuro` treats
+ * as a fault, not a fallback.
  */
 export function generateUniqueKakuro(options: GenerateUniqueOptions): KakuroPuzzle | null {
-  const { gridSize, blackDensity, method, rng = Math.random, maxRounds = 5, timeBudgetMs = Infinity, repair, targetTier } = options;
+  const { gridSize, blackDensity, method, rng = Math.random, maxRounds = 5, timeBudgetMs = Infinity, repair, walk, targetTier } = options;
   const started = performance.now();
   for (let round = 0; round < maxRounds; round++) {
     const remaining = timeBudgetMs - (performance.now() - started);
@@ -465,15 +477,16 @@ export function generateUniqueKakuro(options: GenerateUniqueOptions): KakuroPuzz
     let solution = repaired.solution;
     if (targetTier !== undefined) {
       const left = timeBudgetMs - (performance.now() - started);
-      const walked = walkToTier(solution, targetTier, { rng, msCap: Math.min(repair?.msCap ?? 25 * gridSize * gridSize, left) });
+      const walked = walkToTier(solution, targetTier, { rng, ...walk, msCap: Math.min(walk?.msCap ?? 25 * gridSize * gridSize, left) });
       if (walked.score !== 0) continue;
       solution = walked.solution;
     }
     const runs = deriveRuns(solution);
     // The objectives counted with a node budget; the final word is the exact verifier's.
     if (isKakuroUnique({ gridSize, runs }) !== true) continue;
-    const difficulty = classifyKakuro({ gridSize, runs }).difficulty;
-    if (targetTier !== undefined && difficulty !== TIER_DIFFICULTY[targetTier as Exclude<KakuroTier, 0>]) continue;
+    // With a target the walk's accepting solve IS the classifier's (same solver, same call,
+    // deterministic), so the label is the target; re-running it would re-derive a known answer.
+    const difficulty = targetTier !== undefined ? TIER_DIFFICULTY[targetTier as Exclude<KakuroTier, 0>] : classifyKakuro({ gridSize, runs }).difficulty;
     return {
       variant: 'kakuro',
       gridSize,

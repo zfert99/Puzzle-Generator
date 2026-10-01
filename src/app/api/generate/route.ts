@@ -174,6 +174,8 @@ export async function POST(req: NextRequest) {
       if (counts.extreme > MAX_EXTREME) {
         return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme Kakuro puzzles per PDF request` }, { status: 400 });
       }
+      // One budget for the batch (default 45 s inside `maxDuration = 60`): a request that cannot
+      // finish throws into the generic 500 below instead of timing out with the PDF half-built.
       const puzzles = generateKakuroBatch(counts, { gridSize: kakuroSize });
       const pdfBuffer = await generateKakuroPDF(puzzles);
       logger.info(
