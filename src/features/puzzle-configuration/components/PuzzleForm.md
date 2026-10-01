@@ -36,8 +36,8 @@ A lookup table defining which difficulties are available for each grid size:
 Four segmented buttons switch `variant`. Every variant picks its size through the shared
 `GridSizeSelector`, differing only in the `sizes` prop it passes: classic offers all three
 (4/6/9), **Killer** offers `[6, 9]`, **Keisan** (calc) offers `[4, 6, 9]`, and **Kakuro**
-offers its own `[7, 9]` (plan decision D11: sizes are per puzzle type — these are the two baked
-layouts until E5). The non-classic variants keep their own size state (`killerSize`,
+offers its own `[6, 7, 9]` (plan decision D11: sizes are per puzzle type; D6′: the 6×6 mini,
+7×7, the 9×9 standard). The non-classic variants keep their own size state (`killerSize`,
 `calcSize`, `kakuroSize`) so switching types doesn't clobber the classic selection. Killer's `onChange` carries a guard that ignores a `4`:
 the selector never offers 4×4 there, but its callback type is `4 | 6 | 9` and the guard narrows
 it to Killer's `6 | 9` without a cast.
@@ -48,15 +48,11 @@ plus the Mystery (hide-operators) switch; Kakuro a "cross sums" note. `handleGen
 0 below 9×9 for Killer and Keisan, `noOp` added for Keisan); classic mode sends
 `{ ...counts, gridSize }` as before.
 
-**Kakuro offers the full ladder at both sizes** (a 7×7 Kakuro has an expert and an extreme,
-unlike the Sudoku family's minis) but **at most one puzzle per level** — until the generator
-lands the puzzles are baked fixtures, one per size and level, and the route rejects a count of
-2. The form passes `maxPerDifficulty={1}` to the configurator (which caps each input and swaps
-the "1–50 total" note for "one per level") and clamps the counts in state when the Kakuro toggle
-is chosen (`handleVariantChange`, so the default 2/2/2 becomes 1/1/1 and no input shows a value
-above its own max). Those two are the whole rule — `handleGenerate` sends the counts as they are
-(review follow-up 5 removed a third, submit-time clamp that could never change anything). The
-ladder it offers is the engine's `KAKURO_LADDER`, not a local copy.
+**Kakuro offers the full ladder at every size** (a 6×6 or 7×7 Kakuro has an expert and an
+extreme, unlike the Sudoku family's minis) and, since E5, generates as many as asked — the same
+1–50 total and five-extreme caps as the other types. (V3 had capped it at one baked puzzle per
+level; that cap, its state clamp and the configurator's `maxPerDifficulty` prop went with the
+generator.) The ladder it offers is the engine's `KAKURO_LADDER`, not a local copy.
 
 The configurator receives the **active variant's size** (`activeSize`: Killer's, Keisan's,
 Kakuro's or classic's), not classic's — the "9×9 only" note it shows derives from that (review

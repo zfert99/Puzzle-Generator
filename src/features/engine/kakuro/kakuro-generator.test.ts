@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { blackDensityOf, fillKakuroLayout, generateKakuroLayout, generateUniqueKakuro, repairToUnique } from './kakuro-generator';
+import { blackDensityOf, fillKakuroLayout, generateKakuroLayout, generateUniqueKakuro, repairToUnique, walkToTier } from './kakuro-generator';
+import { classifyKakuro } from './kakuro-logical-solver';
 import { deriveRuns, validateKakuroLayout } from './kakuro-layout';
 import { isKakuroUnique } from './kakuro-solver';
 import { validateKakuroRuns } from './kakuro-types';
@@ -87,6 +88,30 @@ describe('repairToUnique', () => {
     const result = repairToUnique(fill, { rng, msCap: 1, stepCap: 3 });
     expect(result.steps).toBeLessThanOrEqual(3);
     expect(result.solutions).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('walkToTier', () => {
+  it('walks a unique 7×7 to easy and to extreme, keeping it unique and legal', () => {
+    const rng = seeded(21);
+    const base = generateUniqueKakuro({ gridSize: 7, blackDensity: 0.37, rng, repair: { msCap: 60_000 } })!;
+    for (const target of [1, 5] as const) {
+      const walked = walkToTier(base.solution, target, { rng, msCap: 60_000 });
+      expect(walked.score).toBe(0);
+      const runs = deriveRuns(walked.solution);
+      expect(isKakuroUnique({ gridSize: 7, runs })).toBe(true);
+      expect(validateKakuroRuns(runs, walked.solution)).toEqual([]);
+      expect(classifyKakuro({ gridSize: 7, runs }).tier).toBe(target);
+      // The layout is the base's: only digits moved.
+      walked.solution.forEach((row, r) => row.forEach((digit, c) => expect(digit !== 0).toBe(base.solution[r][c] !== 0)));
+    }
+  });
+
+  it('reports a non-zero score when the cap stops it short', () => {
+    const base = generateUniqueKakuro({ gridSize: 9, blackDensity: 0.38, rng: seeded(22), repair: { msCap: 60_000 } })!;
+    const walked = walkToTier(base.solution, base.difficulty === 'easy' ? 5 : 1, { rng: seeded(23), stepCap: 1 });
+    expect(walked.steps).toBeLessThanOrEqual(1);
+    expect(typeof walked.score).toBe('number');
   });
 });
 

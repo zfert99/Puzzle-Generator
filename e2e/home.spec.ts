@@ -29,6 +29,7 @@ test.describe('Hub and generator', () => {
     await expect(cards.getByRole('link', { name: /sudoku/i })).toBeVisible();
     await expect(cards.getByRole('link', { name: /killer/i })).toBeVisible();
     await expect(cards.getByRole('link', { name: /keisan/i })).toBeVisible();
+    await expect(cards.getByRole('link', { name: /kakuro/i })).toBeVisible();
     await expect(cards.getByRole('link', { name: /free play/i })).toHaveCount(0);
     await expect(cards.getByRole('link', { name: /print packs/i })).toBeVisible();
   });

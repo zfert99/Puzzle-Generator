@@ -72,11 +72,11 @@ export default function PlayExperience() {
   const mounted = useHasMounted();
   // Deep link from a hub card (`/play?variant=killer|calc|kakuro`): preselect the variant as the
   // initial state (not via a setState-in-effect). Keisan (`calc`) comes in 4/6/9; it seeds 6 (the
-  // friendly mid size) rather than the classic default of 9. Kakuro seeds its mini, 7.
+  // friendly mid size) rather than the classic default of 9. Kakuro seeds its mini, 6 (D6′).
   const initialVariant = parseVariant(searchParams.get('variant'));
   const [variant, setVariant] = useState<PlayVariant>(initialVariant);
   const [gridSize, setGridSize] = useState<SelectableSize>(
-    initialVariant === 'calc' ? 6 : initialVariant === 'kakuro' ? 7 : 9
+    initialVariant === 'calc' ? 6 : initialVariant === 'kakuro' ? 6 : 9
   );
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle — hide operators

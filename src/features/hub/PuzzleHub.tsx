@@ -35,9 +35,11 @@ function GroupHeading({ children }: { children: ReactNode }) {
  *
  * **Why this type order.** Play group is ordered by difficulty-to-learn, not by generator
  * cost: Sudoku (rules everyone knows) → Killer (those rules plus cage sums) → Keisan (a
- * different constraint model — no boxes — plus four operators and the optional mystery mode).
- * It also matches the order the `/play` picker already uses (`classic, killer, calc`), so the
- * hub and the picker agree.
+ * different constraint model — no boxes — plus four operators and the optional mystery mode)
+ * → Kakuro (no grid rule at all: black cells, runs, and sums — a different game that happens to
+ * use digits). It also matches the order the `/play` picker already uses (`classic, killer,
+ * calc, kakuro`), so the hub and the picker agree. The Kakuro card went live with its generator
+ * (plan D12: no card for a one-puzzle type), and the `new!` sticker moved to it from Keisan.
  *
  * **Why one grid, not one per group.** A grid per group would size cards independently, so a
  * one-card group (Print) would stretch that card across the full row. Sharing a single grid and
@@ -78,6 +80,13 @@ export function PuzzleHub() {
           title="Keisan"
           desc="Math cages — + − × ÷ are the clue"
           tilt="tilt-c"
+        />
+        <PuzzleCard
+          href="/play?variant=kakuro"
+          emoji="➕"
+          title="Kakuro"
+          desc="Cross sums — runs that add up"
+          tilt="tilt-d"
           sticker={
             <Sticker color="lime" rotate={10} className="absolute -top-3 -right-2 z-10">
               new!

@@ -9,16 +9,16 @@ When the body has `variant: 'killer'`, the route validates the difficulty is one
 easy/medium/hard (Killer v1) and returns `generateKillerSudoku(difficulty)` — a `KillerPuzzle`
 with `cages`. The classic path (below) runs otherwise.
 
-## Kakuro branch (plan slice E4)
+## Kakuro branch (plan slices E4 → E5)
 
 When the body has `variant: 'kakuro'`, the route validates `difficulty` against `KAKURO_LADDER`
 and `gridSize` against `KAKURO_SIZES` (6 / 7 / 9 — Kakuro's own sizes, D11; the full ladder is
-open at every size) and returns `generateKakuroDetailed(difficulty, { gridSize }).puzzle`. E4
-targets the tier by bounded rejection and may fall back — a baked fixture of the exact tier
-where one exists, else the nearest tier generated, always labelled with the grade the
-classifier assigned (D8) — so the log line carries `served` (the label actually sent) and
-`source` (`generated` / `fixture` / `nearest`) next to the requested `difficulty`: E5 reads the
-fallback rate per tier and size from it before replacing the loop.
+open at every size) and returns `generateKakuro(difficulty, { gridSize })` — fresh, unique, and
+walked to exactly the requested tier (E5: the classifier is in the generator's objective). The
+label is still the classifier's own, so the log line carries `served` beside the requested
+`difficulty` as a standing check that they agree. A generation failure throws into the generic
+500 like the other variants (measured at 0 in 1,500 puzzles across the sizes). E4's bounded
+rejection, its fixture/nearest fallback and the `source` field are gone.
 
 ## Why this endpoint exists
 

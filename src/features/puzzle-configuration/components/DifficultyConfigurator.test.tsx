@@ -45,10 +45,8 @@ describe('DifficultyConfigurator', () => {
     const { rerender } = render(<DifficultyConfigurator gridSize={9} counts={zeroCounts} onChange={() => {}} difficulties={['easy', 'medium', 'hard']} />);
     expect(screen.getByText(/only available for 9×9 grids/i)).toBeInTheDocument();
     // …and a 7×7 Kakuro offering the full ladder does not.
-    rerender(<DifficultyConfigurator gridSize={7} counts={zeroCounts} onChange={() => {}} variant="kakuro" maxPerDifficulty={1} difficulties={['easy', 'medium', 'hard', 'expert', 'extreme']} />);
+    rerender(<DifficultyConfigurator gridSize={7} counts={zeroCounts} onChange={() => {}} variant="kakuro" difficulties={['easy', 'medium', 'hard', 'expert', 'extreme']} />);
     expect(screen.queryByText(/only available for 9×9 grids/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/one per level/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('spinbutton').every((input) => input.getAttribute('max') === '1')).toBe(true);
   });
 
   it('reports edits to onChange with the difficulty key and numeric value', async () => {

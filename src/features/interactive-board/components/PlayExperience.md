@@ -21,10 +21,10 @@ so the board renders the cage overlay. Classic mode is unchanged.
 **Kakuro (October 2026, plan slice V2).** A fourth toggle. Sizes are a per-variant table
 (`SIZES`, plan rule D11): Kakuro offers 6/7/9 (the 6×6 mini joined in E4, D6′), and switching
 type falls back to the new type's smallest size when the current one isn't offered (7 → 9
-leaving Kakuro; 4 → 6 entering it); the deep link still seeds 7×7. Kakuro's difficulty picker
-offers the **full ladder** at every size (generated server-side since E4 and graded by the
-solver — the header shows the grade the puzzle earned, which E4 matches to the request where
-its budget allows); unlike the Sudoku family's minis, a 7×7 Kakuro has an
+leaving Kakuro; 4 → 6 entering it); the deep link seeds the 6×6 mini (D6′, since E5). Kakuro's
+difficulty picker offers the **full ladder** at every size (generated server-side at exactly
+the requested tier since E5 — the header shows the grade the classifier assigned, which is the
+one asked for); unlike the Sudoku family's minis, a 7×7 Kakuro has an
 expert and an extreme, so the "9×9 only" lock applies to every type but Kakuro
 — one rule, `topTiersLockedFor(variant, size)`, used by the picker and by both clamps (switching
 type, switching size), so a new size or type changes it in one place. `VARIANT_LABEL` is the one

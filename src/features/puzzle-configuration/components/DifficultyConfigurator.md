@@ -23,13 +23,11 @@ Callers can pass a `difficulties` array to override the grid-size-based availabi
 Killer mode passes `['easy','medium','hard']` so Expert/Extreme render disabled regardless of
 grid size. When omitted, availability falls back to the grid-size lookup (classic behaviour).
 
-## The optional `maxPerDifficulty` cap (Kakuro, V3)
+## Kakuro
 
-Kakuro serves one baked puzzle per level until its generator lands, so the form passes
-`maxPerDifficulty={1}`: the inputs' `max` and the `onChange` clamp both honour it, the "1–50
-total" sentence becomes "one per level" (keyed on the cap, not the variant), and the
-slow-generation warning is `null` for Kakuro (nothing is generated). Default `50`, which is the
-pre-existing behaviour.
+The slow-generation warning is `null` for Kakuro: every tier at every size generates in well
+under a second (E5). V3's one-per-level cap (`maxPerDifficulty`) was removed with the generator
+in E5 — every input is `0..50` for every type.
 
 ## The "Expert and Extreme are only available for 9×9" note
 

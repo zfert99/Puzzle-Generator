@@ -4,7 +4,7 @@ import { generatePuzzleBatch } from '@/features/engine/services/generation.servi
 import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF } from '@/features/pdf-generation/services/pdf.service';
 import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
-import { selectKakuroBatch } from '@/features/engine/kakuro/kakuro-fixtures';
+import { generateKakuroBatch } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -18,15 +18,15 @@ const MAX_PUZZLES = 50;
 const MAX_EXTREME = 5;
 
 /**
- * Kakuro request shape (plan slice V3). Until the generator lands (E5) every puzzle is a baked,
- * solver-graded fixture — one per size and level — so a level is asked for at most once: a
- * count of 2 would print the same puzzle twice. Sizes are Kakuro's own (D11), not the Sudoku
- * family's 4/6/9.
+ * Kakuro request shape (plan slices V3 → E5). Sizes are Kakuro's own (D11), not the Sudoku
+ * family's 4/6/9; counts are non-negative integers, with the same total and Extreme caps as the
+ * other variants applied below (a 9×9 Kakuro generates in ~0.3–0.8 s per tier, extreme the
+ * slowest).
  */
-const kakuroCount = z.number().int().min(0).max(1, 'Kakuro is hand-made until its generator ships: at most 1 puzzle per level').default(0);
+const kakuroCount = z.number().int().min(0, 'Kakuro counts must be non-negative integers').default(0);
 const kakuroRequestSchema = z.object({
   variant: z.literal('kakuro'),
-  gridSize: z.union([z.literal(7), z.literal(9)], { error: 'Kakuro grid size must be 7 or 9' }).default(7),
+  gridSize: z.union([z.literal(6), z.literal(7), z.literal(9)], { error: 'Kakuro grid size must be 6, 7, or 9' }).default(7),
   easy: kakuroCount,
   medium: kakuroCount,
   hard: kakuroCount,
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       return pdfResponse(pdfBuffer, 'Keisan.pdf');
     }
 
-    // ---- Kakuro branch (7×7 / 9×9, the full ladder — baked fixtures until E5) ----
+    // ---- Kakuro branch (6×6 / 7×7 / 9×9, the full ladder at every size — generated, E5) ----
     if (body?.variant === 'kakuro') {
       const parsed = kakuroRequestSchema.safeParse(body);
       if (!parsed.success) {
@@ -164,14 +164,21 @@ export async function POST(req: NextRequest) {
       }
       const kakuroSize = parsed.data.gridSize;
       const counts = Object.fromEntries(KAKURO_LADDER.map((level) => [level, parsed.data[level]])) as Record<KakuroLevel, number>;
-      if (KAKURO_LADDER.every((level) => counts[level] === 0)) {
+      const kakuroTotal = KAKURO_LADDER.reduce((sum, level) => sum + counts[level], 0);
+      if (kakuroTotal === 0) {
         return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
       }
-      const puzzles = selectKakuroBatch(counts, { gridSize: kakuroSize });
+      if (kakuroTotal > MAX_PUZZLES) {
+        return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
+      }
+      if (counts.extreme > MAX_EXTREME) {
+        return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme Kakuro puzzles per PDF request` }, { status: 400 });
+      }
+      const puzzles = generateKakuroBatch(counts, { gridSize: kakuroSize });
       const pdfBuffer = await generateKakuroPDF(puzzles);
       logger.info(
         { event: 'generation_success', variant: 'kakuro', counts, gridSize: kakuroSize, durationMs: Math.round(performance.now() - startTime) },
-        'Successfully rendered Kakuro fixtures and PDF',
+        'Successfully generated Kakuro puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Kakuro.pdf');
     }

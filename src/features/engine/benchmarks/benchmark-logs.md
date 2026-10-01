@@ -186,3 +186,33 @@
 | 2026-08-04T22:10:12.676Z | `ce03530` | Killer Gen 9×9 Extreme (5x) | 6056.80 ms | N/A |
 | 2026-08-04T22:10:12.676Z | `ce03530` | Killer Gen 6×6 Hard (20x) | 10.05 ms | N/A |
 | 2026-08-04T22:10:12.676Z | `ce03530` | Killer Gen 4×4 Easy (20x) | 0.15 ms | N/A |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 6×6 Easy (10x) | 48.68 ms | max 119 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 6×6 Medium (10x) | 20.36 ms | max 46 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 6×6 Hard (10x) | 87.56 ms | max 622 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 6×6 Expert (10x) | 40.06 ms | max 85 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 6×6 Extreme (10x) | 136.80 ms | max 930 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 7×7 Easy (10x) | 222.25 ms | max 982 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 7×7 Medium (10x) | 70.46 ms | max 213 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 7×7 Hard (10x) | 461.15 ms | max 2459 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 7×7 Expert (10x) | 117.69 ms | max 357 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 7×7 Extreme (10x) | 233.54 ms | max 1300 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 9×9 Easy (10x) | 1518.87 ms | max 10272 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 9×9 Medium (10x) | 646.04 ms | max 2081 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 9×9 Hard (10x) | 1581.62 ms | max 6256 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 9×9 Expert (10x) | 701.32 ms | max 3057 ms |
+| 2026-10-01T22:30:15.827Z | `cd61715` | Kakuro Gen 9×9 Extreme (10x) | 1173.18 ms | max 4285 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 6×6 Easy (10x) | 50.86 ms | max 78 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 6×6 Medium (10x) | 103.54 ms | max 867 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 6×6 Hard (10x) | 36.89 ms | max 111 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 6×6 Expert (10x) | 59.78 ms | max 187 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 6×6 Extreme (10x) | 72.17 ms | max 196 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 7×7 Easy (10x) | 400.87 ms | max 1350 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 7×7 Medium (10x) | 157.70 ms | max 457 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 7×7 Hard (10x) | 283.14 ms | max 1289 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 7×7 Expert (10x) | 402.85 ms | max 1343 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 7×7 Extreme (10x) | 124.03 ms | max 283 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Easy (10x) | 264.71 ms | max 503 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Medium (10x) | 528.11 ms | max 3163 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Hard (10x) | 364.50 ms | max 2148 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Expert (10x) | 191.12 ms | max 774 ms |
+| 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Extreme (10x) | 772.97 ms | max 2457 ms |

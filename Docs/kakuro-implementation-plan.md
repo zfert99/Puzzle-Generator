@@ -16,10 +16,11 @@
 > [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
 > [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); E4 (generator)
 > [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up
-> [#121](https://github.com/zfert99/Puzzle-Generator/pull/121) — "New puzzle" is real at 6/7/9,
-> scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
+> [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
+> [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) — every puzzle fresh at exactly
+> the requested tier, hub card live, fixtures test data only; R1 (daily) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
-> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`) ·
+> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -174,7 +175,7 @@ means Kakuro needs its own.
 | D5 | ~~T5 = bounded depth-1 recursion (Keisan transplant)~~ → **Every published tier is logic-only. T1–T3 by the technique ladder; T4 = whips of bounded length; T5 = longer whips / g-whips.** Surface sums (1-cuts) are an accelerator inside T4+, not a rung. Bounded T&E survives only as an optional, labelled *experimental* tier outside the daily | **Superseded 2026-09-11 by G5** — D5′ (log) applied in E2b and confirmed by owner 2026-10-01 |
 | D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** mini = **6×6** (E3: carries the full ladder incl. expert/extreme with chains, repairs to unique in 3–10 ms; 7×7 stays on `/play` as a second size), standard = **9×9**, large = **13×13 on paper — deferred** (E3: the repair objective is too slow there; needs its own measured approach before it ships anywhere). **No 4×4.** | E3 measured 2026-10-01 — mini and large settled by measurement; confirmed by owner 2026-10-01 |
 | D11 | **Sizes are per puzzle type.** Each type ships three: the smallest size that is genuinely interesting for *that* puzzle, its standard size, and a large size. Minis in menus and the daily are "the type's smallest size", not a fixed 4×4/6×6. Kakuro is the first type built this way; revisiting Classic/Killer/Keisan under the same rule is deferred (4×4 is trivial for most of them) | Locked by owner 2026-09-11 (principle); Kakuro sizes per D6 |
-| D12 | **Build order is visual first, simplest → hardest:** a hand-baked puzzle is playable and printable (V1–V3) before any engine code; each engine slice lands on that board and is judged by what it makes visible. The **hub card goes live only at E5** (when "New puzzle" is real); until then `/play?variant=kakuro` is reachable by URL for building and E2E, so `main` never advertises a one-puzzle type. *Amended 2026-09-30: a looks-only static board (V0, at the unlinked workbench route `/kakuro`) precedes V1* | Locked by owner 2026-09-11 (order), amended 2026-09-30; hub timing proposed |
+| D12 | **Build order is visual first, simplest → hardest:** a hand-baked puzzle is playable and printable (V1–V3) before any engine code; each engine slice lands on that board and is judged by what it makes visible. The **hub card goes live only at E5** (when "New puzzle" is real); until then `/play?variant=kakuro` is reachable by URL for building and E2E, so `main` never advertises a one-puzzle type. *Amended 2026-09-30: a looks-only static board (V0, at the unlinked workbench route `/kakuro`) precedes V1* | Locked by owner 2026-09-11 (order), amended 2026-09-30; hub card live 2026-10-01 (E5) |
 | D7 | Roadmap: **Phase 10**, engine-first like Phase 6/8 | Applied (this PR) |
 | D8 | Difficulty label comes from the classifier **post-generation**; generator parameters only bias | Locked (research) |
 | D9 | Shipped layouts are **180° rotationally symmetric**, white-connected, runs 2–9, no *contiguous* all-white rectangle ≥ 2×9 / 3×8 / 4×7 / 5×5, and within Mathimagics' min-hints / max-blanks bounds per size | Locked (research + G10) |
@@ -205,7 +206,7 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | 5′ | E2b — Chain tiers (T4 / T5 forcing chains by length) | Expert and extreme Kakuro served at both sizes; the `*_CHAINS` fixtures solved by logic; chain hints that spell out the contradiction |
 | 6 | E3 — Yield measurement spike | Numbers in the log and `research/kakuro-feasibility-findings.md`; mini = 6×6 (D6′); 13×13 deferred |
 | 7 | E4 — Layout + fill + repair + clue derivation | "New puzzle" produces a fresh, unique, solver-graded board at 6/7/9 |
-| 8 | E5 — Difficulty configs + `generateKakuro` + benchmark | The difficulty and size pickers go live; hub card live |
+| 8 | E5 — Difficulty targeting + `generateKakuro` + benchmark | Every puzzle fresh and at exactly the requested tier at 6/7/9; hub card live; fixtures test data only |
 | 9 | R1 — Daily rotation (4 types) | Kakuro in the daily |
 
 ### V0 — Looks-only static board ✅
@@ -779,7 +780,7 @@ addressed in [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); recor
 | 5 | Objective re-scanned the grid (`deriveRuns`) and copied it every step | **Fixed** — run sums kept in place and nudged by the digit delta. **Measured honestly:** on identical seeded fills 0.63 → 0.60 ms/step at 7×7 and no change at 9×9 — the solution count, not the scan, is the step's cost, so the finding's premise overstated the gain; kept because it is simpler and the shape an E5 objective wants |
 | 6 | Scatter never enforced `MAX_RUN_LENGTH`, so above 9×9 it would burn 200 attempts and return `null` | **Fixed** — overlong strips are broken with an interior black after the density loop; a 13×13 layout test passes the validator |
 
-### E5 — Difficulty configs + `generateKakuro(difficulty, { gridSize })` + benchmark ⏳
+### E5 — Difficulty configs + `generateKakuro(difficulty, { gridSize })` + benchmark ✅
 
 > *E4 pulled the entry point forward in a thin form (`kakuro.ts`: bounded rejection toward the
 > requested tier, one density per size, fixture/nearest fallback). E5 replaces the inside —
@@ -809,6 +810,49 @@ addressed in [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); recor
 be cron-only slow (Killer-extreme precedent, `maxDuration`), 0 generation failures in 20 per tier
 and size; T4 must be *populated* (if fewer than ~10% of generated 9×9 land in T4 at the chosen
 bound, move the bound, don't pad with surface sums).
+
+**Step-log (2026-10-01 — PR [#122](https://github.com/zfert99/Puzzle-Generator/pull/122)):**
+
+- *Process:* **the classifier in the objective.** `hillClimb` factored out of the repair, and
+  `walkToTier` built on it: from a unique puzzle, mutate one cell at a time keeping uniqueness,
+  with an objective that orders fills by distance from "exactly this tier" and has a gradient
+  inside each band (shed above-tier steps to get easier; make the tier-below ladder leave more
+  undecided to get harder). `generateUniqueKakuro({ targetTier })` runs it after the repair
+  under one clock; `generateKakuro` is now that call with no fallback and no fixture — a throw
+  on budget exhaustion (0 in 1,500). **The repair objective recalibrated** on 30 identical
+  seeded 9×9 fills: count limit 50 → 200 and a 600-step stall cap took the cost per accepted
+  puzzle from 2.0 s to 0.77 s (table in `kakuro-generator.md`). `generateKakuroBatch` replaced
+  the fixture selector in `/api/generate` (with the usual 50-total / 5-extreme caps); the form's
+  one-per-level cap and the configurator's `maxPerDifficulty` went with it; **the hub card is
+  live** (`/play?variant=kakuro`, "Cross sums — runs that add up", the `new!` sticker moved off
+  Keisan — D12); the deep link seeds the **6×6 mini** (D6′); `benchmark-kakuro.ts` + 15 rows in
+  `benchmark-logs.md`. Tests: every size × tier generates at exactly the requested tier with the
+  classifier re-deriving the label (15 cases), budget throw, ladder↔tier map, `walkToTier` to
+  easy and to extreme on one base, route cases for 6×6 batches and the caps, the hub e2e, the
+  play e2e at 6×6.
+- *Measured* (`benchmark-kakuro.ts`, 10 per cell, ms avg): 6×6 51/104/37/60/72; 7×7
+  401/158/283/403/124; 9×9 **265/528/365/191/773** (e/m/h/x/X). The tier walk alone: 9×9 easy
+  0.14–0.30 s, extreme up to 1.6 s. **Soundness fuzz: 500 generated puzzles per size — 0 unsound
+  steps, 0 label mismatches** at 6, 7 and 9. Natural T4 share at 9×9 ≈ 25% (E4's corpora) —
+  the "T4 populated" gate holds and the bound stays 4.
+- *Gates:* easy/hard 9×9 < 500 ms ✓ (265 / 365); **medium 9×9 528 ms — a near miss** on a
+  10-sample average that swings run to run with repair-plateau tails (the same cell measured
+  under 500 in other runs); expert/extreme allowed slow ✓ (191 / 773); 0 failures in 20 per
+  tier and size ✓ (0 in 100 per cell in the fuzz); T4 populated ✓. "Bands disjoint" does not
+  apply — see divergence.
+- *Divergences from the spec:* (1) **no score bands and no per-tier density bias.** Tiers are
+  the solver's ordinal levels (D5′/G9), so there is nothing to band; and the tier walk reaches
+  every target from the natural distribution in under a second, so density stays the size knob
+  E3 found. The scorer orders puzzles *within* a tier (dev badge; the daily later). (2) The
+  mini ships the **full ladder**: 6×6 easy…extreme all measured separable and generable (E3's
+  "fewer tiers if Hard doesn't separate" precedent was not needed). (3) The deep link seeds
+  6×6, not 7×7 — E4 had kept 7 only because the mini had no fixture to fall back to.
+- *Learnings:* L22 (put the grader in the objective: rejection toward a 1–3% tier is a lottery,
+  a walk with a gradient is a few hundred cheap steps); L23 (calibrate an objective's cap on
+  identical seeded inputs — the repair's count limit was a 2.6× lever hiding in a default).
+- *Blockers:* none. **Owed to R1:** the daily registry (4 types, D4 — owner call on slot
+  count), `/api/generate`'s schema and the PDF are done. Watch: the 9×9 repair-plateau tail (a
+  few fills stall to the cap — the cron has the budget; `/play` sees ~0.3–0.8 s).
 
 ### R1 — Daily rotation (4 types) ⏳
 

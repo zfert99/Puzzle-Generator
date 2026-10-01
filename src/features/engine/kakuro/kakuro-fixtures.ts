@@ -10,7 +10,7 @@
  */
 
 import { deriveRuns, validateKakuroLayout, whiteMaskOf } from './kakuro-layout';
-import { KAKURO_LADDER, validateKakuroRuns, type KakuroDifficulty, type KakuroLevel, type KakuroPuzzle } from './kakuro-types';
+import { validateKakuroRuns, type KakuroDifficulty, type KakuroPuzzle } from './kakuro-types';
 
 const BLACK = '#';
 
@@ -90,26 +90,6 @@ export const KAKURO_FIXTURES: readonly KakuroPuzzle[] = [
 /** The served fixture for a size and difficulty, if one exists. */
 export function findKakuroFixture(gridSize: number, difficulty: KakuroDifficulty): KakuroPuzzle | undefined {
   return KAKURO_FIXTURES.find((p) => p.gridSize === gridSize && p.difficulty === difficulty);
-}
-
-/**
- * The puzzles for a `/api/generate` request — the Kakuro counterpart of `generateKillerBatch` /
- * `generateCalcBatch`, so the route stays a controller (AGENTS.md §1). Until the generator lands
- * (slice E5) every level is one baked fixture, served `count` times; the route's schema caps a
- * count at 1 so nobody prints the same puzzle twice. When `generateKakuro` exists this is the
- * one function to swap. A level with no fixture at the size is a programmer error (every size
- * the route accepts carries the full ladder), so it throws rather than returning a short batch.
- */
-export function selectKakuroBatch(counts: Partial<Record<KakuroLevel, number>>, options: { gridSize: number }): KakuroPuzzle[] {
-  const puzzles: KakuroPuzzle[] = [];
-  for (const level of KAKURO_LADDER) {
-    const count = counts[level] ?? 0;
-    if (count <= 0) continue;
-    const fixture = findKakuroFixture(options.gridSize, level);
-    if (!fixture) throw new RangeError(`No ${level} Kakuro fixture at ${options.gridSize}×${options.gridSize}`);
-    for (let i = 0; i < count; i++) puzzles.push(fixture);
-  }
-  return puzzles;
 }
 
 /**

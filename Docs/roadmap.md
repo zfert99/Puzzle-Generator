@@ -612,7 +612,9 @@ Raising the floors is **not** a substitute and buys nothing; the research doc ex
 > mini = 6×6, 13×13 deferred — `research/kakuro-feasibility-findings.md`), V3 (printable
 > Kakuro on `/generate` + sample booklet) and E4 (generator: scatter layouts, repair-to-unique,
 > "New puzzle" real at 6/7/9 — `research/kakuro-layout-method-findings.md` for the layout-method
-> divergence) done; E5 (difficulty targeting, hub card) next. Full plan:
+> divergence) and E5 (the classifier in the generator's objective — every puzzle fresh at exactly
+> the requested tier at 6/7/9; hub card live; fixtures test data only) done — **the engine is
+> complete**; R1 (daily rotation, gated on D4) next. Full plan:
 > [kakuro-implementation-plan.md](kakuro-implementation-plan.md) · running log (decisions, research
 > gaps, bugs, learnings, measurements): [kakuro-log.md](kakuro-log.md)
 > **Research:** [kakuro.md](research/kakuro.md) ·

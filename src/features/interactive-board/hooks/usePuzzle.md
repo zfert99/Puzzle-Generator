@@ -44,9 +44,9 @@ four and the board's `startNewGame` handles any of them.
 From V2 to E3 a Kakuro request short-circuited before `fetch` and served a hand-baked fixture
 (one per size and level, labelled by the classifier). Since E4 `/api/puzzle` has a Kakuro
 branch backed by `generateKakuro`, so the hook treats Kakuro exactly like Killer and Keisan:
-POST, `loading`, the route's puzzle. The served `difficulty` is the classifier's — E4 matches it
-to the request where its budget allows and otherwise falls back (a fixture of the exact tier at
-7×7/9×9, or the nearest tier generated), always labelled with the grade it earned.
+POST, `loading`, the route's puzzle. The served `difficulty` is the classifier's; since E5 it is
+also exactly the one requested (the generator walks every puzzle to the asked-for tier), so the
+header and the picker agree.
 
 ## Hydration and testing notes
 
