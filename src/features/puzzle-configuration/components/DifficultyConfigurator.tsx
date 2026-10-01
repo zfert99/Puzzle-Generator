@@ -17,8 +17,6 @@ interface Props {
   difficulties?: string[];
   /** Variant, so the slow-generation warning names the right techniques + time range. */
   variant?: 'classic' | 'killer' | 'calc' | 'kakuro';
-  /** Cap per level — Kakuro serves one baked puzzle per level until its generator lands (V3). */
-  maxPerDifficulty?: number;
   /** Keisan Mystery / No-Op mode — hiding the operators makes unique boards rarer, so much slower. */
   mystery?: boolean;
 }
@@ -61,7 +59,7 @@ function slowGenerationWarning(
     return null;
   }
 
-  if (variant === 'kakuro') return null; // baked fixtures — nothing is generated
+  if (variant === 'kakuro') return null; // every Kakuro tier generates in well under a second
 
   // classic — kept verbatim (extreme-gated); other tiers generate quickly.
   if (hasExtreme) {
@@ -70,7 +68,7 @@ function slowGenerationWarning(
   return null;
 }
 
-export function DifficultyConfigurator({ gridSize, counts, onChange, difficulties, variant = 'classic', mystery = false, maxPerDifficulty = 50 }: Props) {
+export function DifficultyConfigurator({ gridSize, counts, onChange, difficulties, variant = 'classic', mystery = false }: Props) {
   const availableDifficulties = difficulties ?? DIFFICULTIES_BY_SIZE[gridSize];
   const warning = slowGenerationWarning(variant, counts, mystery);
   const topTiersLocked = !availableDifficulties.includes('expert');
@@ -92,9 +90,9 @@ export function DifficultyConfigurator({ gridSize, counts, onChange, difficultie
               id={`count-${diff}`}
               type="number"
               min="0"
-              max={maxPerDifficulty}
+              max="50"
               value={isDisabled ? 0 : counts[diff]}
-              onChange={(e) => onChange(diff, Math.min(maxPerDifficulty, parseInt(e.target.value) || 0))}
+              onChange={(e) => onChange(diff, Math.min(50, parseInt(e.target.value) || 0))}
               disabled={isDisabled}
               className="input-field w-2/3 ml-4"
               placeholder="0"
@@ -102,11 +100,7 @@ export function DifficultyConfigurator({ gridSize, counts, onChange, difficultie
           </div>
         );
       })}
-      <p className="text-sm text-ink-soft text-center mt-2">
-        {maxPerDifficulty === 1
-          ? 'Hand-made puzzles until the Kakuro generator lands — one per level.'
-          : 'You can generate 1–50 puzzles total per request.'}
-      </p>
+      <p className="text-sm text-ink-soft text-center mt-2">You can generate 1–50 puzzles total per request.</p>
       {topTiersLocked && (
         <p className="text-sm text-ink-soft text-center">
           Expert and Extreme are only available for 9×9 grids.

@@ -1,49 +1,59 @@
 # Kakuro entry point (`kakuro.ts`)
 
-`generateKakuro(difficulty, { gridSize })` — what `/api/puzzle` calls, the counterpart of
-`generateKillerSudoku` / `generateCalcSudoku`. Plan slice **E4** ships this file in its *thin*
-form; **E5** rewrites the inside without changing the contract.
+`generateKakuro(difficulty, { gridSize })` and `generateKakuroBatch(counts, { gridSize })` —
+what `/api/puzzle` and `/api/generate` call, the counterparts of `generateKillerSudoku` /
+`generateKillerBatch`. Plan slice **E5** (October 2026) gave this file its final form; E4 had
+shipped it thin.
 
 ## What it promises
 
-A playable, unique Kakuro at the requested size, **labelled with the tier the classifier
-assigned** — never the request dressed up as a grade (plan decision D8). Where the budget
-allows, that tier is the one asked for.
+A fresh, unique Kakuro at the requested size **and at exactly the requested tier**, labelled
+by the classifier — the label is re-derived from the finished puzzle, never taken from the
+request (plan decision D8). It throws when the budget runs out without one; measured at 0
+failures in 1,500 puzzles across the sizes, so a throw is a fault (a budget far too small, or a
+regression), not a path the routes expect.
 
-## How E4 gets there: bounded rejection
+## How: the classifier in the objective
 
 ```text
-repeat up to `attempts` times, within `timeBudgetMs`:
-  puzzle = generateUniqueKakuro(size, density for the size)      ← fresh, unique, classifier-graded
-  if its tier is the one requested → return it            (source: generated)
-  else remember it if its tier is the nearest so far
-budget spent:
-  a baked fixture of the exact tier at this size, if one exists  (source: fixture — 7×7 / 9×9)
-  else the nearest-tier puzzle generated, with its real label     (source: nearest — 6×6)
+puzzle = generateUniqueKakuro(size, density for the size, targetTier = tier of the difficulty)
+          = layout → fill → repair-to-unique → walkToTier → exact verify → classifier label
 ```
 
-The request's clock is one clock: each attempt is handed what is left of `timeBudgetMs` (and
-threads it into every repair), and the fixture-less last resort gets one more budget of the
-same length — so a call is bounded by `2 × timeBudgetMs` by construction, not by adding up caps
-(a review finding).
+`walkToTier` (in `kakuro-generator.ts`) hill-climbs the unique puzzle, keeping it unique, until
+the logical solver's hardest tier is the one asked for — shedding above-tier steps one by one to
+get easier, or making the tier-below ladder leave more undecided to get harder. That is what
+makes **easy reachable**: it is 1–3% of natural output, so E4's bounded rejection almost always
+fell back to a fixture for it. E5 removed the fallback and the fixtures from the serving path.
 
-Why this works for most of the ladder and not all of it: the natural tier distribution of
-unique puzzles at these densities is hard-heavy (research findings §3c and the E4
-measurements — roughly hard 45%, expert 25%, extreme 15%, medium 10%, easy 1–3%). Hard, expert
-and extreme land in one or two tries; medium in a handful; **easy usually exhausts the
-budget** and falls back. At 7×7 and 9×9 the fallback is the same baked easy puzzle every time —
-exactly what the board served before E4, so nothing regressed; at 6×6 there is no fixture, so
-an easy request can come back labelled medium or hard. The route logs `source`, so the
-fallback rate per tier and size is measurable in production, which is the input E5 needs.
+One clock: layout, fill, repair and the walk share `timeBudgetMs` (default 20 s, far above any
+measured need), so a call is bounded by construction.
 
-## What E5 changes
+## Why no per-tier density, and no score bands
 
-The classifier moves *into* the repair objective (search for a tier instead of waiting for
-one), `DIFFICULTY_CONFIG` grows per-tier density bias and score bands from measured
-distributions, and the fallback goes away. `DIFFICULTY_CONFIG` here is the E4 starting point:
-one density per size, the band where repair converges fast (6×6 0.40, 7×7 0.37, 9×9 0.38).
+`DIFFICULTY_CONFIG` is one density per size (6×6 0.40, 7×7 0.37, 9×9 0.38 — the band where
+repair converges fast, findings §3b). The plan anticipated per-tier layout bias and score bands
+from measured distributions; neither was needed:
+
+- the tier walk reaches every target from the natural distribution in well under a second at
+  every size (benchmark table in `kakuro-generator.md`), so density stays the size knob E3 found;
+- tiers are the solver's **ordinal** levels — the weakest technique level that finishes the
+  puzzle (D5′, G9) — not a weighted score, so there are no bands to calibrate. The scorer
+  (`kakuro-score.ts`) orders puzzles *within* a tier for the dev badge and, later, the daily.
 
 ## Sizes
 
 `KAKURO_SIZES = [6, 7, 9]` (D6′): the 6×6 mini, 7×7, the 9×9 standard. 13×13 is deferred
 (findings §3f).
+
+## Measured (E5)
+
+| Size | easy | medium | hard | expert | extreme |
+|---|---|---|---|---|---|
+| 6×6 | 51 ms | 104 | 37 | 60 | 72 |
+| 7×7 | 401 | 158 | 283 | 403 | 124 |
+| 9×9 | 265 | 528 | 365 | 191 | 773 |
+
+`benchmark-kakuro.ts`, 10 per cell, averages; the 9×9 row swings run to run (repair-plateau
+tails). Soundness fuzz: 500 generated puzzles per size through the solver, 0 unsound steps, 0
+label mismatches.

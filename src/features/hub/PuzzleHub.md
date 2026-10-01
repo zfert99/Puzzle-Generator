@@ -41,9 +41,13 @@ Ordered by **difficulty to learn**, not by generator cost:
 2. **Killer** — those rules, plus cage sums.
 3. **Keisan** — a different constraint model (Latin square, *no boxes*), four arithmetic
    operators, and the optional mystery/no-op mode.
+4. **Kakuro** — no grid rule at all: black cells, runs and sums, a different game that happens
+   to use digits. The card went live with its generator (Kakuro plan slice E5, October 2026;
+   rule D12: never a card for a one-puzzle type) and deep-links to `/play?variant=kakuro`, which
+   seeds the 6×6 mini.
 
-This also matches the order the `/play` picker already uses (`classic, killer, calc`), so the hub
-and the picker do not disagree about which type comes first.
+This also matches the order the `/play` picker already uses (`classic, killer, calc, kakuro`),
+so the hub and the picker do not disagree about which type comes first.
 
 ### Why one grid rather than one grid per group
 
@@ -75,5 +79,5 @@ role-based; only the container is a test id.
 
 ## The "new!" sticker
 
-Follows whatever shipped last — currently **Keisan**. Move it when the next puzzle type lands;
-do not leave two.
+Follows whatever shipped last — currently **Kakuro** (moved off Keisan in October 2026). Move
+it when the next puzzle type lands; do not leave two.

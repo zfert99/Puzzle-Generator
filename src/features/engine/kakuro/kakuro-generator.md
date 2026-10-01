@@ -70,23 +70,67 @@ is legal when neither of the cell's runs holds it. The constraint is loose (runs
 and digits are 1–9), so a valid layout essentially never backtracks far; a node budget keeps a
 pathological mask from hanging.
 
-## Repair — `repairToUnique(fill, { stepCap, msCap, countLimit, countBudget })`
+## The hill-climb — `hillClimb(start, objective, { stepCap, msCap, stallCap })` (internal)
+
+One climb, two objectives (E5 factored it out of the repair):
 
 ```text
 runs = the mask's runs with their sums taken from the fill
-score() = solutions of those clues, counted up to countLimit (exhausting countBudget nodes also scores countLimit)
-until score == 1, or stepCap steps, or msCap ms:
+score = objective(runs)
+until score == 0, or stepCap steps, or stallCap steps without a strict improvement, or msCap ms:
   pick a white cell; pick a digit legal in both its runs and different from the current one
   write it; nudge the two run sums through that cell by (new − old)
-  if score() <= current: keep it   ← plateau moves included
+  if objective(runs) <= current: keep it   ← plateau moves included
   else: write the old digit back and un-nudge the sums
 ```
 
 A one-cell mutation changes exactly two run sums and no run membership, so the sums are kept in
-place and nudged rather than the grid re-scanned every step (a review finding). Measured on
-identical seeded fills the gain is small — 0.63 → 0.60 ms per step at 7×7, none at 9×9 — because
-the solution count, not the scan, is the step's cost; the change stays because it also removes a
-grid copy per step and is the shape an E5 objective (classifier in the loop) will want.
+place and nudged rather than the grid re-scanned every step (a review finding — measured at
+~0–5%, the count dominates; kept because it is simpler and the objective sees live `runs`).
+
+## Repair — `repairToUnique(fill, { countLimit, countBudget, … })`
+
+Objective: the solution count of the clues the fill implies, minus one, capped at `countLimit`
+(exhausting `countBudget` nodes also scores the cap) — 0 exactly when the puzzle is unique.
+
+**The defaults are measured** (E5, 30 identical seeded 9×9 fills, same climb): a count limit
+of 50 plateaus — every neighbour of a many-solution fill scores the same, so the climb is blind
+— and repaired 17/30 at **2.0 s per accepted puzzle**; a limit of 200 keeps a gradient (24/30)
+and a stall cap of 600 steps cuts the hopeless ones short: **0.77 s per accepted puzzle**.
+Larger limits (300, 500) pay more per step than they return.
+
+| countLimit · countBudget · stallCap | repaired / 30 | ms per round | ms per accepted |
+|---|---|---|---|
+| 50 · 20k · ∞ (E4) | 17 | 1 139 | 2 010 |
+| 100 · 20k · ∞ | 20 | 932 | 1 398 |
+| **200 · 20k · 600** | **24** | **614** | **768** |
+| 200 · 20k · ∞ | 24 | 732 | 915 |
+| 500 · 50k · ∞ | 22 | 789 | 1 076 |
+
+## The tier walk — `walkToTier(solution, target, …)`
+
+The E5 piece: climb a *unique* puzzle to exactly the requested tier, keeping it unique, with
+the classifier in the objective. The objective orders every fill by distance from "unique and
+exactly this tier", with a gradient inside each band so it is a climb and not a lottery:
+
+```text
+not unique                      → 1000
+unique, ladder cannot finish it → 500 + undecided cells
+unique, harder than the target  → 100 + steps above the target tier      ← shed them one by one
+unique, easier than the target  → 50 − cells the tier-below ladder leaves undecided   ← get harder step by step
+unique, exactly the target      → 0
+```
+
+Each evaluation is a 2-solution count (cheap; most mutations break uniqueness and stop there)
+plus one classifier solve, and for the "easier than" band a second capped solve. Measured on
+E4's natural output (5 walks per cell): 7×7 easy 27–141 ms (86–529 steps), 9×9 easy
+138–296 ms, 9×9 extreme 0–1.6 s; every target reached at every size. This is what makes easy
+reachable — it is 1–3% of natural output, so E4's rejection could not get there — and it is why
+no per-tier layout bias was needed.
+
+`generateUniqueKakuro({ targetTier })` runs the walk after the repair, under the same clock, and
+re-derives the label with `classifyKakuro` before returning (the walk's own solve is the same
+solver, but the label is never taken on trust).
 
 Plateau moves (equal score) are what let the climb cross flat regions of the count landscape;
 without them it stalls on the first local minimum. The wall-clock cap scales with the grid
@@ -105,6 +149,21 @@ ladder cannot finish it (D8). Up to `maxRounds` fresh layouts; `null` when every
 left)`, and no round starts once the budget is spent — so a caller's budget bounds the call by
 construction, not by multiplying caps (a review finding: `kakuro.ts` checked its budget only
 between attempts, and one attempt could run five repair caps past it).
+
+## Measured (E5, 2026-10-01, dev machine — `benchmark-kakuro.ts`, 10 per cell)
+
+`generateKakuro(tier, { gridSize })` end to end — layout, fill, repair, tier walk, verify,
+label; the benchmark log has the rows (commit `cd61715` + this slice):
+
+| Size | easy | medium | hard | expert | extreme |
+|---|---|---|---|---|---|
+| 6×6 | 51 ms | 104 | 37 | 60 | 72 |
+| 7×7 | 401 | 158 | 283 | 403 | 124 |
+| 9×9 | **265** | 528 | **365** | 191 | 773 |
+
+(9×9 maxima 0.5–3.2 s; a 9×9 figure swings run to run because a few repairs stall to their cap.)
+Soundness fuzz, 500 generated puzzles per size through the logical solver: **0 unsound steps,
+0 label mismatches** at every size.
 
 ## Measured (E4, 2026-10-01, dev machine)
 

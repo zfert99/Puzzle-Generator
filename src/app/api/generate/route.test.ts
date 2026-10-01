@@ -138,18 +138,20 @@ describe('Sad Paths', () => {
     expect(buffer.subarray(0, 4).toString('ascii')).toBe('%PDF');
   }, 30_000);
 
-  test('Kakuro: more than one puzzle per level returns 400 (a level is one baked puzzle until E5)', async () => {
-    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 9, easy: 2 }));
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toMatch(/at most 1/i);
-  });
+  test('Kakuro: several puzzles per level at the 6×6 mini are generated (E5), with the usual caps', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 6, easy: 2, hard: 1 }));
+    expect(res.status).toBe(200);
+    const text = Buffer.from(await res.arrayBuffer()).toString('latin1');
+    expect((text.match(/\/Type \/Page[^s]/g) ?? []).length).toBe(7); // title + 3 puzzles + 3 answers
+    expect((await POST(buildRequest({ variant: 'kakuro', gridSize: 9, extreme: 6 }))).status).toBe(400);
+    expect((await POST(buildRequest({ variant: 'kakuro', gridSize: 9, easy: 51 }))).status).toBe(400);
+  }, 60_000);
 
   test('Kakuro: a Sudoku-family size is rejected', async () => {
-    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 6, easy: 1 }));
+    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 4, easy: 1 }));
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toMatch(/7 or 9/);
+    expect(body.error).toMatch(/6, 7, or 9/);
   });
 
   test('Kakuro: gridSize and absent levels default (7×7, 0) — one easy puzzle makes a 3-page PDF', async () => {
@@ -159,9 +161,9 @@ describe('Sad Paths', () => {
     expect((text.match(/\/Type \/Page[^s]/g) ?? []).length).toBe(3); // title + puzzle + answer
   }, 30_000);
 
-  test('Kakuro: a non-numeric count is rejected', async () => {
-    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 7, easy: 'apple' }));
-    expect(res.status).toBe(400);
+  test('Kakuro: a non-numeric or negative count is rejected', async () => {
+    expect((await POST(buildRequest({ variant: 'kakuro', gridSize: 7, easy: 'apple' }))).status).toBe(400);
+    expect((await POST(buildRequest({ variant: 'kakuro', gridSize: 7, easy: -1 }))).status).toBe(400);
   });
 
   test('Kakuro: all zeros returns 400', async () => {

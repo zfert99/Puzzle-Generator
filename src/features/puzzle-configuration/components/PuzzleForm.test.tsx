@@ -74,7 +74,7 @@ describe('PuzzleForm Component', () => {
     }));
   });
 
-  it('offers Kakuro at its own sizes (7×7 / 9×9) and submits at most one puzzle per level', async () => {
+  it('offers Kakuro at its own sizes (6×6 / 7×7 / 9×9) with the full ladder, and submits the counts as entered', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       blob: async () => new Blob(['%PDF'], { type: 'application/pdf' }),
@@ -87,22 +87,20 @@ describe('PuzzleForm Component', () => {
     await user.click(screen.getByRole('button', { name: 'Kakuro' }));
     expect(screen.getByRole('heading', { name: /kakuro configuration/i })).toBeInTheDocument();
 
-    // Kakuro's sizes are its own (D11): 7×7 and 9×9, no 4×4 / 6×6.
+    // Kakuro's sizes are its own (D11): 6×6, 7×7 and 9×9 — no 4×4.
     const sizeGroup = screen.getByRole('group', { name: /grid size/i });
     expect(within(sizeGroup).getByRole('button', { name: '7×7' })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(sizeGroup).queryByRole('button', { name: '6×6' })).not.toBeInTheDocument();
-    // The full ladder is offered at a 7×7 Kakuro — unlike the Sudoku family's minis.
+    expect(within(sizeGroup).getByRole('button', { name: '6×6' })).toBeInTheDocument();
+    expect(within(sizeGroup).queryByRole('button', { name: '4×4' })).not.toBeInTheDocument();
+    // The full ladder is offered at every Kakuro size — unlike the Sudoku family's minis.
     expect(screen.getByRole('spinbutton', { name: /extreme/i })).toBeEnabled();
-    expect(screen.getByText(/one per level/i)).toBeInTheDocument();
+    expect(screen.queryByText(/only available for 9×9/i)).not.toBeInTheDocument();
 
     await user.click(within(sizeGroup).getByRole('button', { name: '9×9' }));
     await user.click(screen.getByRole('button', { name: /generate pdf/i }));
 
-    // The default counts (2 easy, 2 medium, 2 hard) are clamped to one baked puzzle per level —
-    // in the inputs on switching, and again on submit.
-    expect(screen.getByRole('spinbutton', { name: /easy/i })).toHaveValue(1);
     expect(fetchMock).toHaveBeenCalledWith('/puzzles/api/generate', expect.objectContaining({
-      body: JSON.stringify({ variant: 'kakuro', gridSize: 9, easy: 1, medium: 1, hard: 1, expert: 0, extreme: 0 }),
+      body: JSON.stringify({ variant: 'kakuro', gridSize: 9, easy: 2, medium: 2, hard: 2, expert: 0, extreme: 0 }),
     }));
   });
 

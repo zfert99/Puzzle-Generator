@@ -143,13 +143,13 @@ test.describe('Interactive play', () => {
     expect(await cageSums.count()).toBeGreaterThan(20);
   });
 
-  test('plays a Kakuro: clue gutter, 1–9 numpad at 7×7, black cells refuse input, explained hint', async ({ page }) => {
+  test('plays a Kakuro: clue gutter, 1–9 numpad at the 6×6 mini, black cells refuse input, explained hint', async ({ page }) => {
     await page.goto('/play?variant=kakuro');
 
-    // The deep link preselects Kakuro at 7×7. Every level is graded by the solver — the full
-    // ladder is open even below 9×9 (unlike the Sudoku family's minis).
+    // The deep link preselects Kakuro at its 6×6 mini (D6′). Every level is graded by the
+    // solver — the full ladder is open at every size (unlike the Sudoku family's minis).
     await expect(page.getByRole('button', { name: /^kakuro$/i })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('button', { name: '7×7', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: '6×6', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'expert', exact: true })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: /^Play$/ }).click();
@@ -159,19 +159,18 @@ test.describe('Interactive play', () => {
     await expect(page.getByRole('dialog', { name: 'How to play Kakuro' })).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
 
-    // 7×7 interior + the clue gutter = 8×8 cells; every white cell starts empty. The puzzle is
-    // generated (E4), so the white count and the clue sums vary from run to run.
-    await expect(grid.getByRole('gridcell')).toHaveCount(64);
+    // 6×6 interior + the clue gutter = 7×7 cells; every white cell starts empty. The puzzle is
+    // generated, so the white count and the clue sums vary from run to run.
+    await expect(grid.getByRole('gridcell')).toHaveCount(49);
     await expect(grid.getByRole('gridcell', { name: /^Value/ })).toHaveCount(0);
-    expect(await grid.getByRole('gridcell', { name: /^Empty/ }).count()).toBeGreaterThan(15);
-    // The header carries the classifier's grade, not a placeholder (E4 serves the requested tier
-    // or, when the budget runs out, the baked easy fixture — either way labelled by the solver).
-    await expect(page.getByText(/easy · 7×7/)).toBeVisible();
+    expect(await grid.getByRole('gridcell', { name: /^Empty/ }).count()).toBeGreaterThan(10);
+    // The header carries the classifier's grade: E5 generates at exactly the requested tier.
+    await expect(page.getByText(/easy · 6×6/)).toBeVisible();
     // Clue cells name their sums.
     const clue = grid.getByRole('gridcell', { name: /^Clue: (across|down) \d+/ }).first();
     await expect(clue).toBeVisible();
 
-    // Digits are 1–9 at every size — the numpad offers all nine on a 7×7.
+    // Digits are 1–9 at every size — the numpad offers all nine on a 6×6.
     await expect(page.getByRole('button', { name: '9', exact: true })).toBeEnabled();
 
     // A black cell takes no input; a white one does.

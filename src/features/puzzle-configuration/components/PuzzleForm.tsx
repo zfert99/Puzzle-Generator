@@ -13,7 +13,7 @@ export default function PuzzleForm() {
   const [variant, setVariant] = useState<'classic' | 'killer' | 'calc' | 'kakuro'>('classic');
   const [killerSize, setKillerSize] = useState<6 | 9>(9);
   const [calcSize, setCalcSize] = useState<4 | 6 | 9>(6);
-  const [kakuroSize, setKakuroSize] = useState<7 | 9>(7); // Kakuro's own sizes (D11): the two baked layouts until E5
+  const [kakuroSize, setKakuroSize] = useState<6 | 7 | 9>(7); // Kakuro's own sizes (D11): the 6×6 mini, 7×7, the 9×9 standard
   const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
@@ -35,14 +35,6 @@ export default function PuzzleForm() {
     }
   };
 
-  const handleVariantChange = (v: typeof variant) => {
-    setVariant(v);
-    // Kakuro is one baked puzzle per level (until E5): bring the counts inside that cap so the
-    // inputs never show a value above their own max.
-    if (v === 'kakuro') {
-      setCounts(prev => Object.fromEntries(Object.entries(prev).map(([k, n]) => [k, Math.min(1, n)])) as typeof prev);
-    }
-  };
 
   const handleDifficultyChange = (diff: string, value: number) => {
     setCounts(prev => ({ ...prev, [diff]: value }));
@@ -54,8 +46,6 @@ export default function PuzzleForm() {
     } else if (isCalc) {
       await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: calcSize === 9 ? counts.expert : 0, extreme: calcSize === 9 ? counts.extreme : 0, noOp: mystery });
     } else if (isKakuro) {
-      // One baked puzzle per level until E5: the counts are already inside that cap (clamped on
-      // the toggle, and per input by the configurator's `maxPerDifficulty`).
       await generate({ variant: 'kakuro', gridSize: kakuroSize, ...counts });
     } else {
       await generate({ ...counts, gridSize });
@@ -76,7 +66,7 @@ export default function PuzzleForm() {
             key={v}
             type="button"
             aria-pressed={variant === v}
-            onClick={() => handleVariantChange(v)}
+            onClick={() => setVariant(v)}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
               variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
             }`}
@@ -117,9 +107,9 @@ export default function PuzzleForm() {
         </>
       ) : isKakuro ? (
         <>
-          <GridSizeSelector value={kakuroSize} onChange={setKakuroSize} sizes={[7, 9]} />
+          <GridSizeSelector value={kakuroSize} onChange={setKakuroSize} sizes={[6, 7, 9]} />
           <p className="text-xs text-ink-soft text-center mb-6">
-            Cross sums — each run adds up to its clue, no digit repeats in a run. Every level at both sizes.
+            Cross sums — each run adds up to its clue, no digit repeats in a run. Every level at every size.
           </p>
         </>
       ) : (
@@ -132,7 +122,6 @@ export default function PuzzleForm() {
         onChange={handleDifficultyChange}
         variant={variant}
         mystery={isCalc && mystery}
-        maxPerDifficulty={isKakuro ? 1 : undefined}
         difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : isKakuro ? [...KAKURO_LADDER] : undefined}
       />
 

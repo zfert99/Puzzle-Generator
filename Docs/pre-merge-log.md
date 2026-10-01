@@ -92,6 +92,92 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro E5: the classifier in the objective — every puzzle fresh at the requested tier; hub card live
+
+Branch `feature/kakuro-e5` on `cd61715` (main, after review follow-up 6). Plan E5 step-log
+(with three recorded divergences from the spec); log journal + L22/L23 + Measurements; D12's
+hub timing applied. ~190 engine lines net (`hillClimb` factored, `walkToTier`, the repair
+recalibrated, `kakuro.ts` final form, `selectKakuroBatch` deleted), a 60-line benchmark, ~70
+lines across the routes / form / configurator / hub / play seed, ~90 test lines, ~40 e2e lines,
+~300 doc lines. **Over the ~400 LOC guide:** the walk and the surfaces that depend on it (no
+fallback → the hub card can go live → the form's cap goes) are one change; split, the first
+half would ship a generator the hub still hides.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 82 files, **759 passed**, 0 failed — 15 generate-at-tier cases (every size × tier, label re-derived), budget throw, ladder map, `walkToTier` to easy and extreme on one base, route cases (6×6 batch + the 50/5 caps, negative count), a sampled soundness fuzz; the V3/E4 fixture-fallback tests replaced |
+| `npm run lint` | exit 0 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Playwright `play` + `home` | **14 passed** — the Kakuro spec at the 6×6 seed, the hub spec with the Kakuro card |
+| `benchmark-kakuro.ts` (10 per cell, ms avg) | 6×6 51/104/37/60/72 · 7×7 401/158/283/403/124 · 9×9 **265/528/365/191/773** (e/m/h/x/X); 15 rows appended |
+| Soundness fuzz (one-off, scratch) | **500 generated per size: 0 unsound steps, 0 label mismatches, 0 unsolved** at 6 (63 ms/puzzle), 7 (280), 9 (660) |
+| Browser | hub shows the Kakuro card with `new!`; `/play?variant=kakuro` seeds 6×6 |
+
+### Findings
+
+- **E5 gate, honestly:** easy/hard 9×9 under 500 ms ✓ (265/365); **medium 9×9 528 ms — a near
+  miss** on a 10-sample average that swings with repair-plateau tails (other runs of the same
+  cell came in under 500); expert/extreme allowed slow ✓; 0 failures ✓; T4 populated ✓ (~25% of
+  natural 9×9). Recorded in the step-log as a watch item, not papered over.
+- Self-caught: the repair's count limit of 50 was a plateau — on 30 identical seeded 9×9 fills,
+  200 + a 600-step stall cap took the cost per accepted puzzle from 2.0 s to 0.77 s (table in
+  `kakuro-generator.md`). The E4 defaults were a guess; this one is measured (L23).
+- Divergences from the spec, recorded in the step-log: no score bands (tiers are ordinal —
+  D5′/G9), no per-tier density (the walk makes it unnecessary), the mini ships the full ladder,
+  the deep link seeds 6×6.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. **Trust boundaries:** `/api/generate`'s
+Kakuro branch now runs the generator, so it gained the same `MAX_PUZZLES` / `MAX_EXTREME` caps as
+the other variants (tested); `/api/puzzle` validates before generating as before. **D8
+re-derived:** `generateKakuro` returns the classifier's label (re-derived after the walk, never
+the walk's own solve), and `generateUniqueKakuro` discards a walked puzzle whose re-derived
+label is not the target; the 15 generate-at-tier tests re-classify the served puzzle
+independently. **Soundness surface:** the walk mutates digits under the same `hillClimb` the
+repair uses (`start` never written; sums nudged and un-nudged); every generated puzzle in the
+fuzz passed the placement/elimination sweep. **Bound:** one clock through layout, repair and
+walk (`timeBudgetMs`, default 20 s); the routes' `maxDuration = 60` holds for a 50-puzzle 9×9
+batch by the measured averages (~20–30 s) — the first time `/api/generate` does real Kakuro
+work, so noted.
+
+### Docs sweep
+
+Mirrored `.md` for every touched source file (`kakuro.md` rewritten, `kakuro-generator.md`
+gained the climb/walk/calibration sections, `benchmark-kakuro.md` new); reverse sweep for
+"fallback" / "fixture" / "one per level" / "maxPerDifficulty" / "selectKakuroBatch" /
+"bounded rejection" / "seeds 7" / "new! … Keisan": both route docs, the hook, PlayExperience,
+PuzzleForm, DifficultyConfigurator, the fixtures doc, PuzzleHub; plan header + slice table +
+D12 row; log D12 row; roadmap, project-status, Docs README.
+
+### Verified vs read
+
+- **Verified:** the table; the walk prototype (5 per cell, every size and tier); the repair
+  calibration (identical seeded fills, 10 configs); the benchmark; the fuzz; the hub and the
+  play seed in the browser pane; both e2e specs.
+- **Read only:** production timing under Vercel's CPU for a full 50-puzzle 9×9 PDF (no such
+  request has been made; the arithmetic says ~20–30 s inside a 60 s `maxDuration`).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change (the generate route's
+  Kakuro branch gained caps, not trust).
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lessons
+
+- **Put the grader in the objective** — rejection toward a 1–3% tier is a lottery with a
+  fallback; a walk with a gradient inside each band is a few hundred cheap steps. (L22)
+- **Calibrate an objective's cap on identical seeded inputs before accepting a default** — the
+  repair's count limit was a 2.6× lever hiding in a number nobody had measured. (L23)
+- **A 10-sample average at 9×9 is a band, not a point** — compare maxima and re-run before
+  calling a 528 vs 500 a pass or a fail; write the near miss down either way.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up 6: all 6 `/code-review high` findings on E4 addressed
 
 Branch `feature/kakuro-review-6` on `f19c740` (main, after E4). Table in the plan (E4 → "Review

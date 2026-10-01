@@ -44,27 +44,26 @@ CPU-heavy route (review finding **H1**).
 
 The classic path (sections 2–5) is unchanged and runs when `variant` is absent/`'classic'`.
 
-## 1c. Kakuro branch (plan slice V3)
+## 1c. Kakuro branch (plan slices V3 → E5)
 
-**Goal:** When `variant === 'kakuro'`, render a Kakuro booklet from the **baked fixtures** —
-until the generator lands (E5) every puzzle is a solver-graded, hand-searched fill, one per
-size and level.
+**Goal:** When `variant === 'kakuro'`, generate a Kakuro booklet — every puzzle fresh, unique,
+and at exactly the requested tier (E5).
 **Steps:**
 
 1. Validate the body with a **Zod schema** (`kakuroRequestSchema`; AGENTS.md §6 "authorize →
-   validate → mutate"): `gridSize` is `7 | 9` (Kakuro's own sizes, D11 — a Sudoku-family 4/6 is
-   rejected), each level count is an integer `0..1`. A count of 2 would print the same fixture
-   twice, so it is a `400` with a message that says why, not a silent clamp.
-2. All counts zero → `400`; otherwise `selectKakuroBatch(counts, { gridSize })` (the fixtures
-   module's service — the Kakuro counterpart of `generateKillerBatch`, so the route stays a
-   controller per AGENTS.md §1; review follow-up 5 moved the selection out of the route).
-3. `generateKakuroPDF(puzzles)` → the booklet; return it as `Kakuro.pdf`. The log line carries
-   the five counts under `counts` and the size at the top level, the same shape as the other
-   branches.
+   validate → mutate"): `gridSize` is `6 | 7 | 9` (Kakuro's own sizes, D11 — a Sudoku-family
+   4 is rejected), each level count a non-negative integer.
+2. All counts zero → `400`; total above `MAX_PUZZLES` (50) → `400`; more than `MAX_EXTREME` (5)
+   extreme → `400` — the same caps as the other variants, because Kakuro now generates too
+   (a 9×9 is ~0.3–0.8 s per tier, extreme the slowest; a full 50-puzzle 9×9 request sits well
+   inside `maxDuration`).
+3. `generateKakuroBatch(counts, { gridSize })` (in `kakuro.ts` — the Kakuro counterpart of
+   `generateKillerBatch`, so the route stays a controller per AGENTS.md §1) →
+   `generateKakuroPDF(puzzles)` → the booklet as `Kakuro.pdf`. The log line carries the five
+   counts under `counts` and the size at the top level, the same shape as the other branches.
 
-No generation runs, so none of the Extreme sub-count or total caps apply; the Zod maximum is the
-only ceiling. When E5 ships, `selectKakuroBatch` becomes `generateKakuroBatch` and the `max(1)`
-goes.
+V3's one-per-level cap and the fixture selector are gone with the generator; the fixtures are
+test data only.
 
 ---
 

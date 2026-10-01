@@ -33,7 +33,7 @@
 
 import { shuffle } from '../grid-utils';
 import { deriveRuns, validateKakuroLayout, whiteMaskOf } from './kakuro-layout';
-import { classifyKakuro } from './kakuro-logical-solver';
+import { classifyKakuro, KakuroLogicalSolver, TIER_DIFFICULTY, type KakuroTier } from './kakuro-logical-solver';
 import { countKakuroSolutions, isKakuroUnique } from './kakuro-solver';
 import { MAX_RUN_LENGTH, type KakuroPuzzle, type Run } from './kakuro-types';
 
@@ -275,54 +275,47 @@ export function fillKakuroLayout(white: readonly boolean[][], rng: () => number 
   return white.map((row, r) => row.map((_, c) => value[r * size + c]));
 }
 
-export interface RepairOptions {
+export interface ClimbOptions {
   rng?: () => number;
   /** Mutations tried before giving up. */
   stepCap?: number;
   /** Wall-clock cap — a spike needs one from the first run (L16). */
   msCap?: number;
-  /** Solutions counted per objective evaluation; more than this scores as "many". */
-  countLimit?: number;
-  /** Node budget per objective evaluation; exhausting it also scores as "many". */
-  countBudget?: number;
+  /** Mutations without a strict improvement before giving up — a plateau is left to a fresh start sooner. */
+  stallCap?: number;
 }
 
-export interface RepairResult {
+export interface ClimbResult {
   solution: number[][];
-  /** 1 when repaired; the last objective value otherwise. */
-  solutions: number;
+  /** 0 when the objective was reached; the last objective value otherwise. */
+  score: number;
   steps: number;
   ms: number;
 }
 
 /**
- * Hill-climb a fill toward uniqueness one cell at a time. The objective is the solution count of
- * the clues the fill implies, capped at `countLimit`; a mutation is kept when the count does not
- * rise (plateau moves included — they are what lets the climb cross flat regions). Returns the
- * best fill reached either way; check `solutions === 1`.
+ * The one hill-climb both the repair and the tier walk run: mutate one white cell to a digit
+ * legal in both its runs, keep it when the objective does not rise (plateau moves included —
+ * they are what lets the climb cross flat regions), stop at 0 or at a cap. The runs' cells never
+ * change under a one-cell mutation — only the two sums through that cell do — so the sums are
+ * kept in place and nudged by the digit's delta, and the objective sees the live `runs`.
  */
-export function repairToUnique(start: readonly number[][], options: RepairOptions = {}): RepairResult {
+function hillClimb(start: readonly number[][], objective: (runs: readonly Run[]) => number, options: ClimbOptions = {}): ClimbResult {
   const size = start.length;
   // The wall-clock cap scales with the grid: a 6×6 that has not converged in a second is on a
   // plateau a fresh layout escapes faster than more steps would (measured, E4).
-  const { rng = Math.random, stepCap = 4_000, msCap = 25 * size * size, countLimit = 50, countBudget = 20_000 } = options;
+  const { rng = Math.random, stepCap = 4_000, msCap = 25 * size * size, stallCap = Infinity } = options;
   const { runs, runsOfCell, whites } = indexRuns(whiteMaskOf(start));
   const current = start.map((row) => [...row]);
-  // The runs' cells never change under a one-cell mutation — only the two sums through that
-  // cell do — so the sums are kept in place and nudged by the digit's delta rather than the
-  // grid re-scanned every step (a review finding: the scan was on the hot path).
   for (const run of runs) run.sum = run.cells.reduce((sum, cell) => sum + current[Math.floor(cell / size)][cell % size], 0);
 
-  const score = (): number => {
-    const count = countKakuroSolutions({ gridSize: size, runs }, { limit: countLimit, nodeBudget: countBudget });
-    return count.exhausted ? countLimit : count.solutions;
-  };
-
-  let currentScore = score();
+  let currentScore = objective(runs);
   let steps = 0;
+  let stalled = 0;
   const started = performance.now();
-  while (currentScore !== 1 && steps < stepCap && performance.now() - started < msCap) {
+  while (currentScore !== 0 && steps < stepCap && stalled < stallCap && performance.now() - started < msCap) {
     steps++;
+    stalled++;
     const cell = whites[Math.floor(rng() * whites.length)];
     const r = Math.floor(cell / size);
     const c = cell % size;
@@ -336,15 +329,104 @@ export function repairToUnique(start: readonly number[][], options: RepairOption
     const digit = options[Math.floor(rng() * options.length)];
     current[r][c] = digit;
     for (const run of runsOfCell[cell]) runs[run].sum += digit - previous;
-    const nextScore = score();
+    const nextScore = objective(runs);
     if (nextScore <= currentScore) {
+      if (nextScore < currentScore) stalled = 0;
       currentScore = nextScore;
     } else {
       current[r][c] = previous;
       for (const run of runsOfCell[cell]) runs[run].sum -= digit - previous;
     }
   }
-  return { solution: current, solutions: currentScore, steps, ms: performance.now() - started };
+  return { solution: current, score: currentScore, steps, ms: performance.now() - started };
+}
+
+export interface RepairOptions extends ClimbOptions {
+  /** Solutions counted per objective evaluation; more than this scores as "many". */
+  countLimit?: number;
+  /** Node budget per objective evaluation; exhausting it also scores as "many". */
+  countBudget?: number;
+}
+
+export interface RepairResult extends ClimbResult {
+  /** 1 when repaired; the last solution count otherwise. */
+  solutions: number;
+}
+
+/**
+ * Hill-climb a fill toward uniqueness. The objective is the solution count of the clues the fill
+ * implies minus one, capped at `countLimit` — 0 exactly when the puzzle is unique. Returns the
+ * best fill reached either way; check `solutions === 1`.
+ */
+export function repairToUnique(start: readonly number[][], options: RepairOptions = {}): RepairResult {
+  // Measured on 30 identical seeded 9×9 fills (E5): a count limit of 50 plateaus — every
+  // neighbour of a many-solution fill scores the same — and 17/30 repaired at 2.0 s per accepted
+  // puzzle; 200 keeps a gradient (24/30), and giving up after 600 steps without improvement cuts
+  // the rest short: 0.77 s per accepted puzzle. Larger limits pay more per step than they return.
+  const { countLimit = 200, countBudget = 20_000, stallCap = 600, ...climb } = options;
+  const size = start.length;
+  const result = hillClimb(
+    start,
+    (runs) => {
+      const count = countKakuroSolutions({ gridSize: size, runs }, { limit: countLimit, nodeBudget: countBudget });
+      return (count.exhausted ? countLimit : count.solutions) - 1;
+    },
+    { ...climb, stallCap }
+  );
+  return { ...result, solutions: result.score + 1 };
+}
+
+export interface WalkOptions extends ClimbOptions {
+  /** Node budget for the uniqueness check each step. */
+  countBudget?: number;
+}
+
+/**
+ * Hill-climb a *unique* puzzle toward a target tier, keeping it unique. The objective orders
+ * every fill by how far it is from "unique and exactly this tier":
+ *
+ * ```text
+ * not unique                      → 1000            (never kept over a unique fill)
+ * unique, ladder cannot finish it → 500 + undecided cells
+ * unique, harder than the target  → 100 + steps above the target tier   ← fewer is closer
+ * unique, easier than the target  → 50 − cells the tier-below ladder leaves undecided  ← more is closer
+ * unique, exactly the target      → 0
+ * ```
+ *
+ * The gradients inside each band are what make it a climb rather than a lottery: a hard
+ * puzzle walking to easy sheds its above-tier steps one by one; an easy one walking to expert
+ * gets harder for the tier-3 ladder step by step until a chain is needed. Measured (E5): 9×9
+ * easy in ~0.2 s, extreme in ~0.5 s, every target at every size reached — see
+ * `kakuro-generator.md`.
+ */
+export function walkToTier(start: readonly number[][], target: KakuroTier, options: WalkOptions = {}): ClimbResult {
+  const { countBudget = 20_000, ...climb } = options;
+  const size = start.length;
+  const undecided = (solver: KakuroLogicalSolver) => {
+    let cells = 0;
+    for (let cell = 0; cell < size * size; cell++) {
+      const mask = solver.candidatesOf(cell);
+      if (mask !== 0 && (mask & (mask - 1)) !== 0) cells++;
+    }
+    return cells;
+  };
+  return hillClimb(
+    start,
+    (runs) => {
+      const count = countKakuroSolutions({ gridSize: size, runs }, { limit: 2, nodeBudget: countBudget });
+      if (count.exhausted || count.solutions !== 1) return 1000;
+      const solver = new KakuroLogicalSolver({ gridSize: size, runs });
+      const result = solver.solve({ recordSteps: true });
+      if (!result.solved) return 500 + undecided(solver);
+      const hardest = result.hardestTier === 0 ? 1 : result.hardestTier;
+      if (hardest === target) return 0;
+      if (hardest > target) return 100 + result.steps.filter((step) => step.tier > target).length;
+      const below = new KakuroLogicalSolver({ gridSize: size, runs });
+      below.solve({ maxTier: (target - 1) as KakuroTier });
+      return 50 - Math.min(49, undecided(below));
+    },
+    climb
+  );
 }
 
 export interface GenerateUniqueOptions {
@@ -357,6 +439,8 @@ export interface GenerateUniqueOptions {
   /** Wall-clock budget for all rounds together; each round's repair gets what is left of it. */
   timeBudgetMs?: number;
   repair?: RepairOptions;
+  /** Walk the repaired fill to this tier before accepting it (E5); absent = accept whatever tier came out. */
+  targetTier?: KakuroTier;
 }
 
 /**
@@ -365,7 +449,7 @@ export interface GenerateUniqueOptions {
  * whether to retry at another density or fall back).
  */
 export function generateUniqueKakuro(options: GenerateUniqueOptions): KakuroPuzzle | null {
-  const { gridSize, blackDensity, method, rng = Math.random, maxRounds = 5, timeBudgetMs = Infinity, repair } = options;
+  const { gridSize, blackDensity, method, rng = Math.random, maxRounds = 5, timeBudgetMs = Infinity, repair, targetTier } = options;
   const started = performance.now();
   for (let round = 0; round < maxRounds; round++) {
     const remaining = timeBudgetMs - (performance.now() - started);
@@ -378,16 +462,25 @@ export function generateUniqueKakuro(options: GenerateUniqueOptions): KakuroPuzz
     const msCap = Math.min(repair?.msCap ?? 25 * gridSize * gridSize, remaining);
     const repaired = repairToUnique(fill, { rng, ...repair, msCap });
     if (repaired.solutions !== 1) continue;
-    const runs = deriveRuns(repaired.solution);
-    // The objective counted with a node budget; the final word is the exact verifier's.
+    let solution = repaired.solution;
+    if (targetTier !== undefined) {
+      const left = timeBudgetMs - (performance.now() - started);
+      const walked = walkToTier(solution, targetTier, { rng, msCap: Math.min(repair?.msCap ?? 25 * gridSize * gridSize, left) });
+      if (walked.score !== 0) continue;
+      solution = walked.solution;
+    }
+    const runs = deriveRuns(solution);
+    // The objectives counted with a node budget; the final word is the exact verifier's.
     if (isKakuroUnique({ gridSize, runs }) !== true) continue;
+    const difficulty = classifyKakuro({ gridSize, runs }).difficulty;
+    if (targetTier !== undefined && difficulty !== TIER_DIFFICULTY[targetTier as Exclude<KakuroTier, 0>]) continue;
     return {
       variant: 'kakuro',
       gridSize,
-      grid: repaired.solution.map((row) => row.map(() => 0)),
-      solution: repaired.solution,
+      grid: solution.map((row) => row.map(() => 0)),
+      solution,
       runs,
-      difficulty: classifyKakuro({ gridSize, runs }).difficulty,
+      difficulty,
     };
   }
   return null;
