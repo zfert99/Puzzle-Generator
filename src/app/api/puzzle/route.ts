@@ -3,6 +3,8 @@ import { generateSinglePuzzle } from '@/features/engine/services/generation.serv
 import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
+import { generateKakuroDetailed, KAKURO_SIZES, type KakuroSize } from '@/features/engine/kakuro/kakuro';
+import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -91,6 +93,25 @@ export async function POST(req: NextRequest) {
       logger.info(
         { event: 'puzzle_success', variant: 'calc', difficulty, gridSize, noOp, durationMs: Math.round(performance.now() - startTime) },
         'Generated interactive Keisan puzzle',
+      );
+      return NextResponse.json(puzzle, { status: 200 });
+    }
+
+    // ---- Kakuro branch (6×6 / 7×7 / 9×9, the full ladder at every size — plan slice E4) ----
+    if (variant === 'kakuro') {
+      if (!KAKURO_LADDER.includes(difficulty)) {
+        return NextResponse.json({ error: 'Kakuro difficulty must be easy, medium, hard, expert, or extreme' }, { status: 400 });
+      }
+      if (!KAKURO_SIZES.includes(gridSize)) {
+        return NextResponse.json({ error: 'Kakuro grid size must be 6, 7, or 9' }, { status: 400 });
+      }
+      // E4 targets the tier by bounded rejection and may fall back (a fixture, or the nearest
+      // tier generated — always labelled with its real tier); `source` is logged so E5 can see
+      // the fallback rate per tier and size before it replaces the loop.
+      const { puzzle, source, attempts } = generateKakuroDetailed(difficulty as KakuroLevel, { gridSize: gridSize as KakuroSize });
+      logger.info(
+        { event: 'puzzle_success', variant: 'kakuro', difficulty, served: puzzle.difficulty, source, attempts, gridSize, durationMs: Math.round(performance.now() - startTime) },
+        'Generated interactive Kakuro puzzle',
       );
       return NextResponse.json(puzzle, { status: 200 });
     }

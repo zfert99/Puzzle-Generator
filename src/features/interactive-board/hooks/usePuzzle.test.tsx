@@ -61,32 +61,22 @@ describe('usePuzzle', () => {
     expect(result.current.puzzle).toBeNull();
   });
 
-  it('serves a Kakuro fixture for a known size without touching the network', async () => {
-    const fetchMock = vi.fn();
+  it('requests a Kakuro from the route like every other type (E4: the generator lives server-side)', async () => {
+    const served = { variant: 'kakuro', gridSize: 6, grid: [], solution: [], runs: [], difficulty: 'hard' };
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => served });
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = renderHook(() => usePuzzle());
     let puzzle: unknown = null;
     await act(async () => {
-      puzzle = await result.current.fetchPuzzle({ difficulty: 'easy', gridSize: 7, variant: 'kakuro' });
-    });
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(puzzle).toMatchObject({ variant: 'kakuro', gridSize: 7 });
-    expect(result.current.error).toBe('');
-  });
-
-  it('reports an error for a Kakuro size with no fixture instead of serving another size', async () => {
-    vi.stubGlobal('fetch', vi.fn());
-
-    const { result } = renderHook(() => usePuzzle());
-    let puzzle: unknown = 'unset';
-    await act(async () => {
       puzzle = await result.current.fetchPuzzle({ difficulty: 'easy', gridSize: 6, variant: 'kakuro' });
     });
 
-    expect(puzzle).toBeNull();
-    expect(result.current.puzzle).toBeNull();
-    expect(result.current.error).toMatch(/6×6/);
+    expect(fetchMock).toHaveBeenCalledWith('/puzzles/api/puzzle', expect.objectContaining({
+      body: JSON.stringify({ difficulty: 'easy', gridSize: 6, variant: 'kakuro' }),
+    }));
+    // The label is the route's (the classifier's), not the request's.
+    expect(puzzle).toMatchObject({ variant: 'kakuro', gridSize: 6, difficulty: 'hard' });
+    expect(result.current.error).toBe('');
   });
 });

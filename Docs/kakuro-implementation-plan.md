@@ -14,10 +14,10 @@
 > density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
 > [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF)
 > [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
-> [#119](https://github.com/zfert99/Puzzle-Generator/pull/119) — every V and E slice through E3
-> is done; E4 (generator) next) · **Branch:** one per slice off
+> [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); **E4 (generator) built, in
+> review** — "New puzzle" is real at 6/7/9, scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
-> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`) ·
+> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -202,7 +202,7 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | 5 | E2a — Logical solver T1–T3 + classifier + metrics + scorer | Easy/medium/hard Kakuro graded by the solver; hints that name their technique and show the lead-up |
 | 5′ | E2b — Chain tiers (T4 / T5 forcing chains by length) | Expert and extreme Kakuro served at both sizes; the `*_CHAINS` fixtures solved by logic; chain hints that spell out the contradiction |
 | 6 | E3 — Yield measurement spike | Numbers in the log and `research/kakuro-feasibility-findings.md`; mini = 6×6 (D6′); 13×13 deferred |
-| 7 | E4 — Layout + fill + clue derivation | "New puzzle" produces a fresh board |
+| 7 | E4 — Layout + fill + repair + clue derivation | "New puzzle" produces a fresh, unique, solver-graded board at 6/7/9 |
 | 8 | E5 — Difficulty configs + `generateKakuro` + benchmark | The difficulty and size pickers go live; hub card live |
 | 9 | R1 — Daily rotation (4 types) | Kakuro in the daily |
 
@@ -700,7 +700,7 @@ library and structural pre-checks (G3, G10) before E4, rather than tuning inside
   being stopped — a spike needs a wall-clock cap per attempt from the start.
 - *Blockers:* none; E4 proceeds at 6/7/9 with the findings as its design inputs.
 
-### E4 — Layout generator + digit fill + clue derivation ⏳
+### E4 — Layout generator + digit fill + clue derivation ✅
 
 - `kakuro-layout.ts`: Mathimagics' **edges-inward template method** (G3, now a procedure):
   (1) generate the outer edge — for diagonal symmetry make the top and left edges and reflect;
@@ -729,7 +729,47 @@ library and structural pre-checks (G3, G10) before E4, rather than tuning inside
 **Gate:** yield ≥ what E3 measured; 9×9 accepted puzzle < 1 s avg at medium density; the mini
 < 200 ms.
 
+**Step-log (2026-10-01):**
+
+- *Process:* `kakuro-generator.ts` — `generateKakuroLayout` (two methods, see divergence),
+  `fillKakuroLayout` (randomised DFS, per-run all-different), `repairToUnique` (E3's one-cell
+  hill-climb on the capped solution count, plateau moves kept, wall-clock cap scaled by size),
+  `generateUniqueKakuro` (layout → fill → repair → exact verify → classifier label). `kakuro.ts`
+  — the **thin E5 entry point pulled forward**: `generateKakuro(difficulty, { gridSize })` targets
+  the tier by *bounded rejection* (fresh puzzles until the classifier's tier matches, else a
+  fixture of the exact tier at 7×7/9×9 or the nearest tier generated, always labelled with the
+  grade earned — D8) and `KAKURO_SIZES = [6, 7, 9]` with one density per size. `/api/puzzle`
+  gained the Kakuro branch (logs `served` + `source` so E5 can read the fallback rate);
+  `usePuzzle` dropped its client-side fixture path; the board offers **6×6** (D6′); the e2e no
+  longer depends on fixture clue values. 12 generator tests (seeded, both layout methods, fill
+  legality, repair convergence and cap, end-to-end at every size), 3 entry-point tests, 2 route
+  tests. The fixtures are now test data and the route's fallback only.
+- *Measured (scatter, 30 per size, end to end):* 6×6 **95 ms** avg / 20 median; 7×7 320 / 43;
+  9×9 **659 ms** avg / 245 median; 0 failures in 90. Tier distribution at the shipped
+  densities: hard 45%, expert 25%, extreme 15%, medium 10%, easy 1–3% — hard/expert/extreme
+  match a request in 1–2 tries, medium in a handful, **easy mostly falls back** (the 7×7/9×9
+  fixture; at 6×6 the nearest tier, labelled truthfully). Gates: mini < 200 ms ✓, 9×9 < 1 s ✓,
+  yield ≥ E3 ✓.
+- *Divergence — the layout method* ([research/kakuro-layout-method-findings.md](research/kakuro-layout-method-findings.md)):
+  the prescribed **edges-inward** method was built, measured, and **demoted to an option**. Its
+  no-orphan forcing lays 2-deep white bands (~30% more all-white 2×2 blocks — the shape every
+  sum-preserving swap needs), and its layouts repaired to unique 5/10 at 9×9 vs **10/10** for
+  the random-pair **scatter** method E3 had measured with; a 2×2-block-breaker knob did not help
+  because the bands are forced, not flipped. Scatter is the default; the invariants the plan
+  listed are enforced by the validator for both. G3 amended in the log.
+- *Learnings:* L19 (a method's objective must be ours: "valid at high density" is not "repairs
+  cheaply"); L20 (a per-step O(N²) check inside a placement loop was 90% of layout time —
+  check the neighbourhood, validate once).
+- *Blockers:* none. **Owed to E5:** the classifier in the objective (easy is unreachable by
+  rejection), per-tier density bias, the fallback's removal, the hub card, the deep link's
+  seed (still 7×7 — the mini is 6×6 but has no fixture to fall back to), `/api/generate`
+  switching from `selectKakuroBatch` to generation.
+
 ### E5 — Difficulty configs + `generateKakuro(difficulty, { gridSize })` + benchmark ⏳
+
+> *E4 pulled the entry point forward in a thin form (`kakuro.ts`: bounded rejection toward the
+> requested tier, one density per size, fixture/nearest fallback). E5 replaces the inside —
+> classifier in the objective, per-tier bias, bands, no fallback — without changing the contract.*
 
 - `kakuro.ts`: per-size `DIFFICULTY_CONFIG` for all three sizes (D6′) — layout bias (density,
   run-length mix, unique-combo share targets from the research's T1–T5 table, treated as

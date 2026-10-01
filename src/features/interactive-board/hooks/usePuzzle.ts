@@ -4,7 +4,6 @@ import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudok
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
-import { findKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
 
 type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle;
 
@@ -25,11 +24,8 @@ interface PuzzleRequest {
  * mount effect), so no puzzle is ever generated during SSR — sidestepping the
  * `Math.random()` server/client mismatch class of bugs (AGENTS.md Section 1).
  *
- * **Kakuro has no generator yet** (Kakuro plan: the generator is slice E4/E5). Until then a
- * Kakuro request is served from the hand-baked fixtures without touching the network — static
- * data, so the hydration concern above does not apply. There is one fixture per size and
- * difficulty for easy/medium/hard, each labelled by the classifier; `/api/puzzle` is left
- * untouched until a real generator exists.
+ * Kakuro goes through the same route since E4 (`generateKakuro` behind `/api/puzzle`); the
+ * fixtures it used to serve client-side are test data and the route's fallback now.
  */
 export function usePuzzle() {
   const [puzzle, setPuzzle] = useState<AnyPuzzle | null>(null);
@@ -38,16 +34,6 @@ export function usePuzzle() {
 
   const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
-    if (variant === 'kakuro') {
-      const fixture = findKakuroFixture(gridSize, difficulty);
-      if (!fixture) {
-        // Surface it like a failed request would — never quietly hand back a different puzzle.
-        setError(`No ${difficulty} Kakuro at ${gridSize}×${gridSize} yet`);
-        return null;
-      }
-      setPuzzle(fixture);
-      return fixture;
-    }
     setLoading(true);
     try {
       const res = await fetch(apiPath('/api/puzzle'), {

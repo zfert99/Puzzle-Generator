@@ -92,6 +92,84 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro E4: generator (scatter layouts, fill, repair-to-unique) — "New puzzle" real at 6/7/9
+
+Branch `feature/kakuro-e4` on `0620201` (main, after review follow-up 5). Plan E4 step-log;
+log journal + G3 amendment + L19/L20 + Measurements; new research record
+`research/kakuro-layout-method-findings.md`. ~330 new engine lines (`kakuro-generator.ts`,
+`kakuro.ts`), ~160 test lines, ~80 lines across the route / hook / board / e2e, ~250 doc lines.
+**Over the ~400 LOC guide:** the generator and its entry point are one unit — a layout without
+the repair is not a puzzle, and the route switch is what makes it visible; splitting would ship
+an engine nothing calls.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 82 files, **742 passed**, 0 failed — 17 new (12 generator: both layout methods at every size, unreachable target → null, seed reproducibility, fill legality, repair convergence + cap, end to end 6/7/9; 3 entry point: common tier fresh, zero-budget fallbacks honest at 7×7 and 6×6, default size; 2 route) + 1 hook test retargeted to the network |
+| `npm run lint` | exit 0 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Playwright `play.spec.ts` | 7 passed (a second run clean; the first had the known `fullyParallel` flakes, retried green) — the Kakuro spec no longer reads fixture clue values |
+| Benchmarks | no `human-solver`/`sudoku` change; the generator's own numbers are in `kakuro-generator.md` → Measured (6×6 95 ms avg, 7×7 320 ms, 9×9 659 ms; 0 failures in 90) |
+| Browser | `/play?variant=kakuro` → 6×6 · hard → Play: a fresh generated board, header "Hard · 6×6" (the classifier's label) |
+
+### Findings
+
+- **Plan divergence, recorded, not improvised:** the prescribed edges-inward layout method
+  repairs to unique 5/10 at 9×9 vs 10/10 for the random-pair scatter method (7×7: 7/10 @ 569 ms
+  vs 9/10 @ 39 ms) — ~30% more all-white 2×2 blocks from its forced edge bands; a block-breaker
+  knob did not move it. Scatter ships as the default, edges-inward stays as an option; research
+  doc written before the switch was made the default.
+- Self-caught: the scatter's per-placement orphan check ran the full validator (60–700 ms per
+  9×9 layout, most of the pipeline) → O(1) neighbourhood check, validate once (L20).
+- Self-caught: a fixed 2 s repair cap wasted 2 s on every stuck 6×6 → cap scales with N².
+- Self-caught: `shuffle` mutates in place — the digit list is copied per call.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. `/api/puzzle` Kakuro branch validates
+difficulty against `KAKURO_LADDER` and size against `KAKURO_SIZES` before generating; the rate
+limit precedes it; the generator is bounded at every level (layout attempts, fill nodes, repair
+steps + wall clock, rounds, rejection attempts + budget) and the final fallback is bounded too,
+so the route cannot hang past its `maxDuration`. **D8 re-derived:** every served label is
+`classifyKakuro`'s — the request never becomes the label; the honest-fallback test proves it
+with a zero budget at both a fixture size and a fixture-less size. **Soundness surface:**
+generated puzzles pass `validateKakuroRuns` and `isKakuroUnique` in every end-to-end test; the
+label path is the existing classifier, untouched.
+
+### Docs sweep
+
+New mirrored `kakuro-generator.md` and `kakuro.md`; `usePuzzle.md`, `PlayExperience.md`,
+`route.md` (puzzle) updated; reverse sweep for "no generator yet" / "hand-made" / "served from
+fixtures" — the board's visible copy, the hook doc, the PlayExperience comment and doc, the
+plan header and slice table, project-status, roadmap, Docs README; `/api/generate`'s
+`selectKakuroBatch` left as is (E5 switches it — recorded as owed).
+
+### Verified vs read
+
+- **Verified:** the table; every yield number (scratch scripts, three sizes, both methods); the
+  board in the browser pane; the Kakuro e2e twice.
+- **Read only:** production behaviour of the rejection budget under Vercel's CPU (the 6 s budget
+  is well inside `maxDuration = 60`; the fallback rate is logged as `source` for E5 to read).
+
+### Review statements
+
+- `/security-review`: **not run** — a new validated branch on the existing unauthenticated,
+  rate-limited route; no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lessons
+
+- **Adopt a published method only after checking its objective is yours** — build it, measure
+  it against the stand-in, keep both behind a knob. (L19)
+- **A validator inside a placement loop is O(N²) per placement** — check the neighbourhood,
+  validate once. (L20)
+- **Scale a wall-clock cap with the problem size** — one cap for 6×6 and 9×9 either starves
+  the large or stalls the small.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up 5: all 8 `/code-review high` findings on V3 addressed
 
 Branch `feature/kakuro-review-5` on `99d97b9` (main, after V3). Table in the plan (V3 → "Review
