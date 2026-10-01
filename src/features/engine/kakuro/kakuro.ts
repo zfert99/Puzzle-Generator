@@ -55,15 +55,36 @@ export interface GenerateKakuroOptions {
 export function generateKakuroBatch(counts: Partial<Record<KakuroLevel, number>>, options: GenerateKakuroOptions = {}): KakuroPuzzle[] {
   const { timeBudgetMs = 45_000, ...each } = options;
   const started = performance.now();
+  const wanted = KAKURO_LADDER.reduce((sum, level) => sum + (counts[level] ?? 0), 0);
   const puzzles: KakuroPuzzle[] = [];
+  const outOfTime = () =>
+    Object.assign(new Error(`Kakuro batch ran out of time after ${puzzles.length} of ${wanted} puzzles (${timeBudgetMs} ms budget)`), { name: KAKURO_BUDGET_ERROR });
   for (const level of KAKURO_LADDER) {
     for (let i = 0; i < (counts[level] ?? 0); i++) {
       const remaining = timeBudgetMs - (performance.now() - started);
-      if (remaining <= 0) throw new Error(`Kakuro batch ran out of time after ${puzzles.length} puzzles (${timeBudgetMs} ms budget)`);
-      puzzles.push(generateKakuro(level, { ...each, timeBudgetMs: remaining }));
+      if (remaining <= 0) throw outOfTime();
+      // A fair share, not winner-takes-all: a puzzle may run to four times the average share
+      // of what is left (and at least 5 s), so one pathological generation is abandoned and
+      // retried by the next rather than allowed to starve the rest of the batch.
+      const share = Math.min(remaining, Math.max(5_000, (4 * remaining) / (wanted - puzzles.length)));
+      try {
+        puzzles.push(generateKakuro(level, { ...each, timeBudgetMs: share }));
+      } catch {
+        // A puzzle that missed its share is retried on the next share while the batch has time;
+        // only the batch's own clock running out is the out-of-time error.
+        if (timeBudgetMs - (performance.now() - started) <= 0) throw outOfTime();
+        i--;
+      }
     }
   }
   return puzzles;
+}
+
+/** `error.name` of the batch's out-of-time error — a request too large for its budget, not a fault. */
+export const KAKURO_BUDGET_ERROR = 'KakuroBudgetError';
+
+export function isKakuroBudgetError(error: unknown): error is Error {
+  return error instanceof Error && error.name === KAKURO_BUDGET_ERROR;
 }
 
 /** The ladder's tier for a published level — `KAKURO_LADDER` is in tier order. */

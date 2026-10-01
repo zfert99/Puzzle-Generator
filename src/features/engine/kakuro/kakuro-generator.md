@@ -139,8 +139,15 @@ seeded bases (easy → target, 15 per cell, medians): see **Measured** below.
 This is what makes easy reachable — it is 1–3% of natural output, so E4's rejection could not
 get there — and it is why no per-tier layout bias was needed.
 
+The objective is exported as `tierDistance(runs, size, target)` so the ordering can be tested
+on known states — on the baked fixtures, target expert: easy 71, medium 63, hard 54 (7×7) /
+55 (9×9), expert 0, extreme ≥ 104; the test pins that nearer tiers score lower and that two
+same-tier states differ (review follow-up 8: the flat band survived E5 because the objective
+was a closure nothing could inspect).
+
 `generateUniqueKakuro({ targetTier, walk })` runs the walk after the repair, under the same
-clock and with its own caps (`walk`, independent of `repair` — a review finding), and labels
+clock and with its own caps (`walk`, independent of `repair` — a review finding; neither nested
+option carries an `rng`, the generator's seed is the only one), and labels
 the result with the target: the walk accepts only a state whose full ladder solve — the same
 solver and call the classifier makes, deterministic — reports exactly that tier, so re-running
 the classifier would re-derive a known answer (it did, in the E5 PR; a review finding).
@@ -180,6 +187,21 @@ Every walk reached its target either way (15/15 per cell). The medians barely mo
 random walk lands on the target soon enough most of the time — but the tails are where the
 gradient earns its keep: the worst 9×9 up-walk shrank from 1 832 to 287 steps (expert) and from
 886 to 338 (extreme). Those tails were the widest spread in the E5 benchmark.
+
+**Lean from the full solve's steps instead of a second capped solve — measured, not adopted**
+(review follow-up 8). A reviewer suggested the share of steps at the top tier, already in the
+full solve's record, as a free within-tier signal in place of the capped solve. Same 15 seeded
+bases per cell:
+
+| Cell | capped solve: steps median / max | top-tier-steps ratio: steps median / max |
+|---|---|---|
+| 9×9 → expert | 59 / **287** | 47 / 437 |
+| 9×9 → extreme | 132 / **338** | 152 / 464 |
+| 7×7 → extreme | 86 / **321** | 99 / 388 |
+
+The free signal is a weaker gradient: medians are a wash, the worst cases are 20–50% longer at
+every cell, and the per-step saving (one solve) does not pay for the extra steps. The capped
+solve stays.
 
 ## Measured (E5, 2026-10-01, dev machine — `benchmark-kakuro.ts`, 10 per cell)
 

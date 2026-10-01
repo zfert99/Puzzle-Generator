@@ -18,10 +18,12 @@
 > [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up
 > [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
 > [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
-> [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) — every puzzle fresh at exactly
-> the requested tier, hub card live, fixtures test data only; R1 (daily) next) · **Branch:** one per slice off
+> [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) and a second follow-up — every
+> puzzle fresh at exactly the requested tier, hub card live, fixtures test data only; R1 (daily)
+> next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
-> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`) ·
+> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`,
+> `-review-8`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -869,6 +871,18 @@ addressed in [#123](https://github.com/zfert99/Puzzle-Generator/pull/123); recor
 
 *Learned (L24):* a gradient claimed in a doc is a hypothesis until the band's value has been
 seen to vary — print the objective's distribution on a few states before trusting it.
+
+**Review follow-up 8 (2026-10-01 — hosted `/code-review high` over #123, 6 findings, all
+addressed; recorded in full):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | An over-budget PDF batch surfaced as the generic 500 — no hint to ask for fewer (`generate/route.ts`) | **Fixed** — the batch's out-of-time error is typed (`isKakuroBudgetError`); the route answers **503** with "N of M generated, ask for fewer puzzles per PDF", logged as `generation_budget` at warn |
+| 2 | The walk objective was a closure — nothing could test the property the flat band violated (`kakuro-generator.ts`) | **Fixed** — exported as `tierDistance(runs, size, target)`; a test on the baked fixtures pins 0 at the target, ≥ 100 above, strict ordering by tier distance below, and that two same-tier states score differently (L24 is now enforced, not just written) |
+| 3 | A batch handed each puzzle the *whole* remaining budget — one pathological generation could starve the rest (`kakuro.ts`) | **Fixed** — fair share: up to four times the average share of what is left (≥ 5 s), a missed share retried on the next, only the batch's clock is the error |
+| 4 | Nested `walk` / `repair` options could carry a second `rng`, breaking one-seed-one-puzzle | **Fixed** — `Omit<…, 'rng'>` on both; spread before the generator's `rng` |
+| 5 | The easier band pays a second capped solve; the full solve's top-tier step share was proposed as a free signal | **Measured, not adopted** — same seeded bases: medians a wash, worst cases 20–50% longer at every cell; the capped solve stays (table in `kakuro-generator.md`) |
+| 6 | Redundant `as KakuroTier` cast | **Fixed** |
 
 ### R1 — Daily rotation (4 types) ⏳
 

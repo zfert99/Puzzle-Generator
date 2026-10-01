@@ -28,6 +28,12 @@
 
 ## Journal
 
+- **2026-10-01 (review 8)** Review follow-up 7 merged (#123). Owner ran `/code-review high`
+  over it: **6 findings, all addressed** (table in the plan under E5). The walk objective is
+  now an exported, tested function (`tierDistance`) — L24 enforced; an over-budget PDF batch
+  answers 503 with "ask for fewer" instead of a generic 500, and shares its budget fairly.
+  `[measure]` a proposed free within-tier signal (top-tier step share) measured and rejected —
+  worst cases 20–50% longer; the capped solve stays.
 - **2026-10-01 (review 7)** E5 merged (#122). Owner ran `/code-review high` over it: **6
   findings, all addressed** (#123; table in the plan under E5). The one with teeth: the tier walk's
   "easier than target" band was a constant — the documented gradient did not exist and the
@@ -237,6 +243,7 @@
 
 | Date | Commit | What | Numbers |
 |---|---|---|---|
+| 2026-10-01 | review 8 | **Lean signal A/B** — capped-solve `lean` (engine) vs top-tier step share, same 15 seeded bases per cell, easy → target | steps median / max: 9×9 expert 59/287 vs 47/437 · 9×9 extreme 132/338 vs 152/464 · 7×7 extreme 86/321 vs 99/388 — rejected |
 | 2026-10-01 | review 7 | **Up-walk A/B** — 15 identical seeded bases per cell walked down to easy, then up to the target with the flat band (E5) vs the tiered band; steps are the CPU-independent signal | **steps median / max, flat → tiered:** 7×7 expert 35/162 → 19/208 · 7×7 extreme 98/360 → 86/321 · 9×9 expert 49/**1832** → 59/**287** · 9×9 extreme 139/**886** → 132/**338**; 15/15 reached either way |
 | 2026-10-01 | E5 | **Tier walk** (5 walks per cell from E4 output), **repair recalibration** (30 identical seeded 9×9 fills), **benchmark** (`benchmark-kakuro.ts`, 10 per cell) and **soundness fuzz** (500 generated per size) | **Walk ms:** 7×7 easy 27–141, medium 0–28, expert 0–615, extreme 24–867; 9×9 easy 138–296, medium 0–77, hard 2–94, expert 25–316, extreme 0–1569; 6×6 all ≤ 76. **Repair (limit·budget·stall → ok/30, ms/accepted):** 50·20k·∞ 17, 2010 · 100·20k 20, 1398 · **200·20k·600 24, 768** · 200·20k·∞ 24, 915 · 500·50k 22, 1076. **Benchmark ms avg (e/m/h/x/X):** 6×6 51/104/37/60/72 · 7×7 401/158/283/403/124 · 9×9 265/528/365/191/773. **Fuzz:** 0 unsound / 0 mismatch / 0 unsolved at 6 (63 ms per puzzle), 7 (280), 9 (660) |
 | 2026-10-01 | E4 | **Generator end to end** (`generateUniqueKakuro`, scatter layouts, 30 per size incl. classification) and the **layout-method comparison** (10 layouts per cell, repair capped at 10 s) | **End to end:** 6×6 @0.40 avg 95 ms / median 20 / max 2.0 s, tiers m5 h13 x7 X5 · 7×7 @0.37 avg 320 / 43 / 3.5 s, e1 m3 h12 x9 X5 · 9×9 @0.38 avg 659 / 245 / 2.2 s, m2 h16 x7 X4 unrated 1; 0 failures in 90. 9×9 @0.42: avg 2.7 s (slower both ways). **Method:** 9×9 @0.36 edges-inward 5/10 repaired, 20.5 all-white 2×2 blocks/layout, 105 runs ≥ 6 per 30 layouts; scatter 10/10, 15.6 blocks, 66 long runs. 7×7 @0.36: 7/10 @569 ms vs 9/10 @39 ms. Block-breaker 0.5/0.8 → 19.2/18.8 blocks, 2/10 and 5/10 |

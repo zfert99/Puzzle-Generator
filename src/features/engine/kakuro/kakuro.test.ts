@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateKakuro, generateKakuroBatch, KAKURO_SIZES, tierOf } from './kakuro';
+import { generateKakuro, generateKakuroBatch, isKakuroBudgetError, KAKURO_SIZES, tierOf } from './kakuro';
 import { classifyKakuro, KakuroLogicalSolver } from './kakuro-logical-solver';
 import { isKakuroUnique } from './kakuro-solver';
 import { KAKURO_LADDER, validateKakuroRuns } from './kakuro-types';
@@ -26,8 +26,16 @@ describe('generateKakuro (E5: the classifier in the objective)', () => {
     expect(() => generateKakuro('extreme', { gridSize: 9, timeBudgetMs: 0 })).toThrow(/Kakuro generation failed/);
   });
 
-  it('batches share one budget and throw cleanly when it is spent', () => {
-    expect(() => generateKakuroBatch({ easy: 3 }, { gridSize: 6, timeBudgetMs: 0 })).toThrow(/ran out of time after 0 puzzles/);
+  it('batches share one budget and throw a typed, recognisable error when it is spent', () => {
+    let caught: unknown;
+    try {
+      generateKakuroBatch({ easy: 3 }, { gridSize: 6, timeBudgetMs: 0 });
+    } catch (error) {
+      caught = error;
+    }
+    expect(isKakuroBudgetError(caught)).toBe(true);
+    expect((caught as Error).message).toMatch(/after 0 of 3 puzzles/);
+    expect(isKakuroBudgetError(new Error('something else'))).toBe(false);
     expect(generateKakuroBatch({ easy: 1, extreme: 1 }, { gridSize: 6, timeBudgetMs: 60_000 }).map((p) => p.difficulty)).toEqual(['easy', 'extreme']);
   }, 60_000);
 

@@ -31,8 +31,13 @@ measured need), so a call is bounded by construction. **A batch shares one budge
 (`generateKakuroBatch`, default 45 s — inside `/api/generate`'s 60 s `maxDuration` with the
 PDF render to spare): each puzzle is handed what is left, and when it runs out the batch throws
 rather than letting the function time out with a booklet half-built (a review finding: 50
-puzzles × a 20 s per-call budget was bounded only at 1 000 s). At the measured averages a full
-50-puzzle 9×9 batch is ~15–30 s on the dev machine.
+puzzles × a 20 s per-call budget was bounded only at 1 000 s). The share is fair, not
+winner-takes-all: each puzzle may run to four times the average share of what is left (at least
+5 s), a puzzle that misses its share is retried on the next, and only the batch's own clock
+running out is the error — a typed one (`isKakuroBudgetError`, `error.name ===
+'KakuroBudgetError'`) that `/api/generate` turns into a **503 with "ask for fewer puzzles"**
+rather than a generic 500 (review follow-up 8). At the measured averages a full 50-puzzle 9×9
+batch is ~15–30 s on the dev machine.
 
 ## Why no per-tier density, and no score bands
 
