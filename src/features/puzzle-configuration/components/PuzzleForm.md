@@ -31,21 +31,30 @@ A lookup table defining which difficulties are available for each grid size:
    - `counts`: An object storing the desired quantity for each difficulty level. Easy, Medium, and Hard default to 2. Expert and Extreme default to 0.
    - `error`: A text string to hold any error messages.
 
-### The Sudoku / Killer / Keisan toggle
+### The Sudoku / Killer / Keisan / Kakuro toggle
 
-Three segmented buttons switch `variant`. Every variant picks its size through the shared
+Four segmented buttons switch `variant`. Every variant picks its size through the shared
 `GridSizeSelector`, differing only in the `sizes` prop it passes: classic offers all three
-(4/6/9), **Killer** offers `[6, 9]`, and **Keisan** (calc) offers `[4, 6, 9]`. The two
-non-classic variants keep their own size state (`killerSize`, `calcSize`) so switching types
-doesn't clobber the classic selection. Killer's `onChange` carries a guard that ignores a `4`:
+(4/6/9), **Killer** offers `[6, 9]`, **Keisan** (calc) offers `[4, 6, 9]`, and **Kakuro**
+offers its own `[7, 9]` (plan decision D11: sizes are per puzzle type — these are the two baked
+layouts until E5). The non-classic variants keep their own size state (`killerSize`,
+`calcSize`, `kakuroSize`) so switching types doesn't clobber the classic selection. Killer's `onChange` carries a guard that ignores a `4`:
 the selector never offers 4×4 there, but its callback type is `4 | 6 | 9` and the guard narrows
 it to Killer's `6 | 9` without a cast.
 
 Killer shows a "no givens — the cage sums are the only clue" note; Keisan shows its own note
-plus the Mystery (hide-operators) switch. `handleGenerate` sends
-`{ variant, gridSize, easy, medium, hard, expert, extreme }` for both (expert/extreme forced to
-0 below 9×9, and `noOp` added for Keisan); classic mode sends `{ ...counts, gridSize }` as
-before.
+plus the Mystery (hide-operators) switch; Kakuro a "cross sums" note. `handleGenerate` sends
+`{ variant, gridSize, easy, medium, hard, expert, extreme }` for all three (expert/extreme forced to
+0 below 9×9 for Killer and Keisan, `noOp` added for Keisan); classic mode sends
+`{ ...counts, gridSize }` as before.
+
+**Kakuro offers the full ladder at both sizes** (a 7×7 Kakuro has an expert and an extreme,
+unlike the Sudoku family's minis) but **at most one puzzle per level** — until the generator
+lands the puzzles are baked fixtures, one per size and level, and the route rejects a count of
+2. The form passes `maxPerDifficulty={1}` to the configurator (which caps the inputs and swaps
+the "1–50 total" note for "one per level"), clamps the counts in state when the Kakuro toggle
+is chosen (`handleVariantChange`, so an input never shows a value above its own max) and once
+more in `handleGenerate`, so the default 2/2/2 becomes 1/1/1 rather than an error.
 
 ---
 

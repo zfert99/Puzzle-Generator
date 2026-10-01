@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { apiPath } from '@/lib/base-path';
 
 interface GenerationConfig {
-  variant?: 'classic' | 'killer' | 'calc';
+  variant?: 'classic' | 'killer' | 'calc' | 'kakuro';
   gridSize?: number;
   easy: number;
   medium: number;
@@ -12,6 +12,14 @@ interface GenerationConfig {
   /** Keisan Mystery / No-Op mode — hide the cage operators (calc only). */
   noOp?: boolean;
 }
+
+/** Download names, matching the route's `Content-Disposition` per variant. */
+const PDF_FILENAME: Record<NonNullable<GenerationConfig['variant']>, string> = {
+  classic: 'Sudoku_Puzzles.pdf',
+  killer: 'Killer_Sudoku.pdf',
+  calc: 'Keisan.pdf',
+  kakuro: 'Kakuro.pdf',
+};
 
 export function usePuzzleGeneration() {
   const [loading, setLoading] = useState(false);
@@ -47,8 +55,7 @@ export function usePuzzleGeneration() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download =
-        config.variant === 'killer' ? 'Killer_Sudoku.pdf' : config.variant === 'calc' ? 'Keisan.pdf' : 'Sudoku_Puzzles.pdf';
+      a.download = PDF_FILENAME[config.variant ?? 'classic'];
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

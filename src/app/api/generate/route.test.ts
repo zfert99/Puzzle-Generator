@@ -128,6 +128,35 @@ describe('Sad Paths', () => {
     expect(body.error).toMatch(/extreme/i);
   });
 
+  // ── Kakuro (V3): baked fixtures, one per level, Kakuro's own sizes ───────────
+
+  test('Kakuro: one of each level at 7×7 returns a PDF named Kakuro.pdf', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 7, easy: 1, medium: 1, hard: 1, expert: 1, extreme: 1 }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="Kakuro.pdf"');
+    const buffer = Buffer.from(await res.arrayBuffer());
+    expect(buffer.subarray(0, 4).toString('ascii')).toBe('%PDF');
+  }, 30_000);
+
+  test('Kakuro: more than one puzzle per level returns 400 (a level is one baked puzzle until E5)', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 9, easy: 2 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/at most 1/i);
+  });
+
+  test('Kakuro: a Sudoku-family size is rejected', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 6, easy: 1 }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/7 or 9/);
+  });
+
+  test('Kakuro: all zeros returns 400', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', gridSize: 7 }));
+    expect(res.status).toBe(400);
+  });
+
   test('Bad Data Types: non-numeric values are rejected', async () => {
     const res = await POST(buildRequest({ easy: 'apple', medium: 'banana', hard: 'cherry', expert: 'date' }));
     expect(res.status).toBe(400);

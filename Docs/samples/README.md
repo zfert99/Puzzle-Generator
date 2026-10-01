@@ -48,3 +48,21 @@ Regenerate:
 ```bash
 npx tsx src/features/pdf-generation/preview-calc.ts Docs/samples/keisan-mystery-sample.pdf 2 --mystery
 ```
+
+## `kakuro-sample.pdf`
+
+A sample Kakuro (Cross Sums) booklet — the full **easy / medium / hard / expert / extreme** ladder
+at 7×7 and at 9×9 (the ten served, solver-graded fixtures), followed by the answer pages. Each
+puzzle page shows the clue gutter and the shaded clue cells with their diagonal — the **down** sum
+upper-right, the **across** sum lower-left — and empty white cells; the answer page adds the digits.
+
+Regenerate (there is no count argument until the Kakuro generator lands — the fixtures are the
+only puzzles there are):
+
+```bash
+npx tsx src/features/pdf-generation/preview-kakuro.ts Docs/samples/kakuro-sample.pdf
+```
+
+The rendering comes from `drawKakuroGrid` / `generateKakuroPDF` in
+[pdf.service.ts](../../src/features/pdf-generation/services/pdf.service.ts). You can also generate
+a Kakuro PDF from the browser on `/generate` (the Kakuro toggle — at most one puzzle per level).

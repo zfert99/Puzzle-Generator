@@ -12,9 +12,10 @@
 > 2026-10-01 — the full easy→extreme ladder is served at both sizes; E3 (yield spike)
 > [#116](https://github.com/zfert99/Puzzle-Generator/pull/116) — mini = 6×6, repair-not-retry,
 > density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
-> [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF) and E4 next) · **Branch:** one per slice off `main`
-> (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`, `-review-3`,
-> `-e3`, `-review-4`) ·
+> [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); **V3 (PDF) built, in review** —
+> every V and E slice through E3 is done; E4 (generator) next) · **Branch:** one per slice off
+> `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
+> `-review-3`, `-e3`, `-review-4`, `-v3`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -354,7 +355,7 @@ visual check handed to the owner.
   phone-width check (Risk 15) is still owed; no NVDA/VoiceOver pass (G7's owed AT test).
 - *Blockers:* none.
 
-### V3 — PDF on the baked puzzle ⏳
+### V3 — PDF on the baked puzzle ✅
 
 - `drawKakuroGrid` + `generateKakuroPDF` on the shared nav helpers (bookmarks + puzzle↔answer
   links). Print conventions (G7): light interior lines with a heavier outer border, **shaded clue
@@ -364,6 +365,36 @@ visual check handed to the owner.
 
 **Gate:** a Kakuro page in the sample booklet, verified by eye; PDF service tests cover the
 renderer.
+
+**Step-log (2026-10-01, built after E3 and review follow-up 4 — the order the owner chose):**
+
+- *Process:* `drawKakuroGrid` draws the (N+1)×(N+1) display grid — shaded blocks, light
+  interior lines, heavier frame, a diagonal through every clue cell with the down sum
+  upper-right and the across sum lower-left (G7), solution digits on the answer page — and
+  `generateKakuroPDF` is the fourth booklet on the shared navigation helpers. White vs black
+  comes from `solution` (D3: black = 0); the clue picture comes from `buildClues`, **moved from
+  the interactive board into the engine's `kakuro-layout.ts`** (re-exported by `kakuro-board.ts`
+  under its old names) so paper and screen derive one picture. `/api/generate` gained a
+  Kakuro branch validated by a **Zod schema** — sizes `7 | 9` (D11, not the Sudoku family's
+  4/6), each level `0..1` — that serves the fixtures; `PuzzleForm` a Kakuro toggle with
+  Kakuro's sizes, the full ladder at both, and a one-per-level cap (`maxPerDifficulty` on the
+  configurator + a clamp in `handleGenerate`, so the default 2/2/2 prints 1/1/1 rather than
+  erroring). `preview-kakuro.ts` wrote `Docs/samples/kakuro-sample.pdf` (10 puzzles + answers).
+  Tests: PDF parity (bookmarks, links, page count), four route cases (happy path + filename,
+  count > 1, Sudoku-family size, all zeros), the form's Kakuro path.
+- *Verified by eye:* the 7×7 easy puzzle page and the 9×9 easy answer page rasterised
+  (`sips`) and checked — gutter, shading, diagonals, sum placement, digit centring all as
+  specified. The QuickLook/`sips` route only renders a PDF's first page, so single-page
+  renders were made with `drawKakuroGrid` directly; recorded in the pre-merge entry.
+- *Divergence from the spec:* "one puzzle per level" is a V3 constraint the spec did not
+  anticipate — the fixtures are the only puzzles until E5, and a count of 2 would print one
+  puzzle twice. The route rejects it (400 with the reason) and the form prevents it; the cap is
+  one `max(1)` in the schema to delete when `generateKakuroBatch` exists.
+- *Learnings:* the clue picture was board code until a second consumer appeared; the right
+  home was the engine all along (the board's `kakuro-board.md` said as much — "display
+  coordinates" is a puzzle concept). Move on the second consumer, not the third.
+- *Blockers:* none. The hub card still waits for E5 (D12); `/generate` shows Kakuro now
+  because it is a real, if small, catalogue.
 
 ### E1 — Combination table + exact solver + uniqueness ✅
 

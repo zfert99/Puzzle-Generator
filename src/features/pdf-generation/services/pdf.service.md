@@ -97,6 +97,28 @@ config and the label:
   `generateCalcPDF` builds the Keisan booklet (title "Keisan", one page per puzzle + one answer
   page each). Both reuse the shared `computeCageOutline` geometry.
 
+## 4c. Kakuro (plan slice V3, October 2026)
+
+Kakuro has no cages and no givens — the clues *are* the grid — so it gets its own renderer
+rather than the caged-grid helper. `drawKakuroGrid(doc, puzzle, startX, startY, gridDrawSize,
+showSolution)` draws the **(N+1)×(N+1) display grid**: the clue gutter as row 0 and column 0,
+then the interior. The picture follows the print conventions from research gap G7 and matches
+the interactive board exactly, because both derive it from the engine's `buildClues`:
+
+```text
+every black cell (gutter, and interior cells with no digit) → shaded fill
+light lines between every track; a heavier frame around the whole thing
+every clue cell → a diagonal from top-left to bottom-right
+                  down sum in the upper-right triangle, across sum in the lower-left
+answer page only → the solution digit centred in every white cell
+```
+
+White vs black comes from `puzzle.solution` (black cells are `0` — plan decision D3), so no
+layout helper is needed beyond the clues. `generateKakuroPDF` builds the booklet like the other
+two (title "Kakuro", one page per puzzle, then one answer page each, same bookmarks and
+puzzle↔answer links). Until the generator lands (E5) the booklet renders the baked fixtures —
+`preview-kakuro.ts` writes `Docs/samples/kakuro-sample.pdf` from them.
+
 ## Navigation parity (September 2026, QA F9)
 
 Classic booklets carried `/Outlines` (bookmarks) and puzzle↔answer `/Annots` (links) from the
