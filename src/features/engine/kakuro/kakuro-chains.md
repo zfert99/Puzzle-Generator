@@ -18,6 +18,11 @@ two combinations of one run                        (a run uses one combination)
 a cell-digit and a run-combination that lacks it   (the digit cannot be in that run's set)
 ```
 
+plus one non-binary link, Berthier's **g-link**: a true combination needs each of its digits
+held by some cell of the run — so a digit with no possible holder is a contradiction, and one
+with exactly one holder forces it there. (Left out of the first version; a review finding — it
+makes some chains shorter and catches a contradiction one link earlier.)
+
 ## What a chain is
 
 Suppose a target candidate is true. Follow the forced consequences along those links only:
@@ -48,16 +53,27 @@ given target — the same "weakest level that finishes" convention every other t
 
 ## Facts before the supposition
 
-A run with a single open combination already holds it. The logical solver has normally applied
-that to the masks (tier 1), but a raw context may not have, so single-combination runs are
-asserted as facts first, without counting toward the length. A target the facts already rule out
-is a chain of length 0.
+Whatever is already forced — a run with a single open combination, a cell with a single
+candidate, and whatever those force in turn — is established first, **to a fixpoint**, without
+counting toward the length. The logical solver has normally applied these to the masks (tier 1),
+but the grade must not depend on which caller built the context: the first version asserted only
+the single-combination runs and did not iterate, so a chain whose first link was really a fact
+could be reported one link longer than it was (a review finding). A target the facts already
+rule out is a chain of length 0.
+
+## One workspace per step
+
+The open combinations of every run and the working buffers are built once per
+`findFirstChainElimination` (`prepareChainWorkspace`) and reset per target candidate — hundreds
+of targets share them. The first version rebuilt them per target (a review finding); the
+rebuild was most of an extreme puzzle's grading time.
+
+The chain also reports `contradictionRun` — the run that emptied, or the run of the cell that
+did — which the solver records as the step's `run` so a future "show me where" can point at the
+right place.
 
 ## Deliberately left out
 
-- **g-whips** (Berthier's g-labels for the "a required digit must land somewhere" link): the
-  chain model here only follows binary links. Both chain fixtures and the searched expert/extreme
-  fills fall to plain braids; if a future fill needs g-links, that is the signal to add them.
 - **Surface sums** (articulation-point sums, research gap G4): an accelerator, not a rung, per
   the plan; not needed by anything yet.
 - A whip-only mode (no memory). Braids are a superset; a stricter rating can be added if a

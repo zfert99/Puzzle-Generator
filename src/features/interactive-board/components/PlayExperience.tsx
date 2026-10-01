@@ -57,6 +57,15 @@ function parseVariant(value: string | null): PlayVariant {
   return value === 'killer' || value === 'calc' || value === 'kakuro' ? value : 'classic';
 }
 
+/**
+ * Expert and Extreme are 9×9-only for the Sudoku family; Kakuro ships its full ladder at every
+ * size. The one rule every lock decision uses (the picker, and the clamps on switching type or
+ * size), so a new size or type changes it in one place.
+ */
+function topTiersLockedFor(variant: PlayVariant, size: SelectableSize): boolean {
+  return size !== 9 && variant !== 'kakuro';
+}
+
 export default function PlayExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -113,12 +122,11 @@ export default function PlayExperience() {
   }, [view, status, tick]);
 
   const miniGrid = gridSize !== 9;
-  // Expert/Extreme are 9×9-only for the Sudoku family; Kakuro ships its full ladder at both sizes.
-  const topTiersLocked = miniGrid && !isKakuro;
+  const topTiersLocked = topTiersLockedFor(variant, gridSize);
 
   const handleGridSizeChange = (size: SelectableSize) => {
     setGridSize(size);
-    if (size !== 9 && !isKakuro && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    if (topTiersLockedFor(variant, size) && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const handleVariantChange = (v: PlayVariant) => {
@@ -128,7 +136,7 @@ export default function PlayExperience() {
     // variant, so the guard is uniform: clamp them off any non-9 grid.
     const nextSize = SIZES[v].includes(gridSize) ? gridSize : SIZES[v][0];
     if (nextSize !== gridSize) setGridSize(nextSize);
-    if (nextSize !== 9 && v !== 'kakuro' && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    if (topTiersLockedFor(v, nextSize) && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const startFresh = async () => {

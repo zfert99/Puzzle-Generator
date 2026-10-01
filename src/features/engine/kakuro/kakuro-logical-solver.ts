@@ -73,7 +73,10 @@ export const TIER_DIFFICULTY: Record<Exclude<KakuroTier, 0>, Exclude<KakuroDiffi
 export interface KakuroStep {
   technique: KakuroTechnique;
   tier: KakuroTier;
-  /** The run the deduction was made in (its index in `shape.runs`). */
+  /**
+   * The run the deduction was made in (its index in `shape.runs`). For a chain, the run the
+   * contradiction surfaced in — the one that emptied, or the run of the cell that did.
+   */
   run: number;
   /** A digit placed by this step, if it placed one. */
   placed?: { cell: number; digit: number };
@@ -609,13 +612,18 @@ export class KakuroLogicalSolver {
     return {
       technique,
       tier: TECHNIQUE_TIER[technique],
-      run: this.runOf(chain.cell, 0) !== -1 ? this.runOf(chain.cell, 0) : this.runOf(chain.cell, 1),
+      run: chain.contradictionRun,
       eliminated: [{ cell: chain.cell, mask: bit }],
       explanation: chain.explanation,
     };
   }
 
-  private chainContext(): ChainContext {
+  /**
+   * The chain engine's view of the current state — public so tests (and any tool that wants to
+   * ask "what would a chain prove from here?") can build on the solver's standstill without
+   * reaching into private members.
+   */
+  chainContext(): ChainContext {
     return {
       size: this.size,
       runs: this.runs,

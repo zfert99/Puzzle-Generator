@@ -7,10 +7,11 @@
 > [#110](https://github.com/zfert99/Puzzle-Generator/pull/110) and the review follow-up
 > [#111](https://github.com/zfert99/Puzzle-Generator/pull/111), E2a
 > [#112](https://github.com/zfert99/Puzzle-Generator/pull/112) and its review follow-up
-> [#113](https://github.com/zfert99/Puzzle-Generator/pull/113) merged 2026-10-01; **E2b (chains)
-> built, in review** — the full easy→extreme ladder is served at both sizes; V3 (PDF) and E3
-> (yield spike) next) · **Branch:** one per slice off `main` (`feature/kakuro`, `-v1`, `-v2`,
-> `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`) ·
+> [#113](https://github.com/zfert99/Puzzle-Generator/pull/113), E2b
+> [#114](https://github.com/zfert99/Puzzle-Generator/pull/114) and its review follow-up merged
+> 2026-10-01 — the full easy→extreme ladder is served at both sizes; V3 (PDF) and E3 (yield
+> spike) next) · **Branch:** one per slice off `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`,
+> `-review-1`, `-e2`, `-review-2`, `-e2b`, `-review-3`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -470,7 +471,25 @@ and re-reported.
 - *Blockers:* none. **Still owed to E5:** the T4/T5 bounds are provisional (set from four
   fixtures); the "T4 must be populated" gate decides them.
 
-### E2 — Logical solver (technique classifier) + instrumentation ✅ (E2a ✅ · E2b ✅ built, in review)
+**Review follow-up (2026-10-01 — hosted `/code-review` over E2b, 8 findings, all addressed;
+recorded in full):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | Open combinations re-filtered for every run on every target candidate (`kakuro-chains.ts`) | **Fixed** — `prepareChainWorkspace` builds combos + buffers once per step; targets share and reset them |
+| 2 | The facts pre-pass did not iterate, so a chain whose first link was really a fact could be counted one longer — possibly across the tier bound | **Fixed** (B8) — facts (single-combination runs, single-candidate cells, and what they force) established to a fixpoint before the supposition; a fact-excluded target is a length-0 chain; tested |
+| 3 | A chain step's `run` was the eliminated cell's own run, contradicting the field's doc | **Fixed** — `ForcingChain.contradictionRun` (the run that emptied, or the emptied cell's run) is what the step records; tested |
+| 4 | Tests reached the private `chainContext()` through an `as unknown` cast | **Fixed** — `chainContext()` is public (documented as the engine's view of the state) |
+| 5 | Per-candidate buffer allocation | **Fixed** — same workspace as #1 |
+| 6 | No g-link: a true combination's digit with no holder was not a contradiction | **Fixed** — the g-link is in the scan (no holder → contradiction; one holder → forced). Every fixture keeps its tier; the 7×7 extreme's chains re-route and now include one of exactly 12 — the ceiling, noted below |
+| 7 | The expert/extreme lock rule written three ways (`PlayExperience.tsx`) | **Fixed** — `topTiersLockedFor(variant, size)` |
+| 8 | Tier-5 length ceiling untested | **Fixed** — a test learns a chain's length L and asserts bound L finds it and bound L − 1 does not (the off-by-one), on the extreme 7×7 |
+
+*Noted:* with the g-link the 7×7 extreme needs a chain of exactly **12** at one point — the
+`CHAIN_TIER5_MAX_LENGTH` ceiling. It still grades extreme (the chain is found), but the fixture
+sits on the edge; E5's distribution decides whether 12 is the right ceiling.
+
+### E2 — Logical solver (technique classifier) + instrumentation ✅ (E2a ✅ · E2b ✅)
 
 - Tier *definitions* follow Simonis (G9): a puzzle's tier is the **weakest technique level that
   finishes it search-free**. This is ordinal, not a weighted sum — the scorer below only orders

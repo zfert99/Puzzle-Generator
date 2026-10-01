@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { findFirstChainElimination, findForcingChain, type ChainContext } from './kakuro-chains';
-import { ALL_KAKURO_FIXTURES, KAKURO_FIXTURE_7X7_CHAINS, parseKakuroFixture } from './kakuro-fixtures';
+import { ALL_KAKURO_FIXTURES, KAKURO_FIXTURE_7X7_CHAINS, findKakuroFixture, parseKakuroFixture } from './kakuro-fixtures';
 import { runComboMasks } from './kakuro-combinations';
 import { KakuroLogicalSolver } from './kakuro-logical-solver';
 import type { KakuroPuzzle } from './kakuro-types';
@@ -34,18 +34,26 @@ function contextFor(puzzle: KakuroPuzzle, masks?: Record<number, number>): Chain
 const digitAt = (puzzle: KakuroPuzzle, cell: number) => puzzle.solution[Math.floor(cell / puzzle.gridSize)][cell % puzzle.gridSize];
 
 describe('findForcingChain', () => {
-  it('eliminates a candidate whose supposition empties a cell, and says how', () => {
-    // 3×3: supposing 3 at (0,1) forces the top across run 4-in-two to {1,3} → (0,2) = 1, while
-    // the right down run 7-in-two needs {1,6},{2,5},{3,4}: (0,2) = 1 forces (1,2) = 6, but the
-    // middle across run 7-in-three {1,2,4} cannot hold a 6 → contradiction.
-    const tiny = parseKakuroFixture(['#13', '124', '35#'], 'unrated');
-    const chain = findForcingChain(contextFor(tiny), 1, 3, 8);
+  it('eliminates a candidate whose supposition empties a variable, and says how', () => {
+    // From the original 7×7's tier-3 standstill the first chain the ladder finds is a real
+    // suppose-and-contradict argument; its explanation names the path and the dead end.
+    const solver = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS);
+    solver.solve({ maxTier: 3 });
+    const chain = findFirstChainElimination(solver.chainContext(), 4);
 
     expect(chain).not.toBeNull();
-    expect(chain!.cell).toBe(1);
-    expect(chain!.digit).toBe(3);
-    expect(chain!.length).toBeGreaterThan(0);
-    expect(chain!.explanation).toMatch(/^If r1c2 were 3: .* — so 3 is impossible there \(chain of \d+\)$/);
+    expect(chain!.length).toBe(4);
+    expect(chain!.digit).not.toBe(digitAt(KAKURO_FIXTURE_7X7_CHAINS, chain!.cell));
+    expect(chain!.explanation).toMatch(/^If row \d, column \d were \d: .*, and then .* — so \d is impossible there \(chain of 4\)$/);
+  });
+
+  it('treats what is already forced as facts, not chain: a fact-excluded target is a chain of length 0', () => {
+    // The 3×3 is solvable by facts alone (single-combination runs and singles cascade), so in a
+    // raw 1–9 context every wrong digit is excluded before anything is supposed.
+    const tiny = parseKakuroFixture(['#13', '124', '35#'], 'unrated');
+    const chain = findForcingChain(contextFor(tiny), 1, 3, 8);
+    expect(chain).toMatchObject({ cell: 1, digit: 3, length: 0 });
+    expect(chain!.explanation).toContain('already forced');
   });
 
   it('returns null when the supposition is the truth (no contradiction can follow)', () => {
@@ -58,18 +66,42 @@ describe('findForcingChain', () => {
     // Run the ladder to its tier-3 standstill, then ask for chains at increasing bounds.
     const solver = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS, empty);
     solver.solve({ maxTier: 3 });
-    const ctx = (solver as unknown as { chainContext: () => ChainContext }).chainContext();
+    const ctx = solver.chainContext();
     expect(findFirstChainElimination(ctx, 3)).toBeNull();
     const found = findFirstChainElimination(ctx, 4);
     expect(found).not.toBeNull();
     expect(found!.length).toBe(4);
   });
 
+  it('applies the length bound exactly: a chain of length L is found at bound L and not at L − 1', () => {
+    // Take the first chain the extreme 7×7 needs at its tier-3 standstill, learn its length,
+    // and probe the bound on either side of it — the off-by-one test for `chain.length >= max`.
+    const extreme = findKakuroFixture(7, 'extreme')!;
+    const solver = new KakuroLogicalSolver(extreme);
+    solver.solve({ maxTier: 3 });
+    const ctx = solver.chainContext();
+    const found = findFirstChainElimination(ctx, 12)!;
+    expect(found).not.toBeNull();
+    const L = found.length;
+    expect(L).toBeGreaterThan(0);
+    expect(findForcingChain(ctx, found.cell, found.digit, L)?.length).toBe(L);
+    expect(findForcingChain(ctx, found.cell, found.digit, L - 1)).toBeNull();
+  });
+
+  it('reports the run the contradiction surfaced in', () => {
+    const solver = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS);
+    solver.solve({ maxTier: 3 });
+    const ctx = solver.chainContext();
+    const found = findFirstChainElimination(ctx, 4)!;
+    expect(found.contradictionRun).toBeGreaterThanOrEqual(0);
+    expect(found.explanation).toContain(ctx.runLabel(found.contradictionRun).split(' (')[0]);
+  });
+
   it('never eliminates a solution digit, on every fixture, at every tier-3 standstill', () => {
     for (const puzzle of ALL_KAKURO_FIXTURES) {
       const solver = new KakuroLogicalSolver(puzzle);
       solver.solve({ maxTier: 3 });
-      const ctx = (solver as unknown as { chainContext: () => ChainContext }).chainContext();
+      const ctx = solver.chainContext();
       const cellCount = puzzle.gridSize * puzzle.gridSize;
       for (let cell = 0; cell < cellCount; cell++) {
         if (ctx.placed[cell] || ctx.masks[cell] === 0) continue;
