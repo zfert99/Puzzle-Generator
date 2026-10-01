@@ -15,15 +15,18 @@ import { Calculator } from '../Calculator';
  * one-attempt ranked puzzle shouldn't hand out answers.
  */
 export function Numpad({ showHint = true }: { showHint?: boolean }) {
-  const size = useBoardStore((s) => s.config.size);
+  // The digit range is `maxNum`, not `size`: they agree for Sudoku/Killer/Keisan, but a Kakuro
+  // takes 1–9 whatever its size.
+  const maxNum = useBoardStore((s) => s.config.maxNum);
   const isKiller = useBoardStore((s) => s.variant === 'killer');
   const pencilMode = useBoardStore((s) => s.pencilMode);
-  // Which digits have all `size` instances placed (locked out).
+  // Which digits have all `size` instances placed (locked out). Never for Kakuro: with no house
+  // constraint there is no global per-digit count, so a digit is always available.
   const completed = useBoardStore(
     useShallow((s) => {
-      const counts = new Array<number>(s.config.size).fill(0);
+      const counts = new Array<number>(s.config.maxNum).fill(0);
       for (const row of s.grid) for (const v of row) if (v > 0) counts[v - 1]++;
-      return counts.map((n) => n >= s.config.size);
+      return counts.map((n) => s.variant !== 'kakuro' && n >= s.config.size);
     })
   );
   const inputDigit = useBoardStore((s) => s.inputDigit);
@@ -42,7 +45,7 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
   return (
     <div className="mt-6 w-full max-w-[520px] mx-auto flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2">
-        {Array.from({ length: size }, (_, i) => i + 1).map((digit) => (
+        {Array.from({ length: maxNum }, (_, i) => i + 1).map((digit) => (
           <button
             key={digit}
             type="button"

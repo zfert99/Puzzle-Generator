@@ -33,6 +33,7 @@ const VARIANT_TITLE: Record<PuzzleVariant, string> = {
   classic: 'How to play Sudoku',
   killer: 'How to play Killer',
   calc: 'How to play Keisan',
+  kakuro: 'How to play Kakuro',
 };
 
 /**
@@ -43,6 +44,30 @@ const VARIANT_TITLE: Record<PuzzleVariant, string> = {
  * whether the current board happens to be a Mystery one.
  */
 function RulesBody({ variant }: { variant: PuzzleVariant }) {
+  if (variant === 'kakuro') {
+    return (
+      <>
+        <p className="mb-3">
+          Kakuro (also called <strong>Cross Sums</strong>) is a number crossword. Fill every white
+          cell with a digit from <strong>1 to 9</strong> — at any grid size — so that each{' '}
+          <strong>run</strong> of white cells adds up to its clue.
+        </p>
+        <p className="mb-3">
+          The clues sit in the black cells: the number in the <strong>upper-right</strong> half is
+          the sum of the run going <em>down</em> from it, the number in the{' '}
+          <strong>lower-left</strong> half is the sum of the run going <em>across</em>. A digit
+          cannot repeat within a run. There are no rows, columns, or boxes to satisfy — only runs.
+        </p>
+        <p className="text-ink-soft text-sm">
+          Example: a two-cell run summing to <strong>3</strong> must be 1 and 2; one summing to{' '}
+          <strong>17</strong> must be 8 and 9. Start with the runs that have only one way to make
+          their sum. (A 7×7 is named by its playable area — the clue strip along the top and left
+          is not counted.)
+        </p>
+      </>
+    );
+  }
+
   if (variant === 'killer') {
     return (
       <>

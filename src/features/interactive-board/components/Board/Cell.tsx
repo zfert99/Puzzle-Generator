@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useSetting } from '@/features/settings/useSettings';
 import { maskToDigits } from '../../board-utils';
+import { describeClue, type BoardClue } from '../../kakuro-board';
 import styles from './Board.module.css';
 
 interface CellProps {
@@ -29,11 +30,20 @@ interface CellProps {
 export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, maxNum, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed, isKakuro, isBlocked, clue } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
       const isSelf = sel != null && sel.r === r && sel.c === c;
+      const isKakuro = s.variant === 'kakuro';
+      // Kakuro: a black cell renders as a clue cell (see `ClueCell`) and takes no input. Its clue
+      // is looked up by DISPLAY index — the on-screen grid has a gutter row/column before the
+      // interior, so interior (r, c) is display (r + 1, c + 1) on a `size + 1`-track grid.
+      // Optional access: `blocked`/`clues` are derived on rehydration and can lag `variant` by a
+      // tick (the same window `resolvePeers` covers in the store) — a cell then renders white for
+      // that tick instead of throwing on `undefined[c]`.
+      const isBlocked = isKakuro && (s.blocked[r]?.[c] ?? false);
+      const clue = isBlocked ? (s.clues[(r + 1) * (cfg.size + 1) + (c + 1)] ?? null) : null;
       // A Killer cage is a constraint region like a house, but a distinct one from
       // row/column/box — kept separate from `samePeer` so it can render its own tint
       // (`.cagePeer`) instead of blending into the generic peer highlight. O(1) via the
@@ -47,14 +57,18 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
       // Boxless (Latin-square-only) grids — KenKen at 5/7 — have no box, so a cell peers only
       // through its shared row/column; the box clause is gated off so it doesn't highlight
       // phantom box-mates.
+      // Kakuro peers are run-mates, not row/column/box — the store's `peers` already holds
+      // exactly those (≤ 16 entries), so membership is the lookup rather than geometry.
       const samePeer =
         sel != null &&
         !isSelf &&
-        (sel.r === r ||
-          sel.c === c ||
-          (cfg.hasBoxes &&
-            Math.floor(sel.r / cfg.boxHeight) === Math.floor(r / cfg.boxHeight) &&
-            Math.floor(sel.c / cfg.boxWidth) === Math.floor(c / cfg.boxWidth)));
+        (isKakuro
+          ? (s.peers[sel.r * cfg.size + sel.c]?.includes(r * cfg.size + c) ?? false)
+          : sel.r === r ||
+            sel.c === c ||
+            (cfg.hasBoxes &&
+              Math.floor(sel.r / cfg.boxHeight) === Math.floor(r / cfg.boxHeight) &&
+              Math.floor(sel.c / cfg.boxWidth) === Math.floor(c / cfg.boxWidth)));
       const v = s.grid[r][c];
       const selValue = sel != null ? s.grid[sel.r][sel.c] : 0;
       return {
@@ -70,16 +84,26 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
         // render highlight the one pencil mark matching it, same-number's candidate-side twin.
         selValue,
         size: cfg.size,
+        maxNum: cfg.maxNum,
         boxWidth: cfg.boxWidth,
         boxHeight: cfg.boxHeight,
         hasBoxes: cfg.hasBoxes,
         isDaily: s.mode === 'daily',
         errorsRevealed: s.errorsRevealed,
+        isKakuro,
+        isBlocked,
+        clue,
       };
     })
   );
 
   const selectCell = useBoardStore((s) => s.selectCell);
+
+  // Kakuro's display grid has a gutter column before the interior, so interior column c is
+  // the (c + 2)th column a screen reader counts.
+  const colIndex = isKakuro ? c + 2 : c + 1;
+
+  if (isBlocked) return <ClueCell clue={clue} colIndex={colIndex} />;
 
   // Boxless (Latin-square-only) grids draw no interior thick box borders (KenKen at 5/7).
   const thickRight = hasBoxes && (c + 1) % boxWidth === 0 && c + 1 !== size;
@@ -123,7 +147,7 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
       aria-label={ariaLabel}
       aria-selected={isSelected}
       aria-readonly={isGiven || undefined}
-      aria-colindex={c + 1}
+      aria-colindex={colIndex}
       data-index={r * size + c}
       data-highlight={isSameNumber ? 'same' : undefined}
       tabIndex={isSelected || isEntry ? 0 : -1}
@@ -140,7 +164,7 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
         value
       ) : candidates.length ? (
         <div className={styles.candidates} aria-hidden="true">
-          {Array.from({ length: size }, (_, i) => {
+          {Array.from({ length: maxNum }, (_, i) => {
             const digit = i + 1;
             const present = mask & (1 << i);
             const isMatch = present && selValue !== 0 && digit === selValue;
@@ -155,3 +179,27 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
     </div>
   );
 });
+
+/**
+ * A Kakuro black cell — in the clue gutter or inside the interior. Read-only, outside the tab
+ * order, never selectable; it shows the sums of the runs it heads, if any: the DOWN sum in the
+ * upper-right triangle (above the run it heads) and the ACROSS sum in the lower-left (beside
+ * the run it heads), split by a diagonal. A black cell heading no run is plain. Presentational
+ * on purpose: the gutter has no store cell behind it, so this takes its clue as a prop.
+ */
+export function ClueCell({ clue, colIndex }: { clue: BoardClue | null | undefined; colIndex: number }) {
+  const hasClue = clue != null && (clue.across != null || clue.down != null);
+  return (
+    <div
+      role="gridcell"
+      aria-label={describeClue(clue)}
+      aria-readonly
+      aria-colindex={colIndex}
+      tabIndex={-1}
+      className={`${styles.cell} ${styles.block} ${hasClue ? styles.clue : ''}`}
+    >
+      {clue?.down != null && <span className={styles.clueDown}>{clue.down}</span>}
+      {clue?.across != null && <span className={styles.clueAcross}>{clue.across}</span>}
+    </div>
+  );
+}

@@ -66,3 +66,19 @@ own candidate digits, if it equals `selValue` (and isn't empty), that one `<span
 placed "4" now also calls out every *pencil-marked* 4 across the board, not just other placed
 4s. Computed per-digit at render time (a cheap `mask & (1 << i)` check already happening
 anyway), not a new store field.
+
+## Kakuro: black cells and run-mate peers (October 2026)
+
+When the store's `variant === 'kakuro'` and `blocked[r][c]` is set, the cell renders as a
+**`ClueCell`** instead — a read-only, non-focusable `gridcell` named "Clue: across 17, down 23"
+(whichever sums it heads) or "Blocked cell", showing the DOWN sum in the upper-right triangle
+and the ACROSS sum in the lower-left. `ClueCell` is exported and purely presentational because
+the Board also uses it for the clue gutter, which has no store cell behind it. The clue is read
+from the store's display-indexed `clues` at `(r + 1) * (size + 1) + (c + 1)` — the gutter shifts
+every interior cell one row and one column on screen — and `aria-colindex` is `c + 2` for the
+same reason. Both `blocked` and `clues` are read with optional chaining so a tick of lag during
+rehydration renders a white cell rather than throwing.
+
+The peer highlight for a Kakuro is **membership in the selected cell's `peers` list** (the
+store already holds run-mates — at most 16 entries), not row/column/box geometry. The pencil
+grid is `maxNum` slots (9 for Kakuro, `size` otherwise) so a 7×7 can show every digit.

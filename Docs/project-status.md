@@ -22,7 +22,7 @@ listed below is either merged or explicitly parked. There is no work in progress
 
 | | |
 |---|---|
-| Plan of record | [kakuro-implementation-plan.md](kakuro-implementation-plan.md) (Phase 10) — **in flight since 2026-09-30** on `feature/kakuro`, starting with V0 (looks-only board). The QA plan is complete; other options are under **Next horizons** below |
+| Plan of record | [kakuro-implementation-plan.md](kakuro-implementation-plan.md) (Phase 10) — **in flight since 2026-09-30** — V0 + V1 merged 2026-10-01, V2 (playable board) built. The QA plan is complete; other options are under **Next horizons** below |
 | Gate before any merge | [pre-merge-log.md](pre-merge-log.md) — **read its Known flaky tests table first** |
 | Doc index | [README.md](README.md) |
 | Longer-term phases | [roadmap.md](roadmap.md) |
@@ -79,7 +79,7 @@ mobile nav overflow, mini board caps; 9b had already landed via #64) and Step 5
 | Option | What it is |
 |---|---|
 | Phase 7 — Strategy Courses | The "crown jewel" (`strategy-courses-implementation-plan.md`; `stash@{0}` holds a roadmap-section wip) |
-| Puzzle type 4 — Kakuro (Phase 10) | **Plan written 2026-09-11** (`kakuro-implementation-plan.md` + `kakuro-log.md`); research in `research/kakuro.md`. Build order is **visual first**: V1/V2 put a hand-baked Kakuro on the real board, the engine lands underneath it afterwards (yield spike = E3). **Build started 2026-09-30** on `feature/kakuro` with **V0** — a looks-only static 7×7 at `/kakuro` (no sums, no input), added ahead of V1 at the owner's request (PR #104) — then **V1** (types, layout rules, two baked fixtures; the static board draws real clue sums). Owner calls still open: D4 (daily mini slot count), confirm D5′ (chain top tiers) |
+| Puzzle type 4 — Kakuro (Phase 10) | **Plan written 2026-09-11** (`kakuro-implementation-plan.md` + `kakuro-log.md`); research in `research/kakuro.md`. Build order is **visual first**: V1/V2 put a hand-baked Kakuro on the real board, the engine lands underneath it afterwards (yield spike = E3). **Build started 2026-09-30** on `feature/kakuro` with **V0** — a looks-only static 7×7 at `/kakuro` (no sums, no input), added ahead of V1 at the owner's request (PR #104) — then **V1** (types, layout rules, two baked fixtures; the static board draws real clue sums) — both merged 2026-10-01 — then **V2**: Kakuro playable on the real board at `/play?variant=kakuro` (workbench route deleted; no hub card until E5). Owner calls still open: D4 (daily mini slot count), confirm D5′ (chain top tiers) |
 | Solo-dev QA hardening | Roadmap backlog: branch protection, AI reviewer, axe/Lighthouse CI, property/mutation tests |
 | Phase 9 — Social & Economy | Gated on the solve-time-trust work for clock-based rules |
 

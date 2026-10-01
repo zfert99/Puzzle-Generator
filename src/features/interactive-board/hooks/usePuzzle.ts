@@ -3,13 +3,15 @@ import { apiPath } from '@/lib/base-path';
 import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
+import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
+import { KAKURO_FIXTURES } from '@/features/engine/kakuro/kakuro-fixtures';
 
-type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle;
+type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle;
 
 interface PuzzleRequest {
   difficulty: Difficulty;
   gridSize?: GridSize;
-  variant?: 'classic' | 'killer' | 'calc';
+  variant?: 'classic' | 'killer' | 'calc' | 'kakuro';
   /** Keisan Mystery / No-Op mode — hide the cage operators (calc only). */
   noOp?: boolean;
 }
@@ -22,6 +24,11 @@ interface PuzzleRequest {
  * Hydration note: this only runs on the client, in response to a user action (or a
  * mount effect), so no puzzle is ever generated during SSR — sidestepping the
  * `Math.random()` server/client mismatch class of bugs (AGENTS.md Section 1).
+ *
+ * **Kakuro has no generator yet** (Kakuro plan: the generator is slice E4/E5). Until then a
+ * Kakuro request is served from the hand-baked fixtures without touching the network — static
+ * data, so the hydration concern above does not apply — and `difficulty` is ignored: there is
+ * one puzzle per size. `/api/puzzle` is left untouched until a real generator exists.
  */
 export function usePuzzle() {
   const [puzzle, setPuzzle] = useState<AnyPuzzle | null>(null);
@@ -30,6 +37,11 @@ export function usePuzzle() {
 
   const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
+    if (variant === 'kakuro') {
+      const fixture = KAKURO_FIXTURES.find((p) => p.gridSize === gridSize) ?? KAKURO_FIXTURES[0];
+      setPuzzle(fixture);
+      return fixture;
+    }
     setLoading(true);
     try {
       const res = await fetch(apiPath('/api/puzzle'), {

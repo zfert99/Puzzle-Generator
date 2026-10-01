@@ -70,12 +70,7 @@ export default function PuzzleForm() {
 
       {isKiller ? (
         <>
-          <GridSizeSelector
-            value={killerSize}
-            // The sizes prop never offers 4×4, so the guard only narrows the callback type to 6 | 9.
-            onChange={(size) => { if (size !== 4) setKillerSize(size); }}
-            sizes={[6, 9]}
-          />
+          <GridSizeSelector value={killerSize} onChange={setKillerSize} sizes={[6, 9]} />
           <p className="text-xs text-ink-soft text-center mb-6">
             No givens — the cage sums are the only clue.
             {killerSize === 6 && ' 6×6 is the beginner size: digits 1–6, easy/medium/hard.'}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { GridSizeSelector } from '@/features/puzzle-configuration/components/GridSizeSelector';
+import { GridSizeSelector, type SelectableSize } from '@/features/puzzle-configuration/components/GridSizeSelector';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
 import { useSavedGame, formatElapsed } from '../store/useSavedGame';
@@ -34,19 +34,39 @@ function useHasMounted(): boolean {
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
 
-type PlayVariant = 'classic' | 'killer' | 'calc';
+type PlayVariant = 'classic' | 'killer' | 'calc' | 'kakuro';
+
+/** The sizes each type offers on this menu. Kakuro's are its own (plan rule D11), not 4/6/9. */
+const SIZES: Record<PlayVariant, readonly SelectableSize[]> = {
+  classic: [4, 6, 9],
+  killer: [6, 9],
+  calc: [4, 6, 9],
+  kakuro: [7, 9],
+};
+
+const VARIANT_LABEL: Record<PlayVariant, string> = {
+  classic: 'Sudoku',
+  killer: 'Killer',
+  calc: 'Keisan',
+  kakuro: 'Kakuro',
+};
+
+function parseVariant(value: string | null): PlayVariant {
+  return value === 'killer' || value === 'calc' || value === 'kakuro' ? value : 'classic';
+}
 
 export default function PlayExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mounted = useHasMounted();
-  // Deep link from a hub card (`/play?variant=killer|calc`): preselect the variant as the initial
-  // state (not via a setState-in-effect). Keisan (`calc`) comes in 4/6/9; it seeds 6 (the friendly
-  // mid size) rather than the classic default of 9.
-  const initialVariant: PlayVariant =
-    searchParams.get('variant') === 'killer' ? 'killer' : searchParams.get('variant') === 'calc' ? 'calc' : 'classic';
+  // Deep link from a hub card (`/play?variant=killer|calc|kakuro`): preselect the variant as the
+  // initial state (not via a setState-in-effect). Keisan (`calc`) comes in 4/6/9; it seeds 6 (the
+  // friendly mid size) rather than the classic default of 9. Kakuro seeds its mini, 7.
+  const initialVariant = parseVariant(searchParams.get('variant'));
   const [variant, setVariant] = useState<PlayVariant>(initialVariant);
-  const [gridSize, setGridSize] = useState<4 | 6 | 9>(initialVariant === 'calc' ? 6 : 9);
+  const [gridSize, setGridSize] = useState<SelectableSize>(
+    initialVariant === 'calc' ? 6 : initialVariant === 'kakuro' ? 7 : 9
+  );
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle — hide operators
   const [view, setView] = useState<'config' | 'playing'>('config');
@@ -55,6 +75,9 @@ export default function PlayExperience() {
   const [resumeHandled, setResumeHandled] = useState(false);
   const isKiller = variant === 'killer';
   const isCalc = variant === 'calc';
+  // Kakuro has no generator yet: one hand-baked puzzle per size, no difficulty to choose (the
+  // real ladder arrives with the Kakuro plan's E5 slice).
+  const isKakuro = variant === 'kakuro';
   const wantsResume = searchParams.get('resume') === '1';
 
   const { loading, error, fetchPuzzle } = usePuzzle();
@@ -88,17 +111,19 @@ export default function PlayExperience() {
 
   const miniGrid = gridSize !== 9;
 
-  const handleGridSizeChange = (size: 4 | 6 | 9) => {
+  const handleGridSizeChange = (size: SelectableSize) => {
     setGridSize(size);
     if (size !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const handleVariantChange = (v: PlayVariant) => {
     setVariant(v);
-    if (v === 'killer' && gridSize === 4) setGridSize(9); // Killer comes in 6×6 and 9×9
-    // Keisan comes in 4×4 / 6×6 / 9×9 — every size is valid, so no size clamp on switch. Expert and
-    // Extreme are 9×9-only for EVERY variant, so the guard is uniform: clamp them off any non-9 grid.
-    if (gridSize !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    // A size the new type doesn't offer falls back to the type's first (smallest) size — Killer
+    // has no 4×4, the Sudoku family has no 7×7. Expert and Extreme are 9×9-only for EVERY
+    // variant, so the guard is uniform: clamp them off any non-9 grid.
+    const nextSize = SIZES[v].includes(gridSize) ? gridSize : SIZES[v][0];
+    if (nextSize !== gridSize) setGridSize(nextSize);
+    if (nextSize !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const startFresh = async () => {
@@ -154,11 +179,7 @@ export default function PlayExperience() {
               className="btn-primary w-full text-lg flex justify-center items-center"
             >
               Continue{' '}
-              {saved.variant === 'killer'
-                ? 'Killer'
-                : saved.variant === 'calc'
-                  ? 'Keisan'
-                  : `${saved.gridSize}×${saved.gridSize}`}{' '}
+              {saved.variant === 'classic' ? `${saved.gridSize}×${saved.gridSize}` : VARIANT_LABEL[saved.variant]}{' '}
               {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
             </button>
             <p className="text-xs text-ink-soft text-center mt-3">— or start a new game —</p>
@@ -168,7 +189,7 @@ export default function PlayExperience() {
         {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
             not carried by background colour alone. */}
         <div role="group" aria-label="Puzzle type" className="flex gap-2 mb-6">
-          {(['classic', 'killer', 'calc'] as const).map((v) => (
+          {(['classic', 'killer', 'calc', 'kakuro'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -178,18 +199,19 @@ export default function PlayExperience() {
                 variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
               }`}
             >
-              {v === 'classic' ? 'Sudoku' : v === 'killer' ? 'Killer' : 'Keisan'}
+              {VARIANT_LABEL[v]}
             </button>
           ))}
         </div>
 
-        {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6/9. */}
-        <GridSizeSelector
-          value={gridSize}
-          onChange={handleGridSizeChange}
-          sizes={isKiller ? [6, 9] : isCalc ? [4, 6, 9] : undefined}
-        />
+        {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6/9, Kakuro 7/9. */}
+        <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} sizes={SIZES[variant]} />
 
+        {isKakuro ? (
+          <p className="text-xs text-ink-soft text-center mb-6">
+            Kakuro is new: one hand-made puzzle per size while the generator is built.
+          </p>
+        ) : (
         <div className="mb-6">
           {/* Span + aria-labelledby + aria-pressed (QA F10) — same reasoning as GridSizeSelector. */}
           <span id="play-difficulty-label" className="block text-sm font-medium text-ink-soft mb-2 text-center">
@@ -224,6 +246,7 @@ export default function PlayExperience() {
             <p className="text-xs text-ink-soft text-center mt-2">Extreme Keisan needs many hypothesis steps — generating one can take a few seconds.</p>
           )}
         </div>
+        )}
 
         {/* Mystery / No-Op toggle — Keisan only. Hides the cage operators; an orthogonal modifier over
             any size/difficulty (the operator becomes part of the puzzle). */}

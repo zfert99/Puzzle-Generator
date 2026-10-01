@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Numpad } from './Numpad';
 import { useBoardStore } from '../../store/useBoardStore';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
+import { KAKURO_FIXTURE_7X7 } from '@/features/engine/kakuro/kakuro-fixtures';
 
 // All four 1s are already on the board; the single hole (0,3) wants a 4.
 const puzzle = (): SudokuPuzzle => ({
@@ -32,5 +33,15 @@ describe('Numpad lockout', () => {
     render(<Numpad />);
     expect(screen.getByRole('button', { name: '1' })).toBeDisabled(); // all four 1s placed
     expect(screen.getByRole('button', { name: '4' })).toBeEnabled();   // one 4 still missing
+  });
+});
+
+describe('Kakuro numpad', () => {
+  it('offers 1–9 at every size, and never locks a digit out', () => {
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    render(<Numpad />);
+    for (let digit = 1; digit <= 9; digit++) {
+      expect(screen.getByRole('button', { name: String(digit) })).toBeEnabled();
+    }
   });
 });

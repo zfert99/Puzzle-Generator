@@ -243,3 +243,67 @@
   font-family: var(--font-mono);
   font-weight: 700;
 }
+
+/* ---- Kakuro (Cross Sums) ---- */
+
+/* The board's `--size` is its TRACK count, which for Kakuro is the interior size + 1 (the clue
+   gutter). The board becomes a size container so clue text can be sized as a fraction of one
+   cell (`cqw` = 1% of the board's width) and stay in proportion at 7×7, 9×9, or on a phone. */
+.board[data-variant='kakuro'] {
+  container-type: inline-size;
+  --cell-size: calc(100cqw / var(--size));
+  --block-bg: color-mix(in srgb, var(--ink) 82%, var(--paper));
+  --block-fg: var(--paper);
+  --block-line: color-mix(in srgb, var(--paper) 60%, transparent);
+}
+
+/* In the dark theme `--ink` is cream, so the light-theme mix would turn every black cell into
+   a bright slab on a dark page. Blocks become a muted step above the paper instead, and the
+   clue text and diagonal take the ink side so they still read against them. */
+:global(:root[data-theme='dark']) .board[data-variant='kakuro'] {
+  --block-bg: color-mix(in srgb, var(--ink) 24%, var(--paper));
+  --block-fg: var(--ink);
+  --block-line: color-mix(in srgb, var(--ink) 60%, transparent);
+}
+
+/* A black cell: never selectable, never highlighted, no pointer affordance. */
+.block {
+  background: var(--block-bg);
+  cursor: default;
+}
+
+/* The clue diagonal, upper-left to lower-right: a `to top right` gradient's 50% line passes
+   through exactly those two corners. Only on blocks that head a run. */
+.clue {
+  background:
+    linear-gradient(
+      to top right,
+      transparent calc(50% - 0.75px),
+      var(--block-line) calc(50% - 0.75px),
+      var(--block-line) calc(50% + 0.75px),
+      transparent calc(50% + 0.75px)
+    ),
+    var(--block-bg);
+}
+
+/* Clue sums. Convention (research G7): the DOWN sum sits in the upper-right triangle, above
+   the run it heads; the ACROSS sum sits in the lower-left triangle, beside the run it heads. */
+.clueDown,
+.clueAcross {
+  position: absolute;
+  color: var(--block-fg);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: calc(var(--cell-size) * 0.3);
+  line-height: 1;
+}
+
+.clueDown {
+  top: 10%;
+  right: 8%;
+}
+
+.clueAcross {
+  bottom: 10%;
+  left: 8%;
+}

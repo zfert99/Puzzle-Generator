@@ -1,9 +1,10 @@
 # Kakuro (Cross Sums) — Implementation Plan
 
-> **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 — V0 merged as
-> [#104](https://github.com/zfert99/Puzzle-Generator/pull/104), V1 in PR
-> [#108](https://github.com/zfert99/Puzzle-Generator/pull/108)) · **Branch:** one per slice off
-> `main` (`feature/kakuro` for V0, `feature/kakuro-v1` for V1) ·
+> **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 — V0
+> [#104](https://github.com/zfert99/Puzzle-Generator/pull/104) and V1
+> [#108](https://github.com/zfert99/Puzzle-Generator/pull/108) merged 2026-10-01; V2 built, in
+> review) · **Branch:** one per slice off `main` (`feature/kakuro`, `feature/kakuro-v1`,
+> `feature/kakuro-v2`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -180,8 +181,8 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 
 | Order | Slice | What becomes visible |
 |---|---|---|
-| 0 | V0 — Looks-only static board | An empty 7×7 Kakuro shape at `/kakuro` — no sums, no input |
-| 1 | V1 — Types + baked fixtures | Real clue sums on the static boards at `/kakuro` (7×7 and 9×9) |
+| 0 | V0 — Looks-only static board | An empty 7×7 Kakuro shape at `/kakuro` — no sums, no input *(route retired in V2)* |
+| 1 | V1 — Types + baked fixtures | Real clue sums on the static boards at `/kakuro` (7×7 and 9×9) *(route retired in V2)* |
 | 2 | V2 — Board on the baked puzzle | A playable Kakuro at `/play?variant=kakuro` |
 | 3 | V3 — PDF on the baked puzzle | A printable Kakuro page in the booklet |
 | 4 | E1 — Combination table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixture |
@@ -227,7 +228,7 @@ everything after it lands on something visible (D12 taken one step further).
   derivation and validation. *(Done in V1: `sample-layout.ts` is deleted and the board now takes
   a `KakuroPuzzle`.)*
 
-### V1 — Types + baked fixtures 🚧
+### V1 — Types + baked fixtures ✅
 
 - `kakuro-types.ts`: `KakuroPuzzle { variant: 'kakuro'; gridSize; grid; solution; runs; difficulty }`,
   `Run { id; cells: number[]; sum; dir: 'across' | 'down' }` (flat `row * size + col` indices, the
@@ -276,7 +277,7 @@ everything after it lands on something visible (D12 taken one step further).
 - *Blockers:* none. **Owed to E1:** the repo does not yet prove the fixtures are unique — only
   the throwaway counter did. E1's solver adds that test.
 
-### V2 — Board on the baked puzzle ⏳
+### V2 — Board on the baked puzzle 🚧
 
 - **Real discriminant first** (the Keisan K5 audit lesson): `PuzzleVariant` / `BoardPuzzle` /
   `usePuzzle` unions gain `'kakuro'`; `startNewGame` switches on `variant`, never on
@@ -313,6 +314,34 @@ everything after it lands on something visible (D12 taken one step further).
 
 **Gate:** the fixture is playable end-to-end in the browser (both themes, mini + 9×9), E2E green,
 visual check handed to the owner.
+
+**Step-log (2026-10-01 — built, in review):**
+
+- *Process:* `'kakuro'` joined `PuzzleVariant` / `BoardPuzzle` / `usePuzzle`'s unions with the
+  real discriminant (`puzzle.variant`); `startNewGame` keeps the puzzle's `runs` and derives
+  `blocked`, display-indexed `clues` and **run-mate peers** (`kakuro-board.ts`); black cells are
+  marked as `givens` so every existing edit path refuses them without a second flag;
+  `kakuroGridConfig` is boxless with `maxNum: 9`, and Numpad/Cell/Board read `maxNum` instead of
+  `size`; the Sudoku digit lockout is gated off. `Board` draws the gutter as a first row of
+  `ClueCell`s plus one per interior row, labels the grid "Kakuro board", and its arrow keys skip
+  black cells; `Cell` renders a blocked cell as a `ClueCell` (down sum upper-right, across sum
+  lower-left, diagonal) and highlights peers by run-mate membership. `PlayExperience` gained the
+  toggle, a per-type `SIZES` table (7/9 for Kakuro) and no difficulty picker for Kakuro;
+  `usePuzzle` serves the fixture for the chosen size with no network call; `GridSizeSelector`
+  offers 7×7 and became generic in its size union; `RulesDialog` has a Kakuro body. The V0/V1
+  workbench route `/kakuro` and the static `KakuroBoard` are **deleted** — `/play?variant=kakuro`
+  is the surface now (hub card still waits for E5, per D12). Tests: 17 new (board utils, store,
+  Board, Numpad) + a Kakuro e2e play spec; full suite green; verified in the browser (play,
+  pencil marks, arrows, peers, reload/resume).
+- *Bug found and fixed (B1 in the log):* a resumed Kakuro came back all-white with no clues.
+  The store rebuilt its derived fields in `onRehydrateStorage` by **mutating** the state after
+  hydration's `set`, which notifies no subscriber — already-rendered cells never re-read them.
+  Moved the rebuild into persist's `merge`, which runs before the state is set. Killer's
+  `cellToCage` had been one interaction late after every reload for the same reason.
+- *Not done, deliberately:* `useSavedGame` needed no change (it only reads `variant`); the
+  a11y spec was not extended; the large size (13×13, 14 tracks) has no fixture yet so the
+  phone-width check (Risk 15) is still owed; no NVDA/VoiceOver pass (G7's owed AT test).
+- *Blockers:* none.
 
 ### V3 — PDF on the baked puzzle ⏳
 

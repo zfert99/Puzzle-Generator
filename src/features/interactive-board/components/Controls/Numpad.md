@@ -6,9 +6,12 @@ On-screen controls for mouse/touch users. Client component.
 `showHint={false}` — a competitive, one-attempt ranked puzzle shouldn't hand out answers.
 
 ```text
-Render digit buttons 1..size -> inputDigit(digit).
+Render digit buttons 1..maxNum -> inputDigit(digit).
+  (`config.maxNum`, not `size`: they agree for the Sudoku family, but a Kakuro takes 1–9 at
+  every size.)
   A digit button is DISABLED once all `size` instances of it are on the board
   (completion lockout) — counts are derived from the grid via a useShallow selector.
+  Never for Kakuro: with no house constraint there is no per-digit count.
 Render Erase -> clearCell.
 Render Pencil toggle with aria-pressed = pencilMode -> togglePencilMode.
 Render Hint -> hint() (reveal one correct cell).

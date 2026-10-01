@@ -10,13 +10,21 @@ entry that owns all interactivity (AGENTS.md Section 1, server-vs-client). It fe
 the puzzle **after mount** via `usePuzzle`, so nothing is generated during SSR and there
 is no hydration mismatch.
 
-## Sudoku / Killer toggle
+## Sudoku / Killer / Keisan / Kakuro toggle
 
 The menu has a puzzle-type toggle. In **Killer** mode it hides the grid-size selector (Killer is
 9×9), offers only easy/medium/hard, and shows a "no givens — the cage sums are the only clue"
 note. `startFresh` then calls `fetchPuzzle({ variant: 'killer', difficulty })`; the returned
 `KillerPuzzle` (with `cages`) flows through `startNewGame`, which sets the store's `variant`/`cages`
 so the board renders the cage overlay. Classic mode is unchanged.
+
+**Kakuro (October 2026, plan slice V2).** A fourth toggle. Sizes are a per-variant table
+(`SIZES`, plan rule D11): Kakuro offers 7/9, and switching type falls back to the new type's
+smallest size when the current one isn't offered (7 → 9 leaving Kakuro; 4 → 7 entering it).
+There is **no difficulty picker** for Kakuro yet — a note says one hand-made puzzle per size
+while the generator is built — because `usePuzzle` serves a fixture, not a generated board
+(the real ladder arrives with the plan's E5). `VARIANT_LABEL` is the one place the four display
+names live (Continue label, toggle).
 
 ## Menu-first, with save & continue
 
@@ -62,11 +70,13 @@ persisted store, so a resumed game never causes an SSR/client mismatch.
 > which renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge +
 > confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).
 
-## Deep link: `/play?variant=killer`
+## Deep link: `/play?variant=killer|calc|kakuro`
 
-The hub's Killer card links here with a query param. A mount effect reads it via
-`useSearchParams` and preselects the Killer variant (forcing 9×9 and clamping
-expert/extreme to hard, same as a manual toggle). The route wraps the component in a
+The hub's Killer card links here with a query param (`parseVariant` accepts the four slugs and
+defaults to classic). A mount effect reads it via `useSearchParams` and preselects the variant
+(Killer forces 9×9 and clamps expert/extreme to hard, same as a manual toggle; Kakuro seeds its
+7×7 mini). `?variant=kakuro` has no hub card yet — it is the by-URL build surface until the
+Kakuro plan's E5 (D12). The route wraps the component in a
 `Suspense` boundary (required by `useSearchParams` on a statically prerendered page); the
 fallback matches the component's own pre-mount placeholder so there is no layout shift.
 The Continue button is also variant-aware: a saved Killer game reads "Continue Killer

@@ -12,7 +12,8 @@ selection and reports clicks upward.
 
 ## What it does
 
-1. Define a fixed list of grid-size options: 4x4, 6x6, and 9x9.
+1. Define a fixed list of grid-size options: 4x4, 6x6, 7x7, and 9x9. 7x7 is Kakuro's mini
+   and is offered only when a caller lists it; the default set is the Sudoku family's 4/6/9.
 2. Accept two props: `value` (the currently selected size) and `onChange` (a
    callback invoked with the newly chosen size).
 3. Render a labelled row of segmented buttons, one per option.
@@ -31,3 +32,11 @@ Each size button carries `aria-pressed`, and the buttons sit in a `role="group"`
 visible "Grid Size" text — which became a `span` + `aria-labelledby` (a `<label>` without a
 control is itself an a11y smell). Colour still shows the selection visually; the ARIA state is
 what a screen reader announces.
+
+## Generic in the size union (October 2026, Kakuro V2)
+
+Kakuro's sizes are 7 and 9, so the option list gained 7×7 and the prop types widened to
+`SelectableSize = 4 | 6 | 7 | 9`. The component is generic in `S extends SelectableSize`
+(default `4 | 6 | 9`) and `sizes: readonly S[]` narrows `onChange` to `(size: S) => void` — so a
+caller whose state is `6 | 9` (the Killer rows) keeps a correctly-typed callback with no runtime
+guard, and nothing outside Kakuro can be handed a 7 by accident.

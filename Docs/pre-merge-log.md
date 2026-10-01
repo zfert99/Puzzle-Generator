@@ -90,6 +90,75 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro V2: playable on the real board at `/play?variant=kakuro`
+
+Branch `feature/kakuro-v2` on `c69a795` (main, after V1). `'kakuro'` joins the board store, the
+play menu, the puzzle hook, Board/Cell/Numpad and the rules dialog; the V0/V1 workbench route
+and static `KakuroBoard` are deleted. ~1,110 code lines of which ~320 are tests and ~360 are the
+deletions, so ≈ 430 net new non-test lines — **over the ~400 guideline by a little**; the board,
+store and menu must change together for the type to be playable at all.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 74 files, **620 passed**, 0 failed — 17 new (board utils 6, store 6, Board 4, Numpad 1) |
+| Playwright `e2e/play.spec.ts` (dev server) | **9 passed** incl. the new Kakuro spec (gutter, 64 cells, 1–9 numpad, blocked cell refuses input) |
+| `npm run build` | green; `/kakuro` gone from the route list |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | not run — no solver/generator core touched |
+
+### Findings
+
+- **B1 (fixed in this PR):** a resumed Kakuro came back all-white with no clues. The store
+  rebuilt derived fields in `onRehydrateStorage` by *mutating* state after hydration's `set`;
+  no subscriber is notified, so already-rendered cells never re-read them. Latent for Killer's
+  `cellToCage` since July. Fixed by deriving in persist's `merge`. Found by the reload step of
+  the browser check, not by a test — the store tests never hydrate from storage.
+- `npm run lint` from the main checkout was drowning in ~440 errors from a sibling session's
+  worktree build output (`.claude/worktrees/*/.next`); `eslint.config.mjs` now ignores
+  `.claude/worktrees/**`. Environmental, but it would have hidden a real lint error.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. The daily's `playingLabel` now narrows the
+store's `PuzzleVariant` to the registry's `Variant` with an assertion — justified because a daily
+game is only ever started from a daily row; re-check at R1 when Kakuro joins the registry.
+AI-written logic re-derived: `buildClues` (3×3 pinned cell-by-cell), `computeRunPeers` (centre
+cell's four mates, corners empty), the arrow-key `move` (edge-stay and skip-over cases tested),
+and that black-cells-as-givens really covers every edit path (`inputDigit`, `clearCell`, `hint`,
+Tab-stop seed — read, and the first three exercised by tests).
+
+### Docs sweep
+
+Mirrored `.md` for all 12 touched source files (`kakuro-board.md` new). Reverse sweep for
+`KakuroBoard` / `/kakuro` / `sample-layout`: live hits were `kakuro-types.md` (repointed) and the
+plan's slice table (annotated "route retired in V2"); the V0/V1 step-logs and this log's earlier
+entries are historical and left alone. Plan V2 step-log; log journal + B1 + L8; roadmap and
+project-status status lines.
+
+### Verified vs read
+
+- **Verified:** the table above; in the browser — play a 7×7 from the deep link, rules dialog,
+  place a digit, arrow across a block, pencil marks, run-mate peer highlight, reload + Continue
+  restores blocks/clues/digit/marks (dark theme).
+- **Read only:** light theme; the 9×9 in the browser (only via the e2e cell count); Killer/Keisan
+  after the `merge` change (covered by their e2e + unit tests, not re-played by hand).
+- **Owed:** Risk 15 (13×13 on a phone — no fixture yet), the NVDA/VoiceOver pass (G7).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lesson
+
+- **A reload is a test case.** Every derived store field needs one check that it survives
+  hydration *as rendered*, not as `getState()` reads it — a post-hydration mutation passes the
+  latter and fails the former, and no unit test here hydrates from storage.
+
+---
+
 ## 2026-09-30 — Kakuro V1: types, layout rules, baked fixtures, clue sums on the board
 
 Branch `feature/kakuro-v1`, stacked on `feature/kakuro` (V0, PR #104) at `bfa0fcb`. Adds

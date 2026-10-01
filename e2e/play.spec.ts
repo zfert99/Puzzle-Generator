@@ -142,4 +142,37 @@ test.describe('Interactive play', () => {
     const cageSums = page.locator('svg text');
     expect(await cageSums.count()).toBeGreaterThan(20);
   });
+
+  test('plays a Kakuro: clue gutter, 1–9 numpad at 7×7, black cells refuse input', async ({ page }) => {
+    await page.goto('/play?variant=kakuro');
+
+    // The deep link preselects Kakuro at its mini size; there is no difficulty to pick yet.
+    await expect(page.getByRole('button', { name: /^kakuro$/i })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: '7×7', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'expert', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: /^Play$/ }).click();
+
+    const grid = page.getByRole('grid', { name: /kakuro board/i });
+    await expect(grid).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'How to play Kakuro' })).toBeVisible();
+    await page.getByRole('button', { name: 'Got it' }).click();
+
+    // 7×7 interior + the clue gutter = 8×8 cells; every white cell starts empty.
+    await expect(grid.getByRole('gridcell')).toHaveCount(64);
+    await expect(grid.getByRole('gridcell', { name: /^Value/ })).toHaveCount(0);
+    await expect(grid.getByRole('gridcell', { name: /^Empty/ })).toHaveCount(32);
+    // Clue cells name both sums; the top-left black cell of the fixture heads two runs.
+    await expect(grid.getByRole('gridcell', { name: 'Clue: across 10, down 21' })).toBeVisible();
+
+    // Digits are 1–9 at every size — the numpad offers all nine on a 7×7.
+    await expect(page.getByRole('button', { name: '9', exact: true })).toBeEnabled();
+
+    // A black cell takes no input; a white one does.
+    await grid.getByRole('gridcell', { name: 'Clue: across 10, down 21' }).click();
+    await page.keyboard.press('5');
+    await expect(grid.getByRole('gridcell', { name: /^Value/ })).toHaveCount(0);
+    await grid.getByRole('gridcell', { name: /^Empty/ }).first().click();
+    await page.keyboard.press('9');
+    await expect(grid.getByRole('gridcell', { name: /value 9/i })).toHaveCount(1);
+  });
 });

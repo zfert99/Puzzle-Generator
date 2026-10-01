@@ -130,7 +130,8 @@ cell the store considers unselected, and digit entry would silently no-op. Once 
 selection exists, `entryIndex` is -1 and the selected cell owns the Tab stop as before.
 
 ```text
-Render <div role="grid"> with a CSS variable --size, containing size*size <Cell>s.
+Render <div role="grid"> with a CSS variable --size (the TRACK count: size, or size+1 for
+Kakuro's clue gutter), containing size*size <Cell>s (plus Kakuro's gutter <ClueCell>s).
 entryIndex = no selection yet ? index of first non-given cell : -1
 Each Cell gets isEntry = (its index == entryIndex).
 
@@ -138,7 +139,7 @@ On keydown:
   Arrow keys  -> move the selection one step (clamped), preventDefault (no scroll).
   Backspace / Delete / 0 -> clearCell.
   Space / P   -> toggle pencil mode, preventDefault.
-  1..size     -> inputDigit.
+  1..maxNum   -> inputDigit (maxNum = size for the Sudoku family, 9 for Kakuro).
 
 Effect: whenever the selected cell changes, call .focus() on its DOM node so
 keyboard and screen-reader focus track the selection.
@@ -167,3 +168,27 @@ desktop the last row and the numpad sat below the fold. `Board.tsx` stamps `data
 CSS caps minis per size (4×4 → 320px, 6×6 → 440px; measured: at 720px viewport height the
 board *and* the full numpad now fit above the fold). Mini cells stay a little larger than
 9×9's ~58px.
+
+## Kakuro: clue gutter and black-cell-skipping arrows (October 2026)
+
+A Kakuro is drawn with one extra track per axis — the clue gutter along the top and left (plan
+decision D2: the store's grid stays `size × size`; the gutter is a rendering concern). The board
+stamps `--size` with the track count, renders a first `role="row"` of `ClueCell`s (the gutter
+row, `aria-rowindex` 1), and prefixes every interior row with a gutter `ClueCell` (column 1);
+interior rows are therefore `aria-rowindex` r + 2. The clue for a gutter cell is looked up in
+the store's display-indexed `clues` (`(r + 1) * tracks` for the left gutter, `dc` for the top).
+The grid's accessible name is "Kakuro board" (the Sudoku family keeps "Sudoku board").
+
+Arrow keys move through `move(dr, dc)`: the Sudoku family clamps at the edge as before; a Kakuro
+additionally **skips black cells**, continuing in the same direction until a white cell, and
+stays put if it reaches the edge first — a block is never selectable. With no selection yet, any
+arrow selects the entry cell (the first fillable one), which for a Kakuro is the first white
+cell rather than (0,0). Digit entry accepts `1..maxNum` rather than `1..size` — 1–9 on a 7×7
+Kakuro.
+
+Styling (`Board.module.css`, the `Kakuro` section): the board becomes a size container so clue
+text is 30% of one cell (`100cqw / --size`) at any size; black cells use a theme-aware
+`--block-bg` (mostly-ink in light; a muted step above the paper in dark, where `--ink` is cream);
+a block that heads a run gets the `to top right` diagonal gradient, the DOWN sum in the
+upper-right triangle and the ACROSS sum in the lower-left (research G7). Grid lines stay the
+existing per-cell borders, so a Kakuro inherits every other board behaviour unchanged.
