@@ -75,6 +75,11 @@ search(masks):
         copy the masks, fix the digit, propagate its two runs; if consistent, recurse
 ```
 
+A shape with **no runs** is reported as 0 solutions up front (and `deduceKakuro` as a
+contradiction): it is not a puzzle, and the ring-buffer queue would be zero-length. The first
+draft counted the empty grid as one solution — a review finding. `popcount` is the shared
+`grid-utils` one, not a private copy.
+
 Masks are **copied per branch** (one `Int32Array` of cell-count per node) rather than undone
 through a trail — simpler, and at these sizes (≤ 169 cells, a dozen nodes for the fixtures)
 the copy is nothing. The result carries `nodes` so callers can see the cost, and `exhausted`

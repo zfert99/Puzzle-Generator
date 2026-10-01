@@ -29,24 +29,38 @@ const CRITICAL_RECTANGLES: readonly (readonly [number, number])[] = [
 ];
 
 /**
- * Per interior size N: the most white cells, and the fewest interior black cells, any
- * uniquely-solvable layout has been found to carry (Mathimagics' table, G10). Sizes outside the
- * table are simply not bounded by this check.
+ * Per interior size N: the most white cells, and the fewest interior **hint** cells — black
+ * cells that head at least one run — any uniquely-solvable layout has been found to carry
+ * (Mathimagics' table, G10). A black cell heading nothing is dead space, not a hint, and does
+ * not count. Sizes outside the table are simply not bounded by this check.
  */
-const UNIQUENESS_BOUNDS: Readonly<Record<number, { maxWhites: number; minInteriorBlacks: number }>> = {
-  5: { maxWhites: 15, minInteriorBlacks: 1 },
-  6: { maxWhites: 24, minInteriorBlacks: 1 },
-  7: { maxWhites: 34, minInteriorBlacks: 2 },
-  8: { maxWhites: 46, minInteriorBlacks: 3 },
-  9: { maxWhites: 59, minInteriorBlacks: 5 },
-  10: { maxWhites: 74, minInteriorBlacks: 7 },
-  11: { maxWhites: 88, minInteriorBlacks: 12 },
-  12: { maxWhites: 108, minInteriorBlacks: 13 },
-  13: { maxWhites: 128, minInteriorBlacks: 16 },
-  14: { maxWhites: 148, minInteriorBlacks: 21 },
-  15: { maxWhites: 172, minInteriorBlacks: 24 },
-  16: { maxWhites: 196, minInteriorBlacks: 29 },
+const UNIQUENESS_BOUNDS: Readonly<Record<number, { maxWhites: number; minInteriorHints: number }>> = {
+  5: { maxWhites: 15, minInteriorHints: 1 },
+  6: { maxWhites: 24, minInteriorHints: 1 },
+  7: { maxWhites: 34, minInteriorHints: 2 },
+  8: { maxWhites: 46, minInteriorHints: 3 },
+  9: { maxWhites: 59, minInteriorHints: 5 },
+  10: { maxWhites: 74, minInteriorHints: 7 },
+  11: { maxWhites: 88, minInteriorHints: 12 },
+  12: { maxWhites: 108, minInteriorHints: 13 },
+  13: { maxWhites: 128, minInteriorHints: 16 },
+  14: { maxWhites: 148, minInteriorHints: 21 },
+  15: { maxWhites: 172, minInteriorHints: 24 },
+  16: { maxWhites: 196, minInteriorHints: 29 },
 };
+
+/** Interior black cells that head a run: a white cell directly to their right or below. */
+function countInteriorHints(white: readonly boolean[][]): number {
+  const size = white.length;
+  let hints = 0;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (white[r][c]) continue;
+      if ((c + 1 < size && white[r][c + 1]) || (r + 1 < size && white[r + 1][c])) hints++;
+    }
+  }
+  return hints;
+}
 
 /** The black/white mask of a solution grid: a cell is white when it holds a digit (D3). */
 export function whiteMaskOf(solution: readonly number[][]): boolean[][] {
@@ -195,12 +209,12 @@ export function validateKakuroLayout(white: readonly boolean[][]): string[] {
 
   const bounds = UNIQUENESS_BOUNDS[size];
   if (bounds) {
-    const blackCount = size * size - whiteCount;
     if (whiteCount > bounds.maxWhites) {
       errors.push(`${whiteCount} white cells exceeds the ${size}×${size} ceiling of ${bounds.maxWhites}`);
     }
-    if (blackCount < bounds.minInteriorBlacks) {
-      errors.push(`${blackCount} interior black cells is below the ${size}×${size} floor of ${bounds.minInteriorBlacks}`);
+    const hints = countInteriorHints(white);
+    if (hints < bounds.minInteriorHints) {
+      errors.push(`${hints} interior hint cells is below the ${size}×${size} floor of ${bounds.minInteriorHints}`);
     }
   }
 

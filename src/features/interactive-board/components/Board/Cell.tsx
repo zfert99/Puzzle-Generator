@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useSetting } from '@/features/settings/useSettings';
 import { maskToDigits } from '../../board-utils';
-import { describeClue, type BoardClue } from '../../kakuro-board';
+import { describeClue, shareRun, type BoardClue } from '../../kakuro-board';
 import styles from './Board.module.css';
 
 interface CellProps {
@@ -57,13 +57,14 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
       // Boxless (Latin-square-only) grids — KenKen at 5/7 — have no box, so a cell peers only
       // through its shared row/column; the box clause is gated off so it doesn't highlight
       // phantom box-mates.
-      // Kakuro peers are run-mates, not row/column/box — the store's `peers` already holds
-      // exactly those (≤ 16 entries), so membership is the lookup rather than geometry.
+      // Kakuro peers are run-mates, not row/column/box: O(1) via the precomputed `cellToRuns`
+      // (two run ids per cell), the same shape of lookup `cellToCage` gives Killer — never a
+      // scan of the selection's peer list inside every cell's selector.
       const samePeer =
         sel != null &&
         !isSelf &&
         (isKakuro
-          ? (s.peers[sel.r * cfg.size + sel.c]?.includes(r * cfg.size + c) ?? false)
+          ? shareRun(s.cellToRuns, sel.r * cfg.size + sel.c, r * cfg.size + c)
           : sel.r === r ||
             sel.c === c ||
             (cfg.hasBoxes &&

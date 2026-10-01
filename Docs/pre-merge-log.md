@@ -92,6 +92,82 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up: all 10 `/code-review` findings addressed
+
+Branch `feature/kakuro-review-1` on `da59eee` (main, after E1). The owner ran the hosted
+`/code-review` (high effort) over the four merged Kakuro slices V0–E1 and asked for the fixes and
+for *everything to be noted*. The full finding-by-finding table lives in the plan
+(`kakuro-implementation-plan.md` → E1 → "Review follow-up"); B2–B4 and L10–L11 in `kakuro-log.md`.
+~190 code lines, ~180 test lines, ~120 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 78 files, **651 passed**, 0 failed (two consecutive full runs) — 8 new tests: hydration ×2, hint ×1, zero-run ×1, min-hints ×1, hook ×2, run lookup ×1 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | not run — the solver's search was not changed (popcount import, zero-run guard only) |
+
+### Findings (the review's, with outcomes)
+
+1. **Hydration untested** → `useBoardStore.hydration.test.tsx` (snapshot storage → wipe →
+   `persist.rehydrate()` → read derived fields). **Proven to bite:** deleting the `merge` rebuild
+   fails the Kakuro case. Gotcha worth the write-up: `persist` writes on every `setState`, so the
+   wipe itself overwrites the saved game — snapshot first, put it back after.
+2. **Placeholder "Medium" shown as a grade** → "unrated" in the header and Continue label.
+3. **Zero-run shape counted as 1 solution** (B3) → 0 / contradiction up front.
+4. **Min-hints floor counted dead blacks** (B4) → counts black cells heading a run.
+5. **Private `popcount`** → `grid-utils.popcount`.
+6. **Empty `if (target) {}`** → `if (!target)` wrapper.
+7. **`as Variant` cast** → `isDailyVariant` guard + visible fallback.
+8. **Hint abandoned all forced cells on the first mismatch** (B2) → first agreeing forced cell.
+9. **Unknown Kakuro size silently served the 7×7** → `error` + `null`.
+10. **Peer highlight scanned the peer list per cell** → `cellToRuns` + `shareRun`, O(1).
+
+### Found while running the gate
+
+- The E1 fuzz test (solver vs brute force, 150 random grids) **timed out at 30 s in two
+  consecutive full-suite runs** while passing in ~5 s solo — the documented worker-contention
+  flake class, not a miscount. Fixed at the source rather than the ceiling: 60 trials, white
+  cells capped at 11, now ~0.3 s of test time solo. Not added to the Known flaky tests table
+  because it no longer flakes; recorded here so the next 5-second fuzz gets budgeted up front.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. The `isDailyVariant` fallback was re-read for
+the "slot key is not an identity" rule: it only changes what label a board gets when its variant
+is unregistered, never which board is loaded. The hint change was re-derived: the agreement
+check now runs per candidate, and the test plants a consistent-but-wrong digit and asserts exactly
+one new placement that equals the solution.
+
+### Docs sweep
+
+Mirrored `.md` for all 10 touched source files (`daily-row.md` gains `isDailyVariant`). No symbol
+removed; `minInteriorBlacks` → `minInteriorHints` is internal. Plan: E1 ✅ + the review table;
+log: journal, B2–B4, L10–L11.
+
+### Verified vs read
+
+- **Verified:** everything in the table; the hydration test's break-run; three solo timings of the
+  trimmed fuzz test.
+- **Read only:** the header/Continue "unrated" copy in the browser (unit-level only).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **run by the owner** on V0–E1 (this PR is its follow-up); **not** re-run on this
+  diff — user-triggered and billed; an agent cannot launch it.
+
+### Lessons
+
+- **Budget a fuzz test by its worst case, not its average** — 9^whites brute force at 70% white on
+  a 4×4 was fine solo and a timeout under load. Cap the input, not the timeout.
+- **Prove a new regression test bites** before trusting it (standing lesson, applied): the
+  hydration test was run once with the rebuild deleted.
+
+---
+
 ## 2026-10-01 — Kakuro E1: exact solver, uniqueness proven, solver-driven Hint
 
 Branch `feature/kakuro-e1` on `bb7eaca` (main, after V2). Taken ahead of V3 (PDF) — see the plan's

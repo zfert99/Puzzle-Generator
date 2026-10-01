@@ -60,6 +60,9 @@ Kakuro field; three things derive from it at game start and again on rehydration
 - `clues` — display-index → the sums a black cell shows. The on-screen grid has a clue gutter
   row/column before the interior (D2: the gutter is a rendering concern, so `grid` stays
   `size × size`), so the index space is `(size + 1)²`.
+- `cellToRuns` — two run ids per cell (across, down; −1 = none), so a cell's "same run as the
+  selection?" highlight is O(1) like Killer's `cellToCage` — never a scan of the peer list
+  inside a selector.
 - `peers` — **run-mates**, built by `computeRunPeers` (`kakuro-board.ts`), not `computePeers`:
   a placed digit constrains only the other cells of its two runs, so that is what pencil
   stripping and the peer highlight reach. `buildPeers(config, runs)` picks the builder by
@@ -108,9 +111,12 @@ first render on a mounted check to avoid an SSR/hydration mismatch.
 
 ### Derived fields are rebuilt in `merge`, not after (October 2026)
 
-`peers`, `cellToCage`, `blocked` and `clues` are not persisted; they are rebuilt from the
-persisted `config`/`cages`/`runs` inside persist's **`merge`** option, which runs *before* the
-hydrated state is set. They used to be rebuilt in `onRehydrateStorage` by **mutating** the
+`peers`, `cellToCage`, `blocked`, `cellToRuns` and `clues` are not persisted; they are rebuilt
+from the persisted `config`/`cages`/`runs` inside persist's **`merge`** option, which runs
+*before* the hydrated state is set. `useBoardStore.hydration.test.tsx` snapshots storage, wipes
+the store and rehydrates — the one test that reads the derived fields the way a reloaded page
+does (a review finding: without it, moving the rebuild back out of `merge` would pass every
+other store test). They used to be rebuilt in `onRehydrateStorage` by **mutating** the
 state object after hydration's own `set` — and a mutation notifies no subscriber. A cell that
 had already rendered kept reading the empty arrays until the next unrelated store change.
 Kakuro V2 found it (a resumed board came back with every cell white and no clues); Killer's
@@ -215,8 +221,10 @@ from the board as it stands (`deduceKakuro`, no search): the selected cell if it
 forced ones, else the first forced cell. So the first hint on the empty 7×7 fills (3,5) — the
 6-in-two run only {2,4} can make, crossed by its down runs — not the top-left white cell.
 
-The deduced digit is used **only if it equals the solution's.** From a board holding a wrong
+A deduced digit is used **only if it equals the solution's.** From a board holding a wrong
 entry, propagation can force a digit that is consistent with the mistake but not with the
-answer, and a hint must never plant one; a contradiction (the board cannot be completed) or a
-mismatch falls through to the plain reveal. E2's logical solver will replace this with
-technique-named hints.
+answer, and a hint must never plant one. One such cell does not discard the others, though:
+the hint takes the selected cell if it is forced *and* agrees, else the first forced cell that
+agrees, and only falls through to the plain reveal when none does or the board is contradictory
+(the first version abandoned the whole list on the first mismatch — a review finding). E2's
+logical solver will replace this with technique-named hints.

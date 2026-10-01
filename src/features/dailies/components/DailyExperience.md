@@ -183,4 +183,7 @@ fixing cells without re-establishing position.
 The board store's `variant` can be any `PuzzleVariant`, including `'kakuro'`, which is playable
 on `/play` before it joins the daily registry (Kakuro plan slice R1). A *daily* game is only
 ever started from a daily row, so its variant is always a registered `Variant`; `playingLabel`
-asserts that narrowing rather than inventing a label for a type the daily cannot hold.
+narrows with the runtime guard `isDailyVariant` and, should an unregistered variant ever reach
+this surface (a routing bug), falls back to the bare key label rather than inventing a type.
+(The first version used a type assertion; a review finding replaced it — an assertion would
+have handed `slotLabel` an unregistered variant with nothing to point at.)

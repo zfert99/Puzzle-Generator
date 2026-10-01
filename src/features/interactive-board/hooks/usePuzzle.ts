@@ -38,7 +38,12 @@ export function usePuzzle() {
   const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
     if (variant === 'kakuro') {
-      const fixture = KAKURO_FIXTURES.find((p) => p.gridSize === gridSize) ?? KAKURO_FIXTURES[0];
+      const fixture = KAKURO_FIXTURES.find((p) => p.gridSize === gridSize);
+      if (!fixture) {
+        // Surface it like a failed request would — never quietly hand back a different size.
+        setError(`No Kakuro puzzle at ${gridSize}×${gridSize} yet`);
+        return null;
+      }
       setPuzzle(fixture);
       return fixture;
     }

@@ -36,6 +36,15 @@ export type DailySize = 4 | 6 | 9;
 export type DailyDifficulty = string;
 
 export const VARIANTS: readonly Variant[] = ['classic', 'killer', 'calc'];
+
+/**
+ * Is this string one of the daily's registered variants? The board store's `PuzzleVariant` is
+ * wider than `Variant` (Kakuro plays on `/play` before it joins the daily — Kakuro plan R1), so
+ * a surface that labels a board from the store narrows with this rather than an assertion.
+ */
+export function isDailyVariant(value: string): value is Variant {
+  return (VARIANTS as readonly string[]).includes(value);
+}
 export const STANDARD_RUNGS: readonly StandardRung[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const MINI_TIERS: readonly MiniTier[] = ['easy', 'medium', 'hard'];
 /** Mini slot keys, one per tier. The type they hold is rolled per day. */

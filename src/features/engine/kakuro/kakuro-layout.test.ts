@@ -145,10 +145,20 @@ describe('validateKakuroLayout', () => {
     expect(errors).toContain('32 white cells exceeds the 6×6 ceiling of 24');
   });
 
-  it('reports a layout under the interior-black floor for its size', () => {
-    // 9×9 needs at least 5 interior black cells; an all-white grid has none.
+  it('reports a layout under the interior-hint floor for its size', () => {
+    // 9×9 needs at least 5 interior HINT cells (black cells heading a run); an all-white grid has none.
     const errors = validateKakuroLayout(mask(Array.from({ length: 9 }, () => '.........')));
 
-    expect(errors).toContain('0 interior black cells is below the 9×9 floor of 5');
+    expect(errors).toContain('0 interior hint cells is below the 9×9 floor of 5');
+  });
+
+  it('does not count a black cell that heads no run as a hint', () => {
+    // Twelve interior black cells, but only four head a run: the top-left 2×3 block's right
+    // column and bottom row face white cells; the bottom-right block faces only the edge and
+    // itself. Counting blacks (12 ≥ 5) would pass; counting hints (4 < 5) must not.
+    const rows = ['###......', '###......', '.........', '.........', '.........', '.........', '.........', '......###', '......###'];
+    const errors = validateKakuroLayout(mask(rows));
+
+    expect(errors).toContain('4 interior hint cells is below the 9×9 floor of 5');
   });
 });

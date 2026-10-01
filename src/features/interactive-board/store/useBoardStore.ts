@@ -11,7 +11,7 @@ import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
 import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
 import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
 import { computePeers, toggleBit } from '../board-utils';
-import { buildBlocked, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
+import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
 /**
  * Classic Sudoku, Killer, Keisan (display name; slug `calc`), or Kakuro — the board renders and
@@ -87,6 +87,12 @@ export interface BoardState {
   runs: Run[];
   /** Kakuro: interior mask of black cells (in no run — D3). Derived; `[]` otherwise. */
   blocked: boolean[][];
+  /**
+   * Kakuro: flat cell index → [across run id, down run id] (two slots per cell, −1 = none), so
+   * a cell's "same run as the selection?" highlight is O(1) like Killer's `cellToCage`.
+   * Derived; `[]` otherwise.
+   */
+  cellToRuns: number[];
   /**
    * Kakuro: display-index → the sums a black cell shows (the display grid is `size + 1` tracks
    * per axis, gutter first). Derived; `[]` otherwise.
@@ -210,6 +216,7 @@ export const useBoardStore = create<BoardState>()(
       cellToCage: [],
       runs: [],
       blocked: [],
+      cellToRuns: [],
       clues: [],
 
       difficulty: 'easy' as Difficulty,
@@ -252,6 +259,7 @@ export const useBoardStore = create<BoardState>()(
           cellToCage: buildCellToCage(cages, size),
           runs,
           blocked,
+          cellToRuns: buildCellToRuns(runs, size),
           clues: buildClues(runs, size),
           difficulty: puzzle.difficulty,
           selectedCell: null,
@@ -362,31 +370,32 @@ export const useBoardStore = create<BoardState>()(
         let target: { r: number; c: number } | null = null;
 
         // Kakuro: prefer a cell the SOLVER deduces from the board as it stands (propagation
-        // only, no search) — the selected cell if it is one of them, else the first. The
-        // deduced digit is used only if it matches the solution: from a board holding wrong
-        // entries, propagation can force a digit that is consistent with the mistake but not
-        // with the answer, and a hint must never plant one. Anything else falls through to
-        // the plain reveal below.
+        // only, no search) — the selected cell if it is one of them, else the first forced cell
+        // whose digit agrees with the solution. The agreement check matters: from a board
+        // holding a wrong entry, propagation can force a digit that is consistent with the
+        // mistake but not with the answer, and a hint must never plant one — but one bad forced
+        // cell must not discard the rest, which may still be sound deductions. Nothing usable
+        // falls through to the plain reveal below.
         if (variant === 'kakuro') {
           const { forced, contradiction } = deduceKakuro({ gridSize: config.size, runs }, grid);
-          if (!contradiction && forced.length > 0) {
+          if (!contradiction) {
+            const agrees = (f: { cell: number; digit: number }) =>
+              f.digit === solution[Math.floor(f.cell / config.size)][f.cell % config.size];
             const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
-            const pick = forced.find((f) => f.cell === selectedIndex) ?? forced[0];
-            const r = Math.floor(pick.cell / config.size);
-            const c = pick.cell % config.size;
-            if (pick.digit === solution[r][c]) target = { r, c };
+            const pick = forced.find((f) => f.cell === selectedIndex && agrees(f)) ?? forced.find(agrees);
+            if (pick) target = { r: Math.floor(pick.cell / config.size), c: pick.cell % config.size };
           }
         }
 
         // Otherwise prefer the selected empty cell, else reveal the first empty cell.
-        if (target) {
-          // deduced above
-        } else if (selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c)) {
-          target = selectedCell;
-        } else {
-          for (let r = 0; r < config.size && !target; r++) {
-            for (let c = 0; c < config.size; c++) {
-              if (isEditableEmpty(r, c)) { target = { r, c }; break; }
+        if (!target) {
+          if (selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c)) {
+            target = selectedCell;
+          } else {
+            for (let r = 0; r < config.size && !target; r++) {
+              for (let c = 0; c < config.size; c++) {
+                if (isEditableEmpty(r, c)) { target = { r, c }; break; }
+              }
             }
           }
         }
@@ -467,6 +476,7 @@ export const useBoardStore = create<BoardState>()(
             merged.peers = buildPeers(merged.config, runs);
             merged.cellToCage = buildCellToCage(merged.cages ?? [], merged.config.size);
             merged.blocked = buildBlocked(runs, merged.config.size);
+            merged.cellToRuns = buildCellToRuns(runs, merged.config.size);
             merged.clues = buildClues(runs, merged.config.size);
           }
           return merged;

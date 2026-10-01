@@ -24,7 +24,8 @@ smallest size when the current one isn't offered (7 → 9 leaving Kakuro; 4 → 
 There is **no difficulty picker** for Kakuro yet — a note says one hand-made puzzle per size
 while the generator is built — because `usePuzzle` serves a fixture, not a generated board
 (the real ladder arrives with the plan's E5). `VARIANT_LABEL` is the one place the four display
-names live (Continue label, toggle).
+names live (Continue label, toggle). The Continue label reads "unrated" for a saved Kakuro, as
+the header does — its difficulty is a placeholder until E2.
 
 ## Menu-first, with save & continue
 

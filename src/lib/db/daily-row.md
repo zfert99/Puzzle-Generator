@@ -202,3 +202,10 @@ it is closed rather than left in place.
 month 12 -> `${year + 1}-01-01`
 otherwise -> `${year}-${month + 1 padded}-01`
 ```
+
+## `isDailyVariant(value)` (October 2026)
+
+A type guard for the registry's `Variant`. The board store's `PuzzleVariant` is wider — Kakuro
+plays on `/play` before it joins the daily (Kakuro plan R1) — so a surface that labels a board
+from the store narrows with this guard instead of a type assertion, and can fall back visibly
+when the two disagree.

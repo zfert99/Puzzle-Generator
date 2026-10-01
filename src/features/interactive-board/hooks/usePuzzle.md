@@ -43,8 +43,10 @@ four and the board's `startNewGame` handles any of them.
 
 Kakuro has no generator yet (its plan builds one in slices E4/E5). A Kakuro request short-circuits
 before `fetch`: the hook picks the hand-baked fixture for the requested size from
-`KAKURO_FIXTURES` (falling back to the first), sets it, and returns it — `loading` never flips and
-`/api/puzzle` is untouched until a real generator exists. `difficulty` is ignored: there is one
+`KAKURO_FIXTURES`, sets it, and returns it — `loading` never flips and `/api/puzzle` is untouched
+until a real generator exists. A size with no fixture sets `error` ("No Kakuro puzzle at 6×6
+yet") and returns `null`, exactly as a failed request would — never a quiet substitution of a
+different size (the first draft fell back to the 7×7; a review finding). `difficulty` is ignored: there is one
 puzzle per size. The fixtures are static data, so the hydration concern below does not apply to
 them.
 

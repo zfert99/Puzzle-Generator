@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
-import { buildBlocked, buildClues, computeRunPeers, describeClue, kakuroTracks } from './kakuro-board';
+import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, describeClue, kakuroTracks, shareRun } from './kakuro-board';
 
 // The smallest real puzzle: 3×3, black in two opposite corners.
 //   # 1 3        across sums: 4 / 7 / 8
@@ -64,5 +64,24 @@ describe('describeClue', () => {
     expect(describeClue({ across: 17, down: 23 })).toBe('Clue: across 17, down 23');
     expect(describeClue({ down: 4 })).toBe('Clue: down 4');
     expect(describeClue(null)).toBe('Blocked cell');
+  });
+});
+
+describe('buildCellToRuns + shareRun', () => {
+  it('answers "same run?" in O(1) and agrees with the peer lists', () => {
+    const cellToRuns = buildCellToRuns(TINY.runs, 3);
+    const peers = computeRunPeers(TINY.runs, 3);
+
+    expect(cellToRuns).toHaveLength(18);
+    expect(cellToRuns[0 * 2]).toBe(-1); // the black corner is in no run
+    expect(cellToRuns[4 * 2]).toBe(1); // centre: across run id 1 …
+    expect(cellToRuns[4 * 2 + 1]).toBe(4); // … and down run id 4
+    for (let a = 0; a < 9; a++) {
+      for (let b = 0; b < 9; b++) {
+        if (a === b) continue;
+        expect(shareRun(cellToRuns, a, b), `${a}-${b}`).toBe(peers[a].includes(b));
+      }
+    }
+    expect(shareRun([], 0, 1)).toBe(false);
   });
 });

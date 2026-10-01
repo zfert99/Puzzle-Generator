@@ -3,9 +3,10 @@
 > **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 — V0
 > [#104](https://github.com/zfert99/Puzzle-Generator/pull/104) and V1
 > [#108](https://github.com/zfert99/Puzzle-Generator/pull/108), V2
-> [#109](https://github.com/zfert99/Puzzle-Generator/pull/109) merged 2026-10-01; **E1 built,
-> in review** — V3 (PDF) deferred behind it, see the E1 step-log) · **Branch:** one per slice
-> off `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`) ·
+> [#109](https://github.com/zfert99/Puzzle-Generator/pull/109) and E1
+> [#110](https://github.com/zfert99/Puzzle-Generator/pull/110) merged 2026-10-01, plus a review
+> follow-up — V3 (PDF) deferred behind E1, see its step-log) · **Branch:** one per slice off
+> `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -355,7 +356,7 @@ visual check handed to the owner.
 **Gate:** a Kakuro page in the sample booklet, verified by eye; PDF service tests cover the
 renderer.
 
-### E1 — Combination table + exact solver + uniqueness 🚧
+### E1 — Combination table + exact solver + uniqueness ✅
 
 - Combination table: verify `cage-combinations.ts` at `maxDigit = 9` gives exact `(length, sum)`
   coverage for L 2–9 (sum ranges 3–17, 6–24, 10–30, 15–35, 21–39, 28–42, 36–44, 45); wrap as
@@ -381,7 +382,7 @@ renderer.
 **Gate:** uniqueness verify on the 9×9 fixtures **< 50 ms average** (the Keisan/Killer gate), fuzz
 clean, board hint driven by the solver.
 
-**Step-log (2026-10-01 — built, in review; taken ahead of V3):**
+**Step-log (2026-10-01 — PR [#110](https://github.com/zfert99/Puzzle-Generator/pull/110), merged; taken ahead of V3):**
 
 - *Order:* E1 was pulled ahead of V3 (PDF). The owner asked for "the solver with a Hint button"
   as the next thing after V1; V2 had to come first for a Hint button to exist at all, and the
@@ -409,6 +410,26 @@ clean, board hint driven by the solver.
   log persists across navigations: a stale error from before a fix reads as a live one —
   confirm in a fresh tab before chasing it.
 - *Blockers:* none.
+
+**Review follow-up (2026-10-01 — hosted `/code-review` over V0–E1, 10 findings, all addressed
+in one PR; recorded here in full at the owner's request):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | No test hydrates the store from storage, so the B1 class (derived fields missing after reload) was guarded only by a manual browser check (`useBoardStore.ts`) | **Fixed** — `useBoardStore.hydration.test.tsx`: snapshot localStorage, wipe, `persist.rehydrate()`, read `blocked`/`cellToRuns`/`clues`/`peers` (Kakuro) and `cellToCage` (Killer); proven to fail when the `merge` rebuild is deleted |
+| 2 | Header showed the fixtures' placeholder "Medium" as a real grade (`GameHeader.tsx`) | **Fixed** — header and Continue label read "unrated" for Kakuro until E2 |
+| 3 | `countKakuroSolutions` with zero runs: `% 0` → NaN, reported 1 solution (`kakuro-solver.ts`) | **Fixed** (B3) — 0 solutions / contradiction up front; tested |
+| 4 | Min-hints floor counted dead black cells as hints (`kakuro-layout.ts`) | **Fixed** (B4) — counts black cells heading a run; table renamed `minInteriorHints`; test with 12 blacks / 4 hints |
+| 5 | Private `popcount` duplicated `grid-utils.popcount` (`kakuro-solver.ts`) | **Fixed** — imported |
+| 6 | Empty `if (target) {}` branch in `hint()` (`useBoardStore.ts`) | **Fixed** — fallback wrapped in `if (!target)` |
+| 7 | `as Variant` assertion hid the `PuzzleVariant`/`Variant` drift (`DailyExperience.tsx`) | **Fixed** — `isDailyVariant` type guard in `daily-row.ts`, visible fallback to the key label |
+| 8 | Hint discarded every forced cell when the first one disagreed with the solution (`useBoardStore.ts`) | **Fixed** (B2) — first *agreeing* forced cell; tested with a consistent-but-wrong entry |
+| 9 | Unknown Kakuro size silently served the 7×7 (`usePuzzle.ts`) | **Fixed** — sets `error`, returns `null`; two hook tests |
+| 10 | Peer highlight scanned the selection's peer list in every cell's selector (`Cell.tsx`) | **Fixed** — `cellToRuns` (two run ids per cell) + `shareRun`, O(1); derived in `startNewGame` and `merge`; tested against the peer lists |
+
+*Learnings:* L10 (hydrate-from-storage tests), L11 (take cheap review cleanups in the same
+follow-up). The `/code-review` run was triggered by the owner (it is billed); the agent fixed
+and re-reported.
 
 ### E2 — Logical solver (technique classifier) + instrumentation ⏳
 

@@ -19,7 +19,7 @@ import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
-import { difficultyForKey, formatDailyKey, toUtcDateString, type DailyDifficulty, type Variant } from '@/lib/db/daily-row';
+import { difficultyForKey, formatDailyKey, isDailyVariant, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { slotLabel, type DailySlotInfo } from '../slot-display';
 import { useDaily } from '../hooks/useDaily';
 
@@ -322,14 +322,18 @@ export default function DailyExperience() {
    */
   // The board store can hold any `PuzzleVariant`, but a DAILY game is only ever started from a
   // daily row, so its variant is always a registered daily `Variant`. Kakuro is playable on
-  // `/play` before it joins the daily registry (Kakuro plan slice R1), hence the narrowing.
-  const playingLabel = slotLabel({
-    key: difficulty,
-    variant: boardVariant as Variant,
+  // `/play` before it joins the daily registry (Kakuro plan slice R1), hence the runtime guard
+  // — an unregistered variant here is a routing bug, and falling back to the key's own label
+  // keeps it visible rather than inventing a type.
+  const playingLabel = isDailyVariant(boardVariant)
+    ? slotLabel({
+        key: difficulty,
+        variant: boardVariant,
     difficulty: difficultyForKey(difficulty),
-    gridSize: boardGridSize,
-    section: boardGridSize < 9 ? 'mini' : 'standard',
-  });
+        gridSize: boardGridSize,
+        section: boardGridSize < 9 ? 'mini' : 'standard',
+      })
+    : formatDailyKey(difficulty);
 
   if (!mounted) {
     return <div className="glass-panel p-8 max-w-md md:max-w-2xl w-full mx-auto h-48" aria-hidden="true" />;
