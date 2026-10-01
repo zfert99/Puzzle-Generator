@@ -5,7 +5,7 @@ import { computeCageOutline, type LabeledCage } from '@/features/engine/killer/c
 import type { CalcPuzzle, CalcOperator } from '@/features/engine/calc/calc-types';
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
-import { buildClues, kakuroTracks } from '@/features/engine/kakuro/kakuro-layout';
+import { buildClues, kakuroTracks, whiteMaskOf } from '@/features/engine/kakuro/kakuro-layout';
 
 /**
  * PDF-safe operator glyphs. PDFKit's built-in Helvetica encodes text as **WinAnsi**, and the math
@@ -23,6 +23,18 @@ export function drawTitlePage(doc: PDFKit.PDFDocument): void {
   doc.fontSize(18).text('Generated specifically for you.', { align: 'center' });
 }
 
+/**
+ * A digit centred in the cell whose top-left corner is (x, y), at the document's current font
+ * size. The vertical nudge of a tenth of the text height compensates for Helvetica's glyphs
+ * sitting above the box's centre line. Every renderer centres digits this way; this is the one
+ * copy of the formula.
+ */
+function drawCenteredDigit(doc: PDFKit.PDFDocument, text: string, x: number, y: number, cell: number): void {
+  const textWidth = doc.widthOfString(text);
+  const textHeight = doc.heightOfString(text);
+  doc.text(text, x + (cell - textWidth) / 2, y + (cell - textHeight) / 2 + textHeight * 0.1, { lineBreak: false });
+}
+
 export function drawGrid(doc: PDFKit.PDFDocument, grid: number[][], startX: number, startY: number, gridDrawSize: number): void {
   const puzzleSize = grid.length;
   const config = getGridConfig(puzzleSize as GridSize);
@@ -34,15 +46,7 @@ export function drawGrid(doc: PDFKit.PDFDocument, grid: number[][], startX: numb
   for (let i = 0; i < puzzleSize; i++) {
     for (let j = 0; j < puzzleSize; j++) {
       const val = grid[i][j];
-      if (val !== 0) {
-        const textWidth = doc.widthOfString(val.toString());
-        const textHeight = doc.heightOfString(val.toString());
-        doc.text(
-          val.toString(),
-          startX + j * cellSize + (cellSize - textWidth) / 2,
-          startY + i * cellSize + (cellSize - textHeight) / 2 + (textHeight * 0.1)
-        );
-      }
+      if (val !== 0) drawCenteredDigit(doc, val.toString(), startX + j * cellSize, startY + i * cellSize, cellSize);
     }
   }
 
@@ -93,13 +97,7 @@ function drawCagedGrid(
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       const v = grid[r][c];
-      if (v === 0) continue;
-      const s = String(v);
-      const tw = doc.widthOfString(s);
-      const th = doc.heightOfString(s);
-      doc.text(s, startX + c * cell + (cell - tw) / 2, startY + r * cell + (cell - th) / 2 + th * 0.1, {
-        lineBreak: false,
-      });
+      if (v !== 0) drawCenteredDigit(doc, String(v), startX + c * cell, startY + r * cell, cell);
     }
   }
 
@@ -279,9 +277,11 @@ const KAKURO_BLOCK_FILL = '#c8c8c8';
  * Draw a Kakuro: the (N+1)×(N+1) display grid — clue gutter as row 0 and column 0, then the
  * interior — with every black cell shaded, a diagonal through each clue cell, the **down** sum in
  * its upper-right triangle and the **across** sum in its lower-left (the print convention,
- * research gap G7), light interior lines and a heavier outer frame. An answer page adds the
- * solution digits to the white cells; a puzzle page leaves them empty. The clue picture comes
- * from the same `buildClues` the interactive board draws, so paper and screen agree.
+ * research gap G7), light interior lines and a heavier outer frame. Digits come from `grid` on
+ * a puzzle page (empty for every puzzle today — Kakuro has no givens — but honoured like the
+ * other renderers do, so a board with givens would print as it plays) and from `solution` on an
+ * answer page. White vs black is `whiteMaskOf(solution)` (D3) and the clue picture is the same
+ * `buildClues` the interactive board draws, so paper and screen agree.
  */
 export function drawKakuroGrid(
   doc: PDFKit.PDFDocument,
@@ -295,7 +295,9 @@ export function drawKakuroGrid(
   const tracks = kakuroTracks(size);
   const cell = gridDrawSize / tracks;
   const clues = buildClues(puzzle.runs, size);
-  const isWhite = (r: number, c: number) => r > 0 && c > 0 && puzzle.solution[r - 1][c - 1] !== 0;
+  const white = whiteMaskOf(puzzle.solution);
+  // Display (r, c) → interior (r − 1, c − 1); the gutter is never white.
+  const isWhite = (r: number, c: number) => r > 0 && c > 0 && white[r - 1][c - 1];
 
   // Blocks first (fills), then the lines and sums over them.
   for (let r = 0; r < tracks; r++) {
@@ -334,15 +336,12 @@ export function drawKakuroGrid(
     }
   }
 
-  if (!showSolution) return;
+  const digits = showSolution ? puzzle.solution : puzzle.grid;
   doc.fontSize(cell * 0.5);
   for (let r = 1; r < tracks; r++) {
     for (let c = 1; c < tracks; c++) {
-      if (!isWhite(r, c)) continue;
-      const text = String(puzzle.solution[r - 1][c - 1]);
-      const tw = doc.widthOfString(text);
-      const th = doc.heightOfString(text);
-      doc.text(text, startX + c * cell + (cell - tw) / 2, startY + r * cell + (cell - th) / 2 + th * 0.1, { lineBreak: false });
+      const digit = digits[r - 1][c - 1];
+      if (isWhite(r, c) && digit !== 0) drawCenteredDigit(doc, String(digit), startX + c * cell, startY + r * cell, cell);
     }
   }
 }

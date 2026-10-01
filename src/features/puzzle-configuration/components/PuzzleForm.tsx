@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { usePuzzleGeneration } from '../hooks/usePuzzleGeneration';
 import { GridSizeSelector } from './GridSizeSelector';
 import { DifficultyConfigurator } from './DifficultyConfigurator';
+import { KAKURO_LADDER } from '@/features/engine/kakuro/kakuro-types';
 
 const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const CALC_DIFFICULTIES = ['easy', 'medium', 'hard']; // 9×9 adds 'expert' (see the calc size branch)
-const KAKURO_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme']; // the full ladder at every Kakuro size
 
 export default function PuzzleForm() {
   const [variant, setVariant] = useState<'classic' | 'killer' | 'calc' | 'kakuro'>('classic');
@@ -25,6 +25,8 @@ export default function PuzzleForm() {
   const isCalc = variant === 'calc';
   const isKakuro = variant === 'kakuro';
   const title = isKiller ? 'Killer Sudoku' : isCalc ? 'Keisan' : isKakuro ? 'Kakuro' : 'Sudoku';
+  // The size the configurator reasons about is the active variant's, not classic's.
+  const activeSize = isKiller ? killerSize : isCalc ? calcSize : isKakuro ? kakuroSize : gridSize;
 
   const handleGridSizeChange = (size: 4 | 6 | 9) => {
     setGridSize(size);
@@ -52,9 +54,9 @@ export default function PuzzleForm() {
     } else if (isCalc) {
       await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: calcSize === 9 ? counts.expert : 0, extreme: calcSize === 9 ? counts.extreme : 0, noOp: mystery });
     } else if (isKakuro) {
-      // One baked puzzle per level: the route rejects more, so clamp here as well.
-      const one = (n: number) => Math.min(1, n);
-      await generate({ variant: 'kakuro', gridSize: kakuroSize, easy: one(counts.easy), medium: one(counts.medium), hard: one(counts.hard), expert: one(counts.expert), extreme: one(counts.extreme) });
+      // One baked puzzle per level until E5: the counts are already inside that cap (clamped on
+      // the toggle, and per input by the configurator's `maxPerDifficulty`).
+      await generate({ variant: 'kakuro', gridSize: kakuroSize, ...counts });
     } else {
       await generate({ ...counts, gridSize });
     }
@@ -125,13 +127,13 @@ export default function PuzzleForm() {
       )}
 
       <DifficultyConfigurator
-        gridSize={gridSize}
+        gridSize={activeSize}
         counts={counts}
         onChange={handleDifficultyChange}
         variant={variant}
         mystery={isCalc && mystery}
         maxPerDifficulty={isKakuro ? 1 : undefined}
-        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : isKakuro ? KAKURO_DIFFICULTIES : undefined}
+        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : isKakuro ? [...KAKURO_LADDER] : undefined}
       />
 
       {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}

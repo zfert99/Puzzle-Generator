@@ -46,6 +46,14 @@ Two hand-drawn layouts (7×7: 32 whites, 20 runs; 9×9: 55 whites, 38 runs), eac
 `findKakuroFixture(size, difficulty)` is what `usePuzzle` serves; `ALL_KAKURO_FIXTURES` is what
 the uniqueness and soundness tests sweep.
 
+`selectKakuroBatch(counts, { gridSize })` is the `/api/generate` service — Kakuro's counterpart
+of `generateKillerBatch` / `generateCalcBatch`, so the route stays a controller. It walks
+`KAKURO_LADDER` and serves each requested level's fixture `count` times (the route's schema caps
+a count at 1 until the generator exists, so nobody prints one puzzle twice); a level with no
+fixture at the size throws, because every size the route accepts carries the full ladder and a
+silently short batch would hide a programmer error. When `generateKakuro` lands this is the one
+function to swap.
+
 The digits were **not** typed by hand. A throwaway hill-climb (not in the repo) mutated one cell
 at a time, scoring a fill by the repo's own solvers: non-unique counts first, then "cells the
 ladder leaves undecided" with the ladder capped at the target tier (and, for the chain tiers,

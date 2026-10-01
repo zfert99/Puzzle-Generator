@@ -41,6 +41,13 @@ This document explains the core logic behind our `generator.ts` PDF generation e
 
 ## 4. Core Drawing Helper Functions
 
+### `drawCenteredDigit(doc, text, x, y, cell)` (internal)
+
+The one copy of the digit-centring formula every renderer uses (classic, caged, Kakuro): measure
+the string at the current font size, offset by half the slack in each direction, and nudge down
+by a tenth of the text height because Helvetica's glyphs sit above the box's centre line. Lifted
+in review follow-up 5 from three identical inline copies.
+
 ### `drawGrid(grid, startX, startY, gridDrawSize)`
 
 **Goal:** Visually draw any Sudoku board (4x4, 6x6, or 9x9) on the PDF, scaled to fill the same bounding box.
@@ -113,8 +120,10 @@ every clue cell → a diagonal from top-left to bottom-right
 answer page only → the solution digit centred in every white cell
 ```
 
-White vs black comes from `puzzle.solution` (black cells are `0` — plan decision D3), so no
-layout helper is needed beyond the clues. `generateKakuroPDF` builds the booklet like the other
+White vs black is `whiteMaskOf(solution)` from the engine's layout module (black cells are `0`
+— plan decision D3 — and that function *is* the rule). Digits come from `grid` on a puzzle page
+and `solution` on an answer page, like the other renderers; every Kakuro's `grid` is empty today
+(no givens), but a board with givens would print as it plays. `generateKakuroPDF` builds the booklet like the other
 two (title "Kakuro", one page per puzzle, then one answer page each, same bookmarks and
 puzzle↔answer links). Until the generator lands (E5) the booklet renders the baked fixtures —
 `preview-kakuro.ts` writes `Docs/samples/kakuro-sample.pdf` from them.

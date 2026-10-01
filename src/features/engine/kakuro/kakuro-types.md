@@ -8,7 +8,10 @@ against its solution. Plan: [kakuro-implementation-plan.md](../../../../Docs/kak
 
 `KakuroDifficulty` is the five published tiers plus `'unrated'` — a puzzle the classifier could
 not finish with the techniques built so far (or has not graded). The label comes from the
-classifier or not at all (D8); it is never a placeholder dressed as a grade.
+classifier or not at all (D8); it is never a placeholder dressed as a grade. `KAKURO_LADDER`
+is the five published tiers as a value, in order, with `KakuroLevel` as its element type — the
+one list the generate form, the `/api/generate` route and the fixture selector iterate (review
+follow-up 5: three hand-typed copies collapsed into it).
 
 There is no row, column or box rule. The only constraint unit is the **run** — a maximal
 horizontal or vertical strip of white cells. A run's digits must add up to its clue and must all

@@ -51,10 +51,16 @@ plus the Mystery (hide-operators) switch; Kakuro a "cross sums" note. `handleGen
 **Kakuro offers the full ladder at both sizes** (a 7×7 Kakuro has an expert and an extreme,
 unlike the Sudoku family's minis) but **at most one puzzle per level** — until the generator
 lands the puzzles are baked fixtures, one per size and level, and the route rejects a count of
-2. The form passes `maxPerDifficulty={1}` to the configurator (which caps the inputs and swaps
-the "1–50 total" note for "one per level"), clamps the counts in state when the Kakuro toggle
-is chosen (`handleVariantChange`, so an input never shows a value above its own max) and once
-more in `handleGenerate`, so the default 2/2/2 becomes 1/1/1 rather than an error.
+2. The form passes `maxPerDifficulty={1}` to the configurator (which caps each input and swaps
+the "1–50 total" note for "one per level") and clamps the counts in state when the Kakuro toggle
+is chosen (`handleVariantChange`, so the default 2/2/2 becomes 1/1/1 and no input shows a value
+above its own max). Those two are the whole rule — `handleGenerate` sends the counts as they are
+(review follow-up 5 removed a third, submit-time clamp that could never change anything). The
+ladder it offers is the engine's `KAKURO_LADDER`, not a local copy.
+
+The configurator receives the **active variant's size** (`activeSize`: Killer's, Keisan's,
+Kakuro's or classic's), not classic's — the "9×9 only" note it shows derives from that (review
+follow-up 5).
 
 ---
 

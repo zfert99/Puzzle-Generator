@@ -13,10 +13,11 @@
 > [#116](https://github.com/zfert99/Puzzle-Generator/pull/116) — mini = 6×6, repair-not-retry,
 > density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
 > [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF)
-> [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) — every V and E slice through E3
+> [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
+> [#119](https://github.com/zfert99/Puzzle-Generator/pull/119) — every V and E slice through E3
 > is done; E4 (generator) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
-> `-review-3`, `-e3`, `-review-4`, `-v3`) ·
+> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -396,6 +397,20 @@ renderer.
   coordinates" is a puzzle concept). Move on the second consumer, not the third.
 - *Blockers:* none. The hub card still waits for E5 (D12); `/generate` shows Kakuro now
   because it is a real, if small, catalogue.
+
+**Review follow-up 5 (2026-10-01 — hosted `/code-review high` over #118, 8 findings, all
+addressed in [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); recorded in full):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | The "Expert and Extreme are only available for 9×9" note tested `gridSize`, but the form passed its *classic* size for every variant, so the note was wrong for Killer 6×6 / Keisan 4×4 either way; V3 added a Kakuro exception on top (`DifficultyConfigurator.tsx`) | **Fixed** — the form passes the active variant's size, and the note derives from the ladder actually offered (`!availableDifficulties.includes('expert')`), no per-variant case; tested both ways |
+| 2 | The one-per-level rule clamped three times (configurator, toggle, submit) (`PuzzleForm.tsx`) | **Fixed** — the submit-time clamp removed; the toggle + the configurator's `maxPerDifficulty` are the rule |
+| 3 | `isWhite` re-implemented `whiteMaskOf`; the digit-centring formula copied a third time (`pdf.service.ts`) | **Fixed** — `whiteMaskOf(solution)`; one `drawCenteredDigit` for classic, caged and Kakuro renderers (re-rendered all three to confirm) |
+| 4 | Fixture selection lived in the route, not a service (AGENTS.md §1) (`route.ts`) | **Fixed** — `selectKakuroBatch(counts, { gridSize })` beside the fixtures, the Kakuro counterpart of `generateKillerBatch`; the one function E5 swaps; tested |
+| 5 | The log's `counts` field carried `variant` inside it | **Fixed** — five numbers under `counts`, size at the top level, like the other branches |
+| 6 | The puzzle page never read `puzzle.grid` — givens would not print | **Fixed** — `grid` on the puzzle page, `solution` on the answer page, like the other renderers (every Kakuro's `grid` is empty today) |
+| 7 | Schema defaults (`gridSize` omitted → 7, a level omitted → 0) and a non-numeric count untested | **Fixed** — two route tests |
+| 8 | The ladder typed three times (form ×2 routes, route) | **Fixed** — `KAKURO_LADDER` + `KakuroLevel` exported from `kakuro-types.ts`; form, route and selector use it (Killer keeps its own list — it is Killer's) |
 
 ### E1 — Combination table + exact solver + uniqueness ✅
 

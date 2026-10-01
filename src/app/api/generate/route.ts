@@ -4,8 +4,8 @@ import { generatePuzzleBatch } from '@/features/engine/services/generation.servi
 import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF } from '@/features/pdf-generation/services/pdf.service';
 import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
-import { findKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
-import type { KakuroDifficulty, KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
+import { selectKakuroBatch } from '@/features/engine/kakuro/kakuro-fixtures';
+import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 
@@ -23,7 +23,6 @@ const MAX_EXTREME = 5;
  * count of 2 would print the same puzzle twice. Sizes are Kakuro's own (D11), not the Sudoku
  * family's 4/6/9.
  */
-const KAKURO_LEVELS = ['easy', 'medium', 'hard', 'expert', 'extreme'] as const satisfies readonly KakuroDifficulty[];
 const kakuroCount = z.number().int().min(0).max(1, 'Kakuro is hand-made until its generator ships: at most 1 puzzle per level').default(0);
 const kakuroRequestSchema = z.object({
   variant: z.literal('kakuro'),
@@ -163,19 +162,12 @@ export async function POST(req: NextRequest) {
       if (!parsed.success) {
         return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid Kakuro request' }, { status: 400 });
       }
-      const { gridSize: kakuroSize, ...counts } = parsed.data;
-      const puzzles: KakuroPuzzle[] = [];
-      for (const level of KAKURO_LEVELS) {
-        if (counts[level] === 0) continue;
-        const fixture = findKakuroFixture(kakuroSize, level);
-        if (!fixture) {
-          return NextResponse.json({ error: `No ${level} Kakuro at ${kakuroSize}×${kakuroSize} yet` }, { status: 400 });
-        }
-        puzzles.push(fixture);
-      }
-      if (puzzles.length === 0) {
+      const kakuroSize = parsed.data.gridSize;
+      const counts = Object.fromEntries(KAKURO_LADDER.map((level) => [level, parsed.data[level]])) as Record<KakuroLevel, number>;
+      if (KAKURO_LADDER.every((level) => counts[level] === 0)) {
         return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
       }
+      const puzzles = selectKakuroBatch(counts, { gridSize: kakuroSize });
       const pdfBuffer = await generateKakuroPDF(puzzles);
       logger.info(
         { event: 'generation_success', variant: 'kakuro', counts, gridSize: kakuroSize, durationMs: Math.round(performance.now() - startTime) },
