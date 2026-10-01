@@ -28,7 +28,7 @@
 
 ## Journal
 
-- **2026-10-01 (E4)** Review follow-up 5 merged (#119). **E4 built**: `kakuro-generator.ts`
+- **2026-10-01 (E4)** Review follow-up 5 merged (#119). **E4 built** (#120): `kakuro-generator.ts`
   (layout / fill / repair-to-unique / verify / label) and the thin `kakuro.ts` entry point;
   "New puzzle" is real for Kakuro at **6×6 / 7×7 / 9×9** via `/api/puzzle`. `[decision]` the
   **layout method diverged from the plan** — edges-inward built and measured, demoted to an

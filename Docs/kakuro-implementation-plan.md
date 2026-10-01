@@ -14,8 +14,9 @@
 > density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
 > [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF)
 > [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
-> [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); **E4 (generator) built, in
-> review** — "New puzzle" is real at 6/7/9, scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
+> [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); E4 (generator)
+> [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) — "New puzzle" is real at 6/7/9,
+> scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
@@ -729,7 +730,7 @@ library and structural pre-checks (G3, G10) before E4, rather than tuning inside
 **Gate:** yield ≥ what E3 measured; 9×9 accepted puzzle < 1 s avg at medium density; the mini
 < 200 ms.
 
-**Step-log (2026-10-01):**
+**Step-log (2026-10-01 — PR [#120](https://github.com/zfert99/Puzzle-Generator/pull/120)):**
 
 - *Process:* `kakuro-generator.ts` — `generateKakuroLayout` (two methods, see divergence),
   `fillKakuroLayout` (randomised DFS, per-run all-different), `repairToUnique` (E3's one-cell
