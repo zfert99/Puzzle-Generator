@@ -90,6 +90,113 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-09-30 — undici high + next critical advisories patched (undici → 8.11.2, next → 16.3.8)
+
+Branch `fix/undici-next-cves` on `d0333d5`. Surfaced by PR #104's red `security-audit` gate — that diff
+touched no dependencies. Eleven `undici` advisories (npm range 8.0.0 – 8.10.1) were published after
+main's last CI run (09-11): one on 09-28, ten on 09-29; three are **high** (GHSA-rfgv-xxqx-mfg5,
+GHSA-w293-vg96-wgc3, GHSA-vp8m-p9jh-q5pm). **Slice: 2 lines of `package.json` + 51 of
+`package-lock.json`** — `undici` (lockfile only); `next` + `eslint-config-next` floors raised to
+16.3.8. No `overrides` entry. Later commits after review: a daily `schedule:` on the
+`security-audit` job in `ci.yml` (build/e2e gated off it; a red scheduled run opens an issue;
+`npm ci` dropped for `--package-lock-only`), plus doc corrections. Full account of the divergence:
+[research/security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md).
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npm ls undici` | **one copy, `jsdom@30.0.1 → undici@8.11.2`** (was 8.10.0); no nested copy |
+| `npm ls next eslint-config-next sharp` | `next@16.3.8`, `eslint-config-next@16.3.8` → `@next/eslint-plugin-next@16.3.8` (all were 16.3.4); **one `sharp@0.35.4`**, next's copy still dedupes to it (AGENTS §6 gotcha checked) |
+| `npm ci` on the final lockfile | clean install, 661 packages, no `invalid`/`missing` |
+| `npm audit --audit-level=high --omit=dev` | exit 1 → **exit 0** at 17:06 UTC (10 moderate remain, below the gate) |
+| `npx vitest run` | **574 passed** (70 files) |
+| `npm run lint` · `npm run build` | both exit 0 on 16.3.8 (lint on the new `eslint-config-next`); same 25 routes (CI's placeholder `DATABASE_URL`) |
+| Playwright e2e, production build (`CI=1`, own port) | **37 passed, 9 skipped, 0 failed, 0 flaky** on next 16.3.8. The 9 are the DB-gated specs — no database in this worktree |
+| Benchmarks | not run — no engine/solver core touched |
+| `ci.yml` schedule, job gates, failure-issue step | **parsed only** (js-yaml; gates read back as `build-and-test`/`e2e`: `!= schedule`). No scheduled or gated run executed before merge; the `--package-lock-only` audit verified locally in a directory with no `node_modules` (exit 0) |
+
+### Findings
+
+- **The undici fix alone left the gate red.** GHSA-vcvr-r3jv-pc5j (`next` ≥ 16.2.0 < 16.3.6,
+  critical, RCE in `next/og` `ImageResponse`) was published 2026-09-30 14:48 UTC. The brief had ruled
+  out unrelated bumps, so the owner was asked and approved adding `next` — `security-audit` is one
+  job, so an undici-only PR and a next-only PR would each have stayed red. Exposure was low: nothing
+  in `src/` imports `next/og` or defines an `opengraph-image`/`icon` route (grepped).
+- **`npm audit` answered clean ~90 minutes after that advisory was public.** First post-fix run
+  (≈16:15–16:20 UTC, not timestamped): exit 0. Same lockfile at 16:21:50: exit 1. Cause not
+  established — registry propagation or a client cache.
+- **16.3.8, not the minimum 16.3.6.** 16.3.8 (published 16:07 UTC the same day) lists seven more
+  security fixes: one high (GHSA-cjq9-62q9-8jv4, SSRF in Image Optimization), five medium, one
+  low. That advisory was not
+  in GitHub's global database shortly after 17:00 UTC, so the audit cannot see it yet.
+- **Floors raised after review.** The first cut was lockfile-only; `/code-review` flagged that the
+  patched minimum then lived only in the lockfile and that `eslint-config-next` lagged `next` by
+  four patches. Now `next: ^16.3.8` and `eslint-config-next: 16.3.8`, as the 09-10 fix did.
+- **Dependabot #103 is not the simpler route.** It carries `undici@8.10.2` (via jsdom 30.1.1) but
+  pins `next@16.3.5` — inside the critical range. Its checks ran 09-25, before any of these
+  advisories; auditing its lockfile today exits 1. It touches the same `package.json` lines as this
+  branch.
+- **jsdom is a devDependency — and `--omit=dev` audits it anyway.** The lockfile marks it
+  `devOptional`, not `dev`: `better-auth` (production) has an optional peer on `vitest`, which has
+  an optional peer on `jsdom`. The brief's premise that jsdom sits under `dependencies` was wrong;
+  moving it would change nothing.
+- **No override needed** (the 08-07 standing lesson, applied): jsdom declares `undici: ^8.9.0`, the
+  patch is 8.10.2, so the existing range already admits it.
+- **`npm update` / `npm install` on macOS (npm 11.8.0) stripped the `libc` field from four
+  `@node-rs/argon2-linux-*` entries** on all three installs. Reverted each time.
+- **Second review, on the final diff:** five findings, all docs/metadata — the 16.3.8 advisory
+  count was written as six (it is seven; also wrong in the first commit message, which stands),
+  the research doc sat in `research/` with no banner saying why, the scheduled-audit fix was left
+  as an open question, the review status was stale, and the `libc` hazard had no backlog entry.
+  All fixed in the second commit; the roadmap now carries the two open questions.
+- **Third review, on the `ci.yml` commit:** six findings — no notification path for a red scheduled
+  run, the 60-day schedule auto-disable, the log not stating the schedule was only parsed, a stale
+  header comment, an unneeded `npm ci` in the audit job, and an unclear roadmap sentence. Fixed in
+  the third commit; reviews stop here by the owner's decision.
+- **The first e2e run failed 41/41 on a missing browser, not on the diff.** Playwright 1.63.0 wants
+  Chromium build 1243; the machine had 1234 from before #95. `npx playwright install chromium`
+  fixed it.
+
+### Lessons
+
+- **`--omit=dev` omits `dev`, not `devOptional`.** Before asking why a test-only package is in the
+  production audit, read its lockfile flag and `npm explain <pkg>` — an optional peer of a
+  production dependency keeps it in scope.
+- **An `npm audit` exit 0 can trail the advisory database by over an hour.** Re-run it as the last
+  step, and for a fresh security release read the release notes — they can name advisories the
+  audit does not know yet.
+- **Diff the lockfile after any `npm update` and keep only the hunk you meant** — a local npm can
+  rewrite platform metadata (`libc`) it was never asked to touch.
+- **A green Dependabot PR is green as of its last CI run.** Audit its lockfile today before calling
+  it the fix.
+- **Look up every item before writing "all N were X".** This entry first said all eleven advisories
+  were published 09-28 after checking one; ten were 09-29.
+- **41/41 e2e failures with `Executable doesn't exist` is a Playwright bump without a browser
+  install**, not a regression.
+
+### Docs
+
+No `.ts`/`.tsx` touched, no symbol renamed. Reverse sweep: `undici` and `16.3.4` appear only in
+dated log entries (this file, the August archive) and the new research record — no other live doc
+states either version. Research record written: [research/security-audit-gate-advisory-lag.md](research/security-audit-gate-advisory-lag.md);
+`roadmap.md` "Security Hardening, Stage 1+" carries the two open questions. `ci.yml` has no
+mirrored doc; its new `schedule:` block explains itself inline and cites the research record.
+
+**Executed:** everything in the Mechanical table; the audit of #103's lockfile in a scratch copy;
+publish dates of all twelve advisories (GitHub advisory API). **Read only:** the next 16.3.5 –
+16.3.8 release notes (backported fixes for `next/image` disk cache, CSP nonce on loading/template
+scripts, `use cache` prerender, a Turbopack hang; two security releases) — no source diff reviewed.
+
+### Reviews
+
+`/security-review` **not run** (this is the security fix; no app code changed). `/code-review` (the
+in-session command, high effort, run by the owner) **was run three times**: on the lockfile-only
+cut (seven findings), on the floors + docs (five), and on the `ci.yml` schedule (six) — all
+addressed above. Not re-run after the third commit; the owner called the loop closed there.
+
+---
+
 ## 2026-09-11 — Docs reorganisation: six docs archived, pre-merge log rotated, index rewritten
 
 Branch `docs/archive-reorg-sept-2026` on `99b87ee`. **Docs only — no `.ts`/`.tsx` touched**, so no
