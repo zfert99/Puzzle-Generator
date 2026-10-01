@@ -43,6 +43,23 @@ describe('POST /api/puzzle — happy paths', () => {
   }, 120_000);
 });
 
+describe('POST /api/puzzle — Kakuro (E4)', () => {
+  it('returns a generated Kakuro at the requested size with runs and a solver-assigned label', async () => {
+    const res = await POST(buildRequest({ variant: 'kakuro', difficulty: 'hard', gridSize: 9 }));
+    expect(res.status).toBe(200);
+    const puzzle = await res.json();
+    expect(puzzle.variant).toBe('kakuro');
+    expect(puzzle.gridSize).toBe(9);
+    expect(puzzle.runs.length).toBeGreaterThan(0);
+    expect(['easy', 'medium', 'hard', 'expert', 'extreme', 'unrated']).toContain(puzzle.difficulty);
+  }, 30_000);
+
+  it('rejects a Sudoku-family size and an unknown difficulty', async () => {
+    expect((await POST(buildRequest({ variant: 'kakuro', difficulty: 'easy', gridSize: 4 }))).status).toBe(400);
+    expect((await POST(buildRequest({ variant: 'kakuro', difficulty: 'nasty', gridSize: 7 }))).status).toBe(400);
+  });
+});
+
 describe('POST /api/puzzle — sad paths', () => {
   it('rejects a missing difficulty', async () => {
     const res = await POST(buildRequest({}));

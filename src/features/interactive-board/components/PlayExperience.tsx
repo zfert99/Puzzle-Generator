@@ -43,7 +43,7 @@ const SIZES: Record<PlayVariant, readonly SelectableSize[]> = {
   classic: [4, 6, 9],
   killer: [6, 9],
   calc: [4, 6, 9],
-  kakuro: [7, 9],
+  kakuro: [6, 7, 9],
 };
 
 const VARIANT_LABEL: Record<PlayVariant, string> = {
@@ -86,8 +86,8 @@ export default function PlayExperience() {
   const [resumeHandled, setResumeHandled] = useState(false);
   const isKiller = variant === 'killer';
   const isCalc = variant === 'calc';
-  // Kakuro has no generator yet: one hand-baked puzzle per size and tier, graded by the logical
-  // solver (easy…hard by technique tier, expert/extreme by forcing-chain length).
+  // Kakuro is generated server-side since E4 and graded by the logical solver (easy…hard by
+  // technique tier, expert/extreme by forcing-chain length); the label is the solver's.
   const isKakuro = variant === 'kakuro';
   const wantsResume = searchParams.get('resume') === '1';
 
@@ -246,7 +246,7 @@ export default function PlayExperience() {
           </div>
           {isKakuro ? (
             <p className="text-xs text-ink-soft text-center mt-2">
-              Kakuro is new: one hand-made puzzle per size and level, graded by the solver — every level is logic-only.
+              Kakuro is new: every puzzle is graded by the solver, and every level is logic-only — the header shows the grade it earned.
             </p>
           ) : (
             miniGrid && (

@@ -9,6 +9,17 @@ When the body has `variant: 'killer'`, the route validates the difficulty is one
 easy/medium/hard (Killer v1) and returns `generateKillerSudoku(difficulty)` — a `KillerPuzzle`
 with `cages`. The classic path (below) runs otherwise.
 
+## Kakuro branch (plan slice E4)
+
+When the body has `variant: 'kakuro'`, the route validates `difficulty` against `KAKURO_LADDER`
+and `gridSize` against `KAKURO_SIZES` (6 / 7 / 9 — Kakuro's own sizes, D11; the full ladder is
+open at every size) and returns `generateKakuroDetailed(difficulty, { gridSize }).puzzle`. E4
+targets the tier by bounded rejection and may fall back — a baked fixture of the exact tier
+where one exists, else the nearest tier generated, always labelled with the grade the
+classifier assigned (D8) — so the log line carries `served` (the label actually sent) and
+`source` (`generated` / `fixture` / `nearest`) next to the requested `difficulty`: E5 reads the
+fallback rate per tier and size from it before replacing the loop.
+
 ## Why this endpoint exists
 
 The interactive board needs a fresh puzzle on demand. Generating it **server-side**
