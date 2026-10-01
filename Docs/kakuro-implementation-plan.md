@@ -13,8 +13,9 @@
 > [#116](https://github.com/zfert99/Puzzle-Generator/pull/116) — mini = 6×6, repair-not-retry,
 > density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
 > [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF)
-> [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up — every V
-> and E slice through E3 is done; E4 (generator) next) · **Branch:** one per slice off
+> [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
+> [#119](https://github.com/zfert99/Puzzle-Generator/pull/119) — every V and E slice through E3
+> is done; E4 (generator) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
@@ -398,7 +399,7 @@ renderer.
   because it is a real, if small, catalogue.
 
 **Review follow-up 5 (2026-10-01 — hosted `/code-review high` over #118, 8 findings, all
-addressed; recorded in full):**
+addressed in [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); recorded in full):**
 
 | # | Finding (file) | Outcome |
 |---|---|---|

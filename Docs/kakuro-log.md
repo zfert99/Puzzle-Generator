@@ -29,7 +29,7 @@
 ## Journal
 
 - **2026-10-01 (review 5)** V3 merged (#118). Owner ran `/code-review high` over it: **8
-  findings, all addressed** (table in the plan under V3). No bug class this time; the one
+  findings, all addressed** (#119; table in the plan under V3). No bug class this time; the one
   behaviour fix was the configurator's "9×9 only" note, which had read classic's size for every
   variant since Killer — it now follows the ladder offered. `[decision]` fixture selection is a
   service (`selectKakuroBatch`) like the other variants' batches, so E5 swaps one function;
