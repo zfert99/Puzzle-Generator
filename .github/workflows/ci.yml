@@ -1,6 +1,7 @@
 # Continuous integration: lint, tests, and a dependency vulnerability audit on
-# every push and PR to main. `npm audit` is the zero-cost SCA baseline called for
-# in AGENTS.md Section 6, "CI Security Scanning".
+# every push and PR to main, plus the audit alone on a daily schedule. `npm audit`
+# is the zero-cost SCA baseline called for in AGENTS.md Section 6, "CI Security
+# Scanning".
 name: CI
 
 on:
@@ -8,9 +9,19 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  # The audit alone also runs daily against main. Advisories are published against packages we
+  # already lock, so without this a new one only surfaces as a red check on whichever unrelated
+  # PR runs CI next — in September 2026 that was 19 days after main's last run, on a diff that
+  # touched no dependencies. See Docs/research/security-audit-gate-advisory-lag.md. The other
+  # jobs are gated off the schedule below: main's code has not changed, only the advisory data.
+  # Caveat: GitHub disables a schedule after 60 days without a commit to the repo (scheduled
+  # runs themselves do not count). After a long pause, check the Actions tab and re-enable it.
+  schedule:
+    - cron: "23 6 * * *"
 
 jobs:
   build-and-test:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,6 +51,7 @@ jobs:
     # passed against Next's 404 page, and the `webServer` readiness probe never got a 2xx — the run
     # aborted before a single test. Wiring it into CI is what keeps that from silently recurring;
     # `e2e/fixtures.ts` fails any test whose navigation returns >= 400.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -79,6 +91,9 @@ jobs:
 
   security-audit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # only used by the scheduled-failure step below
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -87,10 +102,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "22"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
 
       # Fail the job on any high-or-critical severity advisory in the PRODUCTION
       # dependency tree (`--omit=dev`). Lower severities are surfaced by Dependabot
@@ -102,5 +113,26 @@ jobs:
       # still pins minimatch@3, so it can't be moved off it. That code is lint-time
       # only, never shipped, so it does not gate releases. Run `npm audit` locally for
       # the full-tree (incl. dev) view.
+      #
+      # `--package-lock-only`: the audit is a lookup on the lockfile's resolved versions,
+      # so there is nothing to install — no `npm ci`, no cache restore.
       - name: npm audit (production, high+)
-        run: npm audit --audit-level=high --omit=dev
+        run: npm audit --audit-level=high --omit=dev --package-lock-only
+
+      # A red SCHEDULED run has no PR to show up on and no human who just pushed. GitHub only
+      # emails the workflow file's last committer, per their notification settings — the same
+      # "nothing alerted" shape as the 2026-08 cron outage. So a scheduled failure opens an
+      # issue (one; later failures comment on it while it stays open).
+      - name: Open or update an issue on scheduled failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="security-audit: scheduled npm audit is failing on main"
+          existing=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Still failing: $RUN_URL"
+          else
+            gh issue create --title "$title" --body "The daily \`npm audit --audit-level=high --omit=dev\` run went red on main — a new advisory against a locked package, not a code change. Run: $RUN_URL. See Docs/research/security-audit-gate-advisory-lag.md for how the last one was handled."
+          fi
