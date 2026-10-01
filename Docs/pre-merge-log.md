@@ -92,6 +92,76 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up 7: all 6 `/code-review high` findings on E5 addressed
+
+Branch `feature/kakuro-review-7` on `10f8944` (main, after E5). Table in the plan (E5 → "Review
+follow-up 7"); L24 + an A/B row in `kakuro-log.md`. ~60 code lines net (the walk's easier band
+re-keyed, `walk` options, a batch budget, the dead re-classify gone), ~15 test lines, ~70 doc
+lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 82 files, **760 passed**, 0 failed — 1 new (batch budget: throws at 0 ms, two-puzzle batch in ladder order), 2 adjusted (0 ms budget; `walk` cap in the seeded end-to-end) |
+| `npm run lint` | exit 0 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Up-walk A/B (15 identical seeded bases per cell, easy → target) | steps median / max, flat → tiered: 7×7 expert 35/162 → 19/208 · 7×7 extreme 98/360 → 86/321 · 9×9 expert 49/**1 832** → 59/**287** · 9×9 extreme 139/**886** → 132/**338**; 15/15 reached either way |
+
+### Findings (the review's, with outcomes)
+
+1. **Easier band constant** → keyed on tier distance, then on `lean(h)` (the share of cells the
+   ladder capped at `h − 1` leaves undecided). Medians barely move — the plateau walk was landing
+   anyway — the worst cases shrink 3–6×. The doc's old claim was a hypothesis nobody had checked
+   (L24).
+2. **No batch budget** → one 45 s budget per `generateKakuroBatch`, each puzzle handed what is
+   left, a clean throw when spent; the route's generic 500 instead of a 504 mid-booklet.
+3. **Walk cap borrowed from `repair.msCap`** → `walk?: WalkOptions`.
+4. **Stale JSDoc** → rewritten.
+5. **1 ms budget in the throw test** → 0 ms.
+6. **Dead re-classify** → with a target the label is the target (the walk's accepting solve is
+   the classifier's call); the classifier runs only without a target.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. **D8 re-derived once more:** the walk accepts
+a state only when `new KakuroLogicalSolver(shape).solve({ recordSteps: true })` — exactly what
+`classifyKakuro` runs — reports `hardestTier === target`; the exact `isKakuroUnique` verify still
+follows; the 15 generate-at-tier tests still re-classify every served puzzle independently and
+pass. **Bound:** `/api/puzzle` 20 s per call; `/api/generate` 45 s per batch — both inside
+`maxDuration = 60` by construction now.
+
+### Docs sweep
+
+Mirrored `kakuro-generator.md` (objective table, the flat-band post-mortem, the A/B table),
+`kakuro.md` (batch budget), `generate/route.md`; plan review table + header; log journal + L24 +
+Measurements. Reverse sweep for "gradient" / "50 −" / "re-derives the label": the E5 step-log and
+pre-merge entry describe the flat band as it was — left as the record; this entry and the plan
+table say what changed.
+
+### Verified vs read
+
+- **Verified:** the table; the A/B on identical seeded bases (the OLD objective inlined in a
+  scratch script, the NEW one from the engine, same seeds).
+- **Read only:** the 45 s batch budget against production CPU — the arithmetic (15–30 s dev) and
+  the throw path are tested; a real 50-puzzle request has not been made.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **run by the owner** (`high`) on E5; this is its follow-up, not re-reviewed.
+
+### Lessons
+
+- **A gradient claimed in a doc is a hypothesis until the band's value has been seen to vary** —
+  print the objective on a handful of states before trusting it; a walk that "works" can be a
+  random walk. (L24)
+- **Measure an A/B in steps as well as ms** — steps are CPU-independent and survive a test suite
+  running alongside; the ms columns here were taken under load and say less than the steps.
+
+---
+
 ## 2026-10-01 — Kakuro E5: the classifier in the objective — every puzzle fresh at the requested tier; hub card live
 
 Branch `feature/kakuro-e5` on `cd61715` (main, after review follow-up 6). Plan E5 step-log

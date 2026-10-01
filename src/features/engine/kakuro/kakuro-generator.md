@@ -116,21 +116,34 @@ exactly this tier", with a gradient inside each band so it is a climb and not a 
 ```text
 not unique                      → 1000
 unique, ladder cannot finish it → 500 + undecided cells
-unique, harder than the target  → 100 + steps above the target tier      ← shed them one by one
-unique, easier than the target  → 50 − cells the tier-below ladder leaves undecided   ← get harder step by step
+unique, harder than the target  → 100 + steps above the target tier          ← shed them one by one
+unique, easier than the target  → 50 + 10·(target − h) − lean(h)              ← nearer tier first, then leaning harder on it
 unique, exactly the target      → 0
 ```
 
-Each evaluation is a 2-solution count (cheap; most mutations break uniqueness and stop there)
-plus one classifier solve, and for the "easier than" band a second capped solve. Measured on
-E4's natural output (5 walks per cell): 7×7 easy 27–141 ms (86–529 steps), 9×9 easy
-138–296 ms, 9×9 extreme 0–1.6 s; every target reached at every size. This is what makes easy
-reachable — it is 1–3% of natural output, so E4's rejection could not get there — and it is why
-no per-tier layout bias was needed.
+`h` is the puzzle's hardest tier; `lean(h)` ∈ 0..9 is the share of white cells the ladder
+capped at `h − 1` leaves undecided — how much of the grid the top technique carries. Each
+evaluation is a 2-solution count (cheap; most mutations break uniqueness and stop there) plus
+one classifier solve, and for the "easier than" band a second capped solve.
 
-`generateUniqueKakuro({ targetTier })` runs the walk after the repair, under the same clock, and
-re-derives the label with `classifyKakuro` before returning (the walk's own solve is the same
-solver, but the label is never taken on trust).
+**The easier band was flat in the E5 PR** (a review finding): it capped the ladder at
+`target − 1`, but a ladder that never needed more than `h ≤ target − 1` finishes under any cap
+≥ `h` — the capped run takes the identical path — so `undecided` was always 0 and every
+easier-than-target state scored exactly 50. The up-walks still reached their targets (a plateau
+random walk lands on the target eventually), which is why the measurements looked fine; the
+gradient the doc described did not exist. The band is now keyed on tier distance first, so a
+mutation that gains a tier always wins, and within a tier on `lean`, so a state that depends
+more on its top technique counts as progress toward needing the next. Before/after on identical
+seeded bases (easy → target, 15 per cell, medians): see **Measured** below.
+
+This is what makes easy reachable — it is 1–3% of natural output, so E4's rejection could not
+get there — and it is why no per-tier layout bias was needed.
+
+`generateUniqueKakuro({ targetTier, walk })` runs the walk after the repair, under the same
+clock and with its own caps (`walk`, independent of `repair` — a review finding), and labels
+the result with the target: the walk accepts only a state whose full ladder solve — the same
+solver and call the classifier makes, deterministic — reports exactly that tier, so re-running
+the classifier would re-derive a known answer (it did, in the E5 PR; a review finding).
 
 Plateau moves (equal score) are what let the climb cross flat regions of the count landscape;
 without them it stalls on the first local minimum. The wall-clock cap scales with the grid
@@ -149,6 +162,24 @@ ladder cannot finish it (D8). Up to `maxRounds` fresh layouts; `null` when every
 left)`, and no round starts once the budget is spent — so a caller's budget bounds the call by
 construction, not by multiplying caps (a review finding: `kakuro.ts` checked its budget only
 between attempts, and one attempt could run five repair caps past it).
+
+## Measured — the up-walk gradient (review follow-up 7, 2026-10-01)
+
+Same 15 seeded bases per cell (each walked down to easy first), then walked up to the target
+with the flat band (E5 PR) and with the tiered band; steps are the CPU-independent signal
+(the ms columns were taken under test-suite load):
+
+| Cell | flat: steps median / max | flat: ms median / max | tiered: steps median / max | tiered: ms median / max |
+|---|---|---|---|---|
+| 7×7 → expert | 35 / 162 | 21 / 154 | 19 / 208 | 9 / 129 |
+| 7×7 → extreme | 98 / 360 | 328 / 1 461 | 86 / 321 | 77 / 423 |
+| 9×9 → expert | 49 / **1 832** | 311 / 6 275 | 59 / **287** | 137 / 1 972 |
+| 9×9 → extreme | 139 / **886** | 605 / 3 349 | 132 / **338** | 780 / 4 416 |
+
+Every walk reached its target either way (15/15 per cell). The medians barely move — a plateau
+random walk lands on the target soon enough most of the time — but the tails are where the
+gradient earns its keep: the worst 9×9 up-walk shrank from 1 832 to 287 steps (expert) and from
+886 to 338 (extreme). Those tails were the widest spread in the E5 benchmark.
 
 ## Measured (E5, 2026-10-01, dev machine — `benchmark-kakuro.ts`, 10 per cell)
 

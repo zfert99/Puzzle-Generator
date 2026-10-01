@@ -59,8 +59,11 @@ and at exactly the requested tier (E5).
    inside `maxDuration`).
 3. `generateKakuroBatch(counts, { gridSize })` (in `kakuro.ts` — the Kakuro counterpart of
    `generateKillerBatch`, so the route stays a controller per AGENTS.md §1) →
-   `generateKakuroPDF(puzzles)` → the booklet as `Kakuro.pdf`. The log line carries the five
-   counts under `counts` and the size at the top level, the same shape as the other branches.
+   `generateKakuroPDF(puzzles)` → the booklet as `Kakuro.pdf`. The batch runs under **one 45 s
+   budget** shared by every puzzle in it (inside the 60 s `maxDuration` with the render to
+   spare); a request that cannot finish throws into the generic 500 rather than timing out
+   with the PDF half-built. The log line carries the five counts under `counts` and the size at
+   the top level, the same shape as the other branches.
 
 V3's one-per-level cap and the fixture selector are gone with the generator; the fixtures are
 test data only.

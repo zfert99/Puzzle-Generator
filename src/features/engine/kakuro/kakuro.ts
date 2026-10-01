@@ -46,12 +46,22 @@ export interface GenerateKakuroOptions {
 
 /**
  * The puzzles for a `/api/generate` request — the Kakuro counterpart of `generateKillerBatch`,
- * in ladder order. Replaces E4's fixture selector (`selectKakuroBatch`).
+ * in ladder order. **One budget for the whole batch:** each puzzle is handed what is left of
+ * `timeBudgetMs` (default 45 s — inside the route's 60 s `maxDuration` with the PDF render to
+ * spare), and when it runs out the batch throws rather than letting the function time out
+ * half-way through a booklet (a review finding: 50 puzzles × a 20 s per-call budget was bounded
+ * by construction at 1 000 s). At the measured averages a full 50-puzzle 9×9 batch is ~15–30 s.
  */
 export function generateKakuroBatch(counts: Partial<Record<KakuroLevel, number>>, options: GenerateKakuroOptions = {}): KakuroPuzzle[] {
+  const { timeBudgetMs = 45_000, ...each } = options;
+  const started = performance.now();
   const puzzles: KakuroPuzzle[] = [];
   for (const level of KAKURO_LADDER) {
-    for (let i = 0; i < (counts[level] ?? 0); i++) puzzles.push(generateKakuro(level, options));
+    for (let i = 0; i < (counts[level] ?? 0); i++) {
+      const remaining = timeBudgetMs - (performance.now() - started);
+      if (remaining <= 0) throw new Error(`Kakuro batch ran out of time after ${puzzles.length} puzzles (${timeBudgetMs} ms budget)`);
+      puzzles.push(generateKakuro(level, { ...each, timeBudgetMs: remaining }));
+    }
   }
   return puzzles;
 }

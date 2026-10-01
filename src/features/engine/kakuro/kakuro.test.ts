@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateKakuro, KAKURO_SIZES, tierOf } from './kakuro';
+import { generateKakuro, generateKakuroBatch, KAKURO_SIZES, tierOf } from './kakuro';
 import { classifyKakuro, KakuroLogicalSolver } from './kakuro-logical-solver';
 import { isKakuroUnique } from './kakuro-solver';
 import { KAKURO_LADDER, validateKakuroRuns } from './kakuro-types';
@@ -21,8 +21,15 @@ describe('generateKakuro (E5: the classifier in the objective)', () => {
   );
 
   it('throws, rather than serving another tier, when the budget cannot be met', () => {
-    expect(() => generateKakuro('extreme', { gridSize: 9, timeBudgetMs: 1 })).toThrow(/Kakuro generation failed/);
+    // A budget of 0 is spent before any round starts — deterministic, unlike 1 ms, which let a
+    // first round begin and (one time in ~10 000) hand back a fill already unique at the tier.
+    expect(() => generateKakuro('extreme', { gridSize: 9, timeBudgetMs: 0 })).toThrow(/Kakuro generation failed/);
   });
+
+  it('batches share one budget and throw cleanly when it is spent', () => {
+    expect(() => generateKakuroBatch({ easy: 3 }, { gridSize: 6, timeBudgetMs: 0 })).toThrow(/ran out of time after 0 puzzles/);
+    expect(generateKakuroBatch({ easy: 1, extreme: 1 }, { gridSize: 6, timeBudgetMs: 60_000 }).map((p) => p.difficulty)).toEqual(['easy', 'extreme']);
+  }, 60_000);
 
   it('maps the ladder to the solver tiers in order', () => {
     expect(KAKURO_LADDER.map(tierOf)).toEqual([1, 2, 3, 4, 5]);

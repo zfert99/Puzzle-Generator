@@ -119,7 +119,7 @@ describe('generateUniqueKakuro', () => {
   it.each([6, 7, 9] as const)('makes a unique, legal, solver-graded %i×%i', (gridSize) => {
     // A generous repair cap keeps the seeded run identical on a loaded runner — otherwise a
     // wall-clock cap hit mid-repair would change which round succeeds.
-    const puzzle = generateUniqueKakuro({ gridSize, blackDensity: gridSize === 6 ? 0.4 : 0.38, rng: seeded(gridSize), repair: { msCap: 60_000 } });
+    const puzzle = generateUniqueKakuro({ gridSize, blackDensity: gridSize === 6 ? 0.4 : 0.38, rng: seeded(gridSize), repair: { msCap: 60_000 }, walk: { msCap: 60_000 } });
     expect(puzzle).not.toBeNull();
     expect(puzzle!.variant).toBe('kakuro');
     expect(puzzle!.grid.flat().every((d) => d === 0)).toBe(true);

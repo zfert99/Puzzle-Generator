@@ -17,10 +17,11 @@
 > [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); E4 (generator)
 > [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up
 > [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
-> [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) — every puzzle fresh at exactly
+> [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
+> [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) — every puzzle fresh at exactly
 > the requested tier, hub card live, fixtures test data only; R1 (daily) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
-> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`) ·
+> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -853,6 +854,21 @@ bound, move the bound, don't pad with surface sums).
 - *Blockers:* none. **Owed to R1:** the daily registry (4 types, D4 — owner call on slot
   count), `/api/generate`'s schema and the PDF are done. Watch: the 9×9 repair-plateau tail (a
   few fills stall to the cap — the cron has the budget; `/play` sees ~0.3–0.8 s).
+
+**Review follow-up 7 (2026-10-01 — hosted `/code-review high` over #122, 6 findings, all
+addressed in [#123](https://github.com/zfert99/Puzzle-Generator/pull/123); recorded in full):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | The walk's "easier than target" band was a constant 50 — it capped the ladder at `target − 1`, but a ladder that never needed more than `h ≤ target − 1` finishes under any cap ≥ `h`, so `undecided` was always 0; the up-walks were plateau random walks and the doc described a gradient that did not exist (`kakuro-generator.ts`) | **Fixed** — band keyed on tier distance first (`50 + 10·(target − h)`), then on `lean(h)`: the share of cells the ladder capped at `h − 1` leaves undecided. Measured on 15 identical seeded bases per cell: medians similar, **worst-case steps 1 832 → 287 (9×9 expert) and 886 → 338 (9×9 extreme)**; table in `kakuro-generator.md` |
+| 2 | A batch had no shared budget: 50 puzzles × a 20 s per-call budget against a 60 s `maxDuration` (`kakuro.ts`) | **Fixed** — `generateKakuroBatch` runs under one budget (default 45 s), hands each puzzle what is left, and throws cleanly when spent; tested at 0 ms and with a two-puzzle batch |
+| 3 | The walk's wall-clock cap was borrowed from `repair.msCap`; no walk options at all | **Fixed** — `walk?: WalkOptions` beside `repair`; the seeded tests widen both explicitly |
+| 4 | `generateUniqueKakuro`'s JSDoc still described the E4 contract (label = whatever came out; a fallback) — AGENTS.md §2 | **Fixed** — rewritten for the walk, the target label and the no-fallback rule |
+| 5 | The budget-throw test used a 1 ms budget (a first round could still start) | **Fixed** — 0 ms, deterministic |
+| 6 | The final `classifyKakuro` repeated the walk's accepting solve verbatim and compared against a label that could not differ | **Fixed** — with a target the label *is* the target (the walk's accepting solve is the classifier's own call); the classifier runs only when no target was asked for |
+
+*Learned (L24):* a gradient claimed in a doc is a hypothesis until the band's value has been
+seen to vary — print the objective's distribution on a few states before trusting it.
 
 ### R1 — Daily rotation (4 types) ⏳
 
