@@ -92,6 +92,62 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro E3: yield measurement spike (docs only)
+
+Branch `feature/kakuro-e3` on `132e24a`. **No `.ts`/`.tsx` touched** — the measurement script
+lives in the session scratchpad by design (plan E3: "throwaway, not committed"; §6 of the
+findings doc says how to regenerate). Lands `Docs/research/kakuro-feasibility-findings.md`
+and the decisions it settles (D6′ sizes, G6) in the plan, log, index, roadmap and status.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npx vitest run` · `npm run lint` · `npm run build` | not run — docs only; nothing under `src/` changed |
+| Benchmarks | the spike *is* the measurement: 10 size × density configs, 2,000 random fills, ~190 repair climbs |
+
+### Findings
+
+- The plan's E3 gate had three parts: **9×9 < 1 s passes at ≥ 34% black** (fails at 29%);
+  **mini < 200 ms passes** (3–24 ms); **13×13 < 5 s fails** (0/3 repairs in 60 s at 33%, 1/3 in
+  32 s at 39%) — deferred per the plan's own rule, not a re-slice.
+- The first 13×13 attempt ran **unbounded for 52 minutes** before being stopped: its objective
+  (count up to 50 solutions of a 103-cell grid) burnt the node budget on every step. Re-run with
+  a 60 s cap per attempt in 6 minutes — same answer. L16.
+- The stand-in layout generator **saturates near 34% black at 9×9**, so the high-density 9×9
+  regime is unmeasured; recorded as the findings' open question 1 for E4.
+
+### Invariants checked
+
+None apply (no code). Numbers in the doc were copied from the script's JSON output, not
+retyped; the two 7×7 fixture-era measurements already in the log were left as they are.
+
+### Docs sweep
+
+New research doc; plan D6 row + E3 step-log + slice table; log journal, D6′, G6, L15/L16, a
+measurement row; `Docs/README.md` status; roadmap and project-status lines. Reverse sweep for
+"E3 next" / "mini pending E3" / "6×6 or 7×7": all live hits updated.
+
+### Verified vs read
+
+- **Verified:** every number by the script's own output (saved in the scratchpad results file).
+- **Read only:** nothing — but the layouts were *random*, not the plan's edges-inward ones, so
+  the yield figures are for a stand-in generator and E4 must re-measure on its own layouts.
+
+### Review statements
+
+- `/security-review`: **not run** — docs only.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it (and there
+  is no code in this PR).
+
+### Lesson
+
+- **Give a measurement loop a wall-clock cap before the size you expect to be slow**, not after
+  it has been running for an hour.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up 3: all 8 `/code-review` findings on E2b addressed
 
 Branch `feature/kakuro-review-3` on `d0baa0c` (main, after E2b). Table in the plan (E2b → "Review

@@ -9,9 +9,10 @@
 > [#112](https://github.com/zfert99/Puzzle-Generator/pull/112) and its review follow-up
 > [#113](https://github.com/zfert99/Puzzle-Generator/pull/113), E2b
 > [#114](https://github.com/zfert99/Puzzle-Generator/pull/114) and its review follow-up merged
-> 2026-10-01 — the full easy→extreme ladder is served at both sizes; V3 (PDF) and E3 (yield
-> spike) next) · **Branch:** one per slice off `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`,
-> `-review-1`, `-e2`, `-review-2`, `-e2b`, `-review-3`) ·
+> 2026-10-01 — the full easy→extreme ladder is served at both sizes; **E3 (yield spike) done,
+> in review** — mini = 6×6, repair-not-retry, density ≥ 35% at 9×9, 13×13 deferred; V3 (PDF)
+> and E4 next) · **Branch:** one per slice off `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`,
+> `-review-1`, `-e2`, `-review-2`, `-e2b`, `-review-3`, `-e3`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -164,7 +165,7 @@ means Kakuro needs its own.
 | D3 | Black cells are `0` in both `grid` and `solution`; **blocked = "in no run"**, derived from `runs` at game start (like `cellToCage`). No `-1` sentinel leaks into `Grid` consumers | Locked by owner 2026-09-30; applied in V1 |
 | D4 | Daily at 4 types: **keep 3 mini slots and roll 3 of the 4 types** each day; a mini slot holding a type is played at **that type's mini size** (D11), so the "easy/medium = 4×4, hard = random(4/6)" rule is retired for types with a single mini size | Open — owner (slot count); size part follows D11 |
 | D5 | ~~T5 = bounded depth-1 recursion (Keisan transplant)~~ → **Every published tier is logic-only. T1–T3 by the technique ladder; T4 = whips of bounded length; T5 = longer whips / g-whips.** Surface sums (1-cuts) are an accelerator inside T4+, not a rung. Bounded T&E survives only as an optional, labelled *experimental* tier outside the daily | **Superseded 2026-09-11 by G5** — new form proposed, confirm |
-| D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** a **mini** (smallest size that carries an honest easy/medium/hard — 6×6 or 7×7, E3 decides), a **standard** (9×9 interior — the research's 8–10 sweet spot, odd for the edges-inward centre line, and what the standard daily slot expects), and a **large** (13×13 proposed — odd, near the Krazydad 13×17 print size; play + PDF, daily later). **No 4×4.** | Proposed — mini size decided by E3 (G6) |
+| D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** mini = **6×6** (E3: carries the full ladder incl. expert/extreme with chains, repairs to unique in 3–10 ms; 7×7 stays on `/play` as a second size), standard = **9×9**, large = **13×13 on paper — deferred** (E3: the repair objective is too slow there; needs its own measured approach before it ships anywhere). **No 4×4.** | E3 measured 2026-10-01 — mini and large settled by measurement; owner confirmation open |
 | D11 | **Sizes are per puzzle type.** Each type ships three: the smallest size that is genuinely interesting for *that* puzzle, its standard size, and a large size. Minis in menus and the daily are "the type's smallest size", not a fixed 4×4/6×6. Kakuro is the first type built this way; revisiting Classic/Killer/Keisan under the same rule is deferred (4×4 is trivial for most of them) | Locked by owner 2026-09-11 (principle); Kakuro sizes per D6 |
 | D12 | **Build order is visual first, simplest → hardest:** a hand-baked puzzle is playable and printable (V1–V3) before any engine code; each engine slice lands on that board and is judged by what it makes visible. The **hub card goes live only at E5** (when "New puzzle" is real); until then `/play?variant=kakuro` is reachable by URL for building and E2E, so `main` never advertises a one-puzzle type. *Amended 2026-09-30: a looks-only static board (V0, at the unlinked workbench route `/kakuro`) precedes V1* | Locked by owner 2026-09-11 (order), amended 2026-09-30; hub timing proposed |
 | D7 | Roadmap: **Phase 10**, engine-first like Phase 6/8 | Applied (this PR) |
@@ -195,7 +196,7 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | 4 | E1 — Combination table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixture |
 | 5 | E2a — Logical solver T1–T3 + classifier + metrics + scorer | Easy/medium/hard Kakuro graded by the solver; hints that name their technique and show the lead-up |
 | 5′ | E2b — Chain tiers (T4 / T5 forcing chains by length) | Expert and extreme Kakuro served at both sizes; the `*_CHAINS` fixtures solved by logic; chain hints that spell out the contradiction |
-| 6 | E3 — Yield measurement spike | Numbers in the log; the mini size chosen (D6′) |
+| 6 | E3 — Yield measurement spike | Numbers in the log and `research/kakuro-feasibility-findings.md`; mini = 6×6 (D6′); 13×13 deferred |
 | 7 | E4 — Layout + fill + clue derivation | "New puzzle" produces a fresh board |
 | 8 | E5 — Difficulty configs + `generateKakuro` + benchmark | The difficulty and size pickers go live; hub card live |
 | 9 | R1 — Daily rotation (4 types) | Kakuro in the daily |
@@ -583,7 +584,7 @@ chain spike answers "can we walk whips over the redundant model" before E5 fixes
 | 7 | Non-null assertion where the guard already existed (`useBoardStore.ts`) | **Fixed** |
 | 8 | Dev badge ran four solver passes in render; `classifyKakuro` always paid for `measureKakuro` (`KakuroDevBadge.tsx`) | **Fixed** — `classifyKakuro(shape, { metrics })`, off by default; the badge opts in |
 
-### E3 — Yield measurement spike (throwaway, no production code) ⏳
+### E3 — Yield measurement spike (throwaway, no production code) ✅
 
 The research's one hard warning is about **our** generation yield, and the K7 lesson is that a
 plan built on an unmeasured assumption gets re-sliced later at higher cost. Before E4, spend a
@@ -605,6 +606,31 @@ average** with naive templates, the mini in < 200 ms, and 13×13 inside a cron-t
 (< 5 s). If the 9×9 or mini gate fails, **stop and re-slice** — likely toward a curated template
 library and structural pre-checks (G3, G10) before E4, rather than tuning inside E4. A slow
 13×13 only defers the large size, it does not block.
+
+**Step-log (2026-10-01, measured; the record is
+[research/kakuro-feasibility-findings.md](research/kakuro-feasibility-findings.md)):**
+
+- *Process:* a throwaway scratchpad script (not committed; §6 of the findings doc says how to
+  regenerate) over **random 180°-symmetric layouts** at two or three black densities per size
+  (the plan said hand-written layouts; random ones gave 20 per config instead of one), 200 random
+  fills per config with the E1 counter, and 20 one-cell **repair** climbs toward uniqueness,
+  each accepted puzzle graded by E2's classifier with metrics. 10 configs: 6×6 ×2, 7×7 ×3,
+  9×9 ×3, 13×13 ×2.
+- *Results, in one line each:* **P(unique) for a random fill ≈ 0.1%** at every size (2 of
+  2,000) — fill-and-retry is dead; **repair converges** in 3–24 ms (6×6/7×7) and 64–500 ms
+  (9×9); **density is the lever** with a 9×9 floor near 35% black below which repair fails more
+  than it succeeds; the **natural tier distribution is hard-heavy**, so easy/medium must be
+  searched for with the classifier in the objective; **6×6 carries the full ladder** — mini
+  decided; **13×13 fails the 5 s gate** (0/3 repairs at 33% in 60 s, 1/3 at 39% in 32 s) because
+  "count solutions" stops being a cheap objective there — large size deferred.
+- *Gates:* 9×9 < 1 s — **pass** at ≥ 34% black (fail at 29%); mini < 200 ms — **pass**;
+  13×13 < 5 s — **fail, deferred** (the plan's own rule: it does not block).
+- *Divergence:* random layouts instead of hand-written ones (more data, same question); the
+  stand-in layout generator saturates near 34% black at 9×9, so the high-density 9×9 regime is
+  unmeasured until E4's edges-inward generator exists. Recorded as open question 1.
+- *Learnings:* L15, L16 in the log. The first 13×13 attempt ran unbounded for 52 minutes before
+  being stopped — a spike needs a wall-clock cap per attempt from the start.
+- *Blockers:* none; E4 proceeds at 6/7/9 with the findings as its design inputs.
 
 ### E4 — Layout generator + digit fill + clue derivation ⏳
 
