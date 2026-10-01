@@ -605,8 +605,9 @@ Raising the floors is **not** a substitute and buys nothing; the research doc ex
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** `feature/kakuro`
 > **Status:** 🚧 In Progress — plan written 2026-09-11; build started 2026-09-30. V0 (looks-only
-> board) and V1 (types, layout rules, two baked fixtures) merged 2026-10-01; V2 (playable on the
-> real board at `/play?variant=kakuro`) built. Full plan:
+> board), V1 (types, layout rules, two baked fixtures) and V2 (playable on the real board at
+> `/play?variant=kakuro`) merged 2026-10-01; E1 (exact solver, uniqueness proven, solver-driven
+> Hint) built. Full plan:
 > [kakuro-implementation-plan.md](kakuro-implementation-plan.md) · running log (decisions, research
 > gaps, bugs, learnings, measurements): [kakuro-log.md](kakuro-log.md)
 > **Research:** [kakuro.md](research/kakuro.md) ·

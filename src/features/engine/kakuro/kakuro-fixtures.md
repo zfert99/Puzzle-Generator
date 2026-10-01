@@ -42,9 +42,9 @@ a digit repeated within a run.
 
 Both layouts were drawn by hand to the layout rules. The digits were **not** typed by hand: a
 throwaway script searched for a fill whose clues have exactly one solution (details and timings
-in [kakuro-log.md](../../../../Docs/kakuro-log.md) → Measurements). That script is not in the
-repo, so **the repo does not yet prove these are unique** — the tests here check that they are
-legal and self-consistent. Slice E1's solver adds the uniqueness test.
+in [kakuro-log.md](../../../../Docs/kakuro-log.md) → Measurements). The tests here check that
+they are legal and self-consistent; **uniqueness is proven in-repo by `kakuro-solver.test.ts`**
+(slice E1), which also checks that the one solution the solver finds is the baked one.
 
 `difficulty` on both is a **placeholder** (`'medium'`). Nothing can grade a Kakuro until the
 classifier exists (slice E2), which then assigns the real label.

@@ -206,3 +206,17 @@ budget (AGENTS.md §3).
 
 `BoardDifficulty` widened to `Difficulty | DailyDifficulty` — dailies store their board key
 (e.g. `killer-expert`); display surfaces prettify via `formatDailyKey`.
+
+## Kakuro hints come from the solver (October 2026, plan slice E1)
+
+For every other type `hint()` reveals a solution digit — the selected empty cell, else the
+first empty one. For a Kakuro it first asks the exact solver what **propagation alone forces**
+from the board as it stands (`deduceKakuro`, no search): the selected cell if it is one of the
+forced ones, else the first forced cell. So the first hint on the empty 7×7 fills (3,5) — the
+6-in-two run only {2,4} can make, crossed by its down runs — not the top-left white cell.
+
+The deduced digit is used **only if it equals the solution's.** From a board holding a wrong
+entry, propagation can force a digit that is consistent with the mistake but not with the
+answer, and a hint must never plant one; a contradiction (the board cannot be completed) or a
+mismatch falls through to the plain reveal. E2's logical solver will replace this with
+technique-named hints.

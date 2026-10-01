@@ -28,6 +28,10 @@
 
 ## Journal
 
+- **2026-10-01 (later)** V2 merged (#109). **E1 built**, pulled ahead of V3: exact solver
+  (`kakuro-solver.ts`) + combination view over the Killer table; both fixtures **proven unique
+  in-repo**; the Hint button places solver-deduced cells; dev badge (unique ✓ · n nodes) under the board.
+  `[measure]` uniqueness verify 0.12 ms on both fixtures (gate: 50 ms). `[learning]` L9.
 - **2026-10-01** V0 (#104) and V1 (#108) merged. **V2 built**: Kakuro is playable at
   `/play?variant=kakuro` on the real board (7×7 and 9×9 fixtures) — gutter, clue cells, 1–9
   numpad, run-mate peers and stripping, block-skipping arrows, rules body, save/resume; the
@@ -119,6 +123,7 @@
 | L6 | **Hand-authored layouts get validated by code, not by eye.** The first V0 sketch looked fine and was one white cell over the N=7 uniqueness ceiling; nothing on screen would ever have shown it | V0, 2026-09-30 |
 | L7 | **Don't fill-and-retry a fixed layout; repair the fill.** Independent random fills of one layout were unique 0 times in 3,000, while a one-cell-at-a-time hill-climb on the same layout converged. Treat "P(unique) per random fill" as ≈ 0 until E3 measures otherwise | V1 fixture authoring, 2026-09-30 |
 | L8 | **Never mutate hydrated store state to "finish" it — derive in `merge` or `setState`.** A mutation after hydration notifies no subscriber, so whatever rendered first keeps the stale slice; the bug only shows for a field a component reads on first paint, which is why `peers` (read only inside actions) hid it for months | B1, V2, 2026-10-01 |
+| L9 | **A hint from a solver must be re-checked against the answer before it is placed.** Propagation from a board that already holds a wrong digit can force a digit that is consistent with the mistake and wrong against the solution; "the solver said so" is not "it is correct" once the premises are the player's | E1, 2026-10-01 |
 | L4 | **An honest top tier is the one the published comparison set actually uses.** Before transplanting a top-tier mechanism from another puzzle (Keisan's bounded T&E), check what the publishers' hardest tier requires — Kakuro's is chains, so a guess-based Extreme would have been dishonest by construction | G5 |
 
 ## Measurements
@@ -126,4 +131,5 @@
 | Date | Commit | What | Numbers |
 |---|---|---|---|
 | 2026-09-30 | uncommitted (V1, on `bfa0fcb`) | **Random fill → unique?** Fixed 7×7 layout (32 whites), randomized run-all-different fill, derive clues, count solutions (stop at 2). Throwaway script, crude MRV counter with min/max sum pruning | **0 unique / 3,000 fills** in 2.4 s (~0.8 ms per fill+count) |
+| 2026-10-01 | E1 (uncommitted) | **Uniqueness verify time**, `countKakuroSolutions` (limit 2) on the baked fixtures, 200 runs after warm-up, Node 22 via tsx | 7×7: **0.122 ms** avg, 13 nodes. 9×9: **0.123 ms** avg, 11 nodes. Gate was < 50 ms |
 | 2026-09-30 | same | **Hill-climbed fill → unique?** Same counter (cap 300 solutions); mutate one cell to a digit legal in both its runs, accept if the solution count does not rise | 7×7 (32 whites): unique in **~2.3 s**, first restart. 9×9 (55 whites): unique in **~105 s**, first restart. One sample each — a signal for E3, not a yield figure |

@@ -9,6 +9,7 @@ import { OPERATOR_SYMBOL } from '@/features/engine/calc/calc-types';
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
 import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
+import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
 import { computePeers, toggleBit } from '../board-utils';
 import { buildBlocked, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
@@ -354,13 +355,33 @@ export const useBoardStore = create<BoardState>()(
       },
 
       hint: () => {
-        const { status, grid, solution, givens, selectedCell, candidates, peers, config, runs } = get();
+        const { status, grid, solution, givens, selectedCell, candidates, peers, config, runs, variant } = get();
         if (status !== 'playing') return;
 
-        // Prefer the selected empty cell; otherwise reveal the first empty cell.
         const isEditableEmpty = (r: number, c: number) => grid[r][c] === 0 && !givens[r][c];
         let target: { r: number; c: number } | null = null;
-        if (selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c)) {
+
+        // Kakuro: prefer a cell the SOLVER deduces from the board as it stands (propagation
+        // only, no search) — the selected cell if it is one of them, else the first. The
+        // deduced digit is used only if it matches the solution: from a board holding wrong
+        // entries, propagation can force a digit that is consistent with the mistake but not
+        // with the answer, and a hint must never plant one. Anything else falls through to
+        // the plain reveal below.
+        if (variant === 'kakuro') {
+          const { forced, contradiction } = deduceKakuro({ gridSize: config.size, runs }, grid);
+          if (!contradiction && forced.length > 0) {
+            const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
+            const pick = forced.find((f) => f.cell === selectedIndex) ?? forced[0];
+            const r = Math.floor(pick.cell / config.size);
+            const c = pick.cell % config.size;
+            if (pick.digit === solution[r][c]) target = { r, c };
+          }
+        }
+
+        // Otherwise prefer the selected empty cell, else reveal the first empty cell.
+        if (target) {
+          // deduced above
+        } else if (selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c)) {
           target = selectedCell;
         } else {
           for (let r = 0; r < config.size && !target; r++) {

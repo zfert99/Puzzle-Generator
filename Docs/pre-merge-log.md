@@ -87,6 +87,82 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
   right?". Sweep for the *sink* (what touches the column), not the parameter name. *(08-05)*
 - **Don't write "measured" next to a case you reasoned about** — and when a status code could come
   from more than one guard, read the response body. *(08-05)*
+- **Never pipe `npm run lint` through `tail`/`head`** — eslint's errors sit above the final blank
+  line, so `| tail -1` reads as a pass. Check the exit code or capture the whole output. *(10-01)*
+
+---
+
+## 2026-10-01 — Kakuro E1: exact solver, uniqueness proven, solver-driven Hint
+
+Branch `feature/kakuro-e1` on `bb7eaca` (main, after V2). Taken ahead of V3 (PDF) — see the plan's
+E1 step-log for why. New: `kakuro-combinations.ts` (a view over the Killer table), `kakuro-solver.ts`
+(propagation + MRV search + deduction), `KakuroDevBadge`; the store's `hint` prefers a
+solver-deduced cell for Kakuro. ~470 non-test code lines, ~330 test lines, ~330 doc lines —
+**over the ~400 guideline**; the solver and its fuzz/degenerate tests are one unit, and the hint
+wiring is the slice's visible acceptance (plan L5).
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 77 files, **643 passed**, 0 failed — 23 new (combinations 5, solver 14, store 3, badge 1) |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | `benchmark-kakuro.ts` does not exist yet (plan: E5). Measured ad hoc: uniqueness verify **0.12 ms** avg on both fixtures (7×7: 13 nodes, 9×9: 11 nodes), 200 runs after warm-up — the plan's gate was 50 ms. Recorded in `kakuro-log.md` → Measurements |
+
+### Findings
+
+None blocking. Two things established while building:
+
+- Propagation alone solves the 3×3 test puzzle outright, so the "hint prefers a deduced cell over
+  the first empty cell" test could not be written on it — it uses the 7×7, where exactly two
+  cells are forced from empty and neither is in row 0.
+- A hint from the solver **must be checked against the solution** before placing: from a board
+  holding a wrong entry, propagation can force a digit consistent with the mistake. `hint` now
+  does; a test plants a 9 in a 4-in-two run and asserts the fallback reveal.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. AI-written logic re-derived:
+
+- The feasibility filter is **necessary, not sufficient** (no one-to-one matching check) — stated
+  in the doc; soundness is covered by the 150-grid fuzz against an independent brute force that
+  shares nothing with the solver but the run list, requiring *exact* counts (up to 50), and by
+  "every forced digit equals the baked solution" on both fixtures.
+- The ring-buffer queue cannot overflow: a run is queued at most once at a time (`queued` flag),
+  so ≤ `runs.length` entries are ever pending — the buffer is exactly that size.
+- Duplicate-fixed-digit detection, the all-different strip excluding the cell's own fixed bit, and
+  the re-queue after a mid-loop fix were each re-read after an earlier draft of the loop had a
+  garbled no-op in it (caught on re-read before any test ran).
+
+### Docs sweep
+
+Mirrored `.md` for the three new source files; `useBoardStore.md`, `PlayExperience.md`,
+`kakuro-fixtures.md` updated ("uniqueness proven in-repo" replaces "not yet proven"). Reverse
+sweep: the V1 step-log's "owed to E1" and the earlier pre-merge entries are historical and left.
+Plan E1 step-log; log journal, L9, measurement; roadmap + project-status lines.
+
+### Verified vs read
+
+- **Verified:** the table above; in the browser — badge reads "unique ✓ · 13 nodes" (a first draft also showed ms; `react-hooks/purity` rejects `performance.now()` in render and CI caught it — my local lint run had its errors hidden behind a `tail -1`),
+  three Hints place (3,5)=4, (3,6)=2 then (0,2)=6, resume keeps them, fresh tab has no console
+  errors. (An error seen in the original tab was stale console history from before the V2 merge
+  fix — confirmed by opening a fresh tab.)
+- **Read only:** light theme; the 9×9 hint path in the browser (unit-tested only).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lessons
+
+- **Never pipe `npm run lint` through `tail`/`head`.** eslint prints its errors *above* the final
+  blank line; `| tail -1` showed only the script banner and read as a pass. CI caught two
+  `react-hooks/purity` errors the local run had hidden. Check the exit code, or capture the whole
+  output and grep it.
+- **The browser pane's console history survives navigation.** Before attributing a console error
+  to the current code, reproduce it in a fresh tab; otherwise a fixed bug keeps "failing".
 
 ---
 
