@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useBoardStore } from './useBoardStore';
 import { hasBit } from '../board-utils';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
-import { KAKURO_FIXTURE_7X7, parseKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
+import { KAKURO_FIXTURE_7X7_CHAINS, parseKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
 
 // A valid 4x4 solution with two holes at (0,0) and (0,1).
 const SOLUTION = [
@@ -283,7 +283,7 @@ describe('Kakuro', () => {
   });
 
   it('never locks a digit out — there is no per-digit count without houses', () => {
-    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7_CHAINS);
     const store = useBoardStore.getState();
     // Sudoku would refuse an 8th instance of a digit on a 7×7 (`placed >= size`). Put a 1 in the
     // first eight white cells — right or wrong — and every one must land.
@@ -301,7 +301,7 @@ describe('Kakuro', () => {
     // From the empty 7×7, propagation forces exactly two cells — (3,5) = 4 and (3,6) = 2, the
     // 6-in-two run {2,4} crossed by its down runs — and nothing in row 0. A plain reveal would
     // fill the first empty cell, (0,2); the solver-driven hint fills a forced one.
-    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7_CHAINS);
     useBoardStore.getState().hint();
     const s = useBoardStore.getState();
     expect(s.grid[3][5]).toBe(4);
@@ -309,7 +309,7 @@ describe('Kakuro', () => {
   });
 
   it('hints the selected cell when the solver forces it', () => {
-    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7_CHAINS);
     const store = useBoardStore.getState();
     store.selectCell(3, 6);
     store.hint();
@@ -324,7 +324,7 @@ describe('Kakuro', () => {
     // 6-in-two's down runs force: propagation now forces (3,5) to a digit that is NOT the answer.
     // The hint must not place that, nor fall back to a blind reveal while another deduced cell
     // is still correct — it should find the next forced cell that agrees with the solution.
-    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7_CHAINS);
     const store = useBoardStore.getState();
     const beforeHint = useBoardStore.getState().grid.map((row) => [...row]);
     store.selectCell(2, 5);
@@ -336,7 +336,7 @@ describe('Kakuro', () => {
     s.grid.forEach((row, r) => row.forEach((v, c) => { if (v !== beforeHint[r][c] && !(r === 2 && c === 5)) changed.push([r, c]); }));
     expect(changed).toHaveLength(1);
     const [[r, c]] = changed;
-    expect(s.grid[r][c]).toBe(KAKURO_FIXTURE_7X7.solution[r][c]);
+    expect(s.grid[r][c]).toBe(KAKURO_FIXTURE_7X7_CHAINS.solution[r][c]);
   });
 
   it('falls back to the answer when the board holds a mistake the solver cannot see past', () => {

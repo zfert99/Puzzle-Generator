@@ -10,6 +10,7 @@ import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
 import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
 import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
+import { explainKakuroHint, type KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
 import { computePeers, toggleBit } from '../board-utils';
 import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
@@ -49,6 +50,19 @@ export type BoardPuzzle =
   | (Omit<KakuroPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
 
 export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
+
+/**
+ * What the last Hint did and why — shown under the board. Only the logical solver produces a
+ * reason (Kakuro today); a plain reveal records `technique: null` with a one-line note.
+ */
+export interface HintNote {
+  cell: number;
+  digit: number;
+  technique: KakuroTechnique | null;
+  explanation: string;
+  /** The eliminations that led there, oldest first (empty for a reveal). */
+  leadUp: string[];
+}
 
 /**
  * Which surface started the current game. The board store is shared between `/play` and
@@ -121,6 +135,8 @@ export interface BoardState {
    * highlighting instead follows the app-wide `errorHighlight` setting.
    */
   errorsRevealed: boolean;
+  /** The last hint's reason, or `null`. Session state: cleared on a new game, never persisted. */
+  lastHint: HintNote | null;
 
   // Actions
   startNewGame: (puzzle: BoardPuzzle, mode?: BoardMode, dailyDate?: string | null) => void;
@@ -228,6 +244,7 @@ export const useBoardStore = create<BoardState>()(
       elapsedTime: 0,
       mistakes: 0,
       errorsRevealed: false,
+      lastHint: null,
 
       startNewGame: (puzzle: BoardPuzzle, mode: BoardMode = 'play', dailyDate: string | null = null) => {
         const size = puzzle.gridSize as GridSize;
@@ -270,6 +287,7 @@ export const useBoardStore = create<BoardState>()(
           elapsedTime: 0,
           mistakes: 0,
           errorsRevealed: false,
+          lastHint: null,
         });
         // Drop any history from a previous game so the first move can't be undone
         // "before" the puzzle started.
@@ -368,22 +386,35 @@ export const useBoardStore = create<BoardState>()(
 
         const isEditableEmpty = (r: number, c: number) => grid[r][c] === 0 && !givens[r][c];
         let target: { r: number; c: number } | null = null;
+        let note: HintNote | null = null;
+        const agrees = (f: { cell: number; digit: number }) =>
+          f.digit === solution[Math.floor(f.cell / config.size)][f.cell % config.size];
 
-        // Kakuro: prefer a cell the SOLVER deduces from the board as it stands (propagation
-        // only, no search) — the selected cell if it is one of them, else the first forced cell
-        // whose digit agrees with the solution. The agreement check matters: from a board
-        // holding a wrong entry, propagation can force a digit that is consistent with the
-        // mistake but not with the answer, and a hint must never plant one — but one bad forced
-        // cell must not discard the rest, which may still be sound deductions. Nothing usable
-        // falls through to the plain reveal below.
+        // Kakuro: a hint is a DEDUCTION, not a reveal, whenever the solvers can make one from the
+        // board as it stands. First choice is the logical solver's next placement — a named
+        // technique with a plain-English reason ("16-in-two: only {7,9}"); second is the exact
+        // solver's propagation (sound, but unexplained): the selected cell if it is forced, else
+        // the first forced cell. Either is used only if its digit agrees with the solution: from
+        // a board holding a wrong entry, a deduction can be consistent with the mistake and wrong
+        // against the answer, and a hint must never plant one — but one bad forced cell must not
+        // discard the rest. Nothing usable falls through to the plain reveal below.
         if (variant === 'kakuro') {
-          const { forced, contradiction } = deduceKakuro({ gridSize: config.size, runs }, grid);
-          if (!contradiction) {
-            const agrees = (f: { cell: number; digit: number }) =>
-              f.digit === solution[Math.floor(f.cell / config.size)][f.cell % config.size];
-            const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
-            const pick = forced.find((f) => f.cell === selectedIndex && agrees(f)) ?? forced.find(agrees);
-            if (pick) target = { r: Math.floor(pick.cell / config.size), c: pick.cell % config.size };
+          const shape = { gridSize: config.size, runs };
+          const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
+          const preferCell = selectedIndex !== -1 && isEditableEmpty(selectedCell!.r, selectedCell!.c) ? selectedIndex : undefined;
+          const explained = explainKakuroHint(shape, grid, { preferCell });
+          if (explained && agrees(explained)) {
+            target = { r: Math.floor(explained.cell / config.size), c: explained.cell % config.size };
+            note = { cell: explained.cell, digit: explained.digit, technique: explained.technique, explanation: explained.explanation, leadUp: explained.leadUp };
+          } else {
+            const { forced, contradiction } = deduceKakuro(shape, grid);
+            if (!contradiction) {
+              const pick = forced.find((f) => f.cell === selectedIndex && agrees(f)) ?? forced.find(agrees);
+              if (pick) {
+                target = { r: Math.floor(pick.cell / config.size), c: pick.cell % config.size };
+                note = { ...pick, technique: null, explanation: 'Forced by the runs it sits in (no single named step)', leadUp: [] };
+              }
+            }
           }
         }
 
@@ -412,7 +443,10 @@ export const useBoardStore = create<BoardState>()(
           nextCandidates[Math.floor(peer / config.size)][peer % config.size] &= bit;
         }
         const solved = nextGrid.every((row, rr) => row.every((v, cc) => v === solution[rr][cc]));
-        set({ grid: nextGrid, candidates: nextCandidates, selectedCell: target, status: solved ? 'solved' : 'playing' });
+        if (!note) {
+          note = { cell: r * config.size + c, digit: value, technique: null, explanation: `Revealed ${value} at row ${r + 1}, column ${c + 1}`, leadUp: [] };
+        }
+        set({ grid: nextGrid, candidates: nextCandidates, selectedCell: target, status: solved ? 'solved' : 'playing', lastHint: note });
         // Freeze a completed grid (view-only) — see the note in `inputDigit`.
         if (solved) useBoardStore.temporal.getState().clear();
       },

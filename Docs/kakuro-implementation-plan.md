@@ -4,9 +4,10 @@
 > [#104](https://github.com/zfert99/Puzzle-Generator/pull/104) and V1
 > [#108](https://github.com/zfert99/Puzzle-Generator/pull/108), V2
 > [#109](https://github.com/zfert99/Puzzle-Generator/pull/109) and E1
-> [#110](https://github.com/zfert99/Puzzle-Generator/pull/110) merged 2026-10-01, plus a review
-> follow-up — V3 (PDF) deferred behind E1, see its step-log) · **Branch:** one per slice off
-> `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`) ·
+> [#110](https://github.com/zfert99/Puzzle-Generator/pull/110) and the review follow-up
+> [#111](https://github.com/zfert99/Puzzle-Generator/pull/111) merged 2026-10-01; **E2a built,
+> in review** — V3 (PDF) still deferred, E2b (chains) next) · **Branch:** one per slice off
+> `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -188,7 +189,8 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | 2 | V2 — Board on the baked puzzle | A playable Kakuro at `/play?variant=kakuro` |
 | 3 | V3 — PDF on the baked puzzle | A printable Kakuro page in the booklet |
 | 4 | E1 — Combination table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixture |
-| 5 | E2 — Logical solver + classifier | A difficulty badge and technique-by-technique hints |
+| 5 | E2a — Logical solver T1–T3 + classifier + metrics + scorer | Easy/medium/hard Kakuro graded by the solver; hints that name their technique and show the lead-up |
+| 5′ | E2b — Chain tiers (T4 whips, T5 g-whips) | Expert/extreme grades; the `*_CHAINS` fixtures finally solved by logic |
 | 6 | E3 — Yield measurement spike | Numbers in the log; the mini size chosen (D6′) |
 | 7 | E4 — Layout + fill + clue derivation | "New puzzle" produces a fresh board |
 | 8 | E5 — Difficulty configs + `generateKakuro` + benchmark | The difficulty and size pickers go live; hub card live |
@@ -431,7 +433,7 @@ in one PR; recorded here in full at the owner's request):**
 follow-up). The `/code-review` run was triggered by the owner (it is billed); the agent fixed
 and re-reported.
 
-### E2 — Logical solver (technique classifier) + instrumentation ⏳
+### E2 — Logical solver (technique classifier) + instrumentation 🚧 (E2a ✅ built · E2b ⏳)
 
 - Tier *definitions* follow Simonis (G9): a puzzle's tier is the **weakest technique level that
   finishes it search-free**. This is ordinal, not a weighted sum — the scorer below only orders
@@ -472,6 +474,45 @@ and re-reported.
 
 **Gate:** soundness clean on every fixture; each fixture's tier and technique list reported; the
 chain spike answers "can we walk whips over the redundant model" before E5 fixes the T4 bound.
+
+**Step-log — E2a (2026-10-01, built, in review):**
+
+- *Re-slice:* E2 is now **E2a** (tiers 1–3, classifier, metrics, scorer, explained hints — this
+  step) and **E2b** (the chain engine `kakuro-chains.ts`, T4/T5 — next). The chain model is the
+  plan's largest unknown and spec'd as its own spike; everything else was buildable and visible
+  now, so it shipped first.
+- *Process:* `kakuro-logical-solver.ts` — a class (no inheritance) with eight one-deduction-per-
+  call techniques in tier order (`comboRestriction`, `nakedSingle` / `hiddenSingle`,
+  `feasibleCombos` / `nakedSubset`, `hiddenSubset`, `sumBounds`, `runAssignments`), `step()` for
+  explaining and `solve()` for grading; `classifyKakuro` (tier → easy/medium/hard, or
+  `'unrated'` when the ladder stalls — never a guess, D8); `measureKakuro` (NCELL, MRL, ACRL,
+  density, histogram, magic runs, `fixed`, `implied`, `rating`); `explainKakuroHint` (first
+  placement with technique + reason + lead-up, preferring the selected cell within a short
+  detour). `kakuro-score.ts` — the two-factor scorer, weights seeded from the ladder.
+  `KakuroDifficulty` gained `'unrated'`. **Fixtures re-cut:** the served set is now easy /
+  medium / hard at both sizes, each found by a throwaway hill-climb whose objective was
+  "unique AND finishable by the ladder at tier N" (the repo's own solvers as the scorer), and
+  each labelled exactly what `classifyKakuro` says (a test pins it); the two original fills
+  became `*_CHAINS` test fixtures (unique, but T1–3 stall at 27 / 29 undecided cells — E2b's
+  material). Board: the Kakuro menu offers easy/medium/hard (expert/extreme locked until the
+  generator), the header shows the classifier's grade, the Hint places the logical solver's
+  next placement and `HintNote` shows its reason and lead-up under the board, the dev badge
+  shows grade/score/techniques/metrics. 23 new tests incl. soundness on all fixtures + random
+  unique grids (placements equal the solution; no elimination removes a solution digit), tier
+  separation (medium not solved at T1, hard not at T2), and the e2e asserts the explained hint.
+- *Bug found and fixed (B5):* the first hidden-pair draft was unsound — Sudoku's hidden pair
+  assumes every house contains every digit; a Kakuro run need not. It placed a wrong digit on
+  a fixture on the very first run; the rule now only considers digits every remaining
+  combination requires (as hidden single already did).
+- *Measured:* classifying a 9×9 ~6 ms; `fixed/implied/rating` per served fixture in
+  `kakuro-logical-solver.md`. Random fills of the layouts were **never** ladder-solvable
+  either — the hill-climb got there in 0.5–2.4 s (7×7) and 11–90 s (9×9), one restart needed
+  for the 9×9 medium (an early uniqueness dead end). Logged under Measurements: the generator
+  (E4/E5) will need the same "repair toward the objective" loop, not fill-and-retry (L7).
+- *Not done, deliberately:* locked candidates (collapses to hidden single in Kakuro — two runs
+  meet in one cell), surface sums (E2b's accelerator), and the T&E tier (plan: never).
+- *Blockers:* none. **Open for E2b:** the `*_CHAINS` fixtures are the acceptance test — whips
+  over Berthier's redundant-variable model should finish both.
 
 ### E3 — Yield measurement spike (throwaway, no production code) ⏳
 

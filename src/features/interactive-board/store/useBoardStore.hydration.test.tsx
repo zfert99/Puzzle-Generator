@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { KAKURO_FIXTURE_7X7 } from '@/features/engine/kakuro/kakuro-fixtures';
+import { KAKURO_FIXTURE_7X7_CHAINS } from '@/features/engine/kakuro/kakuro-fixtures';
 import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
 import { useBoardStore } from './useBoardStore';
 
@@ -49,7 +49,7 @@ beforeEach(() => {
 
 describe('rehydrating a saved game rebuilds every derived field', () => {
   it('Kakuro: blocked, cellToRuns, clues and run-mate peers come back', async () => {
-    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7_CHAINS);
     const saved = snapshotAndWipe();
     expect(JSON.parse(saved).state.runs).toHaveLength(20);
     expect(JSON.parse(saved).state.blocked).toBeUndefined(); // derived, never persisted
