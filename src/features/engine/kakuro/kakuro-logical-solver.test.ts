@@ -11,6 +11,7 @@ import {
 } from './kakuro-logical-solver';
 import { scoreKakuroSolve } from './kakuro-score';
 import { countKakuroSolutions } from './kakuro-solver';
+import { popcount as popcountOf } from '../grid-utils';
 import type { KakuroPuzzle } from './kakuro-types';
 
 // The smallest real puzzle: 3×3, black in two opposite corners.
@@ -104,6 +105,44 @@ describe('KakuroLogicalSolver', () => {
     expect(new KakuroLogicalSolver(hard7).solve({ maxTier: 3 }).solved).toBe(true);
   });
 
+  it('fires the hidden pair only for digits the run MUST contain, and makes the right cut (B5)', () => {
+    // Row 0 is 28-in-four: {4,7,8,9} or {5,6,8,9} — so 8 and 9 are required, 4/5/6/7 are not.
+    // Column sums 7 and 8 keep 8 and 9 out of the first two cells, confining both to the last
+    // two: the hidden pair must restrict exactly those two cells to {8,9} and touch nothing else.
+    const solution = [
+      [4, 7, 8, 9],
+      [3, 1, 4, 2],
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ];
+    const shape = { gridSize: 4, runs: deriveRuns(solution) };
+    const result = new KakuroLogicalSolver(shape).solve({ recordSteps: true });
+
+    const pairs = result.steps.filter((s) => s.technique === 'hiddenSubset');
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].explanation).toMatch(/must contain 8 and 9/);
+    expect(pairs[0].eliminated.map((e) => e.cell).sort()).toEqual([2, 3]);
+    for (const { cell, mask } of pairs[0].eliminated) {
+      expect(mask & 0b110000000, `cell ${cell} must keep 8 and 9`).toBe(0);
+    }
+    assertSound({ variant: 'kakuro', gridSize: 4, grid: [], solution, runs: shape.runs, difficulty: 'unrated' }, result.steps);
+  });
+
+  it('reports a contradiction for a complete run with the wrong sum, and for a repeated digit', () => {
+    const wrongSum = TINY.solution.map((row) => [...row]);
+    wrongSum[0][1] = 3; // top across run 4-in-two now reads 3 + 3: wrong sum AND a repeat
+    expect(new KakuroLogicalSolver(TINY, wrongSum).solve().contradiction).toBe(true);
+
+    const repeat = TINY.solution.map((row) => row.map(() => 0));
+    repeat[1][0] = 2; // (1,0) and (1,1) both 2 in the 7-in-three run; sum still open
+    repeat[1][1] = 2;
+    expect(new KakuroLogicalSolver(TINY, repeat).solve().contradiction).toBe(true);
+
+    const over = TINY.solution.map((row) => row.map(() => 0));
+    over[1][0] = 9; // 9 alone already exceeds the 7-in-three run
+    expect(new KakuroLogicalSolver(TINY, over).solve().contradiction).toBe(true);
+  });
+
   it('reports a contradiction, never a guess, when the grid holds a wrong digit', () => {
     const grid = TINY.solution.map((row) => row.map(() => 0));
     grid[0][1] = 9; // the top across run is 4-in-two: {1,3}
@@ -163,7 +202,24 @@ describe('explainKakuroHint', () => {
     expect(hint!.leadUp[0]).toMatch(/-in-\w+ (across \(row \d\)|down \(column \d\)): /);
   });
 
-  it('prefers the selected cell when the ladder reaches it within a short detour', () => {
+  it('places the preferred cell the moment eliminations make it a single, before other cells', () => {
+    // On the easy 7×7 every cell is eventually a naked single; the ladder's default order
+    // places whichever comes first in cell order. Prefer a cell further down the board that
+    // tier-1 restriction alone already pins: the hint must land there, with ONLY eliminations
+    // in its lead-up — never a placement the player's board does not have.
+    const empty = easy7.solution.map((row) => row.map(() => 0));
+    const first = explainKakuroHint(easy7, empty)!;
+    const solver = new KakuroLogicalSolver(easy7);
+    solver.solve({ maxTier: 1, disable: ['nakedSingle'] }); // eliminations only
+    const pinned = easy7.runs.flatMap((r) => r.cells).find((cell) => cell !== first.cell && popcountOf(solver.candidatesOf(cell)) === 1)!;
+    const preferred = explainKakuroHint(easy7, empty, { preferCell: pinned })!;
+
+    expect(preferred.cell).toBe(pinned);
+    expect(preferred.digit).toBe(digitAt(easy7, pinned));
+    expect(preferred.leadUp.every((line) => !line.startsWith('Only'))).toBe(true);
+  });
+
+  it('with an explicit detour, lets earlier placements into the lead-up (a caller that applies them)', () => {
     const empty = easy7.solution.map((row) => row.map(() => 0));
     const first = explainKakuroHint(easy7, empty)!;
     // Find a cell the ladder places soon after the first one, and ask for it by preference.
@@ -175,20 +231,38 @@ describe('explainKakuroHint', () => {
       if (step.placed) placedOrder.push(step.placed.cell);
     }
     const third = placedOrder[2];
-    const preferred = explainKakuroHint(easy7, empty, { preferCell: third })!;
+    const preferred = explainKakuroHint(easy7, empty, { preferCell: third, maxDetour: 4 })!;
 
     expect(preferred.cell).toBe(third);
     expect(preferred.cell).not.toBe(first.cell);
     expect(preferred.digit).toBe(digitAt(easy7, third));
-    expect(preferred.leadUp.some((line) => line.startsWith('Only'))).toBe(true); // the earlier placements are in the lead-up
   });
 
-  it('falls back to the first placement when the preferred cell is out of reach', () => {
-    const empty = easy7.solution.map((row) => row.map(() => 0));
-    const first = explainKakuroHint(easy7, empty)!;
-    const lastCell = easy7.runs[easy7.runs.length - 1].cells.at(-1) as number;
-    const hint = explainKakuroHint(easy7, empty, { preferCell: lastCell, maxDetour: 0 })!;
-    expect(hint.cell).toBe(first.cell);
+  it('by default never detours: an unreachable preferred cell yields a real placement elsewhere, with no phantom placements in the lead-up', () => {
+    // On the chain fixture only two cells are ever placeable from empty (the 6-in-two {2,4}
+    // crossed by its down runs). Prefer a cell that is not one of them: the hint must land on a
+    // placeable cell, and nothing in its lead-up may be a placement the board does not have.
+    const empty = KAKURO_FIXTURE_7X7_CHAINS.solution.map((row) => row.map(() => 0));
+    const unreachable = KAKURO_FIXTURE_7X7_CHAINS.runs[0].cells[0]; // the ladder never places it from empty
+    const ladder = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS).solve({ recordSteps: true });
+    expect(ladder.steps.some((s) => s.placed?.cell === unreachable)).toBe(false);
+
+    const hint = explainKakuroHint(KAKURO_FIXTURE_7X7_CHAINS, empty, { preferCell: unreachable })!;
+
+    expect(hint.cell).not.toBe(unreachable);
+    expect(hint.digit).toBe(digitAt(KAKURO_FIXTURE_7X7_CHAINS, hint.cell));
+    expect(hint.leadUp.every((line) => !line.startsWith('Only'))).toBe(true);
+  });
+
+  it('honours a preferred cell that eliminations alone pin, even when another single comes first in cell order', () => {
+    // (3,6) = 2 is pinned by eliminations on the chain fixture, but (3,5) = 4 is the single the
+    // default order places first. With (3,6) preferred, the hint lands on (3,6).
+    const empty = KAKURO_FIXTURE_7X7_CHAINS.solution.map((row) => row.map(() => 0));
+    expect(explainKakuroHint(KAKURO_FIXTURE_7X7_CHAINS, empty)!.cell).toBe(3 * 7 + 5);
+    const preferred = explainKakuroHint(KAKURO_FIXTURE_7X7_CHAINS, empty, { preferCell: 3 * 7 + 6 })!;
+    expect(preferred.cell).toBe(3 * 7 + 6);
+    expect(preferred.digit).toBe(2);
+    expect(preferred.leadUp.every((line) => !line.startsWith('Only'))).toBe(true);
   });
 
   it('returns null for a contradictory grid', () => {

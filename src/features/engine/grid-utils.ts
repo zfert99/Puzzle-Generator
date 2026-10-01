@@ -30,6 +30,22 @@ export function popcount(mask: number): number {
  * Creates an empty NxN Sudoku grid filled with 0s.
  * 0 is used throughout the engine to represent an empty cell.
  */
+/**
+ * Ascending array of the digits set in a candidate bitmask (bit `d − 1` = digit `d`). The one
+ * shared mask→digits helper: the board's `board-utils` re-exports it, and the Kakuro solvers use
+ * it for explanations.
+ */
+export function maskToDigits(mask: number): number[] {
+  const digits: number[] = [];
+  let m = mask;
+  while (m !== 0) {
+    const lowestBit = m & -m;
+    digits.push(31 - Math.clz32(lowestBit) + 1);
+    m &= m - 1;
+  }
+  return digits;
+}
+
 export function createEmptyGrid(size: number): number[][] {
   // Inline bound (see MAX_GRID_SIZE) — defense-in-depth against a resource-exhaustion allocation.
   if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {

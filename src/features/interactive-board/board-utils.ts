@@ -43,14 +43,5 @@ export function hasBit(mask: number, digit: number): boolean {
   return (mask & (1 << (digit - 1))) !== 0;
 }
 
-/** Ascending array of the digits set in a candidate bitmask. */
-export function maskToDigits(mask: number): number[] {
-  const digits: number[] = [];
-  let m = mask;
-  while (m !== 0) {
-    const lowestBit = m & -m;
-    digits.push(31 - Math.clz32(lowestBit) + 1);
-    m &= m - 1;
-  }
-  return digits;
-}
+/** Ascending array of the digits set in a candidate bitmask — the engine's helper, re-exported. */
+export { maskToDigits } from '@/features/engine/grid-utils';

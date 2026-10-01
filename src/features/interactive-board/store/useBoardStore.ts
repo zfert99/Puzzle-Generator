@@ -401,7 +401,10 @@ export const useBoardStore = create<BoardState>()(
         if (variant === 'kakuro') {
           const shape = { gridSize: config.size, runs };
           const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
-          const preferCell = selectedIndex !== -1 && isEditableEmpty(selectedCell!.r, selectedCell!.c) ? selectedIndex : undefined;
+          const preferCell =
+            selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c) ? selectedIndex : undefined;
+          // No detour (the default): the selected cell is honoured only when it is the very next
+          // deduction, so the explanation always describes the board as the player sees it.
           const explained = explainKakuroHint(shape, grid, { preferCell });
           if (explained && agrees(explained)) {
             target = { r: Math.floor(explained.cell / config.size), c: explained.cell % config.size };
