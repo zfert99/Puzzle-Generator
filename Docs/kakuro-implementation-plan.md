@@ -16,9 +16,9 @@
 > [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
 > [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); E4 (generator)
 > [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up
-> [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); **E5 built, in review** — every
-> puzzle fresh at exactly the requested tier, hub card live, fixtures test data only; R1 (daily)
-> next) · **Branch:** one per slice off
+> [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
+> [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) — every puzzle fresh at exactly
+> the requested tier, hub card live, fixtures test data only; R1 (daily) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
@@ -811,7 +811,7 @@ be cron-only slow (Killer-extreme precedent, `maxDuration`), 0 generation failur
 and size; T4 must be *populated* (if fewer than ~10% of generated 9×9 land in T4 at the chosen
 bound, move the bound, don't pad with surface sums).
 
-**Step-log (2026-10-01):**
+**Step-log (2026-10-01 — PR [#122](https://github.com/zfert99/Puzzle-Generator/pull/122)):**
 
 - *Process:* **the classifier in the objective.** `hillClimb` factored out of the repair, and
   `walkToTier` built on it: from a unique puzzle, mutate one cell at a time keeping uniqueness,

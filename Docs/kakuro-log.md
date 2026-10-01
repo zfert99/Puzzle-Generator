@@ -28,7 +28,7 @@
 
 ## Journal
 
-- **2026-10-01 (E5)** Review follow-up 6 merged (#121). **E5 built**: the classifier in the
+- **2026-10-01 (E5)** Review follow-up 6 merged (#121). **E5 built** (#122): the classifier in the
   generator's objective (`walkToTier`), every puzzle fresh at exactly the requested tier at
   6/7/9, no fallback, fixtures test data only; `/api/generate` generates; the **hub card is
   live** and the deep link seeds the 6×6 mini. `[decision]` D12's hub timing **applied**; no
