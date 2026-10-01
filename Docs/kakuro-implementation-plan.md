@@ -1,8 +1,9 @@
 # Kakuro (Cross Sums) — Implementation Plan
 
-> **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 — V0 in PR
-> [#104](https://github.com/zfert99/Puzzle-Generator/pull/104), V1 built on top of it, not yet
-> committed) · **Branch:** `feature/kakuro` (cut from `main` at `d0333d5`) ·
+> **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 — V0 merged as
+> [#104](https://github.com/zfert99/Puzzle-Generator/pull/104), V1 in PR
+> [#108](https://github.com/zfert99/Puzzle-Generator/pull/108)) · **Branch:** one per slice off
+> `main` (`feature/kakuro` for V0, `feature/kakuro-v1` for V1) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -190,7 +191,7 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | 8 | E5 — Difficulty configs + `generateKakuro` + benchmark | The difficulty and size pickers go live; hub card live |
 | 9 | R1 — Daily rotation (4 types) | Kakuro in the daily |
 
-### V0 — Looks-only static board 🚧
+### V0 — Looks-only static board ✅
 
 Added 2026-09-30 at the owner's request, *ahead of* V1: before any types, fixtures or store work,
 get a page on screen that only **looks** like a Kakuro, so the visual design is settled first and
@@ -208,7 +209,7 @@ everything after it lands on something visible (D12 taken one step further).
 
 **Gate:** the owner is happy with how the empty board looks in both themes.
 
-**Step-log (2026-09-30 — PR [#104](https://github.com/zfert99/Puzzle-Generator/pull/104), open):**
+**Step-log (2026-09-30 — PR [#104](https://github.com/zfert99/Puzzle-Generator/pull/104), merged 2026-10-01):**
 
 - *Process:* cut `feature/kakuro` from `main`; built the route, component, CSS module, sample
   layout, mirrored docs, and 4 tests (gutter dimensions, clue-vs-blocked marking, the sample's
@@ -244,7 +245,7 @@ everything after it lands on something visible (D12 taken one step further).
 
 **Gate:** fixtures valid by test; mirrored `.md` files in place.
 
-**Step-log (2026-09-30 — built, not yet committed):**
+**Step-log (2026-09-30 — PR [#108](https://github.com/zfert99/Puzzle-Generator/pull/108); its predecessor #106 was closed by GitHub when V0's branch was deleted, so stacked branches are not worth it here — cut each slice from `main` after the previous one merges):**
 
 - *Process:* `src/features/engine/kakuro/` now holds `kakuro-types.ts` (`Run`, `KakuroPuzzle`,
   `validateKakuroRuns`), `kakuro-layout.ts` (`deriveRuns`, `validateKakuroLayout`, `whiteMaskOf`)
