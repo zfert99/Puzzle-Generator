@@ -68,6 +68,18 @@ describe('repairToUnique', () => {
     expect(validateKakuroRuns(deriveRuns(repaired.solution), repaired.solution)).toEqual([]);
   });
 
+  it('stops within a budget shared across rounds (generateUniqueKakuro threads it into every repair)', () => {
+    const started = performance.now();
+    generateUniqueKakuro({ gridSize: 9, blackDensity: 0.38, rng: seeded(11), maxRounds: 50, timeBudgetMs: 200 });
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
+  it('scatter breaks the overlong runs an all-white start leaves above 9×9 (13×13 is deferred, but the layout must not silently fail)', () => {
+    const white = generateKakuroLayout({ gridSize: 13, blackDensity: 0.4, rng: seeded(13), maxAttempts: 50 });
+    expect(white).not.toBeNull();
+    expect(validateKakuroLayout(white!)).toEqual([]);
+  });
+
   it('stops at the wall-clock cap and reports the count it reached', () => {
     const rng = seeded(5);
     const white = generateKakuroLayout({ gridSize: 9, blackDensity: 0.38, rng })!;
@@ -80,7 +92,9 @@ describe('repairToUnique', () => {
 
 describe('generateUniqueKakuro', () => {
   it.each([6, 7, 9] as const)('makes a unique, legal, solver-graded %i×%i', (gridSize) => {
-    const puzzle = generateUniqueKakuro({ gridSize, blackDensity: gridSize === 6 ? 0.4 : 0.38, rng: seeded(gridSize) });
+    // A generous repair cap keeps the seeded run identical on a loaded runner — otherwise a
+    // wall-clock cap hit mid-repair would change which round succeeds.
+    const puzzle = generateUniqueKakuro({ gridSize, blackDensity: gridSize === 6 ? 0.4 : 0.38, rng: seeded(gridSize), repair: { msCap: 60_000 } });
     expect(puzzle).not.toBeNull();
     expect(puzzle!.variant).toBe('kakuro');
     expect(puzzle!.grid.flat().every((d) => d === 0)).toBe(true);

@@ -92,6 +92,71 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up 6: all 6 `/code-review high` findings on E4 addressed
+
+Branch `feature/kakuro-review-6` on `f19c740` (main, after E4). Table in the plan (E4 → "Review
+follow-up 6"); L21 in `kakuro-log.md`. ~70 code lines net (budget threading, `indexRuns`,
+incremental sums, overlong-strip breaking, two dead checks gone), ~35 test lines, ~60 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 82 files, **745 passed**, 0 failed — 3 new (budget kept at 300 ms / 200 ms; a 13×13 scatter passes the validator), 2 made deterministic |
+| `npm run lint` | exit 0 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Generator re-measure | 6×6 avg 23 ms (was 95), 7×7 133 ms (320), 9×9 **570–1456 ms across three runs of 30** (was 659) — the 9×9 figure is a band, not a point: a few repairs sit on plateaus to their cap. A/B on identical seeded fills: 0.63 → 0.60 ms/step at 7×7, 2.00 → 2.01 at 9×9 |
+
+### Findings (the review's, with outcomes)
+
+1. **Probabilistic test** → asserts the invariant (label = requested tier = classifier's; legal;
+   unique), accepts `generated | fixture`; seeded tests get a cap no runner hits. (L21)
+2. **Budget checked between attempts only** → one clock threaded into every repair; last resort
+   gets one more budget; bounded by `2 × timeBudgetMs` by construction; tested.
+3. **Dead checks** → removed; coin steering only for edges-inward.
+4. **Index built twice** → `indexRuns`.
+5. **Objective rescans per step** → sums nudged in place. **The premise overstated the gain**: the
+   solution count is the step's cost; measured ~0–5%. Kept (simpler, no per-step grid copy).
+6. **Scatter ignores `MAX_RUN_LENGTH`** → overlong strips broken with an interior black; 13×13
+   layout test green.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. The repair now mutates its working copy and
+the run sums in place — re-derived: `start` is never written (copied once), the two sums through
+the mutated cell are nudged by `new − old` and un-nudged on rejection, and every end-to-end test
+still passes `validateKakuroRuns` (sums match the grid) and `isKakuroUnique`. The route's bound:
+budget 6 s → worst case 12 s + one verify/classify, inside `maxDuration = 60` by construction.
+
+### Docs sweep
+
+Mirrored `kakuro-generator.md` (index, incremental sums with the honest measurement, budget,
+overlong rule, measured band) and `kakuro.md` (two budgets); plan review table + header; log
+journal + L21. Reverse sweep: "cannot hang past its maxDuration" in the E4 pre-merge entry was the
+claim finding 2 corrected — left as the record it is (this entry says what changed).
+
+### Verified vs read
+
+- **Verified:** the table; the A/B on identical seeded fills; three 9×9 runs of 30.
+- **Read only:** nothing new — no UI change.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **run by the owner** (`high`) on E4; this is its follow-up, not re-reviewed.
+
+### Lessons
+
+- **A test of a sampled outcome asserts the invariant, not the sample** — make the sampled part
+  deterministic or assert only what holds on every runner; never park a fixable test in the
+  flaky table. (L21)
+- **Measure a review's efficiency claim before and after on identical inputs** — "the scan is
+  on the hot path" was plausible and ~0%; the number belongs next to the fix so the next reader
+  does not chase it again.
+
+---
+
 ## 2026-10-01 — Kakuro E4: generator (scatter layouts, fill, repair-to-unique) — "New puzzle" real at 6/7/9
 
 Branch `feature/kakuro-e4` on `0620201` (main, after review follow-up 5). Plan E4 step-log;

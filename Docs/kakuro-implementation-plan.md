@@ -15,10 +15,10 @@
 > [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF)
 > [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
 > [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); E4 (generator)
-> [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) — "New puzzle" is real at 6/7/9,
-> scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
+> [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up — "New
+> puzzle" is real at 6/7/9, scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
-> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`) ·
+> `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -765,6 +765,18 @@ library and structural pre-checks (G3, G10) before E4, rather than tuning inside
   rejection), per-tier density bias, the fallback's removal, the hub card, the deep link's
   seed (still 7×7 — the mini is 6×6 but has no fixture to fall back to), `/api/generate`
   switching from `selectKakuroBatch` to generation.
+
+**Review follow-up 6 (2026-10-01 — hosted `/code-review high` over #120, 6 findings, all
+addressed; recorded in full):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | `kakuro.test.ts` asserted a probabilistic outcome (`source === 'generated'` for a hard 9×9 inside a 6 s wall-clock budget); the seeded end-to-end tests also depended on the size-scaled repair cap | **Fixed** — the test asserts what holds either way (the label is the requested tier *and* the classifier's; legal; unique) and accepts `generated \| fixture`; seeded tests pass a 60 s cap so a seed means the same run on any runner. Not added to the flaky table: made deterministic instead |
+| 2 | `timeBudgetMs` checked only between attempts — one attempt could run five repair caps past it, the fixture-less last resort 20 more (`kakuro.ts`) | **Fixed** — `generateUniqueKakuro` takes `timeBudgetMs` and hands each repair `min(cap, remaining)`; the entry point passes its remaining budget per attempt and gives the last resort one more budget: bounded by `2 × timeBudgetMs` by construction; tested at 300 ms / 200 ms |
+| 3 | Dead mirror-conflict check in `attemptLayout`; redundant centre-cell clause in `scatterLayout` | **Fixed** — removed; the coin steering now runs only for edges-inward |
+| 4 | Run indexing built twice (fill, repair) | **Fixed** — `indexRuns(white)` |
+| 5 | Objective re-scanned the grid (`deriveRuns`) and copied it every step | **Fixed** — run sums kept in place and nudged by the digit delta. **Measured honestly:** on identical seeded fills 0.63 → 0.60 ms/step at 7×7 and no change at 9×9 — the solution count, not the scan, is the step's cost, so the finding's premise overstated the gain; kept because it is simpler and the shape an E5 objective wants |
+| 6 | Scatter never enforced `MAX_RUN_LENGTH`, so above 9×9 it would burn 200 attempts and return `null` | **Fixed** — overlong strips are broken with an interior black after the density loop; a 13×13 layout test passes the validator |
 
 ### E5 — Difficulty configs + `generateKakuro(difficulty, { gridSize })` + benchmark ⏳
 
