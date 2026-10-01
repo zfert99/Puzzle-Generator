@@ -29,7 +29,7 @@
 ## Journal
 
 - **2026-10-01 (review 4)** E3 merged (#116). Owner ran `/code-review high` over #115 + #116:
-  **8 findings, all addressed** (table in the plan under E2b). `[bug]` **B9** the g-link was
+  **8 findings, all addressed** (#117; table in the plan under E2b). `[bug]` **B9** the g-link was
   applied one way only (a true combination's digit with no holder), so a chain that killed every
   holder of a digit two open combinations both needed never noticed. Both directions now; chain
   lengths fell sharply (`*_CHAINS` 4 → 3; the served extremes graded expert and were re-baked at

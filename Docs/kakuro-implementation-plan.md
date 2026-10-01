@@ -11,8 +11,8 @@
 > [#114](https://github.com/zfert99/Puzzle-Generator/pull/114) and its review follow-up merged
 > 2026-10-01 — the full easy→extreme ladder is served at both sizes; E3 (yield spike)
 > [#116](https://github.com/zfert99/Puzzle-Generator/pull/116) — mini = 6×6, repair-not-retry,
-> density ≥ 35% at 9×9, 13×13 deferred; **review follow-up 4 (two-way g-link, extremes
-> re-baked) built, in review**; V3 (PDF) and E4 next) · **Branch:** one per slice off `main`
+> density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
+> [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF) and E4 next) · **Branch:** one per slice off `main`
 > (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`, `-review-3`,
 > `-e3`, `-review-4`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
@@ -494,7 +494,7 @@ sits on the edge; E5's distribution decides whether 12 is the right ceiling. *(C
 follow-up 4 below: the 12 was an artefact of the one-way g-link.)*
 
 **Review follow-up 4 (2026-10-01 — hosted `/code-review high` over #115 + #116, 8 findings,
-all addressed; recorded in full):**
+all addressed in [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); recorded in full):**
 
 | # | Finding (file) | Outcome |
 |---|---|---|
