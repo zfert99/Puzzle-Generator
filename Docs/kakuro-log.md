@@ -29,7 +29,7 @@
 ## Journal
 
 - **2026-10-01 (review 7)** E5 merged (#122). Owner ran `/code-review high` over it: **6
-  findings, all addressed** (table in the plan under E5). The one with teeth: the tier walk's
+  findings, all addressed** (#123; table in the plan under E5). The one with teeth: the tier walk's
   "easier than target" band was a constant — the documented gradient did not exist and the
   up-walks were plateau random walks that happened to land. Re-keyed on tier distance, then on
   how much the puzzle leans on its top tier; measured on identical seeded bases the worst-case

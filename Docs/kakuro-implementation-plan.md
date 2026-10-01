@@ -17,9 +17,9 @@
 > [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); E4 (generator)
 > [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up
 > [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
-> [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up —
-> every puzzle fresh at exactly the requested tier, hub card live, fixtures test data only;
-> R1 (daily) next) · **Branch:** one per slice off
+> [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
+> [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) — every puzzle fresh at exactly
+> the requested tier, hub card live, fixtures test data only; R1 (daily) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
@@ -856,7 +856,7 @@ bound, move the bound, don't pad with surface sums).
   few fills stall to the cap — the cron has the budget; `/play` sees ~0.3–0.8 s).
 
 **Review follow-up 7 (2026-10-01 — hosted `/code-review high` over #122, 6 findings, all
-addressed; recorded in full):**
+addressed in [#123](https://github.com/zfert99/Puzzle-Generator/pull/123); recorded in full):**
 
 | # | Finding (file) | Outcome |
 |---|---|---|
