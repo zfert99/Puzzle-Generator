@@ -15,9 +15,8 @@ needed recorded as the grade. Three things come out of it:
    grading hundreds of candidates must not pay by default.
 
 Distinct from the exact solver (`kakuro-solver.ts`), which counts solutions for the uniqueness
-gate and never explains. A class with no inheritance (AGENTS.md §1). Plan slice **E2a**: tiers
-1–3. The chain tiers (T4 whips, T5 g-whips) are **E2b** and not built — `KakuroTier` reserves
-4–5 for them.
+gate and never explains. A class with no inheritance (AGENTS.md §1). Tiers 1–3 are the technique
+ladder (plan slice E2a); tiers 4–5 are forcing chains by length (E2b, `kakuro-chains.md`).
 
 ## The ladder
 
@@ -31,6 +30,8 @@ gate and never explains. A class with no inheritance (AGENTS.md §1). Plan slice
 | 3 | `hiddenSubset` | Two digits the run **must** contain, confined to the same two cells → those cells hold only them. |
 | 3 | `sumBounds` | A candidate is impossible if, with it placed, the other cells' smallest candidates overshoot what is left, or their largest undershoot it. |
 | 3 | `runAssignments` | For a short run, enumerate every real fill (distinct digits, right sum); a candidate in no fill is gone. The exact form of what tier 2 approximates. |
+| 4 | `shortChain` | A forcing chain of at most 4 forced truths proves a candidate impossible (`kakuro-chains.ts`). |
+| 5 | `longChain` | The same, up to 12 forced truths. |
 
 Each technique makes **one** deduction and returns it as a `KakuroStep` (or `null`), so a step
 is one nameable thing and the loop restarts from the cheapest technique after every change. That is both what keeps the grade
@@ -96,9 +97,14 @@ propagation and then to a reveal.
 | 9×9 easy | 1 | restriction + singles | 55 / 55 / 1.00 |
 | 9×9 medium | 2 | + hidden singles, feasible combos | 8 / 55 / 1.00 |
 | 9×9 hard | 3 | + sum bounds, subsets, run assignments | 22 / 22 / 2.86 |
+| 7×7 expert | 4 | + one chain of 4 | 6 / 7 / — |
+| 7×7 extreme | 5 | + 7 chains, longest 10 | 6 / 6 / 4.41 |
+| 9×9 expert | 4 | + one chain of 4 | — |
+| 9×9 extreme | 5 | + 3 chains (4, 8, 7) | — |
 
-The two original fills (now `*_CHAINS`) stall at tier 3 with 27 / 29 cells undecided and are
-the E2b test material. Classifying a 9×9 takes ~6 ms.
+The two original fills (`*_CHAINS`) stall at tier 3 with 27 / 29 cells undecided and then need
+one or two chains of exactly length 4 — graded expert. Classifying a 9×9 takes ~6 ms at tier 3,
+~35 ms for an extreme.
 
 ## Known cost, deferred to E5
 

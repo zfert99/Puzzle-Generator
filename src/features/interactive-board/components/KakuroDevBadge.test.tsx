@@ -16,10 +16,12 @@ describe('KakuroDevBadge', () => {
     expect(badge).toHaveTextContent(/fixed 32/);
   });
 
-  it('says so when the ladder cannot grade a puzzle yet', () => {
+  it('reports a chain-tier puzzle with its chain technique', () => {
     useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7_CHAINS);
     render(<KakuroDevBadge />);
 
-    expect(screen.getByTestId('kakuro-dev-badge')).toHaveTextContent(/beyond tier 3/);
+    const badge = screen.getByTestId('kakuro-dev-badge');
+    expect(badge).toHaveTextContent(/ladder: expert \(tier 4\)/);
+    expect(badge).toHaveTextContent(/shortChain×1/);
   });
 });

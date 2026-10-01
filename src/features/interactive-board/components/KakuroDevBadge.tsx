@@ -33,7 +33,7 @@ export function KakuroDevBadge() {
     const techniques = Object.entries(result.techniqueCounts)
       .map(([name, count]) => `${name}×${count}`)
       .join(' ');
-    const grade = graded.tier === null ? 'beyond tier 3 (chains not built yet)' : `${graded.difficulty} (tier ${graded.tier})`;
+    const grade = graded.tier === null ? 'beyond tier 5 (no chain within the bound)' : `${graded.difficulty} (tier ${graded.tier})`;
     const score = scoreKakuroSolve(result);
     return [
       `exact: ${unique}`,

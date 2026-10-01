@@ -92,6 +92,78 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro E2b: forcing chains (tiers 4–5), full ladder served at both sizes
+
+Branch `feature/kakuro-e2b` on `7e42ef1` (main, after review follow-up 2). New:
+`kakuro-chains.ts` (the redundant-variable model and the forcing-chain search), two ladder
+techniques (`shortChain` T4 ≤ 4 links, `longChain` T5 ≤ 12), four new served fixtures (expert /
+extreme at 7×7 and 9×9), the two original fills graded expert, the Kakuro menu unlocked at every
+level. ~340 code lines, ~155 test lines, ~185 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 80 files, **707 passed**, 0 failed — 17 new/rewritten (chain engine 4, tier separation 1, classify/stall/hint rewrites, fixtures) |
+| Playwright `e2e/play.spec.ts` (Kakuro spec, dev server) | passed (now asserts expert/extreme enabled at 7×7) |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | none exist for Kakuro yet (E5). Measured ad hoc: classify ~7 ms (expert), ~35 ms (extreme 7×7); hint ~1 ms; both chain fixtures ~25 ms |
+
+### Findings
+
+None blocking. Established while building:
+
+- **Both original fills need chains of exactly 4** after the tier-3 standstill (not 3 — tested
+  at bounds 1..8), so `CHAIN_TIER4_MAX_LENGTH = 4` sits on the measured edge. Provisional until
+  E5's distribution; the four searched expert/extreme fills (chains 4 / 6, 10 / 4 / 8, 7) agree.
+- **A raw chain context missed a chain** that depended on a run with a single combination the
+  masks did not yet reflect — the 3×3 unit test caught it. Single-combination runs are now
+  asserted as facts before the supposition (not counted), and a target the facts already exclude
+  is a chain of length 0.
+- **The 7×7 extreme was the first random fill the search tried** (0.07 s): at this layout,
+  "needs long chains" is not rare — the easy ones were the hard search (L7 reversed for the top
+  tier). Logged under Measurements.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. Soundness of the chain engine is the risky
+AI-written logic; checked three ways: (1) every link in `assertCell`/`assertRun` re-read against
+the binary model (digit vs other digits of the cell, digit vs same digit in run-mates, digit vs
+combinations lacking it; combination vs other combinations, combination vs digits outside it);
+(2) a direct test supposes the TRUE digit of every white cell on all 12 fixtures at the tier-3
+standstill and asserts no chain is ever found; (3) the existing soundness sweeps (every placement
+= solution, no elimination removes a solution digit) now run with chains enabled on all fixtures
+and random unique grids. D10 (no guessing): a chain is suppose-and-derive over sound links to a
+contradiction — a proof — and the solver still never branches.
+
+### Docs sweep
+
+Mirrored `.md` for the new module and the 7 touched ones. Reverse sweep for "chains not built
+yet" / "E2b … next" / "beyond tier 3": badge, hook, menu and solver docs updated; plan status and
+slice table; log D5′ applied, journal, L14, two measurement rows; roadmap + project-status lines.
+D5′ remains "owner confirmation open" on the braid-not-whip reading.
+
+### Verified vs read
+
+- **Verified:** the table; in the browser — extreme 7×7 from the picker, header "extreme · 7×7",
+  badge "ladder: extreme (tier 5) … shortChain×5 longChain×2".
+- **Read only:** a chain-based hint in the browser (explanations checked in node only); light
+  theme.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lesson
+
+- **Test a chain engine by supposing the truth.** "Suppose the solution's digit at every cell and
+  assert no contradiction is ever derived" is a one-loop test that catches any unsound link, and
+  it is far cheaper than reasoning about each link's soundness in review.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up 2: 7 of 8 `/code-review` findings on E2a fixed, 1 recorded
 
 Branch `feature/kakuro-review-2` on `2c63408` (main, after E2a). The owner ran the hosted

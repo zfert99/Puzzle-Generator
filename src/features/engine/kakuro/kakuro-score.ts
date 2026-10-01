@@ -25,6 +25,9 @@ export const TECHNIQUE_WEIGHTS: Record<KakuroTechnique, number> = {
   hiddenSubset: 3.4,
   sumBounds: 3.0,
   runAssignments: 4.0,
+  // Chains: priced like Sudoku Explainer's forcing chains (≈ 7–9 on its scale).
+  shortChain: 7.0,
+  longChain: 9.0,
 };
 
 export interface KakuroScore {

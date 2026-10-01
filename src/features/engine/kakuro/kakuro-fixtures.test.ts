@@ -56,10 +56,10 @@ describe('baked fixtures', () => {
     }
   );
 
-  it('serves easy, medium and hard at both sizes, on the two hand-drawn layouts', () => {
+  it('serves the full ladder at both sizes, on the two hand-drawn layouts', () => {
     const whites = (solution: number[][]) => solution.flat().filter((digit) => digit > 0).length;
     for (const size of [7, 9]) {
-      for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+      for (const difficulty of ['easy', 'medium', 'hard', 'expert', 'extreme'] as const) {
         const puzzle = findKakuroFixture(size, difficulty);
         expect(puzzle, `${size}×${size} ${difficulty}`).toBeDefined();
         expect(whites(puzzle!.solution)).toBe(size === 7 ? 32 : 55);
@@ -67,7 +67,7 @@ describe('baked fixtures', () => {
       }
     }
     expect(findKakuroFixture(6, 'easy')).toBeUndefined();
-    expect(findKakuroFixture(7, 'expert')).toBeUndefined();
+    expect(findKakuroFixture(7, 'unrated')).toBeUndefined();
   });
 
   it.each(KAKURO_FIXTURES.map((puzzle) => [`${puzzle.gridSize}×${puzzle.gridSize} ${puzzle.difficulty}`, puzzle] as const))(
@@ -79,12 +79,12 @@ describe('baked fixtures', () => {
     }
   );
 
-  it('keeps the two chain fixtures unrated: the tier 1–3 ladder cannot finish them', () => {
+  it('grades the two original chain fixtures expert: stuck at tier 3, finished by chains of length 4', () => {
     for (const puzzle of [KAKURO_FIXTURE_7X7_CHAINS, KAKURO_FIXTURE_9X9_CHAINS]) {
       const graded = classifyKakuro(puzzle);
-      expect(graded.result.solved).toBe(false);
-      expect(graded.result.contradiction).toBe(false);
-      expect(graded.difficulty).toBe('unrated');
+      expect(graded.result.solved).toBe(true);
+      expect(graded).toMatchObject({ tier: 4, difficulty: 'expert' });
+      expect(graded.difficulty).toBe(puzzle.difficulty);
     }
   });
 });

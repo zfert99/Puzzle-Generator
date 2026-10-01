@@ -21,9 +21,10 @@ so the board renders the cage overlay. Classic mode is unchanged.
 **Kakuro (October 2026, plan slice V2).** A fourth toggle. Sizes are a per-variant table
 (`SIZES`, plan rule D11): Kakuro offers 7/9, and switching type falls back to the new type's
 smallest size when the current one isn't offered (7 → 9 leaving Kakuro; 4 → 7 entering it).
-Kakuro's difficulty picker offers **easy / medium / hard** (one hand-made, solver-graded
-fixture each per size — E2a); expert and extreme are shown but locked, with a note that they
-arrive with the generator (`topTiersLocked` = mini grid OR Kakuro). `VARIANT_LABEL` is the one
+Kakuro's difficulty picker offers the **full ladder** at both sizes (one hand-made, solver-graded
+fixture per size and level — E2a/E2b); unlike the Sudoku family's minis, a 7×7 Kakuro has an
+expert and an extreme, so the "9×9 only" lock applies to every type but Kakuro
+(`topTiersLocked` = mini grid AND not Kakuro). `VARIANT_LABEL` is the one
 place the four display names live (Continue label, toggle). A Kakuro's difficulty is a real value (`'easy'`…, or the
 literal `'unrated'`), so the Continue label and header show it as-is.
 

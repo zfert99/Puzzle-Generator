@@ -146,12 +146,12 @@ test.describe('Interactive play', () => {
   test('plays a Kakuro: clue gutter, 1–9 numpad at 7×7, black cells refuse input, explained hint', async ({ page }) => {
     await page.goto('/play?variant=kakuro');
 
-    // The deep link preselects Kakuro at its mini size. Easy/medium/hard are hand-made and
-    // graded by the solver; expert/extreme wait for the generator, so they are offered but locked.
+    // The deep link preselects Kakuro at its mini size. Every level is hand-made and graded by
+    // the solver — the full ladder is open even at 7×7 (unlike the Sudoku family's minis).
     await expect(page.getByRole('button', { name: /^kakuro$/i })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: '7×7', exact: true })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('button', { name: 'expert', exact: true })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'hard', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'expert', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: /^Play$/ }).click();
 
     const grid = page.getByRole('grid', { name: /kakuro board/i });

@@ -77,9 +77,8 @@ export default function PlayExperience() {
   const [resumeHandled, setResumeHandled] = useState(false);
   const isKiller = variant === 'killer';
   const isCalc = variant === 'calc';
-  // Kakuro has no generator yet: hand-baked easy/medium/hard per size, graded by the logical
-  // solver's ladder; expert and extreme arrive with the chain tiers (Kakuro plan E2b) and the
-  // generator (E5).
+  // Kakuro has no generator yet: one hand-baked puzzle per size and tier, graded by the logical
+  // solver (easy…hard by technique tier, expert/extreme by forcing-chain length).
   const isKakuro = variant === 'kakuro';
   const wantsResume = searchParams.get('resume') === '1';
 
@@ -114,12 +113,12 @@ export default function PlayExperience() {
   }, [view, status, tick]);
 
   const miniGrid = gridSize !== 9;
-  // Expert/Extreme are 9×9-only for the Sudoku family, and not yet available at all for Kakuro.
-  const topTiersLocked = miniGrid || isKakuro;
+  // Expert/Extreme are 9×9-only for the Sudoku family; Kakuro ships its full ladder at both sizes.
+  const topTiersLocked = miniGrid && !isKakuro;
 
   const handleGridSizeChange = (size: SelectableSize) => {
     setGridSize(size);
-    if (size !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    if (size !== 9 && !isKakuro && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const handleVariantChange = (v: PlayVariant) => {
@@ -129,7 +128,7 @@ export default function PlayExperience() {
     // variant, so the guard is uniform: clamp them off any non-9 grid.
     const nextSize = SIZES[v].includes(gridSize) ? gridSize : SIZES[v][0];
     if (nextSize !== gridSize) setGridSize(nextSize);
-    if ((nextSize !== 9 || v === 'kakuro') && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    if (nextSize !== 9 && v !== 'kakuro' && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const startFresh = async () => {
@@ -239,7 +238,7 @@ export default function PlayExperience() {
           </div>
           {isKakuro ? (
             <p className="text-xs text-ink-soft text-center mt-2">
-              Kakuro is new: hand-made puzzles, graded by the solver. Expert and Extreme arrive with the generator.
+              Kakuro is new: one hand-made puzzle per size and level, graded by the solver — every level is logic-only.
             </p>
           ) : (
             miniGrid && (
