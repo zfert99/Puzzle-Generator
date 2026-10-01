@@ -603,8 +603,9 @@ Raising the floors is **not** a substitute and buys nothing; the research doc ex
 ## Phase 10 — Kakuro (Cross Sums) ➕
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
-> **Branch:** fresh (`feature/kakuro`)
-> **Status:** 📋 Planned — plan written 2026-09-11, nothing built. Full plan:
+> **Branch:** `feature/kakuro`
+> **Status:** 🚧 In Progress — plan written 2026-09-11; build started 2026-09-30 with slice V0 (a
+> looks-only static board at `/kakuro`, ahead of V1). Full plan:
 > [kakuro-implementation-plan.md](kakuro-implementation-plan.md) · running log (decisions, research
 > gaps, bugs, learnings, measurements): [kakuro-log.md](kakuro-log.md)
 > **Research:** [kakuro.md](research/kakuro.md) ·
@@ -774,11 +775,11 @@ Once the Phase 6 Killer engine lands, KenKen is a natural extension of the same
 > (`src/features/engine/killer/`), reusing only variant-agnostic primitives (grid fill, the
 > classic `HumanSolver` techniques). See the [Killer plan](archive/killer-sudoku-implementation-plan.md).
 
-### Kakuro / Cross Sums 📋 Planned — now Phase 10 (plan written September 2026)
+### Kakuro / Cross Sums 🚧 In Progress — now Phase 10 (plan written September 2026)
 
 **Promoted to [Phase 10](#phase-10--kakuro-cross-sums-) — plan:
 [kakuro-implementation-plan.md](kakuro-implementation-plan.md), running log:
-[kakuro-log.md](kakuro-log.md).** Nothing built yet; the entry below is the research summary that
+[kakuro-log.md](kakuro-log.md).** Build started 2026-09-30 (slice V0); the entry below is the research summary that
 motivated it. Research: [kakuro.md](research/kakuro.md). A genuine **fourth type**, not a
 cage variant — no row/column/box constraint at all, only per-run sum + all-different, so it needs
 its own engine module rather than an extension of `killer/`. Headlines from the research:

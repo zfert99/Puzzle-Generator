@@ -197,6 +197,65 @@ addressed above. Not re-run after the third commit; the owner called the loop cl
 
 ---
 
+## 2026-09-30 — Kakuro V0: looks-only static board at `/kakuro`
+
+Branch `feature/kakuro` on `d0333d5`. First code of Phase 10: a Server-Component board that draws
+a hand-written 7×7 layout (white cells, black cells, clue gutter, diagonals) with no sums, no
+input and no store. 384 changed lines, ~225 of them code/CSS/tests.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 71 files, **578 passed**, 0 failed (54 s) — 4 new in `KakuroBoard.test.tsx` |
+| `npm run build` | green; `/kakuro` prerendered static (○) |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | not run — no engine/solver core touched |
+
+### Findings
+
+None blocking. One caught while authoring, fixed before the first run: the first sketch of the
+sample layout had 35 white cells, one over the N=7 uniqueness ceiling (34); redrawn at 32.
+
+### Invariants checked
+
+None of the standing ones apply — the diff touches no slot key, no write, no query, no migration,
+no dependency. The AI-written logic worth re-deriving was `buildDisplayCells` (which black cells
+get a diagonal): worked by hand for the 2×2 case and pinned as a test (3 clue / 3 blocked /
+3 white).
+
+### Docs sweep
+
+Mirrored `.md` for all three new source files. Status flipped Planned → In Progress in
+`roadmap.md` (both Phase 10 mentions), `README.md`, `Docs/README.md`, `project-status.md`; V0 added
+to the plan (slice table, section, step-log, D12 amendment) and the running log. Two remaining
+"V1–V3" mentions (roadmap prose, log journal 09-11) left as written — still true, and the journal
+line is a dated record.
+
+### Verified vs read
+
+- **Verified:** tests, build, lint, markdownlint; the page loads at `/puzzles/kakuro` with no
+  console errors, 64 cells, `robots: noindex`, title from the layout template; relative links in
+  the new docs resolve.
+- **Read / reasoned only:** the sample layout's connectivity and run lengths (2–7) were checked by
+  hand, not by code — only its symmetry is asserted. The light theme was not looked at by the
+  agent; the visual verdict in both themes is the owner's.
+- **Not covered:** `e2e/a11y.spec.ts` enumerates its routes and was not extended to `/kakuro`
+  (a temporary workbench route, deleted at V2). The allowlist lesson applies when V2 lands.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lesson
+
+- **A hand-authored fixture that "looks right" needs a coded check for every rule it claims to
+  obey** — the over-ceiling sketch rendered identically to a valid one. Until V1's `deriveRuns`
+  validates layouts, treat any claim beyond the asserted symmetry as unverified.
+
+---
+
 ## 2026-09-11 — Docs reorganisation: six docs archived, pre-merge log rotated, index rewritten
 
 Branch `docs/archive-reorg-sept-2026` on `99b87ee`. **Docs only — no `.ts`/`.tsx` touched**, so no
