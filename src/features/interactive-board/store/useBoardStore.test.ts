@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useBoardStore } from './useBoardStore';
 import { hasBit } from '../board-utils';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
+import { KAKURO_FIXTURE_7X7, parseKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
 
 // A valid 4x4 solution with two holes at (0,0) and (0,1).
 const SOLUTION = [
@@ -218,5 +219,87 @@ describe('timer', () => {
     store.pause();
     store.tick();
     expect(useBoardStore.getState().elapsedTime).toBe(1); // paused -> no tick
+  });
+});
+
+describe('Kakuro', () => {
+  // 3×3, black in two opposite corners:
+  //   # 1 3        across sums: 4 / 7 / 8
+  //   1 2 4        down sums:   4 / 8 / 7
+  //   3 5 #
+  const kakuro = () => parseKakuroFixture(['#13', '124', '35#'], 'easy');
+
+  beforeEach(() => {
+    useBoardStore.getState().startNewGame(kakuro());
+  });
+
+  it('starts with a boxless 1–9 config, black cells as uneditable givens, and derived clues', () => {
+    const s = useBoardStore.getState();
+    expect(s.variant).toBe('kakuro');
+    expect(s.config).toMatchObject({ size: 3, hasBoxes: false, maxNum: 9 });
+    expect(s.grid.flat().every((v) => v === 0)).toBe(true);
+    expect(s.blocked).toEqual([
+      [true, false, false],
+      [false, false, false],
+      [false, false, true],
+    ]);
+    expect(s.givens).toEqual(s.blocked); // the corners cannot be edited; nothing else is a given
+    expect(s.runs).toHaveLength(6);
+    expect(s.clues[1 * 4 + 1]).toEqual({ across: 4, down: 4 });
+  });
+
+  it('uses run-mates as peers, not row/column/box', () => {
+    const { peers } = useBoardStore.getState();
+    // Centre (1,1) = index 4: across [3,4,5] + down [1,4,7]; the corners are not peers of anything.
+    expect([...peers[4]].sort((a, b) => a - b)).toEqual([1, 3, 5, 7]);
+    expect(peers[0]).toEqual([]);
+  });
+
+  it('refuses a digit on a black cell', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 0);
+    store.inputDigit(5);
+    expect(useBoardStore.getState().grid[0][0]).toBe(0);
+    expect(useBoardStore.getState().mistakes).toBe(0);
+  });
+
+  it('strips a placed digit from the pencil marks of both runs, and nothing else', () => {
+    const store = useBoardStore.getState();
+    store.togglePencilMode();
+    for (const [r, c] of [[0, 1], [1, 0], [1, 2], [2, 1], [0, 2]] as const) {
+      store.selectCell(r, c);
+      store.inputDigit(2);
+    }
+    store.togglePencilMode();
+    store.selectCell(1, 1);
+    store.inputDigit(2); // the centre: across run (1,0)(1,1)(1,2), down run (0,1)(1,1)(2,1)
+
+    const { candidates } = useBoardStore.getState();
+    expect(hasBit(candidates[1][0], 2)).toBe(false);
+    expect(hasBit(candidates[1][2], 2)).toBe(false);
+    expect(hasBit(candidates[0][1], 2)).toBe(false);
+    expect(hasBit(candidates[2][1], 2)).toBe(false);
+    expect(hasBit(candidates[0][2], 2)).toBe(true); // shares neither run with the centre
+  });
+
+  it('never locks a digit out — there is no per-digit count without houses', () => {
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    const store = useBoardStore.getState();
+    // Sudoku would refuse an 8th instance of a digit on a 7×7 (`placed >= size`). Put a 1 in the
+    // first eight white cells — right or wrong — and every one must land.
+    const whites: [number, number][] = [];
+    useBoardStore.getState().blocked.forEach((row, r) => row.forEach((b, c) => { if (!b) whites.push([r, c]); }));
+    for (const [r, c] of whites.slice(0, 8)) {
+      store.selectCell(r, c);
+      store.inputDigit(1);
+    }
+    const { grid } = useBoardStore.getState();
+    expect(whites.slice(0, 8).every(([r, c]) => grid[r][c] === 1)).toBe(true);
+  });
+
+  it('is solved when every white cell matches, with black cells left at 0', () => {
+    const store = useBoardStore.getState();
+    for (let i = 0; i < 7; i++) store.hint();
+    expect(useBoardStore.getState().status).toBe('solved');
   });
 });

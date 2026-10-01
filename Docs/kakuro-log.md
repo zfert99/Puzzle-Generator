@@ -28,6 +28,12 @@
 
 ## Journal
 
+- **2026-10-01** V0 (#104) and V1 (#108) merged. **V2 built**: Kakuro is playable at
+  `/play?variant=kakuro` on the real board (7×7 and 9×9 fixtures) — gutter, clue cells, 1–9
+  numpad, run-mate peers and stripping, block-skipping arrows, rules body, save/resume; the
+  `/kakuro` workbench route and static board are deleted. `[bug]` **B1** — resumed board had no
+  blocks/clues; cause was the store's post-hydration mutation of derived fields (also affected
+  Killer's `cellToCage`); fixed by deriving in persist's `merge`. `[learning]` L8 added.
 - **2026-09-30 (later)** V0 opened as PR #104. **V1 built** on top (uncommitted): types, layout
   validation, `deriveRuns`, two fixtures (7×7, 9×9), and the static board now draws real clue
   sums. `[decision]` D2 and D3 **applied** (interior storage + runs list, gutter as a render
@@ -100,7 +106,7 @@
 
 | # | Found | Slice | Symptom | Cause | Fix |
 |---|---|---|---|---|---|
-| — | — | — | none yet | — | — |
+| B1 | 2026-10-01 | V2 | A resumed Kakuro rendered every cell white with no clues (and threw `undefined[c]` from `Cell`'s selector before the optional-chaining guard) | `onRehydrateStorage` rebuilt derived fields (`peers`, `cellToCage`, now `blocked`/`clues`) by **mutating** the state object after hydration's `set` — no subscriber is notified, so already-rendered cells never re-read them. Latent since Killer: `cellToCage` was one interaction late after every reload | Derive in persist's `merge` (runs before the state is set) — `useBoardStore.ts`, V2 PR |
 
 ## Learnings
 
@@ -112,6 +118,7 @@
 | L5 | **Give every engine slice a visible acceptance on the real board** (a hint, a badge, a button) — when the page exists first, "done" is something you can click, not a number in a test log | D12, plan re-cut 2026-09-11 |
 | L6 | **Hand-authored layouts get validated by code, not by eye.** The first V0 sketch looked fine and was one white cell over the N=7 uniqueness ceiling; nothing on screen would ever have shown it | V0, 2026-09-30 |
 | L7 | **Don't fill-and-retry a fixed layout; repair the fill.** Independent random fills of one layout were unique 0 times in 3,000, while a one-cell-at-a-time hill-climb on the same layout converged. Treat "P(unique) per random fill" as ≈ 0 until E3 measures otherwise | V1 fixture authoring, 2026-09-30 |
+| L8 | **Never mutate hydrated store state to "finish" it — derive in `merge` or `setState`.** A mutation after hydration notifies no subscriber, so whatever rendered first keeps the stale slice; the bug only shows for a field a component reads on first paint, which is why `peers` (read only inside actions) hid it for months | B1, V2, 2026-10-01 |
 | L4 | **An honest top tier is the one the published comparison set actually uses.** Before transplanting a top-tier mechanism from another puzzle (Keisan's bounded T&E), check what the publishers' hardest tier requires — Kakuro's is chains, so a guess-based Extreme would have been dishonest by construction | G5 |
 
 ## Measurements

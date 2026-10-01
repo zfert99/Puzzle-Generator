@@ -7,10 +7,17 @@ import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import { OPERATOR_SYMBOL } from '@/features/engine/calc/calc-types';
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
+import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
+import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
 import { computePeers, toggleBit } from '../board-utils';
+import { buildBlocked, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
-/** Classic Sudoku, Killer, or Keisan (display name; slug `calc`) — the board renders and plays all three. */
-export type PuzzleVariant = 'classic' | 'killer' | 'calc';
+/**
+ * Classic Sudoku, Killer, Keisan (display name; slug `calc`), or Kakuro — the board renders and
+ * plays all four. Kakuro is the odd one out: no houses, no givens, black cells, digits 1–9 at
+ * every size, and peers that are run-mates rather than row/column/box.
+ */
+export type PuzzleVariant = 'classic' | 'killer' | 'calc' | 'kakuro';
 
 /**
  * A cage normalized for the board — cells plus a pre-formatted corner label (Killer's sum `"12"`,
@@ -37,7 +44,8 @@ export type BoardDifficulty = Difficulty | DailyDifficulty;
 export type BoardPuzzle =
   | (Omit<SudokuPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
   | (Omit<KillerPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
-  | (Omit<CalcPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
+  | (Omit<CalcPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
+  | (Omit<KakuroPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
 
 export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
 
@@ -54,7 +62,7 @@ export interface BoardState {
   config: GridConfig;
   grid: number[][];        // current values (0 = empty)
   candidates: number[][];  // pencil-mark bitmask per cell
-  givens: boolean[][];     // true = immutable starting clue
+  givens: boolean[][];     // true = not editable: a starting clue, or (Kakuro) a black cell
   solution: number[][];
   peers: number[][];       // flat peer indices per cell
 
@@ -69,6 +77,20 @@ export interface BoardState {
    * is rebuilt on rehydration rather than persisted (same treatment as `peers`).
    */
   cellToCage: number[];
+
+  /**
+   * Kakuro only (empty for the other variants): the puzzle's runs. This is the one Kakuro field
+   * that is persisted — `blocked`, `clues` and the run-mate `peers` are all derived from it at
+   * game start and again on rehydration, like `cellToCage` from `cages`.
+   */
+  runs: Run[];
+  /** Kakuro: interior mask of black cells (in no run — D3). Derived; `[]` otherwise. */
+  blocked: boolean[][];
+  /**
+   * Kakuro: display-index → the sums a black cell shows (the display grid is `size + 1` tracks
+   * per axis, gutter first). Derived; `[]` otherwise.
+   */
+  clues: (BoardClue | null)[];
 
   // UI / session state (deliberately NOT tracked by undo/redo)
   difficulty: BoardDifficulty;
@@ -119,8 +141,12 @@ const emptyGrid = (size: number): number[][] =>
  * instead of silently doing nothing, so callers that read `peers[r * config.size + c]` route
  * through this first rather than crashing on that narrow window.
  */
-const resolvePeers = (peers: number[][], config: GridConfig): number[][] =>
-  peers.length === config.size * config.size ? peers : computePeers(config);
+const resolvePeers = (peers: number[][], config: GridConfig, runs: Run[]): number[][] =>
+  peers.length === config.size * config.size ? peers : buildPeers(config, runs);
+
+/** Run-mates for a Kakuro (it has runs), row/column/box peers for everything else. */
+const buildPeers = (config: GridConfig, runs: Run[]): number[][] =>
+  runs.length > 0 ? computeRunPeers(runs, config.size) : computePeers(config);
 
 /** Flat cell index → cage id map (−1 where uncaged); [] for classic games. */
 const buildCellToCage = (cages: BoardCage[], size: number): number[] => {
@@ -181,6 +207,9 @@ export const useBoardStore = create<BoardState>()(
       variant: 'classic',
       cages: [],
       cellToCage: [],
+      runs: [],
+      blocked: [],
+      clues: [],
 
       difficulty: 'easy' as Difficulty,
       selectedCell: null,
@@ -201,19 +230,28 @@ export const useBoardStore = create<BoardState>()(
         // Keisan is Latin-square-only, so it uses a BOXLESS config even at 4/6 — that makes peers
         // row/col-only (the box sentinel degenerates to the row) and turns off Cell.tsx's box
         // borders (K0's `hasBoxes` gate).
-        const config = variant === 'calc' ? calcGridConfig(size) : getGridConfig(size);
+        const config =
+          variant === 'calc' ? calcGridConfig(size) : variant === 'kakuro' ? kakuroGridConfig(size) : getGridConfig(size);
         const cages = toBoardCages(puzzle, variant);
+        const runs = variant === 'kakuro' ? (puzzle as KakuroPuzzle).runs : [];
+        const blocked = buildBlocked(runs, size);
         set({
           gridSize: size,
           config,
           grid: puzzle.grid.map(row => [...row]),
           candidates: emptyGrid(size),
-          givens: puzzle.grid.map(row => row.map(v => v !== 0)),
+          // Kakuro has no givens, but its black cells are just as uneditable — marking them as
+          // givens is what makes every edit path (input, clear, hint, the Tab-stop seed) skip
+          // them without a second flag to check.
+          givens: variant === 'kakuro' ? blocked.map(row => [...row]) : puzzle.grid.map(row => row.map(v => v !== 0)),
           solution: puzzle.solution.map(row => [...row]),
-          peers: computePeers(config),
+          peers: buildPeers(config, runs),
           variant,
           cages,
           cellToCage: buildCellToCage(cages, size),
+          runs,
+          blocked,
+          clues: buildClues(runs, size),
           difficulty: puzzle.difficulty,
           selectedCell: null,
           pencilMode: false,
@@ -234,7 +272,7 @@ export const useBoardStore = create<BoardState>()(
       selectCell: (r, c) => set({ selectedCell: { r, c } }),
 
       inputDigit: (digit: number) => {
-        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution, mistakes, variant, cages } = get();
+        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution, mistakes, variant, cages, runs } = get();
         if (status !== 'playing' || !selectedCell) return;
         const { r, c } = selectedCell;
         if (givens[r][c]) return; // never edit a given clue
@@ -256,16 +294,19 @@ export const useBoardStore = create<BoardState>()(
           nextGrid[r][c] = 0;
         } else {
           // Lockout: once all `size` instances of a digit are on the board, it can't
-          // be placed again (mirrors the grayed-out numpad button).
-          let placed = 0;
-          for (const row of grid) for (const v of row) if (v === digit) placed++;
-          if (placed >= config.size) return;
+          // be placed again (mirrors the grayed-out numpad button). Not for Kakuro — with no
+          // house constraint a digit may appear any number of times across the grid.
+          if (variant !== 'kakuro') {
+            let placed = 0;
+            for (const row of grid) for (const v of row) if (v === digit) placed++;
+            if (placed >= config.size) return;
+          }
 
           nextGrid[r][c] = digit;
           nextCandidates[r][c] = 0; // a placed value has no pencil marks
           // Strip the placed digit from every peer's candidates (O(1) peer lookup).
           const bit = ~(1 << (digit - 1));
-          for (const peer of resolvePeers(peers, config)[r * config.size + c]) {
+          for (const peer of resolvePeers(peers, config, runs)[r * config.size + c]) {
             const pr = Math.floor(peer / config.size);
             const pc = peer % config.size;
             nextCandidates[pr][pc] &= bit;
@@ -313,7 +354,7 @@ export const useBoardStore = create<BoardState>()(
       },
 
       hint: () => {
-        const { status, grid, solution, givens, selectedCell, candidates, peers, config } = get();
+        const { status, grid, solution, givens, selectedCell, candidates, peers, config, runs } = get();
         if (status !== 'playing') return;
 
         // Prefer the selected empty cell; otherwise reveal the first empty cell.
@@ -337,7 +378,7 @@ export const useBoardStore = create<BoardState>()(
         nextGrid[r][c] = value;
         nextCandidates[r][c] = 0;
         const bit = ~(1 << (value - 1));
-        for (const peer of resolvePeers(peers, config)[r * config.size + c]) {
+        for (const peer of resolvePeers(peers, config, runs)[r * config.size + c]) {
           nextCandidates[Math.floor(peer / config.size)][peer % config.size] &= bit;
         }
         const solved = nextGrid.every((row, rr) => row.every((v, cc) => v === solution[rr][cc]));
@@ -356,14 +397,15 @@ export const useBoardStore = create<BoardState>()(
       {
         // Persist the in-progress game to localStorage so a refresh resumes it.
         // Actions are dropped by JSON serialization and re-supplied by the creator;
-        // peers are recomputed on rehydration rather than stored.
+        // derived fields are recomputed in `merge` below rather than stored.
         name: 'sudoku-board',
-        // v4 (Keisan K5): `cages` changed from Killer's `{id, sum, cells}` to the normalized
-        // `BoardCage` `{id, cells, label}`, and `variant` gained `'calc'`. A persisted v3 game has
-        // the old cage shape (no `label`), so its cage overlay would render blank labels. Saved
-        // games are ephemeral — discard rather than migrate (the `migrate` below resets to the
-        // config screen). v3 (K0) added `hasBoxes` to `config`; v2 added `mode`.
-        version: 4,
+        // v5 (Kakuro V2): `runs` joined the persisted shape and `variant` gained `'kakuro'`; a v4
+        // game has no `runs`, so a saved Kakuro would rehydrate with every cell white and no
+        // clues. v4 (Keisan K5): `cages` changed from Killer's `{id, sum, cells}` to the
+        // normalized `BoardCage` `{id, cells, label}`, and `variant` gained `'calc'`. Saved games
+        // are ephemeral — discard rather than migrate (the `migrate` below resets to the config
+        // screen). v3 (K0) added `hasBoxes` to `config`; v2 added `mode`.
+        version: 5,
         // A saved game is ephemeral, so old persisted shapes aren't worth migrating — but a
         // version mismatch with NO migrate makes zustand log a console.error (surfaced as the
         // Next.js error overlay). Discard cleanly instead: drop the stale game and land the
@@ -378,6 +420,7 @@ export const useBoardStore = create<BoardState>()(
           solution: state.solution,
           variant: state.variant,
           cages: state.cages,
+          runs: state.runs,
           difficulty: state.difficulty,
           selectedCell: state.selectedCell,
           pencilMode: state.pencilMode,
@@ -388,11 +431,24 @@ export const useBoardStore = create<BoardState>()(
           mistakes: state.mistakes,
           errorsRevealed: state.errorsRevealed,
         }),
-        onRehydrateStorage: () => (state) => {
-          if (state && state.config) {
-            state.peers = computePeers(state.config);
-            state.cellToCage = buildCellToCage(state.cages ?? [], state.config.size);
+        // Derived fields (`peers`, `cellToCage`, `blocked`, `clues`) are rebuilt HERE, inside the
+        // hydration merge, so they land in the same `set` as the persisted fields they derive
+        // from. They used to be assigned in `onRehydrateStorage` by mutating the state object —
+        // which happens after hydration's own `set` and notifies no subscriber, so a cell that
+        // had already rendered kept reading the empty arrays until the next unrelated store
+        // change (Kakuro V2 found it: a resumed board came back with every cell white and no
+        // clues). `merge` runs before the hydrated state is set, so nothing can observe the
+        // half-built state and the `resolvePeers` self-heal above becomes a belt-and-braces.
+        merge: (persisted, current) => {
+          const merged = { ...current, ...(persisted as Partial<BoardState>) };
+          if (merged.config) {
+            const runs = merged.runs ?? [];
+            merged.peers = buildPeers(merged.config, runs);
+            merged.cellToCage = buildCellToCage(merged.cages ?? [], merged.config.size);
+            merged.blocked = buildBlocked(runs, merged.config.size);
+            merged.clues = buildClues(runs, merged.config.size);
           }
+          return merged;
         },
       }
     ),

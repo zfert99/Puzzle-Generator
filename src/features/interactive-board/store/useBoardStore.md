@@ -15,7 +15,7 @@ The interactive board's single source of truth — a Zustand store wrapped in th
 
 ## State
 
-`grid`, `candidates` (bitmask/cell), `givens` (immutable clues), `solution`, `peers`
+`grid`, `candidates` (bitmask/cell), `givens` (not editable: a starting clue, or a Kakuro black cell), `solution`, `peers`
 (precomputed), plus session state `difficulty`, `selectedCell`, `pencilMode`,
 `realTimeErrors`, `status` (`configuring | playing | paused | solved`), `mode`
 (`play | daily`), `dailyDate` (the daily's UTC date, or `null` for free play), `elapsedTime`,
@@ -47,6 +47,28 @@ and pencil-stripping are variant-agnostic. **Keisan uses a boxless `config`** (`
 `inputDigit`'s cage-mate pencil stripping stays **Killer-only** (Keisan permits repeats), gated on
 `variant === 'killer'`.
 
+### Why `runs`, `blocked`, `clues` (Kakuro, October 2026)
+
+Kakuro is the fourth variant and the first with **no houses and no givens**. Its puzzle carries
+`runs` (see `engine/kakuro/kakuro-types.md`), which the store keeps as the single persisted
+Kakuro field; three things derive from it at game start and again on rehydration:
+
+- `blocked` — the interior mask of black cells ("in no run", plan decision D3). **Black cells
+  are also marked as `givens`.** They are not clues, but they are equally uneditable, and
+  `givens` is the flag every edit path already checks (`inputDigit`, `clearCell`, `hint`, the
+  Board's Tab-stop seed) — so one existing check covers them instead of a second flag in each.
+- `clues` — display-index → the sums a black cell shows. The on-screen grid has a clue gutter
+  row/column before the interior (D2: the gutter is a rendering concern, so `grid` stays
+  `size × size`), so the index space is `(size + 1)²`.
+- `peers` — **run-mates**, built by `computeRunPeers` (`kakuro-board.ts`), not `computePeers`:
+  a placed digit constrains only the other cells of its two runs, so that is what pencil
+  stripping and the peer highlight reach. `buildPeers(config, runs)` picks the builder by
+  whether runs exist; `resolvePeers` takes `runs` for the same reason.
+
+Two Sudoku rules are gated off for Kakuro: the **digit lockout** (`placed >= size`) — with no
+house constraint a digit may appear any number of times — and the config: `kakuroGridConfig` is
+boxless with `maxNum: 9` at every size, so the numpad and pencil grid offer 1–9 on a 7×7.
+
 ### Why `dailyDate`
 
 Set by `startNewGame(puzzle, mode, dailyDate)` and persisted so a **resumed daily** can
@@ -69,9 +91,11 @@ leak the other way.
 The store is wrapped in Zustand's `persist` middleware (key `sudoku-board`,
 localStorage) so a refresh resumes the in-progress game. `partialize` saves the game
 data (grid, candidates, givens, solution, difficulty, status, timer, mistakes, …) but
-not `peers`, which are recomputed from `config` in `onRehydrateStorage`. `mode` is
+not the derived fields, which are rebuilt inside the persist `merge` step (below). `mode` is
 persisted too, so a refresh keeps a daily contained to `/daily`. The store `version` is
-`3` — bumped at K0 when `GridConfig` gained `hasBoxes`: a persisted pre-K0 `config` lacks
+`5` — bumped for Kakuro (`runs` joined the persisted shape; a v4 game has none, so a saved
+Kakuro would rehydrate with every cell white and no clues) and before that `4` (Keisan's
+normalized `BoardCage`) and `3` — bumped at K0 when `GridConfig` gained `hasBoxes`: a persisted pre-K0 `config` lacks
 it and would rehydrate as `undefined` → falsy → phantom boxless rendering (no thick
 borders) on a 4/6/9 board, so the stale shape is discarded rather than migrated (the
 initial config, which has `hasBoxes`, takes over). It was `2` when `mode` was added.
@@ -82,16 +106,29 @@ serialization and re-supplied by the store creator. `persist` sits
 Because the persisted state only exists on the client, `PlayExperience` gates its
 first render on a mounted check to avoid an SSR/hydration mismatch.
 
+### Derived fields are rebuilt in `merge`, not after (October 2026)
+
+`peers`, `cellToCage`, `blocked` and `clues` are not persisted; they are rebuilt from the
+persisted `config`/`cages`/`runs` inside persist's **`merge`** option, which runs *before* the
+hydrated state is set. They used to be rebuilt in `onRehydrateStorage` by **mutating** the
+state object after hydration's own `set` — and a mutation notifies no subscriber. A cell that
+had already rendered kept reading the empty arrays until the next unrelated store change.
+Kakuro V2 found it (a resumed board came back with every cell white and no clues); Killer's
+`cellToCage` had been quietly one interaction late after every reload for the same reason.
+Rebuilding in `merge` means nothing can observe a half-built state, and the self-heal below
+becomes belt-and-braces.
+
 ### `resolvePeers` — self-healing against a rehydration race (July 2026)
 
-**Why:** `config`/`status` restore synchronously as part of the persisted state merge, but
-`peers` isn't persisted — it's rebuilt by the separate `onRehydrateStorage` callback, which
-can run a tick *after* that merge. In that narrow window a component could technically read
+**Why (historical — the race is closed by the `merge` change above):** `config`/`status`
+restored synchronously as part of the persisted state merge, but `peers` wasn't persisted —
+it was rebuilt by the separate `onRehydrateStorage` callback, which could run a tick *after*
+that merge. In that narrow window a component could technically read
 a `status: 'playing'`/real `config` alongside a still-empty `peers` (`[]`, the store's initial
 value). `inputDigit`/`hint` used to index straight into `peers[r * config.size + c]` and crash
 ("is not iterable") if that ever lined up with a real keystroke — reported once, in the wild.
-`resolvePeers(peers, config)` checks `peers.length === config.size ** 2` before trusting it,
-recomputing via `computePeers(config)` on the spot if it doesn't match, so a placement/hint
+`resolvePeers(peers, config, runs)` checks `peers.length === config.size ** 2` before trusting it,
+recomputing via `buildPeers(config, runs)` on the spot if it doesn't match, so a placement/hint
 either uses the fast precomputed path (the common case) or self-heals for that one call
 instead of throwing — never a user-visible crash either way.
 
@@ -99,7 +136,8 @@ instead of throwing — never a user-visible crash either way.
 
 ```text
 startNewGame(puzzle, mode='play'):
-  load grid/solution; mark givens (cells that start non-zero); compute peers;
+  load grid/solution; mark givens (cells that start non-zero — or, for Kakuro, the black
+  cells); compute peers (run-mates for Kakuro); keep Kakuro's runs and derive blocked/clues;
   status = playing; set mode (which surface owns this game); reset timer/selection;
   CLEAR undo history.
 
@@ -112,7 +150,7 @@ inputDigit(digit):
   IF pencil mode AND the cell is empty: toggle that candidate bit.
   ELSE (pen): if the cell already holds this digit, clear it; otherwise place it —
     UNLESS all `size` instances of that digit are already on the board (lockout:
-    matches the grayed-out numpad button) — clear its pencil marks, and strip the
+    matches the grayed-out numpad button; never applies to Kakuro) — clear its pencil marks, and strip the
     digit from every peer's candidates. A placement that doesn't match the solution
     increments `mistakes`. Then, if the grid equals the solution, status = solved
     (which locks the board — the play actions all require status === 'playing'),

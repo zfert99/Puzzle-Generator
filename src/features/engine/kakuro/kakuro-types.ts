@@ -9,6 +9,8 @@
  * See `kakuro-types.md` for the "why" behind the storage decisions (D2, D3).
  */
 
+import type { GridConfig, GridSize } from '../sudoku';
+
 export type KakuroDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 
 export type RunDirection = 'across' | 'down';
@@ -50,6 +52,16 @@ export interface KakuroPuzzle {
 
 export const MIN_RUN_LENGTH = 2;
 export const MAX_RUN_LENGTH = 9;
+
+/**
+ * The board configuration for a Kakuro of interior size N. Boxless (there are no houses at
+ * all — the row-strip sentinel keeps any ungated box reader harmless, as for Keisan), and
+ * `maxNum` is **9 at every size**: Kakuro's digits are always 1–9, so the numpad and pencil
+ * marks must not shrink with the grid the way Sudoku's do.
+ */
+export function kakuroGridConfig(size: GridSize): GridConfig {
+  return { size, hasBoxes: false, boxWidth: size, boxHeight: 1, totalCells: size * size, maxNum: 9 };
+}
 
 /**
  * Check every invariant a puzzle's runs must satisfy against its solution, returning a list of

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Board } from './Board';
 import { useBoardStore } from '../../store/useBoardStore';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
+import { parseKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
 
 const puzzle = (): SudokuPuzzle => ({
   grid: [
@@ -145,5 +146,73 @@ describe('Board', () => {
     await user.keyboard('9');
 
     expect(screen.getByRole('gridcell', { name: /given clue 3, row 1, column 3/i })).toBeInTheDocument();
+  });
+});
+
+describe('Board — Kakuro', () => {
+  // 3×3, black in two opposite corners:
+  //   # 1 3        across sums: 4 / 7 / 8
+  //   1 2 4        down sums:   4 / 8 / 7
+  //   3 5 #
+  beforeEach(() => {
+    useBoardStore.getState().startNewGame(parseKakuroFixture(['#13', '124', '35#'], 'easy'));
+  });
+
+  it('draws the clue gutter: N+1 rows of N+1 cells, clue cells named by their sums', () => {
+    render(<Board />);
+
+    expect(screen.getByRole('grid', { name: 'Kakuro board' })).toBeInTheDocument();
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(4);
+    rows.forEach((row, i) => {
+      expect(row).toHaveAttribute('aria-rowindex', String(i + 1));
+      expect(within(row).getAllByRole('gridcell')).toHaveLength(4);
+    });
+    expect(screen.getByRole('gridcell', { name: 'Clue: across 4, down 4' })).toBeInTheDocument();
+    expect(screen.getAllByRole('gridcell', { name: /^Clue/ })).toHaveLength(5);
+    expect(screen.getAllByRole('gridcell', { name: 'Blocked cell' })).toHaveLength(4);
+    // Interior (0,1) is the third column a screen reader counts, after the gutter.
+    expect(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i })).toHaveAttribute('aria-colindex', '3');
+  });
+
+  it('seeds the Tab stop on the first white cell and skips black cells with the arrow keys', async () => {
+    const user = userEvent.setup();
+    render(<Board />);
+
+    const first = screen.getByRole('gridcell', { name: /empty, row 1, column 2/i });
+    expect(first).toHaveAttribute('tabindex', '0');
+
+    await user.click(screen.getByRole('gridcell', { name: /empty, row 2, column 1/i }));
+    await user.keyboard('{ArrowUp}'); // (0,0) is black and the edge is next — stay put
+    expect(screen.getByRole('gridcell', { name: /empty, row 2, column 1/i })).toHaveAttribute('aria-selected', 'true');
+
+    await user.click(screen.getByRole('gridcell', { name: /empty, row 3, column 2/i }));
+    await user.keyboard('{ArrowRight}'); // (2,2) is black and the edge is next — stay put
+    expect(screen.getByRole('gridcell', { name: /empty, row 3, column 2/i })).toHaveAttribute('aria-selected', 'true');
+
+    await user.keyboard('{ArrowUp}'); // (1,1) is white
+    expect(screen.getByRole('gridcell', { name: /empty, row 2, column 2/i })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('accepts 7, 8 and 9 on a 3×3 — digits are 1–9 at every size', async () => {
+    const user = userEvent.setup();
+    render(<Board />);
+
+    await user.click(screen.getByRole('gridcell', { name: /empty, row 2, column 2/i }));
+    await user.keyboard('9');
+    expect(screen.getByRole('gridcell', { name: /value 9, row 2, column 2/i })).toBeInTheDocument();
+  });
+
+  it('highlights only run-mates as peers of the selection', async () => {
+    const user = userEvent.setup();
+    render(<Board />);
+
+    // Select the top-right white cell (0,2): its runs are the top across run and the right
+    // down run — so (0,1), (1,2) are peers; (1,1) and (2,1) are not.
+    await user.click(screen.getByRole('gridcell', { name: /empty, row 1, column 3/i }));
+    const peerClass = (name: RegExp) => screen.getByRole('gridcell', { name }).className;
+    expect(peerClass(/empty, row 1, column 2/i)).toMatch(/peer/);
+    expect(peerClass(/empty, row 2, column 3/i)).toMatch(/peer/);
+    expect(peerClass(/empty, row 2, column 2/i)).not.toMatch(/peer/);
   });
 });

@@ -4,9 +4,10 @@ import { useEffect, useRef, useCallback } from 'react';
 import type { KeyboardEvent, CSSProperties } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
-import { Cell } from './Cell';
+import { Cell, ClueCell } from './Cell';
 import { CageOverlay } from './CageOverlay';
 import { BoardAnnouncer } from './BoardAnnouncer';
+import { kakuroTracks } from '../../kakuro-board';
 import styles from './Board.module.css';
 
 /**
@@ -21,13 +22,16 @@ import styles from './Board.module.css';
 export function Board() {
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const { size, selectedR, selectedC, variant, cages, entryIndex } = useBoardStore(
+  const { size, maxNum, selectedR, selectedC, variant, cages, blocked, clues, entryIndex } = useBoardStore(
     useShallow((s) => ({
       size: s.config.size,
+      maxNum: s.config.maxNum,
       selectedR: s.selectedCell?.r ?? null,
       selectedC: s.selectedCell?.c ?? null,
       variant: s.variant,
       cages: s.cages,
+      blocked: s.blocked,
+      clues: s.clues,
       // Roving-tabindex seed: with no selection yet, no cell is `tabIndex 0`, so Tab
       // would skip the grid entirely and a keyboard-only player could never start
       // (WCAG 2.1.1). Until the first selection, the first editable cell holds the
@@ -74,28 +78,52 @@ export function Board() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  const isKakuro = variant === 'kakuro';
+
+  /**
+   * Arrow-key movement. Sudoku-family grids clamp at the edge. A Kakuro additionally skips its
+   * black cells — they are not selectable — continuing in the same direction until a white cell
+   * or the edge; with nothing fillable that way the selection stays put rather than landing on
+   * a block. With no selection yet, the entry cell (the first fillable one) is selected.
+   */
+  const move = useCallback(
+    (dr: number, dc: number) => {
+      if (selectedR == null || selectedC == null) {
+        selectCell(Math.floor(entryIndex / size), entryIndex % size);
+        return;
+      }
+      let r = selectedR + dr;
+      let c = selectedC + dc;
+      while (r >= 0 && r < size && c >= 0 && c < size) {
+        if (!isKakuro || !blocked[r]?.[c]) {
+          selectCell(r, c);
+          return;
+        }
+        r += dr;
+        c += dc;
+      }
+    },
+    [selectedR, selectedC, size, isKakuro, blocked, entryIndex, selectCell]
+  );
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
-      const r = selectedR ?? 0;
-      const c = selectedC ?? 0;
-      const hasSelection = selectedR != null && selectedC != null;
-
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          selectCell(hasSelection ? Math.max(0, r - 1) : 0, c);
+          move(-1, 0);
           return;
         case 'ArrowDown':
           e.preventDefault();
-          selectCell(hasSelection ? Math.min(size - 1, r + 1) : 0, c);
+          move(1, 0);
           return;
         case 'ArrowLeft':
           e.preventDefault();
-          selectCell(r, hasSelection ? Math.max(0, c - 1) : 0);
+          move(0, -1);
           return;
         case 'ArrowRight':
           e.preventDefault();
-          selectCell(r, hasSelection ? Math.min(size - 1, c + 1) : 0);
+          move(0, 1);
           return;
         case 'Backspace':
         case 'Delete':
@@ -111,28 +139,32 @@ export function Board() {
           return;
       }
 
-      // Digit entry (1..size).
+      // Digit entry (1..maxNum — the grid size for the Sudoku family, always 9 for Kakuro).
       if (/^[1-9]$/.test(e.key)) {
         const digit = Number(e.key);
-        if (digit <= size) {
+        if (digit <= maxNum) {
           e.preventDefault();
           inputDigit(digit);
         }
       }
     },
-    [selectedR, selectedC, size, selectCell, inputDigit, clearCell, togglePencilMode]
+    [move, maxNum, inputDigit, clearCell, togglePencilMode]
   );
+
+  // Kakuro draws one extra track per axis: the clue gutter along the top and left (plan
+  // decision D2 — the gutter is a rendering concern, so the store's grid stays `size × size`).
+  const tracks = isKakuro ? kakuroTracks(size) : size;
 
   return (
     <>
       <div
         ref={gridRef}
         role="grid"
-        aria-label="Sudoku board"
+        aria-label={isKakuro ? 'Kakuro board' : 'Sudoku board'}
         className={styles.board}
         data-variant={variant}
         data-size={size}
-        style={{ '--size': size } as CSSProperties}
+        style={{ '--size': tracks } as CSSProperties}
         onKeyDown={handleKeyDown}
       >
         {/*
@@ -141,8 +173,16 @@ export function Board() {
           divs are `display: contents` (styles.row) so the cells stay direct CSS-grid items and
           the layout is untouched; the rows exist only in the accessibility tree.
         */}
+        {isKakuro && (
+          <div role="row" aria-rowindex={1} className={styles.row}>
+            {Array.from({ length: tracks }, (_, dc) => (
+              <ClueCell key={`gutter-${dc}`} clue={clues[dc]} colIndex={dc + 1} />
+            ))}
+          </div>
+        )}
         {Array.from({ length: size }, (_, r) => (
-          <div key={`row-${r}`} role="row" aria-rowindex={r + 1} className={styles.row}>
+          <div key={`row-${r}`} role="row" aria-rowindex={isKakuro ? r + 2 : r + 1} className={styles.row}>
+            {isKakuro && <ClueCell clue={clues[(r + 1) * tracks]} colIndex={1} />}
             {Array.from({ length: size }, (_, c) => (
               <Cell key={`${r}-${c}`} r={r} c={c} isEntry={entryIndex === r * size + c} />
             ))}

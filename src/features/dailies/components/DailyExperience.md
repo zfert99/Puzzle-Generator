@@ -177,3 +177,10 @@ dialog still wires the `useDialogFocus` hook directly (see
 `interactive-board/hooks/useDialogFocus.md`). For the review dialog the restore is the useful
 half: "Keep looking" returns focus to the exact gridcell the player was on, so they resume
 fixing cells without re-establishing position.
+
+## The board's variant is narrowed to the daily registry's `Variant` (October 2026)
+
+The board store's `variant` can be any `PuzzleVariant`, including `'kakuro'`, which is playable
+on `/play` before it joins the daily registry (Kakuro plan slice R1). A *daily* game is only
+ever started from a daily row, so its variant is always a registered `Variant`; `playingLabel`
+asserts that narrowing rather than inventing a label for a type the daily cannot hold.

@@ -17,7 +17,8 @@ A player sees an extra strip of clue cells along the top and left, so a "7×7" i
 That strip is *not* stored. `grid` and `solution` are the interior N×N, and the runs are an
 explicit list. The rest of the codebase keys on `grid.length` being the puzzle's named size
 (daily sizes, profiles, board config), and storing the border would silently turn every Kakuro
-into a size nothing else recognises. The gutter is a rendering concern — see `KakuroBoard`.
+into a size nothing else recognises. The gutter is a rendering concern — see the board's
+`kakuro-board.md` and `ClueCell`.
 
 ## Why black cells are `0` (D3)
 
@@ -60,3 +61,10 @@ cell of the next differ by exactly 1, which looks like a legal across step.
 What it does **not** check: that runs are maximal, or that the black/white shape is a legal
 Kakuro layout. Those need only the mask, not the clues, so they live in
 `validateKakuroLayout` (`kakuro-layout.ts`).
+
+## `kakuroGridConfig(size)`
+
+The board configuration a Kakuro plays with: boxless (no houses at all — the row-strip sentinel
+keeps any ungated box reader harmless, exactly as Keisan's `calcGridConfig` does) and
+`maxNum: 9` **at every size**. Sudoku's digits shrink with the grid (1–4 on a 4×4); Kakuro's never
+do, so the numpad and pencil grid must read `maxNum`, not `size`.

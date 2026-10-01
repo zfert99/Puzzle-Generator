@@ -32,11 +32,21 @@ Returns `{ puzzle, loading, error, fetchPuzzle }`:
 5. On any thrown error, store its message in `error` and return `null`.
 6. Always clear `loading` in the `finally` block.
 
-## Killer support
+## Variant support
 
-`fetchPuzzle` takes an optional `variant: 'classic' | 'killer'` (default classic), forwarded to
-`/api/puzzle`. A Killer request returns a `KillerPuzzle` (with `cages`), so the hook's puzzle type
-is `SudokuPuzzle | KillerPuzzle`; the board's `startNewGame` handles either.
+`fetchPuzzle` takes an optional `variant: 'classic' | 'killer' | 'calc' | 'kakuro'` (default
+classic), forwarded to `/api/puzzle` for the three generated types. A Killer request returns a
+`KillerPuzzle` (with `cages`), Keisan a `CalcPuzzle`; the hook's puzzle type is the union of all
+four and the board's `startNewGame` handles any of them.
+
+### Kakuro is served from fixtures, not the network (October 2026)
+
+Kakuro has no generator yet (its plan builds one in slices E4/E5). A Kakuro request short-circuits
+before `fetch`: the hook picks the hand-baked fixture for the requested size from
+`KAKURO_FIXTURES` (falling back to the first), sets it, and returns it — `loading` never flips and
+`/api/puzzle` is untouched until a real generator exists. `difficulty` is ignored: there is one
+puzzle per size. The fixtures are static data, so the hydration concern below does not apply to
+them.
 
 ## Hydration and testing notes
 

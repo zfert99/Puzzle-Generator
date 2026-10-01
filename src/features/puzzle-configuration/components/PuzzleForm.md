@@ -132,3 +132,7 @@ what `GridSizeSelector` already does via its `sizes` prop — and `PlayExperienc
 using exactly that for the same variants. Both inline groups were replaced with the shared
 component, which also swapped their bare `aria-label` groups for its labelled-heading pattern
 and made the visible "Grid Size" heading appear on `/generate`'s Killer/Keisan branches.
+
+The Killer row's `onChange` used to guard `size !== 4` only to narrow the callback's type; since
+`GridSizeSelector` became generic in its `sizes` (Kakuro V2, October 2026) the setter is passed
+directly.

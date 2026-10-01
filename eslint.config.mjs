@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Code session worktrees live inside the repo (`.claude/worktrees/<name>/`), each
+    // with its own `.next/` build output. The root `.next/**` pattern doesn't reach them, so a
+    // lint run from the main checkout drowned in ~400 errors from a sibling session's chunks.
+    ".claude/worktrees/**",
   ]),
 ]);
 

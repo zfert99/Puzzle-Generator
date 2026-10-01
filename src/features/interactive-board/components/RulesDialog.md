@@ -38,3 +38,12 @@ The `autoFocus` attribute was inert: React applies it imperatively at MOUNT — 
 mounts this dialog permanently closed — so no `autofocus` attribute ever reached the HTML dialog
 focusing steps, and focus landed inside the modal only by browser fallback. The open effect now
 calls `.focus()` on the primary button explicitly, right after `showModal()`.
+
+## Kakuro body (October 2026)
+
+A fourth body for `variant === 'kakuro'`: the digits are 1–9 at any size, the only constraint is
+that each run sums to its clue with no repeat, where the two sums sit (upper-right = down,
+lower-left = across — the convention the board draws), a worked example of a forced two-cell
+run (3 → 1+2, 17 → 8+9), and the interior-size naming convention (a "7×7" is its playable
+area; the clue strip is not counted — plan decision D2). "Cross Sums" is named as the generic
+alias (D1).
