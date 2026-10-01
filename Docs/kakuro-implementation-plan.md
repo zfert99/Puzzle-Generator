@@ -12,8 +12,9 @@
 > 2026-10-01 — the full easy→extreme ladder is served at both sizes; E3 (yield spike)
 > [#116](https://github.com/zfert99/Puzzle-Generator/pull/116) — mini = 6×6, repair-not-retry,
 > density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
-> [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); **V3 (PDF) built, in review** —
-> every V and E slice through E3 is done; E4 (generator) next) · **Branch:** one per slice off
+> [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF)
+> [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) — every V and E slice through E3
+> is done; E4 (generator) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
@@ -366,7 +367,7 @@ visual check handed to the owner.
 **Gate:** a Kakuro page in the sample booklet, verified by eye; PDF service tests cover the
 renderer.
 
-**Step-log (2026-10-01, built after E3 and review follow-up 4 — the order the owner chose):**
+**Step-log (2026-10-01 — PR [#118](https://github.com/zfert99/Puzzle-Generator/pull/118); built after E3 and review follow-up 4, the order the owner chose):**
 
 - *Process:* `drawKakuroGrid` draws the (N+1)×(N+1) display grid — shaded blocks, light
   interior lines, heavier frame, a diagonal through every clue cell with the down sum

@@ -28,7 +28,7 @@
 
 ## Journal
 
-- **2026-10-01 (V3)** Review follow-up 4 merged (#117). **V3 built**: `drawKakuroGrid` +
+- **2026-10-01 (V3)** Review follow-up 4 merged (#117). **V3 built** (#118): `drawKakuroGrid` +
   `generateKakuroPDF` (gutter, shaded blocks, diagonals, down/across sums, answer pages);
   Kakuro on `/generate` at 7×7 / 9×9 with the full ladder, **one baked puzzle per level** until
   E5 (Zod-validated); `Docs/samples/kakuro-sample.pdf`. `[decision]` the clue picture
