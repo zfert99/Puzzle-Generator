@@ -30,12 +30,13 @@ would strip and highlight cells that share nothing. A black cell gets an empty l
 for each run, for each cell in it: add every other cell of the run to that cell's set
 ```
 
-## `buildClues(runs, size)`
+## `buildClues(runs, size)` and `kakuroTracks(size)` — re-exported from the engine
 
-A run's clue sits on the display cell just before its first cell — one step left for an across
-run, one step up for a down run. In display coordinates that step always lands inside the grid,
-because the gutter absorbs runs that start at the interior's edge. A cell heading both an across
-and a down run carries both sums; a black cell heading nothing maps to `null`.
+The clue picture (which black cell carries which sums, in display coordinates with the gutter)
+is the puzzle's, not the board's: the PDF renderer draws exactly the same thing. Since V3 both
+live in the engine's `kakuro-layout.ts` (see its doc) and this module re-exports them, with
+`BoardClue` as an alias of the engine's `KakuroClue`, so the store and the cells keep one import
+for everything Kakuro-shaped.
 
 ## `buildCellToRuns(runs, size)` and `shareRun(cellToRuns, a, b)`
 

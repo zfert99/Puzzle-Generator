@@ -92,6 +92,71 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro V3: printable Kakuro — renderer, booklet, `/api/generate` branch, form toggle
+
+Branch `feature/kakuro-v3` on `18a8c70` (main, after review follow-up 4). Plan V3 step-log;
+log journal. ~150 code lines (`drawKakuroGrid` + `generateKakuroPDF`, the Zod-validated route
+branch, the form section, `maxPerDifficulty` on the configurator, the clue helpers moved into
+the engine), ~25-line preview script, ~90 test lines, a 38 KB sample PDF, ~150 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 80 files, **720 passed**, 0 failed — 6 new (PDF parity + page count; route happy path/filename, count > 1, Sudoku-family size, all zeros; the form's Kakuro path incl. the state clamp) |
+| `npm run lint` | exit 0 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Playwright `home` + `a11y` (the `/generate` specs) | 28–30 passed; the `/daily` confirm-modal responsive test was flaky in both runs (passed on retry) — the known `fullyParallel` server-contention flake, not this diff |
+| Benchmarks | not applicable — no solver change |
+| Dev server | `POST /puzzles/api/generate` `{variant:'kakuro', gridSize:9, easy/medium/hard:1}` → 200 `application/pdf` 13.7 KB; `easy:2` → 400 "at most 1 puzzle per level"; `gridSize:6` → 400 "must be 7 or 9" |
+
+### Findings
+
+- None open. One self-caught in the browser: switching to Kakuro left the inputs showing `2`
+  against `max=1` (the clamp was submit-only) → counts clamped in state on the toggle as well;
+  test asserts the input reads 1.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency (`zod` was already a dependency; first use in
+this route). **Trust boundary:** the Kakuro branch is the route's first Zod-validated body —
+size and counts are rejected with a message before anything renders; no generation runs, so the
+Extreme/total caps do not apply and the schema's `max(1)` is the only ceiling. **Visual:** the
+7×7 easy puzzle page and the 9×9 easy answer page rasterised and checked by eye (gutter, shaded
+blocks, diagonals, down sum upper-right / across sum lower-left, digits centred). The clue
+picture now has one source (`buildClues` in the engine) for board and paper; the board's tests
+pass unchanged through the re-export.
+
+### Docs sweep
+
+Mirrored `.md` for all 9 touched source files + `preview-kakuro.md` (new); samples README; the
+reverse sweep for "V3 (PDF) … next" / "V3 stays queued" (plan header, step-log title, roadmap,
+project-status ×2, Docs README) — E1's "taken ahead of V3" lines are history and stay.
+
+### Verified vs read
+
+- **Verified:** the table; both rasterised pages; the three curl cases; the form in the browser
+  pane (toggle, sizes, clamped counts).
+- **Read only:** the download itself in the browser (not clicked — a download needs the owner's
+  go-ahead); the `curl` response is the same bytes.
+
+### Review statements
+
+- `/security-review`: **not run** — a new validated read-only branch on an unauthenticated,
+  rate-limited route; no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lessons
+
+- **`sips`/QuickLook render only a PDF's first page.** To eyeball page N, draw that page alone
+  with the renderer (a scratch script in the repo tree so `pdfkit` resolves) and rasterise that —
+  cheaper than installing poppler, and it checks the renderer, not the booklet loop.
+- **Move a helper on its second consumer.** The clue picture lived in board code until the PDF
+  needed it; the board's own doc had already called it a puzzle concept.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up 4: all 8 `/code-review high` findings on #115 + #116 addressed
 
 Branch `feature/kakuro-review-4` on `cc9a953` (main, after E3). Table in the plan (E2b → "Review

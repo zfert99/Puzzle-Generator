@@ -78,6 +78,21 @@ finding, with a test pinning the 12-blacks-but-4-hints case). A size outside
 the table just isn't bounded by this rule. These are empirical ceilings, not proofs — passing
 them does not make a layout unique, it only means it has not been ruled out.
 
+## `kakuroTracks(size)`, `KakuroClue`, `buildClues(runs, size)` — the display picture
+
+Moved here from the interactive board in V3 because the PDF draws the same picture. A Kakuro's
+display grid has one more track than its interior on each axis — the clue gutter as row 0 and
+column 0 — so interior (r, c) is display (r + 1, c + 1). A run's clue sits on the display cell
+just before its first cell (one step left for an across run, one step up for a down run); in
+display coordinates that step always lands inside the grid, because the gutter absorbs runs
+that start at the interior's edge. A cell heading both an across and a down run carries both
+sums (`KakuroClue { across?, down? }`); a black cell heading nothing maps to `null`.
+
+```text
+clues = (N+1)² nulls
+for each run: display cell before its first cell ← add run.sum under 'across' or 'down'
+```
+
 ## What this does not do
 
 Nothing here says a layout *is* uniquely solvable — only that it has not been statically ruled

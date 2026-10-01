@@ -23,6 +23,14 @@ Callers can pass a `difficulties` array to override the grid-size-based availabi
 Killer mode passes `['easy','medium','hard']` so Expert/Extreme render disabled regardless of
 grid size. When omitted, availability falls back to the grid-size lookup (classic behaviour).
 
+## The optional `maxPerDifficulty` cap (Kakuro, V3)
+
+Kakuro serves one baked puzzle per level until its generator lands, so the form passes
+`maxPerDifficulty={1}`: the inputs' `max` and the `onChange` clamp both honour it, the "1–50
+total" sentence becomes "one per level", the "Expert and Extreme are only available for 9×9"
+note is suppressed (a 7×7 Kakuro carries the full ladder), and the slow-generation warning is
+`null` (nothing is generated). Default `50`, which is the pre-existing behaviour.
+
 ## What it does
 
 1. Use the `difficulties` prop if given, else look up which difficulties are available for the

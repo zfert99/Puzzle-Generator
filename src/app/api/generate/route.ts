@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
-import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF } from '@/features/pdf-generation/services/pdf.service';
+import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF } from '@/features/pdf-generation/services/pdf.service';
 import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
+import { findKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
+import type { KakuroDifficulty, KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 
@@ -13,6 +16,24 @@ const MAX_PUZZLES = 50;
 // Extreme of any variant blows the `maxDuration = 60` budget and 504s. Cap the Extreme sub-count so
 // no single request can exceed the function duration. Applied to all three variant branches below.
 const MAX_EXTREME = 5;
+
+/**
+ * Kakuro request shape (plan slice V3). Until the generator lands (E5) every puzzle is a baked,
+ * solver-graded fixture — one per size and level — so a level is asked for at most once: a
+ * count of 2 would print the same puzzle twice. Sizes are Kakuro's own (D11), not the Sudoku
+ * family's 4/6/9.
+ */
+const KAKURO_LEVELS = ['easy', 'medium', 'hard', 'expert', 'extreme'] as const satisfies readonly KakuroDifficulty[];
+const kakuroCount = z.number().int().min(0).max(1, 'Kakuro is hand-made until its generator ships: at most 1 puzzle per level').default(0);
+const kakuroRequestSchema = z.object({
+  variant: z.literal('kakuro'),
+  gridSize: z.union([z.literal(7), z.literal(9)], { error: 'Kakuro grid size must be 7 or 9' }).default(7),
+  easy: kakuroCount,
+  medium: kakuroCount,
+  hard: kakuroCount,
+  expert: kakuroCount,
+  extreme: kakuroCount,
+});
 
 /** A downloadable-PDF response with the given filename. */
 function pdfResponse(pdf: Buffer, filename: string): NextResponse {
@@ -43,6 +64,8 @@ export const maxDuration = 60;
  *   "extreme": number,   // Number of extreme puzzles to generate
  *   "gridSize": 4 | 6 | 9  // Optional, defaults to 9
  * }
+ * With `"variant": "killer" | "calc" | "kakuro"` the same counts select that type's puzzles
+ * (Kakuro: `gridSize` 7 | 9, at most one per level — see `kakuroRequestSchema`).
  */
 export async function POST(req: NextRequest) {
   const startTime = performance.now();
@@ -132,6 +155,33 @@ export async function POST(req: NextRequest) {
         'Successfully generated Keisan puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Keisan.pdf');
+    }
+
+    // ---- Kakuro branch (7×7 / 9×9, the full ladder — baked fixtures until E5) ----
+    if (body?.variant === 'kakuro') {
+      const parsed = kakuroRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid Kakuro request' }, { status: 400 });
+      }
+      const { gridSize: kakuroSize, ...counts } = parsed.data;
+      const puzzles: KakuroPuzzle[] = [];
+      for (const level of KAKURO_LEVELS) {
+        if (counts[level] === 0) continue;
+        const fixture = findKakuroFixture(kakuroSize, level);
+        if (!fixture) {
+          return NextResponse.json({ error: `No ${level} Kakuro at ${kakuroSize}×${kakuroSize} yet` }, { status: 400 });
+        }
+        puzzles.push(fixture);
+      }
+      if (puzzles.length === 0) {
+        return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
+      }
+      const pdfBuffer = await generateKakuroPDF(puzzles);
+      logger.info(
+        { event: 'generation_success', variant: 'kakuro', counts, gridSize: kakuroSize, durationMs: Math.round(performance.now() - startTime) },
+        'Successfully rendered Kakuro fixtures and PDF',
+      );
+      return pdfResponse(pdfBuffer, 'Kakuro.pdf');
     }
 
     // Extract puzzle counts, defaulting to 0 if not provided

@@ -4,6 +4,8 @@ import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import { computeCageOutline, type LabeledCage } from '@/features/engine/killer/cage-geometry';
 import type { CalcPuzzle, CalcOperator } from '@/features/engine/calc/calc-types';
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
+import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
+import { buildClues, kakuroTracks } from '@/features/engine/kakuro/kakuro-layout';
 
 /**
  * PDF-safe operator glyphs. PDFKit's built-in Helvetica encodes text as **WinAnsi**, and the math
@@ -259,6 +261,123 @@ export async function generateCalcPDF(puzzles: CalcPuzzle[]): Promise<Buffer> {
       addPageNavigation(doc, answer ? answersOutline : puzzlesOutline, i, title, answer);
       const startY = doc.y;
       drawCalcGrid(doc, p, (doc.page.width - gridDrawSize) / 2, startY, gridDrawSize, answer);
+      doc.y = startY + gridDrawSize + 30;
+      drawCrossLink(doc, i, answer);
+    };
+
+    puzzles.forEach((p, i) => drawPage(p, i, false));
+    puzzles.forEach((p, i) => drawPage(p, i, true));
+
+    doc.end();
+  });
+}
+
+/** Print shade for Kakuro's black cells — dark enough to read as "not a cell", light enough to print sums over. */
+const KAKURO_BLOCK_FILL = '#c8c8c8';
+
+/**
+ * Draw a Kakuro: the (N+1)×(N+1) display grid — clue gutter as row 0 and column 0, then the
+ * interior — with every black cell shaded, a diagonal through each clue cell, the **down** sum in
+ * its upper-right triangle and the **across** sum in its lower-left (the print convention,
+ * research gap G7), light interior lines and a heavier outer frame. An answer page adds the
+ * solution digits to the white cells; a puzzle page leaves them empty. The clue picture comes
+ * from the same `buildClues` the interactive board draws, so paper and screen agree.
+ */
+export function drawKakuroGrid(
+  doc: PDFKit.PDFDocument,
+  puzzle: KakuroPuzzle,
+  startX: number,
+  startY: number,
+  gridDrawSize: number,
+  showSolution: boolean,
+): void {
+  const size = puzzle.gridSize;
+  const tracks = kakuroTracks(size);
+  const cell = gridDrawSize / tracks;
+  const clues = buildClues(puzzle.runs, size);
+  const isWhite = (r: number, c: number) => r > 0 && c > 0 && puzzle.solution[r - 1][c - 1] !== 0;
+
+  // Blocks first (fills), then the lines and sums over them.
+  for (let r = 0; r < tracks; r++) {
+    for (let c = 0; c < tracks; c++) {
+      if (!isWhite(r, c)) doc.rect(startX + c * cell, startY + r * cell, cell, cell).fill(KAKURO_BLOCK_FILL);
+    }
+  }
+
+  // Interior lines: light, so the shaded blocks and the frame carry the structure.
+  doc.strokeColor('black').lineWidth(0.5);
+  for (let i = 1; i < tracks; i++) {
+    doc.moveTo(startX, startY + i * cell).lineTo(startX + gridDrawSize, startY + i * cell).stroke();
+    doc.moveTo(startX + i * cell, startY).lineTo(startX + i * cell, startY + gridDrawSize).stroke();
+  }
+  doc.lineWidth(2).rect(startX, startY, gridDrawSize, gridDrawSize).stroke();
+
+  // Clue cells: the diagonal splits the block; down sum top-right, across sum bottom-left.
+  const clueFont = cell * 0.3;
+  const pad = cell * 0.08;
+  doc.fillColor('black').fontSize(clueFont).lineWidth(0.8);
+  for (let r = 0; r < tracks; r++) {
+    for (let c = 0; c < tracks; c++) {
+      const clue = clues[r * tracks + c];
+      if (!clue) continue;
+      const x = startX + c * cell;
+      const y = startY + r * cell;
+      doc.moveTo(x, y).lineTo(x + cell, y + cell).stroke();
+      if (clue.down !== undefined) {
+        const text = String(clue.down);
+        doc.text(text, x + cell - doc.widthOfString(text) - pad, y + pad, { lineBreak: false });
+      }
+      if (clue.across !== undefined) {
+        const text = String(clue.across);
+        doc.text(text, x + pad, y + cell - doc.heightOfString(text) - pad * 0.5, { lineBreak: false });
+      }
+    }
+  }
+
+  if (!showSolution) return;
+  doc.fontSize(cell * 0.5);
+  for (let r = 1; r < tracks; r++) {
+    for (let c = 1; c < tracks; c++) {
+      if (!isWhite(r, c)) continue;
+      const text = String(puzzle.solution[r - 1][c - 1]);
+      const tw = doc.widthOfString(text);
+      const th = doc.heightOfString(text);
+      doc.text(text, startX + c * cell + (cell - tw) / 2, startY + r * cell + (cell - th) / 2 + th * 0.1, { lineBreak: false });
+    }
+  }
+}
+
+/**
+ * Render a Kakuro booklet: a title page, one page per puzzle (clues only), then one answer page
+ * each (clues + solution digits). Same navigation as the other booklets. Node runtime only.
+ */
+export async function generateKakuroPDF(puzzles: KakuroPuzzle[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ autoFirstPage: false, bufferPages: true, margin: 50 });
+    const buffers: Buffer[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const gridDrawSize = 400;
+
+    doc.addPage();
+    doc.fontSize(32).text('Kakuro', { align: 'center' });
+    doc.moveDown(1);
+    doc.fontSize(14).text('Cross sums: each run of white cells adds up to its clue, with no digit repeated in a run.', { align: 'center' });
+
+    // Navigation parity with the classic booklet (F9) — see generateKillerPDF for the layout note.
+    const puzzlesOutline = doc.outline.addItem('Puzzles');
+    const answersOutline = doc.outline.addItem('Answer Keys');
+
+    const drawPage = (p: KakuroPuzzle, i: number, answer: boolean) => {
+      doc.addPage();
+      const title = `Kakuro #${i + 1} (${p.gridSize}×${p.gridSize}, ${p.difficulty})${answer ? ' — Answer' : ''}`;
+      doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
+      doc.moveDown(1);
+      addPageNavigation(doc, answer ? answersOutline : puzzlesOutline, i, title, answer);
+      const startY = doc.y;
+      drawKakuroGrid(doc, p, (doc.page.width - gridDrawSize) / 2, startY, gridDrawSize, answer);
       doc.y = startY + gridDrawSize + 30;
       drawCrossLink(doc, i, answer);
     };

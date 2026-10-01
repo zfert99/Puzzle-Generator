@@ -30,8 +30,9 @@ The hook returns `{ loading, error, generate }`:
    `apiPath` wrapper prepends the `/puzzles` basePath — Next does **not** apply basePath to
    `fetch()` (only to `<Link>`/router/assets), so a bare `/api/generate` 404s under the
    multi-zone rewrite. See `src/lib/base-path.md`. The `config` may include
-   `variant: 'killer'`, in which case the download is named `Killer_Sudoku.pdf` (else
-   `Sudoku_Puzzles.pdf`); `gridSize`/`expert`/`extreme` are optional and default sensibly.
+   `variant`; the download name comes from the `PDF_FILENAME` table (`Sudoku_Puzzles.pdf`,
+   `Killer_Sudoku.pdf`, `Keisan.pdf`, `Kakuro.pdf`), matching the route's `Content-Disposition`;
+   `gridSize`/`expert`/`extreme` are optional and default sensibly.
 4. If the response is not OK, read the JSON body and throw its `error` field (the
    server sends a safe, generic message — no stack traces).
 5. On success, read the response as a binary `blob`, create a temporary object

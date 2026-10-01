@@ -2,8 +2,9 @@
  * Kakuro layout logic: turning a black/white mask into runs, and checking that a mask is a
  * legal, shippable Kakuro shape (plan decision D9) before anything expensive is run on it.
  *
- * Everything here reads the **interior** N×N only. The layout generator (slice E4) will live in
- * this module too; for now it holds the two functions hand-authored fixtures need.
+ * Everything here reads the **interior** N×N — except the clue helpers at the end, which map
+ * runs onto the (N+1)×(N+1) **display** grid (the clue gutter) that the board and the PDF both
+ * draw. The layout generator (slice E4) will live in this module too.
  *
  * See `kakuro-layout.md` for the "why" behind each rule.
  */
@@ -219,4 +220,41 @@ export function validateKakuroLayout(white: readonly boolean[][]): string[] {
   }
 
   return errors;
+}
+
+/**
+ * The sums a Kakuro black cell carries, in **display** coordinates — the (N+1)×(N+1) picture
+ * with the clue gutter as row 0 and column 0, so interior (r, c) is display (r + 1, c + 1).
+ * `across` heads the run to its right, `down` the run below it.
+ */
+export interface KakuroClue {
+  across?: number;
+  down?: number;
+}
+
+/** A Kakuro's display grid has one more track than its interior on each axis (the gutter). */
+export function kakuroTracks(size: number): number {
+  return size + 1;
+}
+
+/**
+ * Display index → clue for every black cell that heads at least one run. A run's clue sits on
+ * the cell just before its first cell — one step left for an across run, one step up for a
+ * down run — which in display coordinates is always inside the grid (the gutter absorbs the
+ * interior's edge). Cells heading no run map to `null`. Empty array when there are no runs.
+ * Shared by the interactive board and the PDF renderer so both draw the same picture.
+ */
+export function buildClues(runs: readonly Run[], size: number): (KakuroClue | null)[] {
+  if (runs.length === 0) return [];
+  const tracks = kakuroTracks(size);
+  const clues: (KakuroClue | null)[] = new Array(tracks * tracks).fill(null);
+  for (const run of runs) {
+    const row = Math.floor(run.cells[0] / size) + 1;
+    const col = (run.cells[0] % size) + 1;
+    const index = run.dir === 'across' ? row * tracks + (col - 1) : (row - 1) * tracks + col;
+    const clue = clues[index] ?? (clues[index] = {});
+    if (run.dir === 'across') clue.across = run.sum;
+    else clue.down = run.sum;
+  }
+  return clues;
 }

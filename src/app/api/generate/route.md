@@ -44,6 +44,23 @@ CPU-heavy route (review finding **H1**).
 
 The classic path (sections 2–5) is unchanged and runs when `variant` is absent/`'classic'`.
 
+## 1c. Kakuro branch (plan slice V3)
+
+**Goal:** When `variant === 'kakuro'`, render a Kakuro booklet from the **baked fixtures** —
+until the generator lands (E5) every puzzle is a solver-graded, hand-searched fill, one per
+size and level.
+**Steps:**
+
+1. Validate the body with a **Zod schema** (`kakuroRequestSchema`; AGENTS.md §6 "authorize →
+   validate → mutate"): `gridSize` is `7 | 9` (Kakuro's own sizes, D11 — a Sudoku-family 4/6 is
+   rejected), each level count is an integer `0..1`. A count of 2 would print the same fixture
+   twice, so it is a `400` with a message that says why, not a silent clamp.
+2. For each level with a count of 1, `findKakuroFixture(size, level)`; none selected → `400`.
+3. `generateKakuroPDF(puzzles)` → the booklet; return it as `Kakuro.pdf`.
+
+No generation runs, so none of the Extreme sub-count or total caps apply; the Zod maximum is the
+only ceiling. When E5 ships, step 2 becomes a `generateKakuroBatch` call and the `max(1)` goes.
+
 ---
 
 ## 2. Input Validation

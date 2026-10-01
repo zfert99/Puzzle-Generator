@@ -28,6 +28,12 @@
 
 ## Journal
 
+- **2026-10-01 (V3)** Review follow-up 4 merged (#117). **V3 built** (#118): `drawKakuroGrid` +
+  `generateKakuroPDF` (gutter, shaded blocks, diagonals, down/across sums, answer pages);
+  Kakuro on `/generate` at 7×7 / 9×9 with the full ladder, **one baked puzzle per level** until
+  E5 (Zod-validated); `Docs/samples/kakuro-sample.pdf`. `[decision]` the clue picture
+  (`buildClues`, `kakuroTracks`) moved from the board into the engine — it is the puzzle's, and
+  the PDF is its second consumer. Every V and E slice through E3 is now done; E4 next.
 - **2026-10-01 (review 4)** E3 merged (#116). Owner ran `/code-review high` over #115 + #116:
   **8 findings, all addressed** (#117; table in the plan under E2b). `[bug]` **B9** the g-link was
   applied one way only (a true combination's digit with no holder), so a chain that killed every

@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF } from './pdf.service';
+import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF } from './pdf.service';
 import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
 import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
+import { findKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
 
 /**
  * Structural navigation assertions (QA F9). PDFKit writes object dictionaries in ASCII, so the
@@ -66,5 +67,16 @@ describe('generateCalcPDF navigation parity (F9)', () => {
 
     expect(pdf.subarray(0, 4).toString('ascii')).toBe('%PDF');
     expectNavigationMetadata(pdf);
+  });
+});
+
+describe('generateKakuroPDF (V3)', () => {
+  it('renders the baked fixtures at both sizes with bookmarks and puzzle↔answer links', async () => {
+    const pdf = await generateKakuroPDF([findKakuroFixture(7, 'easy')!, findKakuroFixture(9, 'extreme')!]);
+
+    expect(pdf.subarray(0, 4).toString('ascii')).toBe('%PDF');
+    expectNavigationMetadata(pdf);
+    // Two puzzle pages + two answer pages + the title page.
+    expect((pdf.toString('latin1').match(/\/Type \/Page[^s]/g) ?? []).length).toBe(5);
   });
 });

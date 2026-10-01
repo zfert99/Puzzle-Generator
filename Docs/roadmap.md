@@ -609,8 +609,8 @@ Raising the floors is **not** a substitute and buys nothing; the research doc ex
 > `/play?variant=kakuro`) and E1 (exact solver, uniqueness proven) merged 2026-10-01; E2 (logical
 > solver: technique ladder T1–T3 + forcing chains T4–T5; the full easy→extreme ladder served at
 > both sizes, hints that name their technique) and E3 (yield spike measured: repair-not-retry,
-> mini = 6×6, 13×13 deferred — `research/kakuro-feasibility-findings.md`) done; V3 (PDF) and E4
-> (generator) next. Full plan:
+> mini = 6×6, 13×13 deferred — `research/kakuro-feasibility-findings.md`) and V3 (printable
+> Kakuro on `/generate` + sample booklet) done; E4 (generator) next. Full plan:
 > [kakuro-implementation-plan.md](kakuro-implementation-plan.md) · running log (decisions, research
 > gaps, bugs, learnings, measurements): [kakuro-log.md](kakuro-log.md)
 > **Research:** [kakuro.md](research/kakuro.md) ·
