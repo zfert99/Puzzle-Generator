@@ -53,7 +53,7 @@ any strip longer than 9                        → only nine digits exist, so it
 white cells not one connected region           → it would be two separate puzzles
 not equal to itself rotated 180°               → the aesthetic norm for published Kakuro (D9)
 contains an all-white 2×9, 3×8, 4×7 or 5×5     → can never be unique (see below)
-more whites / fewer blacks than the size table → outside what has ever been found unique
+more whites / fewer HINTS than the size table   → outside what has ever been found unique
 ```
 
 ### Why those rectangles
@@ -70,7 +70,11 @@ since a 5×6 contains a 5×5.
 ### The size table
 
 `UNIQUENESS_BOUNDS` is Mathimagics' table for interior sizes 5–16: the most white cells, and the
-fewest interior black cells, any uniquely-solvable layout has been found with. A size outside
+fewest interior **hint cells**, any uniquely-solvable layout has been found with. A hint cell
+is a black cell that heads a run — a white cell directly to its right or below it. A black cell
+heading nothing is dead space and does not count; the first draft counted every black cell,
+which let a layout with a solid black blob pass the floor with zero actual hints (a review
+finding, with a test pinning the 12-blacks-but-4-hints case). A size outside
 the table just isn't bounded by this rule. These are empirical ceilings, not proofs — passing
 them does not make a layout unique, it only means it has not been ruled out.
 

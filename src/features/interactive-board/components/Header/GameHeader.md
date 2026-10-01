@@ -53,3 +53,10 @@ glyph plus visually-hidden " mistakes" — instead of a label.
 September 2026): set on both outcomes, so the localStorage read + JSON.parse behind
 `hasSeenRules` happens once per variant per mount instead of on every render of a component
 that re-renders each second on the timer tick. Pinned by a storage-read-count test.
+
+## Kakuro reads "unrated" (October 2026)
+
+A Kakuro's `difficulty` is a placeholder until its classifier exists (Kakuro plan E2), so the
+header shows "unrated · 7×7" for it rather than presenting the placeholder as a grade — a review
+finding: the 7×7 and 9×9 fixtures carried the same "Medium" label and play very differently.
+`PlayExperience`'s Continue button does the same.

@@ -60,4 +60,33 @@ describe('usePuzzle', () => {
     expect(result.current.error).toMatch(/invalid difficulty/i);
     expect(result.current.puzzle).toBeNull();
   });
+
+  it('serves a Kakuro fixture for a known size without touching the network', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => usePuzzle());
+    let puzzle: unknown = null;
+    await act(async () => {
+      puzzle = await result.current.fetchPuzzle({ difficulty: 'easy', gridSize: 7, variant: 'kakuro' });
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(puzzle).toMatchObject({ variant: 'kakuro', gridSize: 7 });
+    expect(result.current.error).toBe('');
+  });
+
+  it('reports an error for a Kakuro size with no fixture instead of serving another size', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+
+    const { result } = renderHook(() => usePuzzle());
+    let puzzle: unknown = 'unset';
+    await act(async () => {
+      puzzle = await result.current.fetchPuzzle({ difficulty: 'easy', gridSize: 6, variant: 'kakuro' });
+    });
+
+    expect(puzzle).toBeNull();
+    expect(result.current.puzzle).toBeNull();
+    expect(result.current.error).toMatch(/6×6/);
+  });
 });

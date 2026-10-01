@@ -318,6 +318,27 @@ describe('Kakuro', () => {
     expect(s.grid[3][5]).toBe(0);
   });
 
+  it('skips a forced cell that disagrees with the answer but keeps the rest', () => {
+    // On the 7×7, (3,5)=4 and (3,6)=2 are the only cells forced from empty, via the 6-in-two run
+    // {2,4}. Planting a 3 in (2,5) (above (3,5)) leaves the board consistent but changes what the
+    // 6-in-two's down runs force: propagation now forces (3,5) to a digit that is NOT the answer.
+    // The hint must not place that, nor fall back to a blind reveal while another deduced cell
+    // is still correct — it should find the next forced cell that agrees with the solution.
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    const store = useBoardStore.getState();
+    const beforeHint = useBoardStore.getState().grid.map((row) => [...row]);
+    store.selectCell(2, 5);
+    store.inputDigit(3); // wrong ((2,5) is 8) but not immediately contradictory
+    store.hint();
+    const s = useBoardStore.getState();
+    // Exactly one new cell was filled, and whatever it is, it holds the solution's digit.
+    const changed: [number, number][] = [];
+    s.grid.forEach((row, r) => row.forEach((v, c) => { if (v !== beforeHint[r][c] && !(r === 2 && c === 5)) changed.push([r, c]); }));
+    expect(changed).toHaveLength(1);
+    const [[r, c]] = changed;
+    expect(s.grid[r][c]).toBe(KAKURO_FIXTURE_7X7.solution[r][c]);
+  });
+
   it('falls back to the answer when the board holds a mistake the solver cannot see past', () => {
     // (0,1) = 9 contradicts the top across run (4-in-two): propagation reports a contradiction,
     // so the hint reveals the first empty cell from the solution instead of trusting a deduction.

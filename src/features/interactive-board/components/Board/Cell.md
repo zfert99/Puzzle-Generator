@@ -79,6 +79,8 @@ every interior cell one row and one column on screen — and `aria-colindex` is 
 same reason. Both `blocked` and `clues` are read with optional chaining so a tick of lag during
 rehydration renders a white cell rather than throwing.
 
-The peer highlight for a Kakuro is **membership in the selected cell's `peers` list** (the
-store already holds run-mates — at most 16 entries), not row/column/box geometry. The pencil
+The peer highlight for a Kakuro is **"shares an across or down run with the selection"**,
+answered in O(1) from the store's `cellToRuns` (`shareRun`), not row/column/box geometry — and
+not a scan of the selection's peer list, which the first version did inside every cell's
+selector (a review finding; the `cellToCage` comment above explains why that matters). The pencil
 grid is `maxNum` slots (9 for Kakuro, `size` otherwise) so a 7×7 can show every digit.

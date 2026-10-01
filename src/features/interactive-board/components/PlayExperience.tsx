@@ -182,7 +182,7 @@ export default function PlayExperience() {
             >
               Continue{' '}
               {saved.variant === 'classic' ? `${saved.gridSize}×${saved.gridSize}` : VARIANT_LABEL[saved.variant]}{' '}
-              {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
+              {saved.variant === 'kakuro' ? 'unrated' : saved.difficulty} · {formatElapsed(saved.elapsedTime)}
             </button>
             <p className="text-xs text-ink-soft text-center mt-3">— or start a new game —</p>
           </div>

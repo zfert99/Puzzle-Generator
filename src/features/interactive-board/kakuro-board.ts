@@ -67,6 +67,31 @@ export function buildClues(runs: readonly Run[], size: number): (BoardClue | nul
   return clues;
 }
 
+/**
+ * Flat interior index → the ids of its across run (slot 0) and down run (slot 1), −1 when the
+ * cell is black or has no run in that direction. Two slots per cell in one flat array. This is
+ * what makes "is that cell a run-mate of the selection?" an O(1) comparison in every cell's
+ * selector — the same reason the store precomputes `cellToCage` for Killer (INP, AGENTS.md §3).
+ */
+export function buildCellToRuns(runs: readonly Run[], size: number): number[] {
+  if (runs.length === 0) return [];
+  const cellToRuns = new Array<number>(size * size * 2).fill(-1);
+  for (const run of runs) {
+    const slot = run.dir === 'across' ? 0 : 1;
+    for (const cell of run.cells) cellToRuns[cell * 2 + slot] = run.id;
+  }
+  return cellToRuns;
+}
+
+/** Do two interior cells share an across run or a down run? O(1) via `buildCellToRuns`. */
+export function shareRun(cellToRuns: readonly number[], a: number, b: number): boolean {
+  if (cellToRuns.length === 0) return false;
+  return (
+    (cellToRuns[a * 2] !== -1 && cellToRuns[a * 2] === cellToRuns[b * 2]) ||
+    (cellToRuns[a * 2 + 1] !== -1 && cellToRuns[a * 2 + 1] === cellToRuns[b * 2 + 1])
+  );
+}
+
 /** The accessible name of a clue cell: "Clue: across 17, down 23", or "Blocked cell". */
 export function describeClue(clue: BoardClue | null | undefined): string {
   const parts: string[] = [];

@@ -93,11 +93,15 @@ describe('countKakuroSolutions', () => {
   });
 
   it('counts exactly what an independent brute force counts, on random small grids', () => {
+    // Budgeted to stay well under a second solo: the brute force is the cost (9^whites in the
+    // worst case), and a 4×4 at 70% white can take hundreds of ms alone. An earlier version ran
+    // 150 trials (~5 s solo) and timed out under full-suite worker contention — the flake class
+    // `Docs/pre-merge-log.md` documents — so trials and the white-cell cap are both held down.
     let checked = 0;
-    for (let trial = 0; trial < 150; trial++) {
+    for (let trial = 0; trial < 60; trial++) {
       const size = 3 + Math.floor(Math.random() * 2);
       const solution = randomSolvedGrid(size);
-      if (!solution) continue;
+      if (!solution || solution.flat().filter(Boolean).length > 11) continue;
       const shape = { gridSize: size, runs: deriveRuns(solution) };
       const expected = bruteForceCount(shape, 50);
       const result = countKakuroSolutions(shape, { limit: 50, nodeBudget: 1_000_000 });
@@ -105,7 +109,7 @@ describe('countKakuroSolutions', () => {
       expect(result.solutions, JSON.stringify(solution)).toBe(expected);
       checked++;
     }
-    expect(checked).toBeGreaterThan(100);
+    expect(checked).toBeGreaterThan(25);
   });
 
   it('respects placed digits in a starting grid', () => {
@@ -114,6 +118,12 @@ describe('countKakuroSolutions', () => {
     expect(countKakuroSolutions(TINY, { grid }).solutions).toBe(0);
     grid[1][1] = 2;
     expect(countKakuroSolutions(TINY, { grid }).solutions).toBe(1);
+  });
+
+  it('reports no solutions for a shape with no runs instead of counting the empty grid', () => {
+    expect(countKakuroSolutions({ gridSize: 9, runs: [] })).toMatchObject({ solutions: 0, exhausted: false });
+    expect(isKakuroUnique({ gridSize: 9, runs: [] })).toBe(false);
+    expect(deduceKakuro({ gridSize: 9, runs: [] }, []).contradiction).toBe(true);
   });
 
   it('reports budget exhaustion rather than guessing', () => {

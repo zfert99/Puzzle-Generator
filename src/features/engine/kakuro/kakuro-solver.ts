@@ -10,6 +10,7 @@
  * inside propagation (AGENTS.md §5). See `kakuro-solver.md` for the "why" of each step.
  */
 
+import { popcount } from '../grid-utils';
 import { ALL_DIGITS_MASK, runComboMasks } from './kakuro-combinations';
 import type { Run } from './kakuro-types';
 
@@ -43,14 +44,6 @@ export interface KakuroDeduction {
   forced: { cell: number; digit: number }[];
   /** The given grid cannot be completed — some cell lost every candidate. */
   contradiction: boolean;
-}
-
-/** Number of set bits in a 9-bit mask. */
-function popcount(mask: number): number {
-  let m = mask;
-  m -= (m >>> 1) & 0x55555555;
-  m = (m & 0x33333333) + ((m >>> 2) & 0x33333333);
-  return (((m + (m >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24;
 }
 
 /** 1-based digit of a single-bit mask. */
@@ -257,9 +250,12 @@ function propagateAll(compiled: Compiled, masks: Int32Array): boolean {
  */
 export function countKakuroSolutions(shape: KakuroShape, options: KakuroCountOptions = {}): KakuroCountResult {
   const { limit = 2, nodeBudget = 200_000, grid } = options;
+  const result: KakuroCountResult = { solutions: 0, nodes: 0, exhausted: false, solution: null };
+  // A shape with no runs is not a puzzle: it has nothing to solve, and the ring-buffer queue
+  // below would be zero-length. Report "no solutions" rather than counting the empty grid as one.
+  if (shape.runs.length === 0) return result;
   const compiled = compile(shape);
   const { whites, cellRuns, queue, queued } = compiled;
-  const result: KakuroCountResult = { solutions: 0, nodes: 0, exhausted: false, solution: null };
 
   const masks = initialMasks(compiled, shape.gridSize, grid);
   if (!propagateAll(compiled, masks)) return result;
@@ -332,6 +328,7 @@ export function isKakuroUnique(shape: KakuroShape, nodeBudget?: number): boolean
  * listed should be trusted.
  */
 export function deduceKakuro(shape: KakuroShape, grid: readonly number[][]): KakuroDeduction {
+  if (shape.runs.length === 0) return { forced: [], contradiction: true };
   const compiled = compile(shape);
   const masks = initialMasks(compiled, shape.gridSize, grid);
   if (!propagateAll(compiled, masks)) return { forced: [], contradiction: true };

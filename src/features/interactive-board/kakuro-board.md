@@ -37,6 +37,15 @@ run, one step up for a down run. In display coordinates that step always lands i
 because the gutter absorbs runs that start at the interior's edge. A cell heading both an across
 and a down run carries both sums; a black cell heading nothing maps to `null`.
 
+## `buildCellToRuns(runs, size)` and `shareRun(cellToRuns, a, b)`
+
+Two run ids per cell in one flat array — its across run (slot 0) and its down run (slot 1), −1
+where absent. `shareRun` then answers "do these two cells share a run?" with two comparisons.
+This is the O(1) lookup the peer highlight uses in every cell's selector, for the same reason
+the store precomputes `cellToCage` for Killer: a selector that scans the selection's peer list
+runs N² × peers comparisons per keystroke (a review finding on the first version), and the
+13×13 size is coming.
+
 ## `describeClue(clue)`
 
 "Clue: across 17, down 23" (whichever sums exist, across first) or "Blocked cell" — the

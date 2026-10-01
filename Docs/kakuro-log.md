@@ -28,6 +28,11 @@
 
 ## Journal
 
+- **2026-10-01 (review)** E1 merged (#110). Owner ran the hosted `/code-review` over the four
+  merged slices (V0–E1): **10 findings, all addressed** in a follow-up PR — see the plan's
+  "Review follow-up" step-log for the full list with outcomes, and B2–B4 below. `[bug]` B2 hint
+  discarded every deduced cell on the first mismatch; B3 zero-run shape counted as 1 solution;
+  B4 min-hints floor counted dead black cells. `[learning]` L10, L11.
 - **2026-10-01 (later)** V2 merged (#109). **E1 built**, pulled ahead of V3: exact solver
   (`kakuro-solver.ts`) + combination view over the Killer table; both fixtures **proven unique
   in-repo**; the Hint button places solver-deduced cells; dev badge (unique ✓ · n nodes) under the board.
@@ -110,6 +115,9 @@
 
 | # | Found | Slice | Symptom | Cause | Fix |
 |---|---|---|---|---|---|
+| B2 | 2026-10-01 (review) | E1 | Kakuro `hint()` fell back to a blind reveal whenever the *first* solver-forced cell disagreed with the solution, even if another forced cell was a sound deduction | The check-against-solution was applied to one pick, not iterated | Take the selected cell if forced *and* agreeing, else the first agreeing forced cell; test plants a consistent-but-wrong 3 and asserts one correct placement — review follow-up PR |
+| B3 | 2026-10-01 (review) | E1 | `countKakuroSolutions({ runs: [] })` reported **1** solution (the empty grid); `% 0` on the zero-length ring buffer gave NaN | No guard for a shape with no runs | Return 0 solutions / contradiction up front; tested |
+| B4 | 2026-10-01 (review) | V1 | `validateKakuroLayout`'s min-hints floor counted every interior black cell, so a solid black blob heading no run passed a floor it should fail | Misread Mathimagics' "interior hints" as "interior blacks" | Count black cells with a white cell to the right or below; test with 12 blacks / 4 hints at 9×9 |
 | B1 | 2026-10-01 | V2 | A resumed Kakuro rendered every cell white with no clues (and threw `undefined[c]` from `Cell`'s selector before the optional-chaining guard) | `onRehydrateStorage` rebuilt derived fields (`peers`, `cellToCage`, now `blocked`/`clues`) by **mutating** the state object after hydration's `set` — no subscriber is notified, so already-rendered cells never re-read them. Latent since Killer: `cellToCage` was one interaction late after every reload | Derive in persist's `merge` (runs before the state is set) — `useBoardStore.ts`, V2 PR |
 
 ## Learnings
@@ -124,6 +132,8 @@
 | L7 | **Don't fill-and-retry a fixed layout; repair the fill.** Independent random fills of one layout were unique 0 times in 3,000, while a one-cell-at-a-time hill-climb on the same layout converged. Treat "P(unique) per random fill" as ≈ 0 until E3 measures otherwise | V1 fixture authoring, 2026-09-30 |
 | L8 | **Never mutate hydrated store state to "finish" it — derive in `merge` or `setState`.** A mutation after hydration notifies no subscriber, so whatever rendered first keeps the stale slice; the bug only shows for a field a component reads on first paint, which is why `peers` (read only inside actions) hid it for months | B1, V2, 2026-10-01 |
 | L9 | **A hint from a solver must be re-checked against the answer before it is placed.** Propagation from a board that already holds a wrong digit can force a digit that is consistent with the mistake and wrong against the solution; "the solver said so" is not "it is correct" once the premises are the player's | E1, 2026-10-01 |
+| L10 | **A derived store field needs a test that hydrates from storage**, not one that calls `startNewGame` — the latter can never see a rebuild that is missing or late. Snapshot localStorage, wipe the store, `persist.rehydrate()`, read the field; prove the test bites by deleting the rebuild once | Review finding 1, 2026-10-01 |
+| L11 | **When a review names a cheap cleanup, take it in the same follow-up** — the private `popcount`, the empty `if` branch and the `as Variant` cast each cost minutes to fix and would otherwise have been copied by the next slice | Review findings 5–7, 2026-10-01 |
 | L4 | **An honest top tier is the one the published comparison set actually uses.** Before transplanting a top-tier mechanism from another puzzle (Keisan's bounded T&E), check what the publishers' hardest tier requires — Kakuro's is chains, so a guess-based Extreme would have been dishonest by construction | G5 |
 
 ## Measurements
