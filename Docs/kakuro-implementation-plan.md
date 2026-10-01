@@ -9,10 +9,12 @@
 > [#112](https://github.com/zfert99/Puzzle-Generator/pull/112) and its review follow-up
 > [#113](https://github.com/zfert99/Puzzle-Generator/pull/113), E2b
 > [#114](https://github.com/zfert99/Puzzle-Generator/pull/114) and its review follow-up merged
-> 2026-10-01 — the full easy→extreme ladder is served at both sizes; **E3 (yield spike) done,
-> in review** — mini = 6×6, repair-not-retry, density ≥ 35% at 9×9, 13×13 deferred; V3 (PDF)
-> and E4 next) · **Branch:** one per slice off `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`,
-> `-review-1`, `-e2`, `-review-2`, `-e2b`, `-review-3`, `-e3`) ·
+> 2026-10-01 — the full easy→extreme ladder is served at both sizes; E3 (yield spike)
+> [#116](https://github.com/zfert99/Puzzle-Generator/pull/116) — mini = 6×6, repair-not-retry,
+> density ≥ 35% at 9×9, 13×13 deferred; review follow-up 4 (two-way g-link, extremes re-baked)
+> [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF) and E4 next) · **Branch:** one per slice off `main`
+> (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`, `-review-3`,
+> `-e3`, `-review-4`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -164,8 +166,8 @@ means Kakuro needs its own.
 | D2 | **Interior N×N storage + explicit runs list**; clue cells render in a one-cell gutter (top + left) plus inside interior black cells. `grid.length === N` stays true everywhere (`DailySize`, profile lookup, board config) | Locked by owner 2026-09-30; applied in V1 |
 | D3 | Black cells are `0` in both `grid` and `solution`; **blocked = "in no run"**, derived from `runs` at game start (like `cellToCage`). No `-1` sentinel leaks into `Grid` consumers | Locked by owner 2026-09-30; applied in V1 |
 | D4 | Daily at 4 types: **keep 3 mini slots and roll 3 of the 4 types** each day; a mini slot holding a type is played at **that type's mini size** (D11), so the "easy/medium = 4×4, hard = random(4/6)" rule is retired for types with a single mini size | Open — owner (slot count); size part follows D11 |
-| D5 | ~~T5 = bounded depth-1 recursion (Keisan transplant)~~ → **Every published tier is logic-only. T1–T3 by the technique ladder; T4 = whips of bounded length; T5 = longer whips / g-whips.** Surface sums (1-cuts) are an accelerator inside T4+, not a rung. Bounded T&E survives only as an optional, labelled *experimental* tier outside the daily | **Superseded 2026-09-11 by G5** — new form proposed, confirm |
-| D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** mini = **6×6** (E3: carries the full ladder incl. expert/extreme with chains, repairs to unique in 3–10 ms; 7×7 stays on `/play` as a second size), standard = **9×9**, large = **13×13 on paper — deferred** (E3: the repair objective is too slow there; needs its own measured approach before it ships anywhere). **No 4×4.** | E3 measured 2026-10-01 — mini and large settled by measurement; owner confirmation open |
+| D5 | ~~T5 = bounded depth-1 recursion (Keisan transplant)~~ → **Every published tier is logic-only. T1–T3 by the technique ladder; T4 = whips of bounded length; T5 = longer whips / g-whips.** Surface sums (1-cuts) are an accelerator inside T4+, not a rung. Bounded T&E survives only as an optional, labelled *experimental* tier outside the daily | **Superseded 2026-09-11 by G5** — D5′ (log) applied in E2b and confirmed by owner 2026-10-01 |
+| D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** mini = **6×6** (E3: carries the full ladder incl. expert/extreme with chains, repairs to unique in 3–10 ms; 7×7 stays on `/play` as a second size), standard = **9×9**, large = **13×13 on paper — deferred** (E3: the repair objective is too slow there; needs its own measured approach before it ships anywhere). **No 4×4.** | E3 measured 2026-10-01 — mini and large settled by measurement; confirmed by owner 2026-10-01 |
 | D11 | **Sizes are per puzzle type.** Each type ships three: the smallest size that is genuinely interesting for *that* puzzle, its standard size, and a large size. Minis in menus and the daily are "the type's smallest size", not a fixed 4×4/6×6. Kakuro is the first type built this way; revisiting Classic/Killer/Keisan under the same rule is deferred (4×4 is trivial for most of them) | Locked by owner 2026-09-11 (principle); Kakuro sizes per D6 |
 | D12 | **Build order is visual first, simplest → hardest:** a hand-baked puzzle is playable and printable (V1–V3) before any engine code; each engine slice lands on that board and is judged by what it makes visible. The **hub card goes live only at E5** (when "New puzzle" is real); until then `/play?variant=kakuro` is reachable by URL for building and E2E, so `main` never advertises a one-puzzle type. *Amended 2026-09-30: a looks-only static board (V0, at the unlinked workbench route `/kakuro`) precedes V1* | Locked by owner 2026-09-11 (order), amended 2026-09-30; hub timing proposed |
 | D7 | Roadmap: **Phase 10**, engine-first like Phase 6/8 | Applied (this PR) |
@@ -488,7 +490,26 @@ recorded in full):**
 
 *Noted:* with the g-link the 7×7 extreme needs a chain of exactly **12** at one point — the
 `CHAIN_TIER5_MAX_LENGTH` ceiling. It still grades extreme (the chain is found), but the fixture
-sits on the edge; E5's distribution decides whether 12 is the right ceiling.
+sits on the edge; E5's distribution decides whether 12 is the right ceiling. *(Closed by review
+follow-up 4 below: the 12 was an artefact of the one-way g-link.)*
+
+**Review follow-up 4 (2026-10-01 — hosted `/code-review high` over #115 + #116, 8 findings,
+all addressed in [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); recorded in full):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | The g-link ran one way only: a digit with no remaining holder never falsified the open combinations that need it, so a chain that killed every holder of a required digit was not contradicted until another link singled a combination out (`kakuro-chains.ts`) | **Fixed** (B9) — both directions in the scan, facts included. Measured: `*_CHAINS` need **3** (was 4), the served extremes graded expert and were **re-baked** at chains of 5 (7×7) / 6 (9×9); on a 36-puzzle 7×7 corpus the minimal-bound tail above 4 fell from 11 to 4 of 19 and both unrated puzzles became rated; a 23-puzzle 9×9 corpus moved less (unrated 5 → 3, extreme 8 → 8, expert 3 → 5) and still reaches the ceiling of 12 — the bound of 4 splits the tiers at both sizes, the ceiling stays E5's question; tests for both directions on raw contexts and a pin on the original 7×7 at 3 |
+| 2 | The facts fixpoint re-ran identically for every target candidate | **Fixed** — `prepareChainWorkspace` establishes the facts once and snapshots them; each target restores the snapshot |
+| 3 | The live D5′ row still said "no g-link", and findings §3e proposed adding g-whips (reverse-sweep miss from #115) | **Fixed** — D5′ reworded (braids with the two-way g-link, i.e. g-braids) and confirmed; §3e carries a dated addendum |
+| 4 | The "forced two ways" branch was unreachable (a forced truth is by definition still open) | **Fixed** — asserting a forced truth now throws if it ever fails, instead of a dead branch that would have mis-counted |
+| 5 | The `contradictionRun` test could pass via any step naming the run; the cell-emptied branch was untested | **Fixed** — asserts on the contradiction clause only, for both a run-emptied and a cell-emptied chain found on the 9×9 original |
+| 6 | An inconsistent context (its facts alone contradict) still yielded a "proven" elimination | **Fixed** — `ChainWorkspace.inconsistent`; every target returns `null`; tested |
+| 7 | Findings §6 reproduction counts for 13×13 read as 6 repairs (six layouts, three repairs) | **Fixed** |
+| 8 | A fresh workspace's `trueCombo` read as "combination 0 true" until the first reset | **Fixed** — initialised to −1 |
+
+*Learned (L17):* a one-way link is half a link. The tier-4 bound, the extreme fixtures and E3's
+tier distribution were all measured against the one-way g-link; the two-way link cut chain
+lengths 2–3×. E5 re-measures the distribution with this engine before fixing the bounds.
 
 ### E2 — Logical solver (technique classifier) + instrumentation ✅ (E2a ✅ · E2b ✅)
 

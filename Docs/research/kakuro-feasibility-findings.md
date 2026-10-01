@@ -139,6 +139,19 @@ beyond the current bound. E5 must either raise `CHAIN_TIER5_MAX_LENGTH`, add g-w
 sums as accelerators, or reject them — and a generator that targets easy–hard will simply not
 produce them. Recorded for E5's calibration; not a blocker.
 
+> **Addendum (2026-10-01, review follow-up 4).** Mostly an artefact of the engine this was
+> measured with: its g-link ran one way only (B9 in the log). With the link applied in both
+> directions, a fresh 36-puzzle 7×7 corpus at 32% black (same method) re-graded from
+> `{easy 1, medium 5, hard 11, expert 8, extreme 9, unrated 2}` to
+> `{easy 1, medium 5, hard 11, expert 15, extreme 4, unrated 0}`; the minimal chain bound per
+> puzzle moved from `{0:17, 1:1, 3:1, 4:6, 5:4, 6:1, 7:1, 9:2, 10:1, >12:2}` to
+> `{0:17, 1:2, 3:8, 4:5, 5:2, 7:1, 11:1}`. A fresh 23-puzzle 9×9 corpus (7 at 29%, 16 at 34%)
+> moved less: unrated 5 → 3, extreme 8 → 8, expert 3 → 5, minimal bounds at 34% from
+> `{0:6, 1:1, 4:2, 5:1, 7:1, 8:1, 11:1, >12:3}` to `{0:6, 1:1, 3:3, 5:1, 7:2, 9:1, >12:2}`. So:
+> the ceiling of 12 is rarely reached at 7×7 but still real at 9×9, and the expert/extreme split
+> at 4 holds at both sizes. Classifying a 9×9 halved (31.6 → 16.9 ms). **E5 must measure its
+> distribution with the two-way engine, not the tables in §2.**
+
 ---
 
 ### 3f. 13×13 needs a different objective, not a faster loop
@@ -191,5 +204,5 @@ runs longer than 9, validating with `validateKakuroLayout`); fill with a randomi
 per-run all-different; `deriveRuns` the fill; time `countKakuroSolutions({ gridSize, runs },
 { limit: 2, nodeBudget: 20000 })` for P(unique); then hill-climb the fill (one-cell mutations,
 accept if `countKakuroSolutions(…, { limit: 50 }).solutions` does not rise) and grade the
-result with `classifyKakuro(shape, { metrics: true })`. 200 fills and 20 repairs per
-size × density; 100 and 6 at 13×13.
+result with `classifyKakuro(shape, { metrics: true })`. 20 layouts, 200 fills and 20 repairs
+per size × density; at 13×13 six layouts, 100 fills and three repairs (60 s cap each).

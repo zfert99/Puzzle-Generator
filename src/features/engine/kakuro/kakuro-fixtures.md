@@ -41,7 +41,7 @@ Two hand-drawn layouts (7×7: 32 whites, 20 runs; 9×9: 55 whites, 38 runs), eac
 | Group | What | Difficulty |
 |---|---|---|
 | `KAKURO_FIXTURES` (served) | one per size × easy / medium / hard / expert / extreme | the tier the logical solver needs: T1–T3 by technique, T4 = chains ≤ 4, T5 = longer chains |
-| `KAKURO_FIXTURE_7X7_CHAINS`, `_9X9_CHAINS` | the first fills found (V1): unique; the T1–3 ladder stalls with 27 / 29 cells undecided, then one or two chains of exactly length 4 finish them | `'expert'` — where the tier-4 bound was measured from |
+| `KAKURO_FIXTURE_7X7_CHAINS`, `_9X9_CHAINS` | the first fills found (V1): unique; the T1–3 ladder stalls with 27 / 29 cells undecided, then chains of length 3 finish them (they needed exactly 4 before the g-link was applied in both directions — review follow-up 4; the tier-4 bound of 4 was measured from that) | `'expert'` |
 
 `findKakuroFixture(size, difficulty)` is what `usePuzzle` serves; `ALL_KAKURO_FIXTURES` is what
 the uniqueness and soundness tests sweep.
@@ -51,7 +51,10 @@ at a time, scoring a fill by the repo's own solvers: non-unique counts first, th
 ladder leaves undecided" with the ladder capped at the target tier (and, for the chain tiers,
 "solvable one tier lower" as a penalty). Finding a 7×7 at each tier took 0.1–2.4 s; the 9×9s
 took 11–90 s each, some needing a restart out of a non-unique dead end — see
-[kakuro-log.md](../../../../Docs/kakuro-log.md) → Measurements. The tests here check that every
+[kakuro-log.md](../../../../Docs/kakuro-log.md) → Measurements. The two extreme fills were
+re-searched (0.3 s / 50 s) when the two-way g-link made the first pair solvable with chains ≤ 4;
+the served ones need chains of 5 (7×7) and 6 (9×9), clear of both the tier-4 bound and the
+tier-5 ceiling. The tests here check that every
 fixture is legal and self-consistent, that **every served label equals what `classifyKakuro`
 assigns** (so a label can never drift from the solver), and that the chain fills stay unrated;
 `kakuro-solver.test.ts` proves all eight unique.

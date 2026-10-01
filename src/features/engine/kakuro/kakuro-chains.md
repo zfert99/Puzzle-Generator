@@ -18,10 +18,20 @@ two combinations of one run                        (a run uses one combination)
 a cell-digit and a run-combination that lacks it   (the digit cannot be in that run's set)
 ```
 
-plus one non-binary link, Berthier's **g-link**: a true combination needs each of its digits
-held by some cell of the run — so a digit with no possible holder is a contradiction, and one
-with exactly one holder forces it there. (Left out of the first version; a review finding — it
-makes some chains shorter and catches a contradiction one link earlier.)
+plus one non-binary link, Berthier's **g-link** — a combination needs each of its digits held by
+some cell of the run — applied in **both directions**:
+
+```text
+a combination needing a digit no cell of the run can hold is false   (not a link: nothing is forced true)
+a digit every open combination needs, with exactly one holder, is true there   ← counts as one link
+```
+
+Left out of the first version entirely (a review finding on E2b); then applied only to a run
+whose combination was already true (a review finding on that fix). The one-way form let a chain
+kill every holder of a digit two open combinations both needed without noticing — the run stayed
+"open" until some other link singled a combination out. Measured when the second direction
+landed: chains that needed 6–12 links now need 3–6 (see **Measured** below). This is what makes
+the rating comparable to Berthier's, whose g-whips carry the link both ways.
 
 ## What a chain is
 
@@ -54,19 +64,33 @@ given target — the same "weakest level that finishes" convention every other t
 ## Facts before the supposition
 
 Whatever is already forced — a run with a single open combination, a cell with a single
-candidate, and whatever those force in turn — is established first, **to a fixpoint**, without
-counting toward the length. The logical solver has normally applied these to the masks (tier 1),
-but the grade must not depend on which caller built the context: the first version asserted only
-the single-combination runs and did not iterate, so a chain whose first link was really a fact
-could be reported one link longer than it was (a review finding). A target the facts already
-rule out is a chain of length 0.
+candidate, and whatever those force in turn, g-link included — is established first, **to a
+fixpoint**, without counting toward the length. The logical solver has normally applied these to
+the masks (tier 1), but the grade must not depend on which caller built the context: the first
+version asserted only the single-combination runs and did not iterate, so a chain whose first
+link was really a fact could be reported one link longer than it was (a review finding). Every
+open variable gets one look in this pass (the scan afterwards only revisits what changed), so a
+raw context's g-link facts are found even when nothing is asserted outright. A target the facts
+already rule out is a chain of length 0.
+
+If the facts alone contradict, the context is **inconsistent** (a wrong digit somewhere, or a
+hand-built context) and no chain from it is a finding: the workspace says so and every target
+returns `null`. The first version carried on and could report the context's own contradiction
+as the supposition's (a review finding).
 
 ## One workspace per step
 
-The open combinations of every run and the working buffers are built once per
-`findFirstChainElimination` (`prepareChainWorkspace`) and reset per target candidate — hundreds
-of targets share them. The first version rebuilt them per target (a review finding); the
-rebuild was most of an extreme puzzle's grading time.
+The open combinations of every run, the working buffers, **and the facts** are built once per
+`findFirstChainElimination` (`prepareChainWorkspace`) — hundreds of targets share them, and each
+target starts by copying the post-facts snapshot back into the buffers rather than re-deriving
+it. The first version rebuilt the combinations per target, the second re-ran the facts fixpoint
+per target (both review findings).
+
+The propagation itself (`ChainPropagation`: assert a cell-digit, assert a run-combination, scan
+the touched variables) is a small class over the context and the workspace so the facts pass and
+the chain walk share one implementation. A forced truth the scan returns is by definition still
+open, so asserting it cannot fail — the engine throws if it ever does rather than counting a
+phantom link.
 
 The chain also reports `contradictionRun` — the run that emptied, or the run of the cell that
 did — which the solver records as the step's `run` so a future "show me where" can point at the
@@ -81,7 +105,18 @@ right place.
 
 ## Measured (2026-10-01)
 
-The two original fills (`*_CHAINS`) each need chains of length **exactly 4** — not 3 — after the
-tier-3 ladder stalls (27 / 29 cells undecided), which is where the tier-4 bound was set.
-Searched fills: 7×7 extreme needs chains of 6 and 10; 9×9 extreme of 8 and 7; the expert fills
-one chain of 4 each. Classifying an extreme 7×7 takes ~35 ms; a hint on it ~1 ms.
+With the one-way g-link, the two original fills (`*_CHAINS`) each needed chains of length
+**exactly 4** after the tier-3 ladder stalls (27 / 29 cells undecided), which is where the
+tier-4 bound was set; the searched extreme fills needed chains of 6–12.
+
+With the two-way g-link (review follow-up 4) the same fills need **3** (both `*_CHAINS`), the
+experts 2–3, and the first extreme pair only 3–4 — they graded expert and were re-baked. On a
+36-puzzle 7×7 corpus (repaired random fills, 32% black) the minimal-bound histogram moved from
+`{0:17, 1:1, 3:1, 4:6, 5:4, 6:1, 7:1, 9:2, 10:1, >12:2}` to `{0:17, 1:2, 3:8, 4:5, 5:2, 7:1, 11:1}`:
+both "unrated" puzzles became rated, the tail above 4 shrank from 11 to 4 of 19, and the bound of
+4 still splits expert from extreme. A 23-puzzle 9×9 corpus (29% and 34% black) moved less:
+unrated 5 → 3, extreme 8 → 8, expert 3 → 5 — the long tail is real at 9×9, and the ceiling of 12
+is still reached there (E5's question). Classifying the 9×9 corpus halved, 31.6 → 16.9 ms per
+puzzle (facts snapshot + shorter chains); the 7×7 corpus stayed at ~4 ms (the two-way scan costs
+about what the snapshot saves at that size). The served extremes now need chains of 5 (7×7) and
+6 (9×9); classifying them takes ~9 ms and ~18 ms.
