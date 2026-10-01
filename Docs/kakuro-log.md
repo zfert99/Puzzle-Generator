@@ -30,7 +30,7 @@
 
 - **2026-10-01 (later)** V2 merged (#109). **E1 built**, pulled ahead of V3: exact solver
   (`kakuro-solver.ts`) + combination view over the Killer table; both fixtures **proven unique
-  in-repo**; the Hint button places solver-deduced cells; dev badge under the board.
+  in-repo**; the Hint button places solver-deduced cells; dev badge (unique ✓ · n nodes) under the board.
   `[measure]` uniqueness verify 0.12 ms on both fixtures (gate: 50 ms). `[learning]` L9.
 - **2026-10-01** V0 (#104) and V1 (#108) merged. **V2 built**: Kakuro is playable at
   `/play?variant=kakuro` on the real board (7×7 and 9×9 fixtures) — gutter, clue cells, 1–9

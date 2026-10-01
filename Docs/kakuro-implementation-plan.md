@@ -395,8 +395,8 @@ clean, board hint driven by the solver.
   `isKakuroUnique` (`null` on budget), `deduceKakuro` (propagation only). The store's `hint`
   places a cell the solver **deduces** (selected if forced, else the first forced; the digit is
   accepted only if it equals the solution's — a board holding a mistake can force a digit that
-  is consistent with the mistake); `KakuroDevBadge` shows "unique ✓ · n nodes · t ms" under
-  the board in development. 48 engine tests incl. a 150-grid fuzz against an independent brute
+  is consistent with the mistake); `KakuroDevBadge` shows "unique ✓ · n nodes" under the board
+  in development (nodes, not ms — a timing in render fails `react-hooks/purity`; CI caught it). 48 engine tests incl. a 150-grid fuzz against an independent brute
   force, the G10 2×9 and isolated-2×2 degenerates, the ±1 clue trick, budget exhaustion, and
   **both fixtures proven unique in-repo**; 4 store/badge tests.
 - *Measured:* uniqueness verify **0.12 ms** average on the 7×7 (13 nodes) and the 9×9 (11

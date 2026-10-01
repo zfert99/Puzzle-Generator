@@ -87,6 +87,8 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
   right?". Sweep for the *sink* (what touches the column), not the parameter name. *(08-05)*
 - **Don't write "measured" next to a case you reasoned about** — and when a status code could come
   from more than one guard, read the response body. *(08-05)*
+- **Never pipe `npm run lint` through `tail`/`head`** — eslint's errors sit above the final blank
+  line, so `| tail -1` reads as a pass. Check the exit code or capture the whole output. *(10-01)*
 
 ---
 
@@ -142,7 +144,7 @@ Plan E1 step-log; log journal, L9, measurement; roadmap + project-status lines.
 
 ### Verified vs read
 
-- **Verified:** the table above; in the browser — badge reads "unique ✓ · 13 nodes · 2.40 ms",
+- **Verified:** the table above; in the browser — badge reads "unique ✓ · 13 nodes" (a first draft also showed ms; `react-hooks/purity` rejects `performance.now()` in render and CI caught it — my local lint run had its errors hidden behind a `tail -1`),
   three Hints place (3,5)=4, (3,6)=2 then (0,2)=6, resume keeps them, fresh tab has no console
   errors. (An error seen in the original tab was stale console history from before the V2 merge
   fix — confirmed by opening a fresh tab.)
@@ -153,8 +155,12 @@ Plan E1 step-log; log journal, L9, measurement; roadmap + project-status lines.
 - `/security-review`: **not run** — no auth, authz, or data-access change.
 - `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
 
-### Lesson
+### Lessons
 
+- **Never pipe `npm run lint` through `tail`/`head`.** eslint prints its errors *above* the final
+  blank line; `| tail -1` showed only the script banner and read as a pass. CI caught two
+  `react-hooks/purity` errors the local run had hidden. Check the exit code, or capture the whole
+  output and grep it.
 - **The browser pane's console history survives navigation.** Before attributing a console error
   to the current code, reproduce it in a fresh tab; otherwise a fixed bug keeps "failing".
 

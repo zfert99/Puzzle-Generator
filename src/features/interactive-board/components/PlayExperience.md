@@ -120,6 +120,6 @@ group (size buttons get theirs from the shared `GridSizeSelector`).
 ## Development-only solver badge (October 2026, Kakuro E1)
 
 Under a Kakuro board, and only when `NODE_ENV === 'development'`, the game view renders
-`KakuroDevBadge` — the exact solver's uniqueness verdict and cost. It reads the *board's*
+`KakuroDevBadge` — the exact solver's uniqueness verdict and node count. It reads the *board's*
 variant from the store (not the menu's `variant` state), so it follows the game actually being
 played.
