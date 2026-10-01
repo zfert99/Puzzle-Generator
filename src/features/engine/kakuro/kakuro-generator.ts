@@ -73,8 +73,8 @@ function ringOrder(size: number): number[] {
 }
 
 /**
- * One layout attempt. Returns the mask, or `null` on a contradiction (a cell forced both ways,
- * or a mirror pair that disagrees) — the caller restarts.
+ * One layout attempt. Returns the mask, or `null` on a contradiction (a cell forced both ways)
+ * — the caller restarts.
  */
 function attemptLayout(size: number, blackDensity: number, rng: () => number, blockBreak = 0): boolean[][] | null {
   const cells = new Int8Array(size * size).fill(-1); // a Decision per cell
@@ -124,12 +124,31 @@ function attemptLayout(size: number, blackDensity: number, rng: () => number, bl
     const black = forcedBlack(r, c) || (!white && blockBreak > 0 && completesBlock(r, c) && rng() < blockBreak);
     if (white && black) return null;
     const value: Decision = white ? 1 : black ? 0 : rng() < blackDensity ? 0 : 1;
-    const twin = mirror(cell);
-    if (cells[twin] !== -1 && cells[twin] !== value) return null;
+    // A cell and its mirror are always decided together, so the twin is still undecided here.
     cells[cell] = value;
-    cells[twin] = value;
+    cells[mirror(cell)] = value;
   }
   return Array.from({ length: size }, (_, r) => Array.from({ length: size }, (_, c) => cells[r * size + c] === 1));
+}
+
+/** A maximal white strip longer than `MAX_RUN_LENGTH`, or `null` — flat cells in order. */
+function overlongStrip(white: readonly boolean[][]): { cells: number[] } | null {
+  const size = white.length;
+  for (let a = 0; a < size; a++) {
+    for (const dir of ['across', 'down'] as const) {
+      let strip: number[] = [];
+      for (let b = 0; b <= size; b++) {
+        const r = dir === 'across' ? a : b;
+        const c = dir === 'across' ? b : a;
+        if (b < size && white[r][c]) strip.push(r * size + c);
+        else {
+          if (strip.length > MAX_RUN_LENGTH) return { cells: strip };
+          strip = [];
+        }
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -150,20 +169,36 @@ function scatterLayout(size: number, blackDensity: number, rng: () => number): b
     white[r][c] = value;
     white[size - 1 - r][size - 1 - c] = value;
   };
-  let blacks = 0;
-  for (let tries = 0; blacks < wanted && tries < 40 * size * size; tries++) {
-    const r = Math.floor(rng() * size);
-    const c = Math.floor(rng() * size);
-    if (!white[r][c]) continue;
+  const isCentre = (r: number, c: number) => r === size - 1 - r && c === size - 1 - c;
+  /** Black (r, c) and its mirror if no neighbour of either loses its last run partner. */
+  const tryBlack = (r: number, c: number): boolean => {
+    if (!white[r][c]) return false;
     set(r, c, false);
     // Only the cells beside the two new blacks can have lost a run — the full validator waits.
     if (!neighboursKeepRuns(r, c) || !neighboursKeepRuns(size - 1 - r, size - 1 - c)) {
       set(r, c, true);
-      continue;
+      return false;
     }
-    blacks += white[r][c] === white[size - 1 - r][size - 1 - c] && r * size + c === (size - 1 - r) * size + (size - 1 - c) ? 1 : 2;
+    return true;
+  };
+  let blacks = 0;
+  for (let tries = 0; blacks < wanted && tries < 40 * size * size; tries++) {
+    const r = Math.floor(rng() * size);
+    const c = Math.floor(rng() * size);
+    if (tryBlack(r, c)) blacks += isCentre(r, c) ? 1 : 2;
   }
-  return blacks >= wanted ? white : null;
+  if (blacks < wanted) return null;
+  // Blacks only ever shorten runs, so an overlong run is one the scatter never touched — only
+  // possible above 9×9. Break each with a black somewhere inside it (not at its ends, which
+  // would just shorten it by one); density drifts up a little, the tolerance absorbs it.
+  for (let guard = 0; guard < 4 * size; guard++) {
+    const long = overlongStrip(white);
+    if (!long) return white;
+    const inner = long.cells.slice(1, -1);
+    const pick = inner[Math.floor(rng() * inner.length)];
+    if (!tryBlack(Math.floor(pick / size), pick % size)) continue;
+  }
+  return overlongStrip(white) ? null : white;
 }
 
 /**
@@ -184,7 +219,7 @@ export function generateKakuroLayout(options: KakuroLayoutOptions): boolean[][] 
     if (!white) continue;
     const achieved = blackDensityOf(white);
     if (Math.abs(achieved - blackDensity) <= densityTolerance && validateKakuroLayout(white).length === 0) return white;
-    coin = Math.min(0.95, Math.max(0.05, coin + (blackDensity - achieved) / 2));
+    if (method === 'edges-inward') coin = Math.min(0.95, Math.max(0.05, coin + (blackDensity - achieved) / 2));
   }
   return null;
 }
@@ -195,9 +230,17 @@ export function blackDensityOf(white: readonly boolean[][]): number {
   return 1 - white.flat().filter(Boolean).length / (size * size);
 }
 
-/** The runs of a bare mask — digits unknown, so sums are 0. */
-function runsOfMask(white: readonly boolean[][]): Run[] {
-  return deriveRuns(white.map((row) => row.map((w) => (w ? 1 : 0))));
+/**
+ * The runs of a bare mask (digits unknown, so sums are 0), each cell's runs, and the white
+ * cells in reading order — what the fill and the repair both index the layout by.
+ */
+function indexRuns(white: readonly boolean[][]): { runs: Run[]; runsOfCell: number[][]; whites: number[] } {
+  const size = white.length;
+  const runs = deriveRuns(white.map((row) => row.map((w) => (w ? 1 : 0))));
+  const runsOfCell: number[][] = Array.from({ length: size * size }, () => []);
+  runs.forEach((run, index) => run.cells.forEach((cell) => runsOfCell[cell].push(index)));
+  const whites = runsOfCell.flatMap((owners, cell) => (owners.length > 0 ? [cell] : []));
+  return { runs, runsOfCell, whites };
 }
 
 /**
@@ -207,10 +250,7 @@ function runsOfMask(white: readonly boolean[][]): Run[] {
  */
 export function fillKakuroLayout(white: readonly boolean[][], rng: () => number = Math.random, nodeBudget = 200_000): number[][] | null {
   const size = white.length;
-  const runs = runsOfMask(white);
-  const runsOfCell: number[][] = Array.from({ length: size * size }, () => []);
-  runs.forEach((run, index) => run.cells.forEach((cell) => runsOfCell[cell].push(index)));
-  const whites = runsOfCell.flatMap((owners, cell) => (owners.length > 0 ? [cell] : []));
+  const { runs, runsOfCell, whites } = indexRuns(white);
   const used = new Array<number>(runs.length).fill(0);
   const value = new Array<number>(size * size).fill(0);
   let nodes = 0;
@@ -266,19 +306,19 @@ export function repairToUnique(start: readonly number[][], options: RepairOption
   // The wall-clock cap scales with the grid: a 6×6 that has not converged in a second is on a
   // plateau a fresh layout escapes faster than more steps would (measured, E4).
   const { rng = Math.random, stepCap = 4_000, msCap = 25 * size * size, countLimit = 50, countBudget = 20_000 } = options;
-  const white = whiteMaskOf(start);
-  const runs = runsOfMask(white);
-  const runsOfCell: number[][] = Array.from({ length: size * size }, () => []);
-  runs.forEach((run, index) => run.cells.forEach((cell) => runsOfCell[cell].push(index)));
-  const whites = runsOfCell.flatMap((owners, cell) => (owners.length > 0 ? [cell] : []));
+  const { runs, runsOfCell, whites } = indexRuns(whiteMaskOf(start));
+  const current = start.map((row) => [...row]);
+  // The runs' cells never change under a one-cell mutation — only the two sums through that
+  // cell do — so the sums are kept in place and nudged by the digit's delta rather than the
+  // grid re-scanned every step (a review finding: the scan was on the hot path).
+  for (const run of runs) run.sum = run.cells.reduce((sum, cell) => sum + current[Math.floor(cell / size)][cell % size], 0);
 
-  const score = (solution: number[][]): number => {
-    const count = countKakuroSolutions({ gridSize: size, runs: deriveRuns(solution) }, { limit: countLimit, nodeBudget: countBudget });
+  const score = (): number => {
+    const count = countKakuroSolutions({ gridSize: size, runs }, { limit: countLimit, nodeBudget: countBudget });
     return count.exhausted ? countLimit : count.solutions;
   };
 
-  let current = start.map((row) => [...row]);
-  let currentScore = score(current);
+  let currentScore = score();
   let steps = 0;
   const started = performance.now();
   while (currentScore !== 1 && steps < stepCap && performance.now() - started < msCap) {
@@ -290,14 +330,18 @@ export function repairToUnique(start: readonly number[][], options: RepairOption
     for (const run of runsOfCell[cell]) {
       for (const other of runs[run].cells) if (other !== cell) taken |= 1 << current[Math.floor(other / size)][other % size];
     }
-    const options = DIGITS.filter((digit) => (taken & (1 << digit)) === 0 && digit !== current[r][c]);
+    const previous = current[r][c];
+    const options = DIGITS.filter((digit) => (taken & (1 << digit)) === 0 && digit !== previous);
     if (options.length === 0) continue;
-    const next = current.map((row) => [...row]);
-    next[r][c] = options[Math.floor(rng() * options.length)];
-    const nextScore = score(next);
+    const digit = options[Math.floor(rng() * options.length)];
+    current[r][c] = digit;
+    for (const run of runsOfCell[cell]) runs[run].sum += digit - previous;
+    const nextScore = score();
     if (nextScore <= currentScore) {
-      current = next;
       currentScore = nextScore;
+    } else {
+      current[r][c] = previous;
+      for (const run of runsOfCell[cell]) runs[run].sum -= digit - previous;
     }
   }
   return { solution: current, solutions: currentScore, steps, ms: performance.now() - started };
@@ -310,6 +354,8 @@ export interface GenerateUniqueOptions {
   rng?: () => number;
   /** Layout+fill+repair rounds before giving up. */
   maxRounds?: number;
+  /** Wall-clock budget for all rounds together; each round's repair gets what is left of it. */
+  timeBudgetMs?: number;
   repair?: RepairOptions;
 }
 
@@ -319,13 +365,18 @@ export interface GenerateUniqueOptions {
  * whether to retry at another density or fall back).
  */
 export function generateUniqueKakuro(options: GenerateUniqueOptions): KakuroPuzzle | null {
-  const { gridSize, blackDensity, method, rng = Math.random, maxRounds = 5, repair } = options;
+  const { gridSize, blackDensity, method, rng = Math.random, maxRounds = 5, timeBudgetMs = Infinity, repair } = options;
+  const started = performance.now();
   for (let round = 0; round < maxRounds; round++) {
+    const remaining = timeBudgetMs - (performance.now() - started);
+    if (remaining <= 0) break;
     const white = generateKakuroLayout({ gridSize, blackDensity, method, rng });
     if (!white) continue;
     const fill = fillKakuroLayout(white, rng);
     if (!fill) continue;
-    const repaired = repairToUnique(fill, { rng, ...repair });
+    // One clock for every stage: a round's repair never runs past what the budget has left.
+    const msCap = Math.min(repair?.msCap ?? 25 * gridSize * gridSize, remaining);
+    const repaired = repairToUnique(fill, { rng, ...repair, msCap });
     if (repaired.solutions !== 1) continue;
     const runs = deriveRuns(repaired.solution);
     // The objective counted with a node budget; the final word is the exact verifier's.

@@ -63,9 +63,11 @@ export function generateKakuroDetailed(difficulty: KakuroLevel, options: Generat
   const started = performance.now();
   let nearest: KakuroPuzzle | null = null;
   let tried = 0;
-  while (tried < attempts && performance.now() - started < timeBudgetMs) {
+  const remaining = () => timeBudgetMs - (performance.now() - started);
+  while (tried < attempts && remaining() > 0) {
     tried++;
-    const puzzle = generateUniqueKakuro({ gridSize, blackDensity, rng });
+    // The attempt shares the request's clock: it cannot run past what the budget has left.
+    const puzzle = generateUniqueKakuro({ gridSize, blackDensity, rng, timeBudgetMs: remaining() });
     if (!puzzle) continue;
     if (puzzle.difficulty === difficulty) return { puzzle, source: 'generated', attempts: tried };
     if (puzzle.difficulty === 'unrated') continue;
@@ -77,8 +79,9 @@ export function generateKakuroDetailed(difficulty: KakuroLevel, options: Generat
   if (fixture) return { puzzle: fixture, source: 'fixture', attempts: tried };
   if (nearest) return { puzzle: nearest, source: 'nearest', attempts: tried };
   // Every attempt failed to repair and the size has no fixtures: one more, unbounded by the
-  // tier, so the caller always gets a playable puzzle (the generator's own rounds are bounded).
-  const last = generateUniqueKakuro({ gridSize, blackDensity, rng, maxRounds: 20 });
+  // tier but not by the clock — a second budget of the same length, so the request's worst case
+  // is twice `timeBudgetMs`, by construction rather than by arithmetic.
+  const last = generateUniqueKakuro({ gridSize, blackDensity, rng, maxRounds: 20, timeBudgetMs });
   if (!last) throw new Error(`Kakuro generation failed at ${gridSize}×${gridSize}`);
   return { puzzle: last, source: 'nearest', attempts: tried + 1 };
 }

@@ -22,6 +22,11 @@ budget spent:
   else the nearest-tier puzzle generated, with its real label     (source: nearest — 6×6)
 ```
 
+The request's clock is one clock: each attempt is handed what is left of `timeBudgetMs` (and
+threads it into every repair), and the fixture-less last resort gets one more budget of the
+same length — so a call is bounded by `2 × timeBudgetMs` by construction, not by adding up caps
+(a review finding).
+
 Why this works for most of the ladder and not all of it: the natural tier distribution of
 unique puzzles at these densities is hard-heavy (research findings §3c and the E4
 measurements — roughly hard 45%, expert 25%, extreme 15%, medium 10%, easy 1–3%). Hard, expert

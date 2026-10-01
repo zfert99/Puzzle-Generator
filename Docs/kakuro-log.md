@@ -28,6 +28,13 @@
 
 ## Journal
 
+- **2026-10-01 (review 6)** E4 merged (#120). Owner ran `/code-review high` over it: **6
+  findings, all addressed** (#121; table in the plan under E4). The one with teeth: the request's
+  time budget was checked between attempts only — now one clock threads into every repair and
+  the call is bounded by `2 × budget` by construction. A probabilistic test made deterministic
+  rather than listed as flaky. `[measure]` the "objective rescans the grid" finding was fixed
+  and measured at ~0–5% — the solution count dominates a repair step; recorded so E5 does not
+  chase the scan again. `[learning]` L21.
 - **2026-10-01 (E4)** Review follow-up 5 merged (#119). **E4 built** (#120): `kakuro-generator.ts`
   (layout / fill / repair-to-unique / verify / label) and the thin `kakuro.ts` entry point;
   "New puzzle" is real for Kakuro at **6×6 / 7×7 / 9×9** via `/api/puzzle`. `[decision]` the
@@ -194,6 +201,7 @@
 | L7 | **Don't fill-and-retry a fixed layout; repair the fill.** Independent random fills of one layout were unique 0 times in 3,000, while a one-cell-at-a-time hill-climb on the same layout converged. Treat "P(unique) per random fill" as ≈ 0 until E3 measures otherwise | V1 fixture authoring, 2026-09-30 |
 | L8 | **Never mutate hydrated store state to "finish" it — derive in `merge` or `setState`.** A mutation after hydration notifies no subscriber, so whatever rendered first keeps the stale slice; the bug only shows for a field a component reads on first paint, which is why `peers` (read only inside actions) hid it for months | B1, V2, 2026-10-01 |
 | L9 | **A hint from a solver must be re-checked against the answer before it is placed.** Propagation from a board that already holds a wrong digit can force a digit that is consistent with the mistake and wrong against the solution; "the solver said so" is not "it is correct" once the premises are the player's | E1, 2026-10-01 |
+| L21 | **A test of a sampled outcome asserts the invariant, not the sample.** "The hard 9×9 came out *generated*" is a coin that CI will eventually call wrong; "the label is the requested tier and the classifier's, and the puzzle is legal and unique" is true on every runner. Make the sampled part deterministic (seed + a cap no runner hits) or assert only what holds either way — never park it in the flaky table when it can be fixed | Review 6, 2026-10-01 |
 | L20 | **A validator called inside a placement loop is O(N²) per placement — check the neighbourhood, validate once.** The scatter layout spent 60–700 ms per 9×9 running the full static validator after every black pair to catch orphans; the orphan question is local to the eight cells beside the pair (O(1)), and the validator belongs after the loop. Layout time fell to ~2 ms | E4, 2026-10-01 |
 | L19 | **Adopt a published method only after checking its objective is yours.** Mathimagics' edges-inward method optimises "valid layouts at high density"; our generator needs "layouts that repair to unique cheaply", and the method's defining rule (edge whites force inward whites) works against that — measured, not argued. Build the prescribed method, measure it against the stand-in, keep both behind a knob | E4, 2026-10-01 |
 | L18 | **A prop that every caller passes from the same stale variable is a bug waiting for its third caller.** The configurator's `gridSize` was classic's size for Killer and Keisan too; the note it drove was wrong in both directions and nobody noticed until a fourth variant needed an exception. When a shared component's input only makes sense per caller, pass the caller's value and derive the display from what is actually offered | Review 5, 2026-10-01 |
