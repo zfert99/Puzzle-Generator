@@ -18,9 +18,9 @@
 > [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up
 > [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
 > [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
-> [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) and a second follow-up — every
-> puzzle fresh at exactly the requested tier, hub card live, fixtures test data only; R1 (daily)
-> next) · **Branch:** one per slice off
+> [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) and
+> [#124](https://github.com/zfert99/Puzzle-Generator/pull/124) — every puzzle fresh at exactly
+> the requested tier, hub card live, fixtures test data only; R1 (daily) next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`,
 > `-review-8`) ·
@@ -873,7 +873,7 @@ addressed in [#123](https://github.com/zfert99/Puzzle-Generator/pull/123); recor
 seen to vary — print the objective's distribution on a few states before trusting it.
 
 **Review follow-up 8 (2026-10-01 — hosted `/code-review high` over #123, 6 findings, all
-addressed; recorded in full):**
+addressed in [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); recorded in full):**
 
 | # | Finding (file) | Outcome |
 |---|---|---|

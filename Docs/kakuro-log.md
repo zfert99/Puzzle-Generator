@@ -29,7 +29,7 @@
 ## Journal
 
 - **2026-10-01 (review 8)** Review follow-up 7 merged (#123). Owner ran `/code-review high`
-  over it: **6 findings, all addressed** (table in the plan under E5). The walk objective is
+  over it: **6 findings, all addressed** (#124; table in the plan under E5). The walk objective is
   now an exported, tested function (`tierDistance`) — L24 enforced; an over-budget PDF batch
   answers 503 with "ask for fewer" instead of a generic 500, and shares its budget fairly.
   `[measure]` a proposed free within-tier signal (top-tier step share) measured and rejected —
