@@ -92,6 +92,69 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up 3: all 8 `/code-review` findings on E2b addressed
+
+Branch `feature/kakuro-review-3` on `d0baa0c` (main, after E2b). Table in the plan (E2b → "Review
+follow-up"); B8 in `kakuro-log.md`. ~245 code lines (the chain engine rewritten around a shared
+workspace), ~60 test lines, ~70 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 80 files, **710 passed**, 0 failed — 3 new (bound off-by-one, contradiction run, length-0 facts case) + 1 retargeted |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | not run; ad hoc: both original chain fixtures 25 → 19 ms, extreme 7×7 35 → 30 ms, extreme 9×9 32 → 17 ms after the workspace change |
+
+### Findings (the review's, with outcomes)
+
+1. **Combos re-filtered per target** → one workspace per step (`prepareChainWorkspace`).
+2. **Facts pre-pass not iterated** (B8) → facts to a fixpoint (runs, cells, and what they force).
+3. **Chain step's `run` arbitrary** → `contradictionRun` recorded; tested.
+4. **Tests reached a private via cast** → `chainContext()` public.
+5. **Per-candidate allocation** → same workspace.
+6. **No g-link** → in the scan: a true combination's digit with no holder is a contradiction,
+   with one holder it is forced. Every fixture keeps its tier and every soundness sweep stays
+   green; the 7×7 extreme's chains re-route and one is now exactly 12 — the tier-5 ceiling.
+   Recorded in the plan and log as something E5's distribution must look at.
+7. **Lock rule ×3** → `topTiersLockedFor(variant, size)`.
+8. **Ceiling untested** → a test learns a chain's length L on the extreme 7×7 and asserts bound
+   L finds it, bound L − 1 does not.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. The rewrite touched the engine's soundness
+surface, so the three checks from the E2b entry were re-run unchanged: links re-read (the new
+g-link is the "required digit must land somewhere" implication, sound by the definition of a
+true combination), "suppose the truth at every white cell → never a contradiction" on all 12
+fixtures, and the placement/elimination sweeps on fixtures + random unique grids. Also re-read:
+a raw-context target that the facts already exclude now returns a length-0 chain rather than
+`null` — an elimination the solver would have made at tier 1, never an unsound one.
+
+### Docs sweep
+
+Mirrored `.md` for the 4 touched source files; "g-whips left out" removed from the chain doc;
+plan review table, log journal + B8.
+
+### Verified vs read
+
+- **Verified:** the table; all 12 fixtures re-graded with identical tiers and 0 unsound steps.
+- **Read only:** the browser (unit + e2e-level only).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **run by the owner** on E2b; this is its follow-up, not re-reviewed.
+
+### Lesson
+
+- **A per-call "prepare" inside a function that is called in a loop is a hoist waiting to
+  happen** — give the loop a workspace argument from the start when the prepared data is a
+  function of state the loop does not change.
+
+---
+
 ## 2026-10-01 — Kakuro E2b: forcing chains (tiers 4–5), full ladder served at both sizes
 
 Branch `feature/kakuro-e2b` on `7e42ef1` (main, after review follow-up 2). New:

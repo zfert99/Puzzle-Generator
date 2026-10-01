@@ -33,6 +33,9 @@ ladder (plan slice E2a); tiers 4–5 are forcing chains by length (E2b, `kakuro-
 | 4 | `shortChain` | A forcing chain of at most 4 forced truths proves a candidate impossible (`kakuro-chains.ts`). |
 | 5 | `longChain` | The same, up to 12 forced truths. |
 
+A chain step's `run` is the run the contradiction surfaced in (the one that emptied, or the run
+of the cell that did) — not the eliminated cell's own run.
+
 Each technique makes **one** deduction and returns it as a `KakuroStep` (or `null`), so a step
 is one nameable thing and the loop restarts from the cheapest technique after every change. That is both what keeps the grade
 honest (a tier-3 step never fires while a tier-1 step is available) and what makes the lead-up

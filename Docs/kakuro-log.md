@@ -28,6 +28,10 @@
 
 ## Journal
 
+- **2026-10-01 (review 3)** E2b merged (#114). Owner ran `/code-review` over it: **8 findings,
+  all addressed** (table in the plan under E2b). `[bug]` B8 facts pre-pass not iterated → chain
+  length could be over-counted across the tier bound. The g-link is now in the engine. The 7×7
+  extreme touches the tier-5 ceiling (a chain of exactly 12) — watch at E5.
 - **2026-10-01 (E2b)** Review follow-up merged (#113). **E2b built**: forcing chains over the
   redundant-variable model; tiers 4 (≤ 4 links) and 5 (≤ 12); both `*_CHAINS` fixtures solved
   by logic; expert/extreme fills found at both sizes, so the full ladder is served and the
@@ -131,6 +135,7 @@
 
 | # | Found | Slice | Symptom | Cause | Fix |
 |---|---|---|---|---|---|
+| B8 | 2026-10-01 (review) | E2b | A chain whose first link was really an already-forced fact (a run left with one combination by another single-combination run) was counted one link longer than it was — enough to cross the tier-4 bound in a raw context | The facts pre-pass asserted single-combination runs once and did not iterate | Facts established to a fixpoint (runs, cells, and what they force) before the supposition; tested with a length-0 case — review-3 PR |
 | B6 | 2026-10-01 (review) | E2a | `KakuroLogicalSolver` trusted a complete run with a repeated digit or the wrong sum and kept deducing from it; `contradiction` stayed false | No technique revisits a run with no empty cells, and the constructor only stripped mates | Constructor validates placed runs (repeat, complete-run sum, placed digits over the clue); tests — review-2 PR |
 | B7 | 2026-10-01 (review) | E2a | A hint for the selected cell could explain it against placements the solver had made internally but the board did not have ("down 3-in-one" with two empty cells showing) | `explainKakuroHint` detoured past up to 4 placements by default to reach the preferred cell | No detour by default; eliminations-first mode places the preferred cell as soon as it is deducible; tested on the chain fixture — review-2 PR |
 | B5 | 2026-10-01 | E2a | The first hidden-pair draft placed a wrong digit on the 7×7 fixture | Sudoku's hidden pair assumes every house contains every digit; a Kakuro run need not contain any given digit, so two merely-possible digits confined to two cells prove nothing | Hidden single/pair only consider digits every remaining combination requires; soundness tests (all fixtures + random unique grids) pin it — E2a PR |

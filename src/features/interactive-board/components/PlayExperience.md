@@ -24,7 +24,8 @@ smallest size when the current one isn't offered (7 → 9 leaving Kakuro; 4 → 
 Kakuro's difficulty picker offers the **full ladder** at both sizes (one hand-made, solver-graded
 fixture per size and level — E2a/E2b); unlike the Sudoku family's minis, a 7×7 Kakuro has an
 expert and an extreme, so the "9×9 only" lock applies to every type but Kakuro
-(`topTiersLocked` = mini grid AND not Kakuro). `VARIANT_LABEL` is the one
+— one rule, `topTiersLockedFor(variant, size)`, used by the picker and by both clamps (switching
+type, switching size), so a new size or type changes it in one place. `VARIANT_LABEL` is the one
 place the four display names live (Continue label, toggle). A Kakuro's difficulty is a real value (`'easy'`…, or the
 literal `'unrated'`), so the Continue label and header show it as-is.
 
