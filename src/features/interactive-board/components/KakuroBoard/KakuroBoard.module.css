@@ -11,18 +11,24 @@
   width: min(92vw, 520px);
   aspect-ratio: 1 / 1;
   border: 3px solid var(--ink);
+  /* Makes the board a size container so clue text can be sized as a fraction of one CELL
+     (`cqw` = 1% of the board's width) and stay in proportion at every grid size and viewport. */
+  container-type: inline-size;
+  --cell-size: calc(100cqw / var(--tracks));
   /* Derived from the global theme tokens so the board flips with [data-theme]. */
   --grid-line: color-mix(in srgb, var(--ink) 45%, var(--paper));
   --cell-bg: var(--paper);
   --block-bg: color-mix(in srgb, var(--ink) 82%, var(--paper));
+  --block-fg: var(--paper);
   --block-line: color-mix(in srgb, var(--paper) 60%, transparent);
 }
 
 /* In the dark theme `--ink` is cream, so the light-theme mix would turn every black cell into
    a bright slab on a dark page. Blocks become a muted step above the paper instead, and the
-   diagonal takes the ink side so it still reads against them. */
+   clue text and diagonal take the ink side so they still read against them. */
 :global(:root[data-theme='dark']) .board {
   --block-bg: color-mix(in srgb, var(--ink) 24%, var(--paper));
+  --block-fg: var(--ink);
   --block-line: color-mix(in srgb, var(--ink) 60%, transparent);
 }
 
@@ -32,6 +38,7 @@
 }
 
 .cell {
+  position: relative;
   background: var(--cell-bg);
 }
 
@@ -40,8 +47,7 @@
 }
 
 /* The clue diagonal, upper-left to lower-right: a `to top right` gradient's 50% line passes
-   through exactly those two corners. Upper-right triangle = down sum, lower-left = across sum
-   (research G7) once there are sums to draw. */
+   through exactly those two corners. */
 .clue {
   background:
     linear-gradient(
@@ -52,4 +58,26 @@
       transparent calc(50% + 0.75px)
     ),
     var(--block-bg);
+}
+
+/* Clue sums. Convention (research G7): the DOWN sum sits in the upper-right triangle, above
+   the run it heads; the ACROSS sum sits in the lower-left triangle, beside the run it heads. */
+.down,
+.across {
+  position: absolute;
+  color: var(--block-fg);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: calc(var(--cell-size) * 0.3);
+  line-height: 1;
+}
+
+.down {
+  top: 10%;
+  right: 8%;
+}
+
+.across {
+  bottom: 10%;
+  left: 8%;
 }
