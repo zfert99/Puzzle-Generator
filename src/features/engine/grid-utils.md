@@ -99,3 +99,10 @@ recurse():
     Otherwise backtrack: clear the cell and the three mask bits.
   Return false (dead end).
 ```
+
+## `maskToDigits(mask)` (October 2026)
+
+The one shared mask→digits helper: walks the set bits of a candidate bitmask (bit `d − 1` =
+digit `d`) from lowest to highest and returns the digits ascending. The board's `board-utils`
+re-exports it and the Kakuro solvers use it for explanations — added when a fourth private copy
+of the same loop was about to be written (a review finding).

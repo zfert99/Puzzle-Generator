@@ -27,8 +27,9 @@ export function KakuroDevBadge() {
         ? `NOT unique — ${exact.solutions} solutions found`
         : `unique ✓ · ${exact.nodes} nodes`;
 
-    const graded = classifyKakuro(shape);
-    const { metrics, result } = graded;
+    const graded = classifyKakuro(shape, { metrics: true });
+    const { result } = graded;
+    const metrics = graded.metrics as NonNullable<typeof graded.metrics>;
     const techniques = Object.entries(result.techniqueCounts)
       .map(([name, count]) => `${name}×${count}`)
       .join(' ');

@@ -5,9 +5,10 @@
 > [#108](https://github.com/zfert99/Puzzle-Generator/pull/108), V2
 > [#109](https://github.com/zfert99/Puzzle-Generator/pull/109) and E1
 > [#110](https://github.com/zfert99/Puzzle-Generator/pull/110) and the review follow-up
-> [#111](https://github.com/zfert99/Puzzle-Generator/pull/111) merged 2026-10-01; **E2a built,
-> in review** — V3 (PDF) still deferred, E2b (chains) next) · **Branch:** one per slice off
-> `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`) ·
+> [#111](https://github.com/zfert99/Puzzle-Generator/pull/111), E2a
+> [#112](https://github.com/zfert99/Puzzle-Generator/pull/112) and its review follow-up merged
+> 2026-10-01; V3 (PDF) still deferred, **E2b (chains) next**) · **Branch:** one per slice off
+> `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -513,6 +514,19 @@ chain spike answers "can we walk whips over the redundant model" before E5 fixes
   meet in one cell), surface sums (E2b's accelerator), and the T&E tier (plan: never).
 - *Blockers:* none. **Open for E2b:** the `*_CHAINS` fixtures are the acceptance test — whips
   over Berthier's redundant-variable model should finish both.
+
+**Review follow-up (2026-10-01 — hosted `/code-review` over E2a, 8 findings; recorded in full:**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | A hint for the selected cell could "detour" past placements elsewhere inside the solver and then explain the selection against a board the player does not have ("down 3-in-one" while the run shows two empty cells) (`kakuro-logical-solver.ts`) | **Fixed** (B7) — no detour by default; instead, in preferred-cell mode eliminations run ahead of placements and the selected cell is placed the moment it is deducible (naked single, or hidden single in its runs). Tested on the chain fixture: (3,6) honoured over the cell-order-first (3,5); an unreachable preference yields a real placement with no phantom placements in the lead-up |
+| 2 | A complete-but-wrong run (repeated digit, wrong sum) never set `contradiction` — no technique revisits a run with no empty cells (`kakuro-logical-solver.ts`) | **Fixed** (B6) — constructor validates placed runs; three tests |
+| 3 | `hiddenSubset` (the B5 rule) never fires on any served fixture: no positive test (`kakuro-logical-solver.test.ts`) | **Fixed** — a hand-built 28-in-four (required {8,9}) case asserts it fires once, cuts exactly the right two cells, keeps 8 and 9, and is sound. Bonus: eliminations-first mode on the chain fixture also exercises it live |
+| 4 | Per-step full rescan with allocations; E5 will pay it per generated candidate (`kakuro-logical-solver.ts`) | **Skipped, recorded** — ~6 ms per 9×9 today; the fix (per-run dirty flags, scratch buffers) is mechanical and deferred to E5, whose < 500 ms gate is the tripwire. Noted in `kakuro-logical-solver.md` → "Known cost" |
+| 5 | `step()` recovered its result through a recording side-channel (`kakuro-logical-solver.ts`) | **Fixed** — techniques return `KakuroStep \| null`; `solve()` keeps them when asked |
+| 6 | Fourth private mask→digits helper (`kakuro-logical-solver.ts`) | **Fixed** — `maskToDigits` exported from `grid-utils`; `board-utils` re-exports it; the solver uses it |
+| 7 | Non-null assertion where the guard already existed (`useBoardStore.ts`) | **Fixed** |
+| 8 | Dev badge ran four solver passes in render; `classifyKakuro` always paid for `measureKakuro` (`KakuroDevBadge.tsx`) | **Fixed** — `classifyKakuro(shape, { metrics })`, off by default; the badge opts in |
 
 ### E3 — Yield measurement spike (throwaway, no production code) ⏳
 

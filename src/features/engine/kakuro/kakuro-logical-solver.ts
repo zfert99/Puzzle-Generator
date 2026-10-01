@@ -14,7 +14,7 @@
  * See `kakuro-logical-solver.md` for the "why" of each technique and the tier boundaries.
  */
 
-import { popcount } from '../grid-utils';
+import { maskToDigits, popcount } from '../grid-utils';
 import { ALL_DIGITS_MASK, runComboMasks } from './kakuro-combinations';
 import type { KakuroShape } from './kakuro-solver';
 import type { KakuroDifficulty, Run } from './kakuro-types';
@@ -108,14 +108,8 @@ export interface KakuroSolveResult {
 
 const DIGIT_WORDS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
 
-function digitsOf(mask: number): number[] {
-  const digits: number[] = [];
-  for (let d = 1; d <= 9; d++) if (mask & (1 << (d - 1))) digits.push(d);
-  return digits;
-}
-
 function setText(mask: number): string {
-  return `{${digitsOf(mask).join(',')}}`;
+  return `{${maskToDigits(mask).join(',')}}`;
 }
 
 /** The human name of a run's remaining work: "16-in-two" (sum left over the cells left). */
@@ -134,7 +128,6 @@ export class KakuroLogicalSolver {
   private hardestTier: KakuroTier = 0;
   private contradiction = false;
   private steps: KakuroStep[] = [];
-  private recording = false;
 
   /**
    * @param shape the puzzle's size and runs
@@ -164,16 +157,32 @@ export class KakuroLogicalSolver {
     // A placed digit is already absent from its run-mates — the all-different rule, applied
     // once up front so every technique can assume it.
     for (const cell of this.whites) if (this.placed[cell]) this.stripFromMates(cell, this.masks[cell]);
+    // Placed digits are trusted, not assumed consistent: a run holding the same digit twice, or
+    // a fully-placed run with the wrong sum, is a contradiction right now — no technique below
+    // would ever revisit a run with no empty cells, so it is checked here (a review finding).
+    for (let r = 0; r < this.runs.length; r++) {
+      let seen = 0;
+      let remaining = 0;
+      let total = 0;
+      for (const cell of this.runs[r].cells) {
+        if (!this.placed[cell]) {
+          remaining++;
+          continue;
+        }
+        const bit = this.masks[cell];
+        if ((seen & bit) !== 0) this.contradiction = true;
+        seen |= bit;
+        total += 32 - Math.clz32(bit);
+      }
+      if (remaining === 0 && total !== this.runs[r].sum) this.contradiction = true;
+      if (total > this.runs[r].sum) this.contradiction = true;
+    }
   }
 
   // ---- state helpers ----
 
   private note(tier: KakuroTier): void {
     if (tier > this.hardestTier) this.hardestTier = tier;
-  }
-
-  private record(step: KakuroStep): void {
-    if (this.recording) this.steps.push(step);
   }
 
   private runOf(cell: number, slot: 0 | 1): number {
@@ -267,7 +276,7 @@ export class KakuroLogicalSolver {
    * {7,9}") this is the classic magic-run opening; the residual form is the same rule after
    * some cells are filled.
    */
-  private applyComboRestriction(): boolean {
+  private applyComboRestriction(): KakuroStep | null {
     for (let r = 0; r < this.runs.length; r++) {
       const { cells, residual, combos } = this.openCombos(r);
       if (cells.length === 0) continue;
@@ -280,68 +289,78 @@ export class KakuroLogicalSolver {
       }
       if (eliminated.length > 0) {
         const unique = combos.length === 1;
-        this.record({
+        return {
           technique: 'comboRestriction',
           tier: 1,
           run: r,
           eliminated,
           explanation: `${this.runLabel(r, residual, cells.length)}: ${unique ? 'only' : 'digits from'} ${setText(union)}`,
-        });
-        return true;
+        };
       }
     }
-    return false;
+    return null;
   }
 
   /** Naked single (tier 1): an empty cell with one candidate left takes it. */
-  private applyNakedSingle(): boolean {
+  private applyNakedSingle(): KakuroStep | null {
     for (const cell of this.whites) {
-      if (this.placed[cell] || popcount(this.masks[cell]) !== 1) continue;
-      const digit = 32 - Math.clz32(this.masks[cell]);
-      const reason = this.runsText(cell);
-      this.place(cell, digit);
-      this.record({
-        technique: 'nakedSingle',
-        tier: 1,
-        run: this.runOf(cell, 0) !== -1 ? this.runOf(cell, 0) : this.runOf(cell, 1),
-        placed: { cell, digit },
-        eliminated: [],
-        explanation: `Only ${digit} fits at ${this.cellText(cell)} (${reason})`,
-      });
-      return true;
+      const step = this.placeIfSingle(cell);
+      if (step) return step;
     }
-    return false;
+    return null;
+  }
+
+  /** The naked-single step for ONE cell, if it is empty and down to one candidate. */
+  private placeIfSingle(cell: number): KakuroStep | null {
+    if (this.placed[cell] || popcount(this.masks[cell]) !== 1) return null;
+    const digit = 32 - Math.clz32(this.masks[cell]);
+    const reason = this.runsText(cell);
+    this.place(cell, digit);
+    return {
+      technique: 'nakedSingle',
+      tier: 1,
+      run: this.runOf(cell, 0) !== -1 ? this.runOf(cell, 0) : this.runOf(cell, 1),
+      placed: { cell, digit },
+      eliminated: [],
+      explanation: `Only ${digit} fits at ${this.cellText(cell)} (${reason})`,
+    };
   }
 
   /**
    * Hidden single (tier 2): a digit every remaining combination of a run needs, which only one
    * of the run's empty cells can still take — that cell must be it.
    */
-  private applyHiddenSingle(): boolean {
+  private applyHiddenSingle(): KakuroStep | null {
     for (let r = 0; r < this.runs.length; r++) {
-      const { cells, residual, combos } = this.openCombos(r);
-      if (cells.length < 2 || combos.length === 0) continue;
-      let required = ALL_DIGITS_MASK;
-      for (const combo of combos) required &= combo;
-      for (const digit of digitsOf(required)) {
-        const bit = 1 << (digit - 1);
-        const holders = cells.filter((cell) => (this.masks[cell] & bit) !== 0);
-        if (holders.length === 1 && this.masks[holders[0]] !== bit) {
-          const cell = holders[0];
-          this.place(cell, digit);
-          this.record({
-            technique: 'hiddenSingle',
-            tier: 2,
-            run: r,
-            placed: { cell, digit },
-            eliminated: [],
-            explanation: `${this.runLabel(r, residual, cells.length)} needs a ${digit}, and only ${this.cellText(cell)} can take it`,
-          });
-          return true;
-        }
-      }
+      const step = this.hiddenSingleIn(r);
+      if (step) return step;
     }
-    return false;
+    return null;
+  }
+
+  /** The hidden-single step in ONE run, optionally only if it lands on `onlyCell`. */
+  private hiddenSingleIn(r: number, onlyCell = -1): KakuroStep | null {
+    const { cells, residual, combos } = this.openCombos(r);
+    if (cells.length < 2 || combos.length === 0) return null;
+    let required = ALL_DIGITS_MASK;
+    for (const combo of combos) required &= combo;
+    for (const digit of maskToDigits(required)) {
+      const bit = 1 << (digit - 1);
+      const holders = cells.filter((cell) => (this.masks[cell] & bit) !== 0);
+      if (holders.length !== 1 || this.masks[holders[0]] === bit) continue;
+      const cell = holders[0];
+      if (onlyCell !== -1 && cell !== onlyCell) continue;
+      this.place(cell, digit);
+      return {
+        technique: 'hiddenSingle',
+        tier: 2,
+        run: r,
+        placed: { cell, digit },
+        eliminated: [],
+        explanation: `${this.runLabel(r, residual, cells.length)} needs a ${digit}, and only ${this.cellText(cell)} can take it`,
+      };
+    }
+    return null;
   }
 
   /**
@@ -351,7 +370,7 @@ export class KakuroLogicalSolver {
    * what survives. Tier 1 looks at the (sum, count) alone; this one cross-references what the
    * crossing runs have already ruled out.
    */
-  private applyFeasibleCombos(): boolean {
+  private applyFeasibleCombos(): KakuroStep | null {
     for (let r = 0; r < this.runs.length; r++) {
       const { cells, residual, combos } = this.openCombos(r);
       if (cells.length < 2) continue;
@@ -368,63 +387,62 @@ export class KakuroLogicalSolver {
         if (removed) eliminated.push({ cell, mask: removed });
       }
       if (eliminated.length > 0) {
-        this.record({
+        return {
           technique: 'feasibleCombos',
           tier: 2,
           run: r,
           eliminated,
           explanation: `${this.runLabel(r, residual, cells.length)}: with what the crossing runs allow, only ${setText(union)} can be used`,
-        });
-        return true;
+        };
       }
     }
-    return false;
+    return null;
   }
 
   /**
    * Naked pair / triple (tier 3): k empty cells of a run whose candidates together are exactly k
    * digits claim those digits — the run's other cells lose them.
    */
-  private applyNakedSubset(): boolean {
+  private applyNakedSubset(): KakuroStep | null {
     for (let r = 0; r < this.runs.length; r++) {
       const { cells, residual } = this.remainingOf(r);
       if (cells.length < 3) continue;
       for (const k of [2, 3]) {
         if (cells.length <= k) continue;
         const found = this.findNakedSubset(r, cells, residual, k);
-        if (found) return true;
+        if (found) return found;
       }
     }
-    return false;
+    return null;
   }
 
-  private findNakedSubset(r: number, cells: number[], residual: number, k: number): boolean {
+  private findNakedSubset(r: number, cells: number[], residual: number, k: number): KakuroStep | null {
     const n = cells.length;
-    const pick = (start: number, chosen: number[], union: number): boolean => {
+    const pick = (start: number, chosen: number[], union: number): KakuroStep | null => {
       if (chosen.length === k) {
-        if (popcount(union) !== k) return false;
+        if (popcount(union) !== k) return null;
         const eliminated: { cell: number; mask: number }[] = [];
         for (const cell of cells) {
           if (chosen.includes(cell)) continue;
           const removed = this.restrict(cell, ~union);
           if (removed) eliminated.push({ cell, mask: removed });
         }
-        if (eliminated.length === 0) return false;
-        this.record({
+        if (eliminated.length === 0) return null;
+        return {
           technique: 'nakedSubset',
           tier: 3,
           run: r,
           eliminated,
           explanation: `${this.runLabel(r, residual, n)}: ${k === 2 ? 'two' : 'three'} cells share exactly ${setText(union)}, so the others cannot use them`,
-        });
-        return true;
+        };
       }
       for (let i = start; i < n; i++) {
         const mask = this.masks[cells[i]];
         if (popcount(mask) > k || popcount(union | mask) > k) continue;
-        if (pick(i + 1, [...chosen, cells[i]], union | mask)) return true;
+        const found = pick(i + 1, [...chosen, cells[i]], union | mask);
+        if (found) return found;
       }
-      return false;
+      return null;
     };
     return pick(0, [], 0);
   }
@@ -437,14 +455,14 @@ export class KakuroLogicalSolver {
    * cells proves nothing. (The first draft skipped that check and placed a wrong digit on the
    * 7×7 fixture — caught by the soundness run before any test existed.)
    */
-  private applyHiddenSubset(): boolean {
+  private applyHiddenSubset(): KakuroStep | null {
     for (let r = 0; r < this.runs.length; r++) {
       const { cells, residual, combos } = this.openCombos(r);
       if (cells.length < 3 || combos.length === 0) continue;
       let required = ALL_DIGITS_MASK;
       for (const combo of combos) required &= combo;
       const holders = new Map<number, number[]>();
-      for (const d of digitsOf(required)) {
+      for (const d of maskToDigits(required)) {
         const bit = 1 << (d - 1);
         const cellsWith = cells.filter((cell) => (this.masks[cell] & bit) !== 0);
         if (cellsWith.length === 2) holders.set(d, cellsWith);
@@ -462,18 +480,17 @@ export class KakuroLogicalSolver {
             if (removed) eliminated.push({ cell, mask: removed });
           }
           if (eliminated.length === 0) continue;
-          this.record({
+          return {
             technique: 'hiddenSubset',
             tier: 3,
             run: r,
             eliminated,
             explanation: `${this.runLabel(r, residual, cells.length)} must contain ${digits[i]} and ${digits[j]}, which can only go in the same two cells — so those cells hold nothing else`,
-          });
-          return true;
+          };
         }
       }
     }
-    return false;
+    return null;
   }
 
   /**
@@ -481,13 +498,13 @@ export class KakuroLogicalSolver {
    * cells could not make the rest of the sum — their smallest candidates add to more than what
    * is left, or their largest to less. Bounds ignore mutual distinctness (looser, still sound).
    */
-  private applySumBounds(): boolean {
+  private applySumBounds(): KakuroStep | null {
     for (let r = 0; r < this.runs.length; r++) {
       const { cells, residual } = this.remainingOf(r);
       if (cells.length < 2) continue;
       for (const cell of cells) {
         let removed = 0;
-        for (const digit of digitsOf(this.masks[cell])) {
+        for (const digit of maskToDigits(this.masks[cell])) {
           const left = residual - digit;
           let lo = 0;
           let hi = 0;
@@ -506,18 +523,17 @@ export class KakuroLogicalSolver {
         }
         if (removed !== 0) {
           this.restrict(cell, ~removed);
-          this.record({
+          return {
             technique: 'sumBounds',
             tier: 3,
             run: r,
             eliminated: [{ cell, mask: removed }],
             explanation: `${this.runLabel(r, residual, cells.length)}: ${setText(removed)} at ${this.cellText(cell)} would leave the other cells a sum they cannot make`,
-          });
-          return true;
+          };
         }
       }
     }
-    return false;
+    return null;
   }
 
   /**
@@ -526,7 +542,7 @@ export class KakuroLogicalSolver {
    * summing to what is left); a candidate that appears in no fill is gone. This is the exact,
    * assignment-level form of what tier 2 approximates at the digit-set level.
    */
-  private applyRunAssignments(): boolean {
+  private applyRunAssignments(): KakuroStep | null {
     for (let r = 0; r < this.runs.length; r++) {
       const { cells, residual } = this.remainingOf(r);
       if (cells.length < 2 || cells.length > 5) continue;
@@ -540,7 +556,7 @@ export class KakuroLogicalSolver {
           chosen.forEach((d, j) => (unions[j] |= 1 << (d - 1)));
           return;
         }
-        for (const digit of digitsOf(this.masks[cells[i]] & ~usedMask)) {
+        for (const digit of maskToDigits(this.masks[cells[i]] & ~usedMask)) {
           if (digit > left) break;
           assign(i + 1, usedMask | (1 << (digit - 1)), left - digit, [...chosen, digit]);
         }
@@ -553,22 +569,21 @@ export class KakuroLogicalSolver {
         if (removed) eliminated.push({ cell, mask: removed });
       });
       if (eliminated.length > 0) {
-        this.record({
+        return {
           technique: 'runAssignments',
           tier: 3,
           run: r,
           eliminated,
           explanation: `${this.runLabel(r, residual, cells.length)}: no valid fill of this run uses ${eliminated.map((e) => `${setText(e.mask)} at ${this.cellText(e.cell)}`).join(' or ')}`,
-        });
-        return true;
+        };
       }
     }
-    return false;
+    return null;
   }
 
   // ---- the loop ----
 
-  private readonly techniques: { name: KakuroTechnique; apply: () => boolean }[] = [
+  private readonly techniques: { name: KakuroTechnique; apply: () => KakuroStep | null }[] = [
     { name: 'comboRestriction', apply: () => this.applyComboRestriction() },
     { name: 'nakedSingle', apply: () => this.applyNakedSingle() },
     { name: 'hiddenSingle', apply: () => this.applyHiddenSingle() },
@@ -588,6 +603,29 @@ export class KakuroLogicalSolver {
     return this.masks[cell];
   }
 
+  /** A placement on `cell` by naked single, else by hidden single in either of its runs. */
+  private placePreferred(cell: number, cap: KakuroTier, disabled: ReadonlySet<KakuroTechnique>): KakuroStep | null {
+    if (!disabled.has('nakedSingle')) {
+      const single = this.placeIfSingle(cell);
+      if (single) {
+        this.note(1);
+        return single;
+      }
+    }
+    if (cap >= 2 && !disabled.has('hiddenSingle')) {
+      for (const slot of [0, 1] as const) {
+        const r = this.runOf(cell, slot);
+        if (r === -1) continue;
+        const hidden = this.hiddenSingleIn(r, cell);
+        if (hidden) {
+          this.note(2);
+          return hidden;
+        }
+      }
+    }
+    return null;
+  }
+
   private countOpenSingles(): number {
     let open = 0;
     for (const cell of this.whites) if (!this.placed[cell] && popcount(this.masks[cell]) === 1) open++;
@@ -597,28 +635,29 @@ export class KakuroLogicalSolver {
   /**
    * Apply the cheapest technique that makes progress, at or below `cap`. Returns the step, or
    * `null` when nothing at that cap applies (stuck) or the state is contradictory.
+   *
+   * `preferCell`: if that cell is empty and placeable right now — a naked single, or the hidden
+   * single of one of its runs (at or below `cap`) — place IT, so a hint on the player's selected
+   * cell is taken the moment it is deducible rather than whichever placement happens to come
+   * first in cell order.
    */
-  step(cap: KakuroTier = 5, disabled: ReadonlySet<KakuroTechnique> = new Set()): KakuroStep | null {
+  step(cap: KakuroTier = 5, disabled: ReadonlySet<KakuroTechnique> = new Set(), preferCell = -1): KakuroStep | null {
     if (this.contradiction || this.isSolved()) return null;
-    const wasRecording = this.recording;
-    this.recording = true;
-    const before = this.steps.length;
-    try {
-      for (const technique of this.techniques) {
-        const tier = TECHNIQUE_TIER[technique.name];
-        if (tier > cap) break; // the table is tier-ordered
-        if (disabled.has(technique.name)) continue;
-        if (technique.apply()) {
-          this.note(tier);
-          const step = this.steps[this.steps.length - 1];
-          if (!wasRecording) this.steps.length = before;
-          return step;
-        }
-      }
-      return null;
-    } finally {
-      this.recording = wasRecording;
+    if (preferCell !== -1 && !this.placed[preferCell]) {
+      const preferred = this.placePreferred(preferCell, cap, disabled);
+      if (preferred) return preferred;
     }
+    for (const technique of this.techniques) {
+      const tier = TECHNIQUE_TIER[technique.name];
+      if (tier > cap) break; // the table is tier-ordered
+      if (disabled.has(technique.name)) continue;
+      const step = technique.apply();
+      if (step) {
+        this.note(tier);
+        return step;
+      }
+    }
+    return null;
   }
 
   /**
@@ -630,7 +669,7 @@ export class KakuroLogicalSolver {
   solve(options: { maxTier?: KakuroTier; disable?: readonly KakuroTechnique[]; recordSteps?: boolean } = {}): KakuroSolveResult {
     const cap = options.maxTier ?? 5;
     const disabled = new Set(options.disable ?? []);
-    this.recording = options.recordSteps ?? false;
+    const recordSteps = options.recordSteps ?? false;
     const techniqueCounts: Partial<Record<KakuroTechnique, number>> = {};
     let passes = 0;
     let opennessTotal = 0;
@@ -640,6 +679,7 @@ export class KakuroLogicalSolver {
       opennessTotal += this.countOpenSingles();
       const step = this.step(cap, disabled);
       if (!step) break;
+      if (recordSteps) this.steps.push(step);
       techniqueCounts[step.technique] = (techniqueCounts[step.technique] ?? 0) + 1;
     }
 
@@ -717,17 +757,21 @@ export interface KakuroClassification {
   tier: KakuroTier | null;
   difficulty: KakuroDifficulty;
   result: KakuroSolveResult;
-  metrics: KakuroMetrics;
+  /** Present only when asked for (`metrics: true`) — two extra full solves. */
+  metrics?: KakuroMetrics;
 }
 
 /**
  * Grade a puzzle: the hardest tier the logical solver needs to finish it, mapped to a published
  * difficulty. Unsolvable by the ladder built so far → `tier: null`, `difficulty: 'unrated'` —
  * never a guess (D8: the label comes from the classifier, post-generation, or not at all).
+ *
+ * `metrics: true` also runs `measureKakuro` (two more solves). Off by default so a generator
+ * grading hundreds of candidates pays for one solve each; the dev badge asks for them.
  */
-export function classifyKakuro(shape: KakuroShape): KakuroClassification {
+export function classifyKakuro(shape: KakuroShape, options: { metrics?: boolean } = {}): KakuroClassification {
   const result = new KakuroLogicalSolver(shape).solve({ recordSteps: true });
-  const metrics = measureKakuro(shape);
+  const metrics = options.metrics ? measureKakuro(shape) : undefined;
   if (!result.solved) return { tier: null, difficulty: 'unrated', result, metrics };
   const tier = result.hardestTier === 0 ? 1 : result.hardestTier;
   return { tier, difficulty: TIER_DIFFICULTY[tier as Exclude<KakuroTier, 0>], result, metrics };
@@ -750,23 +794,33 @@ export interface KakuroHint {
  * returned as the lead-up. `null` when the grid is contradictory (a wrong entry) or when
  * nothing at or below `cap` places anything.
  *
- * With `preferCell` (the player's selected cell), the ladder is allowed to run past a few
- * placements elsewhere (`maxDetour`) looking for one on that cell — then the earlier placements
- * are part of the lead-up, which is honest: that *is* how a human would reach it. If the cell
- * is not placed within the detour, the first placement found is returned instead.
+ * With `preferCell` (the player's selected cell), eliminations run ahead of placements: every
+ * elimination technique at or below `cap` is exhausted before any OTHER cell is placed, and the
+ * preferred cell is placed the moment it becomes deducible. So the hint lands on the selection
+ * whenever the selection follows from the board as it stands, by eliminations alone — which are
+ * all true of the player's board. If some other cell genuinely has to be placed first, that
+ * placement is returned instead and the preference is ignored. `maxDetour` (default 0) lets a
+ * caller that will ALSO apply the intervening placements allow the ladder past up to that many
+ * placements elsewhere — the board store must not: a hint that fills one cell but explains it
+ * with "down 3-in-one" assumes placements the player's board does not have (a review finding).
  */
 export function explainKakuroHint(
   shape: KakuroShape,
   grid: readonly number[][],
   options: { cap?: KakuroTier; preferCell?: number; maxDetour?: number } = {}
 ): KakuroHint | null {
-  const { cap = 5, preferCell = -1, maxDetour = 4 } = options;
+  const { cap = 5, preferCell = -1, maxDetour = 0 } = options;
   const solver = new KakuroLogicalSolver(shape, grid);
   const leadUp: string[] = [];
+  const placers = new Set<KakuroTechnique>(['nakedSingle', 'hiddenSingle']);
   let first: KakuroHint | null = null;
   let detours = 0;
   for (let guard = 0; guard < 500; guard++) {
-    const step = solver.step(cap);
+    // Preferred-cell mode: eliminations first (any tier ≤ cap), placements only when stuck.
+    const step =
+      preferCell === -1
+        ? solver.step(cap)
+        : (solver.step(cap, placers, preferCell) ?? solver.step(cap, undefined, preferCell));
     if (!step) break;
     if (step.placed) {
       const hint: KakuroHint = { ...step.placed, technique: step.technique, tier: step.tier, explanation: step.explanation, leadUp: [...leadUp] };

@@ -30,3 +30,6 @@ maskToDigits(mask)      -> ascending array of the digits set in the mask
 
 `computePeers` is for the Sudoku family only. A Kakuro's peers are run-mates, built by
 `computeRunPeers` in `kakuro-board.ts`; the store's `buildPeers` picks between the two.
+
+`maskToDigits` is the engine's (`grid-utils`), re-exported here so board code keeps importing it
+from the board's own utilities.

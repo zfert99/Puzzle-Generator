@@ -23,7 +23,9 @@ the node count as a rough difficulty signal while the classifier is built.
 ```text
 read the store's runs and grid size
 count the puzzle's solutions (limit 2)                — the exact solver
-classify, score and measure the puzzle                — the logical solver (E2a)
+classify (with metrics: true), score the puzzle      — the logical solver (E2a); the
+                                                        metrics are opt-in because they cost
+                                                        two extra solves
 all memoized on runs/size, so once per game; render the three lines
 ```
 

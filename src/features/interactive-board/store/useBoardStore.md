@@ -219,8 +219,10 @@ For every other type `hint()` reveals a solution digit — the selected empty ce
 first empty one. For a Kakuro a hint is a **deduction** whenever the solvers can make one:
 
 1. The **logical solver** first (`explainKakuroHint`, E2a): the next placement a human could
-   make, with a named technique and a plain-English reason, preferring the selected cell when
-   the ladder reaches it within a short detour. The eliminations on the way are the lead-up.
+   make, with a named technique and a plain-English reason, landing on the selected cell
+   whenever eliminations alone make it deducible. **No detour:** the store never lets the solver
+   assume placements the board does not have (a review finding), so every line of the lead-up is
+   true of the visible board.
 2. Else the **exact solver's propagation** (`deduceKakuro`, E1): sound but unexplained — the
    selected cell if forced, else the first forced cell.
 3. Else the plain reveal.

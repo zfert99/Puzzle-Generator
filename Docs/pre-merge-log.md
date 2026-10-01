@@ -92,6 +92,72 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up 2: 7 of 8 `/code-review` findings on E2a fixed, 1 recorded
+
+Branch `feature/kakuro-review-2` on `2c63408` (main, after E2a). The owner ran the hosted
+`/code-review` over #112 and asked for the same treatment as last time. The finding-by-finding
+table is in the plan (E2a → "Review follow-up"); B6/B7 and L13 in `kakuro-log.md`.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 79 files, **690 passed**, 0 failed — 4 new/rewritten (hidden-pair positive case, complete-run contradictions, two preferred-cell cases on the chain fixture) |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | not run — the exact solver is untouched; the logical solver's per-step cost is the deferred finding below |
+
+### Findings (the review's, with outcomes)
+
+1. **Detoured hint explained a board the player didn't have** (B7) → no detour by default.
+   Replacing it with "honour the selection only if it is the very next placement" would have
+   lost most selected-cell hints (cell order decides which of several singles goes first), so
+   preferred-cell mode now runs **eliminations ahead of placements** and places the preferred
+   cell the moment it is deducible — every lead-up line is then true of the visible board.
+2. **Complete-but-wrong runs never contradicted** (B6) → constructor validation; tested.
+3. **No positive `hiddenSubset` test** → a hand-built 28-in-four case (required {8,9}); it also
+   turned out that eliminations-first mode fires the hidden pair live on the chain fixture.
+4. **Per-step rescan cost** → **skipped, recorded** in `kakuro-logical-solver.md` ("Known cost,
+   deferred to E5"): ~6 ms per 9×9; E5's < 500 ms gate decides whether the dirty-flag rewrite is
+   needed.
+5. **Recording side-channel in `step()`** → techniques return the step.
+6. **Fourth mask→digits copy** → `grid-utils.maskToDigits`, re-exported by `board-utils`.
+7. **Non-null assertion** → removed.
+8. **Badge ran four solves; `classifyKakuro` always measured** → `metrics` opt-in.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. Re-derived: the eliminations-first ordering
+cannot change *what* is deduced, only the order (every elimination is sound on its own), so the
+hint's technique attribution stays honest; the constructor's new checks only ever set
+`contradiction`, never place or eliminate. The soundness sweeps (all fixtures + random unique
+grids) still pass unchanged.
+
+### Docs sweep
+
+Mirrored `.md` for the 6 touched source files (`grid-utils.md`, `board-utils.md` gain the shared
+helper). Reverse sweep for "detour" / "short detour": store doc and solver doc rewritten;
+historical entries left. Plan: review table under E2a; log: journal, B6, B7, L13.
+
+### Verified vs read
+
+- **Verified:** the table; the preferred-cell behaviour on the chain fixture ((3,6) honoured over
+  (3,5); an unreachable preference lands elsewhere with no phantom placements).
+- **Read only:** the browser (unit + e2e-level only this time).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **run by the owner** on E2a; this is its follow-up, not re-reviewed.
+
+### Lesson
+
+- **"Prefer the selected cell" is an ordering question, not a search question.** The honest
+  implementation reorders *eliminations* ahead of other placements; detouring through
+  placements the board doesn't have is the tempting wrong answer.
+
+---
+
 ## 2026-10-01 — Kakuro E2a: logical solver T1–T3, classifier, metrics, scorer, explained hints
 
 Branch `feature/kakuro-e2` on `ca373a8` (main, after the review follow-up). E2 re-sliced into

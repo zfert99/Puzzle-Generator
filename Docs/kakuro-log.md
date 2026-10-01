@@ -28,6 +28,10 @@
 
 ## Journal
 
+- **2026-10-01 (review 2)** E2a merged (#112). Owner ran `/code-review` over it: **8 findings,
+  7 fixed, 1 recorded and deferred to E5** (per-step rescan cost) — table in the plan under
+  E2a. `[bug]` B6 complete-but-wrong runs never contradicted; B7 the selected-cell hint could
+  explain against a board the player does not have. `[learning]` L13.
 - **2026-10-01 (E2a)** Review follow-up merged (#111). **E2a built** — logical solver T1–T3,
   classifier, metrics, scorer, hints that name their technique with a lead-up; fixtures re-cut
   to easy/medium/hard per size (hill-climbed against the ladder itself) with the two chain
@@ -121,6 +125,8 @@
 
 | # | Found | Slice | Symptom | Cause | Fix |
 |---|---|---|---|---|---|
+| B6 | 2026-10-01 (review) | E2a | `KakuroLogicalSolver` trusted a complete run with a repeated digit or the wrong sum and kept deducing from it; `contradiction` stayed false | No technique revisits a run with no empty cells, and the constructor only stripped mates | Constructor validates placed runs (repeat, complete-run sum, placed digits over the clue); tests — review-2 PR |
+| B7 | 2026-10-01 (review) | E2a | A hint for the selected cell could explain it against placements the solver had made internally but the board did not have ("down 3-in-one" with two empty cells showing) | `explainKakuroHint` detoured past up to 4 placements by default to reach the preferred cell | No detour by default; eliminations-first mode places the preferred cell as soon as it is deducible; tested on the chain fixture — review-2 PR |
 | B5 | 2026-10-01 | E2a | The first hidden-pair draft placed a wrong digit on the 7×7 fixture | Sudoku's hidden pair assumes every house contains every digit; a Kakuro run need not contain any given digit, so two merely-possible digits confined to two cells prove nothing | Hidden single/pair only consider digits every remaining combination requires; soundness tests (all fixtures + random unique grids) pin it — E2a PR |
 | B2 | 2026-10-01 (review) | E1 | Kakuro `hint()` fell back to a blind reveal whenever the *first* solver-forced cell disagreed with the solution, even if another forced cell was a sound deduction | The check-against-solution was applied to one pick, not iterated | Take the selected cell if forced *and* agreeing, else the first agreeing forced cell; test plants a consistent-but-wrong 3 and asserts one correct placement — review follow-up PR |
 | B3 | 2026-10-01 (review) | E1 | `countKakuroSolutions({ runs: [] })` reported **1** solution (the empty grid); `% 0` on the zero-length ring buffer gave NaN | No guard for a shape with no runs | Return 0 solutions / contradiction up front; tested |
@@ -139,6 +145,7 @@
 | L7 | **Don't fill-and-retry a fixed layout; repair the fill.** Independent random fills of one layout were unique 0 times in 3,000, while a one-cell-at-a-time hill-climb on the same layout converged. Treat "P(unique) per random fill" as ≈ 0 until E3 measures otherwise | V1 fixture authoring, 2026-09-30 |
 | L8 | **Never mutate hydrated store state to "finish" it — derive in `merge` or `setState`.** A mutation after hydration notifies no subscriber, so whatever rendered first keeps the stale slice; the bug only shows for a field a component reads on first paint, which is why `peers` (read only inside actions) hid it for months | B1, V2, 2026-10-01 |
 | L9 | **A hint from a solver must be re-checked against the answer before it is placed.** Propagation from a board that already holds a wrong digit can force a digit that is consistent with the mistake and wrong against the solution; "the solver said so" is not "it is correct" once the premises are the player's | E1, 2026-10-01 |
+| L13 | **An explanation may only cite what is on the player's board.** A solver that silently places cells "on the way" to the one it explains produces a true deduction with a false reason; keep placements out of a hint's lead-up unless the caller applies them too | B7, 2026-10-01 |
 | L12 | **Port a Sudoku technique only after asking what house property it relies on.** "Hidden" rules rest on "every digit is present in the unit"; Kakuro runs have no such property, so the port needs a `required` guard. Expect the same question for every classic technique E2b borrows (X-wing, chains: what plays the role of the house?) | B5, 2026-10-01 |
 | L10 | **A derived store field needs a test that hydrates from storage**, not one that calls `startNewGame` — the latter can never see a rebuild that is missing or late. Snapshot localStorage, wipe the store, `persist.rehydrate()`, read the field; prove the test bites by deleting the rebuild once | Review finding 1, 2026-10-01 |
 | L11 | **When a review names a cheap cleanup, take it in the same follow-up** — the private `popcount`, the empty `if` branch and the `as Variant` cast each cost minutes to fix and would otherwise have been copied by the next slice | Review findings 5–7, 2026-10-01 |
