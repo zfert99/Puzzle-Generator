@@ -29,7 +29,7 @@
 ## Journal
 
 - **2026-10-01 (review 6)** E4 merged (#120). Owner ran `/code-review high` over it: **6
-  findings, all addressed** (table in the plan under E4). The one with teeth: the request's
+  findings, all addressed** (#121; table in the plan under E4). The one with teeth: the request's
   time budget was checked between attempts only — now one clock threads into every repair and
   the call is bounded by `2 × budget` by construction. A probabilistic test made deterministic
   rather than listed as flaky. `[measure]` the "objective rescans the grid" finding was fixed

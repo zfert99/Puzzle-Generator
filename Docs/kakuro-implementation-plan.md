@@ -15,8 +15,9 @@
 > [#117](https://github.com/zfert99/Puzzle-Generator/pull/117); V3 (PDF)
 > [#118](https://github.com/zfert99/Puzzle-Generator/pull/118) and its review follow-up
 > [#119](https://github.com/zfert99/Puzzle-Generator/pull/119); E4 (generator)
-> [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up — "New
-> puzzle" is real at 6/7/9, scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
+> [#120](https://github.com/zfert99/Puzzle-Generator/pull/120) and its review follow-up
+> [#121](https://github.com/zfert99/Puzzle-Generator/pull/121) — "New puzzle" is real at 6/7/9,
+> scatter layouts, repair-to-unique; E5 next) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
@@ -767,7 +768,7 @@ library and structural pre-checks (G3, G10) before E4, rather than tuning inside
   switching from `selectKakuroBatch` to generation.
 
 **Review follow-up 6 (2026-10-01 — hosted `/code-review high` over #120, 6 findings, all
-addressed; recorded in full):**
+addressed in [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); recorded in full):**
 
 | # | Finding (file) | Outcome |
 |---|---|---|
