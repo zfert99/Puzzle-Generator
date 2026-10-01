@@ -4,7 +4,7 @@ import { generatePuzzleBatch } from '@/features/engine/services/generation.servi
 import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF } from '@/features/pdf-generation/services/pdf.service';
 import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
-import { generateKakuroBatch } from '@/features/engine/kakuro/kakuro';
+import { generateKakuroBatch, isKakuroBudgetError } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -175,8 +175,19 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme Kakuro puzzles per PDF request` }, { status: 400 });
       }
       // One budget for the batch (default 45 s inside `maxDuration = 60`): a request that cannot
-      // finish throws into the generic 500 below instead of timing out with the PDF half-built.
-      const puzzles = generateKakuroBatch(counts, { gridSize: kakuroSize });
+      // finish is answered with a 503 that says so — it is a request too large for the budget on
+      // this machine, not a fault — instead of timing out with the PDF half-built.
+      let puzzles;
+      try {
+        puzzles = generateKakuroBatch(counts, { gridSize: kakuroSize });
+      } catch (error) {
+        if (!isKakuroBudgetError(error)) throw error;
+        logger.warn({ event: 'generation_budget', variant: 'kakuro', counts, gridSize: kakuroSize, durationMs: Math.round(performance.now() - startTime) }, error.message);
+        return NextResponse.json(
+          { error: `That Kakuro request is too large to finish in time (${error.message.match(/after (\d+ of \d+)/)?.[1] ?? 'none'} generated). Please ask for fewer puzzles per PDF.` },
+          { status: 503, headers: { 'Retry-After': '5' } },
+        );
+      }
       const pdfBuffer = await generateKakuroPDF(puzzles);
       logger.info(
         { event: 'generation_success', variant: 'kakuro', counts, gridSize: kakuroSize, durationMs: Math.round(performance.now() - startTime) },

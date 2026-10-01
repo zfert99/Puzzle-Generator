@@ -92,6 +92,74 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up 8: all 6 `/code-review high` findings on #123 addressed
+
+Branch `feature/kakuro-review-8` on `d6775f7` (main, after review follow-up 7). Table in the plan
+(E5 → "Review follow-up 8"); an A/B row in `kakuro-log.md`. ~70 code lines net (the objective
+exported, a typed budget error with fair shares, the 503 branch, rng-safe nested options), ~45
+test lines, ~60 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 82 files, **762 passed**, 0 failed — 2 new (`tierDistance` ordering + non-constancy on the baked fixtures), 1 extended (typed budget error) |
+| `npm run lint` | exit 0 (one unused-catch-binding warning caught and fixed before commit) |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Lean-signal A/B (15 identical seeded bases per cell) | capped solve vs top-tier step share, steps median / max: 9×9 expert 59/287 vs 47/437 · 9×9 extreme 132/338 vs 152/464 · 7×7 extreme 86/321 vs 99/388 |
+
+### Findings (the review's, with outcomes)
+
+1. **Over-budget batch = generic 500** → typed `KakuroBudgetError` (by `error.name`, no
+   `extends` — AGENTS.md §1), route answers 503 "N of M generated, ask for fewer", warn-logged.
+2. **Objective untestable** → `tierDistance` exported; fixture test pins 0 / ≥ 100 / strict
+   ordering below / `lean` varies (54 vs 55 on the two hard fixtures; 71 for easy). The first
+   draft of that test had one comparison inverted and failed — the test bit on itself.
+3. **Winner-takes-all share** → fair share (4× average of what is left, ≥ 5 s), missed share
+   retried, only the batch clock is the error.
+4. **Nested `rng`** → `Omit<…, 'rng'>` on `repair` and `walk`, spread before the generator's.
+5. **Free lean signal** → **measured, not adopted**: medians a wash, worst cases 20–50% longer.
+6. **Redundant cast** → gone.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. **Trust boundary:** the new 503 leaks only
+the counts the client sent (N of M) and a fixed message — no stack, no internals (AGENTS.md §6);
+the 500 path is unchanged for real faults. **Bound:** still 45 s per batch by construction; the
+fair share cannot exceed what is left, and a retry only runs while the clock has time. **D8:**
+unchanged — `tierDistance` is the same computation the closure made, now callable.
+
+### Docs sweep
+
+Mirrored `kakuro-generator.md` (exported objective + fixture values, the lean A/B), `kakuro.md`
+(fair share, typed error, 503), `generate/route.md`; plan review table + header; log journal +
+Measurements. Reverse sweep: "generic 500" in the review-7 entry and the E5 docs describe what was
+— left as the record.
+
+### Verified vs read
+
+- **Verified:** the table; the fixture scores (printed for every fixture × target before the
+  test was written); the A/B on identical seeded bases.
+- **Read only:** the 503 under a real over-budget request (the route's branch is exercised only
+  by the typed error; no route-level test injects a tiny budget — the service test covers the
+  error, the mapping is three lines read twice).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **run by the owner** (`high`) on #123; this is its follow-up, not re-reviewed.
+
+### Lessons
+
+- **Export an objective, then test its ordering on known states** — a closure that "works" can
+  hide a flat band for a whole slice; the fixture scores took one script to print and one test
+  to pin.
+- **A reviewer's free signal is a hypothesis too** — A/B it on the same seeds before adopting;
+  this one cost 20–50% in the tails.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up 7: all 6 `/code-review high` findings on E5 addressed
 
 Branch `feature/kakuro-review-7` on `10f8944` (main, after E5). Table in the plan (E5 → "Review

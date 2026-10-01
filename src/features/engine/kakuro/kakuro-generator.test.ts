@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { blackDensityOf, fillKakuroLayout, generateKakuroLayout, generateUniqueKakuro, repairToUnique, walkToTier } from './kakuro-generator';
+import { blackDensityOf, fillKakuroLayout, generateKakuroLayout, generateUniqueKakuro, repairToUnique, tierDistance, walkToTier } from './kakuro-generator';
+import { findKakuroFixture } from './kakuro-fixtures';
 import { classifyKakuro } from './kakuro-logical-solver';
 import { deriveRuns, validateKakuroLayout } from './kakuro-layout';
 import { isKakuroUnique } from './kakuro-solver';
@@ -88,6 +89,32 @@ describe('repairToUnique', () => {
     const result = repairToUnique(fill, { rng, msCap: 1, stepCap: 3 });
     expect(result.steps).toBeLessThanOrEqual(3);
     expect(result.solutions).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('tierDistance (the walk objective)', () => {
+  // The property the E5 flat band violated: scores must *vary* and must order states by tier
+  // distance below the target — a closure could never be tested for this (review follow-up 8).
+  const score = (size: 7 | 9, difficulty: 'easy' | 'medium' | 'hard' | 'expert' | 'extreme', target: 1 | 2 | 3 | 4 | 5) => {
+    const puzzle = findKakuroFixture(size, difficulty)!;
+    return tierDistance(puzzle.runs, size, target);
+  };
+
+  it('is 0 at the target, ≥ 100 above it, and strictly ordered by tier distance below it', () => {
+    expect(score(7, 'expert', 4)).toBe(0);
+    expect(score(7, 'extreme', 4)).toBeGreaterThanOrEqual(100);
+    // Below the target: a nearer tier always scores lower than a farther one (bands 51–60, 61–70, 71–80).
+    expect(score(7, 'hard', 4)).toBeLessThan(score(7, 'medium', 4));
+    expect(score(7, 'medium', 4)).toBeLessThan(score(7, 'easy', 4));
+    expect(score(9, 'expert', 5)).toBeLessThan(score(9, 'hard', 5));
+  });
+
+  it('varies within a band — `lean` is not a constant', () => {
+    // Two tier-3 states one tier below expert sit in the same band and score differently
+    // (54 and 55 on the baked fixtures: lean 6 and 5); a tier-1 state leans fully (lean 9 → 71).
+    expect(score(7, 'hard', 4)).not.toBe(score(9, 'hard', 4));
+    expect(score(7, 'easy', 4)).toBe(71);
+    expect(score(7, 'easy', 2)).toBe(51);
   });
 });
 

@@ -381,58 +381,64 @@ export interface WalkOptions extends ClimbOptions {
   countBudget?: number;
 }
 
+/** Cells still holding more than one candidate after a solve — how much the ladder left undone. */
+function undecidedCells(solver: KakuroLogicalSolver, size: number): number {
+  let cells = 0;
+  for (let cell = 0; cell < size * size; cell++) {
+    const mask = solver.candidatesOf(cell);
+    if (mask !== 0 && (mask & (mask - 1)) !== 0) cells++;
+  }
+  return cells;
+}
+
 /**
- * Hill-climb a *unique* puzzle toward a target tier, keeping it unique. The objective orders
- * every fill by how far it is from "unique and exactly this tier":
+ * The tier walk's objective — how far a fill is from "unique and exactly `target`":
  *
  * ```text
- * not unique                      → 1000            (never kept over a unique fill)
+ * not unique                      → 1000
  * unique, ladder cannot finish it → 500 + undecided cells
- * unique, harder than the target  → 100 + steps above the target tier         ← fewer is closer
- * unique, easier than the target  → 50 + 10·(target − h) − lean(h)             ← nearer tier, then leaning harder on it
+ * unique, harder than the target  → 100 + steps above the target tier          ← fewer is closer
+ * unique, easier than the target  → 50 + 10·(target − h) − lean(h)              ← nearer tier first, then leaning harder on it
  * unique, exactly the target      → 0
  * ```
  *
- * where `h` is the puzzle's hardest tier and `lean(h)` ∈ 0..9 is the share of white cells the
- * ladder capped at `h − 1` leaves undecided — how much the puzzle already depends on its top
- * technique. The gradients inside each band are what make it a climb rather than a lottery: a
- * hard puzzle walking to easy sheds its above-tier steps one by one; an easy one walking to
- * expert first gains a tier whenever a mutation does, and between those jumps grows the part of
- * the grid its top tier carries. (The first version capped the ladder at `target − 1` instead of
- * `h − 1`; a ladder that never needed more than `h` finishes under any cap ≥ `h`, so that band
- * was a constant 50 and the up-walks were plateau random walks — a review finding.) Measured
- * before/after in `kakuro-generator.md`.
+ * `h` is the fill's hardest tier and `lean(h)` ∈ 0..9 the share of white cells the ladder
+ * capped at `h − 1` leaves undecided — how much of the grid the top technique carries. The
+ * bands never overlap (easier: 51–90, harder: ≥ 100), so gaining a tier always wins and, within
+ * a tier, depending more on the top technique counts as progress toward needing the next.
+ * Exported so the ordering can be tested on known states (review follow-up 8): the E5 version
+ * capped the ladder at `target − 1` instead of `h − 1`, which made the easier band a constant,
+ * and no test could see it because the objective was a closure.
+ */
+export function tierDistance(runs: readonly Run[], size: number, target: KakuroTier, options: { countBudget?: number; whiteCount?: number } = {}): number {
+  const { countBudget = 20_000 } = options;
+  const whiteCount = options.whiteCount ?? runs.reduce((cells, run) => cells + (run.dir === 'across' ? run.cells.length : 0), 0);
+  const count = countKakuroSolutions({ gridSize: size, runs }, { limit: 2, nodeBudget: countBudget });
+  if (count.exhausted || count.solutions !== 1) return 1000;
+  const solver = new KakuroLogicalSolver({ gridSize: size, runs });
+  const result = solver.solve({ recordSteps: true });
+  if (!result.solved) return 500 + undecidedCells(solver, size);
+  const hardest = result.hardestTier === 0 ? 1 : result.hardestTier;
+  if (hardest === target) return 0;
+  if (hardest > target) return 100 + result.steps.filter((step) => step.tier > target).length;
+  const below = new KakuroLogicalSolver({ gridSize: size, runs });
+  below.solve({ maxTier: (hardest - 1) as KakuroTier });
+  const lean = Math.min(9, Math.floor((9 * undecidedCells(below, size)) / Math.max(1, whiteCount)));
+  return 50 + 10 * (target - hardest) - lean;
+}
+
+/**
+ * Hill-climb a *unique* puzzle toward a target tier, keeping it unique, with `tierDistance` as
+ * the objective. The gradients inside each band are what make it a climb rather than a lottery:
+ * a hard puzzle walking to easy sheds its above-tier steps one by one; an easy one walking to
+ * expert first gains a tier whenever a mutation does, and between those jumps grows the part
+ * of the grid its top tier carries. Measured before/after in `kakuro-generator.md`.
  */
 export function walkToTier(start: readonly number[][], target: KakuroTier, options: WalkOptions = {}): ClimbResult {
   const { countBudget = 20_000, ...climb } = options;
   const size = start.length;
   const whiteCount = whiteMaskOf(start).flat().filter(Boolean).length;
-  const undecided = (solver: KakuroLogicalSolver) => {
-    let cells = 0;
-    for (let cell = 0; cell < size * size; cell++) {
-      const mask = solver.candidatesOf(cell);
-      if (mask !== 0 && (mask & (mask - 1)) !== 0) cells++;
-    }
-    return cells;
-  };
-  return hillClimb(
-    start,
-    (runs) => {
-      const count = countKakuroSolutions({ gridSize: size, runs }, { limit: 2, nodeBudget: countBudget });
-      if (count.exhausted || count.solutions !== 1) return 1000;
-      const solver = new KakuroLogicalSolver({ gridSize: size, runs });
-      const result = solver.solve({ recordSteps: true });
-      if (!result.solved) return 500 + undecided(solver);
-      const hardest = (result.hardestTier === 0 ? 1 : result.hardestTier) as KakuroTier;
-      if (hardest === target) return 0;
-      if (hardest > target) return 100 + result.steps.filter((step) => step.tier > target).length;
-      const below = new KakuroLogicalSolver({ gridSize: size, runs });
-      below.solve({ maxTier: (hardest - 1) as KakuroTier });
-      const lean = Math.min(9, Math.floor((9 * undecided(below)) / whiteCount));
-      return 50 + 10 * (target - hardest) - lean;
-    },
-    climb
-  );
+  return hillClimb(start, (runs) => tierDistance(runs, size, target, { countBudget, whiteCount }), climb);
 }
 
 export interface GenerateUniqueOptions {
@@ -444,11 +450,12 @@ export interface GenerateUniqueOptions {
   maxRounds?: number;
   /** Wall-clock budget for all rounds together; each round's repair gets what is left of it. */
   timeBudgetMs?: number;
-  repair?: RepairOptions;
+  /** The repair's caps and objective knobs. `rng` is the generator's — one seed, one puzzle. */
+  repair?: Omit<RepairOptions, 'rng'>;
   /** Walk the repaired fill to this tier before accepting it (E5); absent = accept whatever tier came out. */
   targetTier?: KakuroTier;
-  /** The tier walk's own caps — independent of the repair's. */
-  walk?: WalkOptions;
+  /** The tier walk's own caps — independent of the repair's; `rng` likewise the generator's. */
+  walk?: Omit<WalkOptions, 'rng'>;
 }
 
 /**
@@ -472,12 +479,12 @@ export function generateUniqueKakuro(options: GenerateUniqueOptions): KakuroPuzz
     if (!fill) continue;
     // One clock for every stage: a round's repair never runs past what the budget has left.
     const msCap = Math.min(repair?.msCap ?? 25 * gridSize * gridSize, remaining);
-    const repaired = repairToUnique(fill, { rng, ...repair, msCap });
+    const repaired = repairToUnique(fill, { ...repair, rng, msCap });
     if (repaired.solutions !== 1) continue;
     let solution = repaired.solution;
     if (targetTier !== undefined) {
       const left = timeBudgetMs - (performance.now() - started);
-      const walked = walkToTier(solution, targetTier, { rng, ...walk, msCap: Math.min(walk?.msCap ?? 25 * gridSize * gridSize, left) });
+      const walked = walkToTier(solution, targetTier, { ...walk, rng, msCap: Math.min(walk?.msCap ?? 25 * gridSize * gridSize, left) });
       if (walked.score !== 0) continue;
       solution = walked.solution;
     }
