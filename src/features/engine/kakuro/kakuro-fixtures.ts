@@ -55,14 +55,16 @@ export function parseKakuroFixture(rows: readonly string[], difficulty: KakuroDi
  * hand-drawn layouts (7×7: 32 whites, 20 runs; 9×9: 55 whites, 38 runs). Each label is the tier
  * the logical solver needs to finish the puzzle (T1 → easy … T3 → hard, T4 → expert = chains of
  * at most 4, T5 → extreme = longer chains) — the fills were searched for exactly that, and the
- * test suite re-classifies them so a label can never drift from the solver.
+ * test suite re-classifies them so a label can never drift from the solver. The two extremes were
+ * re-searched when the g-link became two-way (review follow-up 4): the first pair then solved
+ * with chains ≤ 4; these need chains of 5 (7×7) and 6 (9×9).
  */
 export const KAKURO_FIXTURES: readonly KakuroPuzzle[] = [
   parseKakuroFixture(['##17###', '#456891', '839#964', '95###86', '123#152', '519247#', '###13##'], 'easy'),
   parseKakuroFixture(['##72###', '#783956', '431#412', '19###79', '281#345', '354712#', '###52##'], 'medium'),
   parseKakuroFixture(['##12###', '#826357', '763#124', '31###15', '876#149', '921356#', '###12##'], 'hard'),
   parseKakuroFixture(['##89###', '#653287', '896#629', '21###75', '735#968', '948371#', '###15##'], 'expert'),
-  parseKakuroFixture(['##17###', '#349726', '287#915', '57###43', '142#879', '495873#', '###34##'], 'extreme'),
+  parseKakuroFixture(['##17###', '#928657', '965#546', '13###31', '458#923', '346251#', '###14##'], 'extreme'),
   parseKakuroFixture(
     ['##19#79##', '#348#986#', '97#423#16', '812#46839', '##49316##', '48971#987', '86#689#71', '#213#791#', '##38#14##'],
     'easy'
@@ -80,7 +82,7 @@ export const KAKURO_FIXTURES: readonly KakuroPuzzle[] = [
     'expert'
   ),
   parseKakuroFixture(
-    ['##83#27##', '#892#581#', '57#431#98', '163#56721', '##52148##', '86932#631', '71#894#89', '#541#976#', '##97#29##'],
+    ['##91#79##', '#672#539#', '68#869#75', '532#83514', '##43512##', '15869#635', '69#142#78', '#184#459#', '##69#31##'],
     'extreme'
   ),
 ];

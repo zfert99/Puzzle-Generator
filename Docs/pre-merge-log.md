@@ -92,6 +92,84 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up 4: all 8 `/code-review high` findings on #115 + #116 addressed
+
+Branch `feature/kakuro-review-4` on `cc9a953` (main, after E3). Table in the plan (E2b → "Review
+follow-up 4"); B9 + L17 + a Measurements row in `kakuro-log.md`. ~220 code lines (the chain
+engine's propagation pulled into a class over a shared workspace), ~90 test lines, two re-baked
+fixtures, ~120 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 80 files, **714 passed**, 0 failed — 4 new (both g-link directions on raw contexts, inconsistent context, the original 7×7 pinned at 3) + 2 rewritten (bound, contradiction run) |
+| `npm run lint` | exit 0 |
+| `npm run build` | green (after one TS fix in a test: `Run.id` is a number) |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | not the tiered benchmark (no `human-solver`/`sudoku` change); ad hoc, same puzzles before/after: 9×9 corpus classify **31.6 → 16.9 ms**, 7×7 corpus 3.7 → 4.1 ms, served extremes ~9 / ~18 ms |
+
+### Findings (the review's, with outcomes)
+
+1. **g-link one-way** (B9) → both directions in `scan()`, facts included. This changed the
+   grades: `*_CHAINS` need 3 (was 4), the experts 2–3, the two served extremes 3–4 → **graded
+   expert**, re-searched (0.3 s / 50 s) and re-baked at chains of 5 / 6. Corpus regrade (fresh
+   repaired fills, graded by both engines): 7×7 unrated 2 → 0, extreme 9 → 4 of 36; 9×9 unrated
+   5 → 3, extreme 8 → 8 of 23. Bound of 4 still splits the tiers; the ceiling of 12 is still
+   reached at 9×9 — stays E5's question.
+2. **Facts fixpoint per target** → established once in `prepareChainWorkspace`, snapshot restored
+   per target. Also seeds every open variable into the first scan so a raw context's g-link facts
+   are found (the fixture tests never needed it; the hand-built tests did).
+3. **D5′ row stale / §3e "add g-whips"** → D5′ reworded and marked confirmed with D6′; §3e has a
+   dated addendum with the regrade; §6 counts fixed.
+4. **Unreachable "forced two ways" branch** → asserting a forced truth throws if it fails.
+5. **`contradictionRun` test weak; cell branch untested** → asserts on the contradiction clause
+   only, both kinds found on the 9×9 original.
+6. **Inconsistent context "proves" things** → `ChainWorkspace.inconsistent`; all targets `null`.
+7. **§6 13×13 counts** → fixed.
+8. **`trueCombo` zeroed on a fresh workspace** → `fill(-1)`.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. Soundness surface touched, so re-run: the new
+links re-read (the contrapositive "no holder → combination false" and the forward "required digit
+with one holder → placed" are both the g-link's definition, sound for any true combination;
+falsifying a combination is not a forced truth so it does not count toward the length); "suppose
+the truth at every white cell → never a contradiction" on all 12 fixtures (incl. the re-baked
+extremes); placement/elimination sweeps on fixtures + random unique grids — all green. Re-derived
+by hand: a forced truth the scan returns is still open by construction, so the throw in (4) is an
+invariant, not a reachable error path.
+
+### Docs sweep
+
+Mirrored `.md` for `kakuro-chains.ts` (model, facts, workspace, measured) and
+`kakuro-fixtures.ts`; reverse sweep for "one-way"/"no g-link"/"exactly 12" — the plan's "Noted:
+exactly 12" paragraph carries a closed note (not rewritten), the log's D5′ row and findings §3e
+updated, `project-status.md` and the plan header moved on.
+
+### Verified vs read
+
+- **Verified:** every number above (bound2/bound3/regrade scripts in the session scratchpad);
+  both corpora graded by both engines on identical puzzles.
+- **Read only:** the browser — no UI change.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **run by the owner** (`high`) on #115 + #116; this is its follow-up, not
+  re-reviewed.
+
+### Lessons
+
+- **A one-way link is half a link.** Before setting a bound from chain lengths, list every link
+  of the model and check each is applied in both directions — the bound, two fixtures and a
+  measured distribution were all built on the half. (L17)
+- **A review finding that changes a rating is a re-measurement, not a fix.** Keep the generation
+  script and grade the same corpus with both engines before and after; "all tests pass" said
+  nothing here until the extreme fixtures failed their own label.
+
+---
+
 ## 2026-10-01 — Kakuro E3: yield measurement spike (docs only)
 
 Branch `feature/kakuro-e3` on `132e24a`. **No `.ts`/`.tsx` touched** — the measurement script
