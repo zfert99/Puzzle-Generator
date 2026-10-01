@@ -116,3 +116,10 @@ component no longer touches `useDialogFocus` itself.
 Same F10 treatment as `PuzzleForm`: the type toggle is a labelled `role="group"` with
 `aria-pressed` buttons, and the Difficulty heading became a `span` + `aria-labelledby` over its
 group (size buttons get theirs from the shared `GridSizeSelector`).
+
+## Development-only solver badge (October 2026, Kakuro E1)
+
+Under a Kakuro board, and only when `NODE_ENV === 'development'`, the game view renders
+`KakuroDevBadge` — the exact solver's uniqueness verdict and cost. It reads the *board's*
+variant from the store (not the menu's `variant` state), so it follows the game actually being
+played.

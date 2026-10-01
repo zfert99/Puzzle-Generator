@@ -297,6 +297,38 @@ describe('Kakuro', () => {
     expect(whites.slice(0, 8).every(([r, c]) => grid[r][c] === 1)).toBe(true);
   });
 
+  it('hints a cell the solver deduces rather than the first empty cell', () => {
+    // From the empty 7×7, propagation forces exactly two cells — (3,5) = 4 and (3,6) = 2, the
+    // 6-in-two run {2,4} crossed by its down runs — and nothing in row 0. A plain reveal would
+    // fill the first empty cell, (0,2); the solver-driven hint fills a forced one.
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    useBoardStore.getState().hint();
+    const s = useBoardStore.getState();
+    expect(s.grid[3][5]).toBe(4);
+    expect(s.grid[0][2]).toBe(0);
+  });
+
+  it('hints the selected cell when the solver forces it', () => {
+    useBoardStore.getState().startNewGame(KAKURO_FIXTURE_7X7);
+    const store = useBoardStore.getState();
+    store.selectCell(3, 6);
+    store.hint();
+    const s = useBoardStore.getState();
+    expect(s.grid[3][6]).toBe(2);
+    expect(s.grid[3][5]).toBe(0);
+  });
+
+  it('falls back to the answer when the board holds a mistake the solver cannot see past', () => {
+    // (0,1) = 9 contradicts the top across run (4-in-two): propagation reports a contradiction,
+    // so the hint reveals the first empty cell from the solution instead of trusting a deduction.
+    const store = useBoardStore.getState();
+    store.selectCell(0, 1);
+    store.inputDigit(9);
+    store.selectCell(1, 1);
+    store.hint();
+    expect(useBoardStore.getState().grid[1][1]).toBe(2);
+  });
+
   it('is solved when every white cell matches, with black cells left at 0', () => {
     const store = useBoardStore.getState();
     for (let i = 0; i < 7; i++) store.hint();

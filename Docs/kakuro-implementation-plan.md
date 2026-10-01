@@ -2,9 +2,10 @@
 
 > **Status:** 🚧 In progress (plan written 2026-09-11; build started 2026-09-30 — V0
 > [#104](https://github.com/zfert99/Puzzle-Generator/pull/104) and V1
-> [#108](https://github.com/zfert99/Puzzle-Generator/pull/108) merged 2026-10-01; V2 built, in
-> review) · **Branch:** one per slice off `main` (`feature/kakuro`, `feature/kakuro-v1`,
-> `feature/kakuro-v2`) ·
+> [#108](https://github.com/zfert99/Puzzle-Generator/pull/108), V2
+> [#109](https://github.com/zfert99/Puzzle-Generator/pull/109) merged 2026-10-01; **E1 built,
+> in review** — V3 (PDF) deferred behind it, see the E1 step-log) · **Branch:** one per slice
+> off `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -277,7 +278,7 @@ everything after it lands on something visible (D12 taken one step further).
 - *Blockers:* none. **Owed to E1:** the repo does not yet prove the fixtures are unique — only
   the throwaway counter did. E1's solver adds that test.
 
-### V2 — Board on the baked puzzle 🚧
+### V2 — Board on the baked puzzle ✅
 
 - **Real discriminant first** (the Keisan K5 audit lesson): `PuzzleVariant` / `BoardPuzzle` /
   `usePuzzle` unions gain `'kakuro'`; `startNewGame` switches on `variant`, never on
@@ -315,7 +316,7 @@ everything after it lands on something visible (D12 taken one step further).
 **Gate:** the fixture is playable end-to-end in the browser (both themes, mini + 9×9), E2E green,
 visual check handed to the owner.
 
-**Step-log (2026-10-01 — built, in review):**
+**Step-log (2026-10-01 — PR [#109](https://github.com/zfert99/Puzzle-Generator/pull/109), merged):**
 
 - *Process:* `'kakuro'` joined `PuzzleVariant` / `BoardPuzzle` / `usePuzzle`'s unions with the
   real discriminant (`puzzle.variant`); `startNewGame` keeps the puzzle's `runs` and derives
@@ -354,7 +355,7 @@ visual check handed to the owner.
 **Gate:** a Kakuro page in the sample booklet, verified by eye; PDF service tests cover the
 renderer.
 
-### E1 — Combination table + exact solver + uniqueness ⏳
+### E1 — Combination table + exact solver + uniqueness 🚧
 
 - Combination table: verify `cage-combinations.ts` at `maxDigit = 9` gives exact `(length, sum)`
   coverage for L 2–9 (sum ranges 3–17, 6–24, 10–30, 15–35, 21–39, 28–42, 36–44, 45); wrap as
@@ -379,6 +380,35 @@ renderer.
 
 **Gate:** uniqueness verify on the 9×9 fixtures **< 50 ms average** (the Keisan/Killer gate), fuzz
 clean, board hint driven by the solver.
+
+**Step-log (2026-10-01 — built, in review; taken ahead of V3):**
+
+- *Order:* E1 was pulled ahead of V3 (PDF). The owner asked for "the solver with a Hint button"
+  as the next thing after V1; V2 had to come first for a Hint button to exist at all, and the
+  PDF page has no dependency on either direction. V3 stays queued.
+- *Process:* `kakuro-combinations.ts` is a Kakuro-named view over `killer/cage-combinations.ts`
+  at `maxDigit = 9` plus memoized bitmask lists — the table is not built twice; tests pin the
+  9/36/84/126/126/84/36/9/1 counts, the sum ranges per length, and the canonical magic runs.
+  `kakuro-solver.ts`: compiled typed-array shape, per-run propagation (feasible-combination
+  filter → union → all-different strip → required-digit-held-by-one-cell), ring-buffer work
+  queue, MRV search with mask copies per branch and a node budget; `countKakuroSolutions`,
+  `isKakuroUnique` (`null` on budget), `deduceKakuro` (propagation only). The store's `hint`
+  places a cell the solver **deduces** (selected if forced, else the first forced; the digit is
+  accepted only if it equals the solution's — a board holding a mistake can force a digit that
+  is consistent with the mistake); `KakuroDevBadge` shows "unique ✓ · n nodes · t ms" under
+  the board in development. 48 engine tests incl. a 150-grid fuzz against an independent brute
+  force, the G10 2×9 and isolated-2×2 degenerates, the ±1 clue trick, budget exhaustion, and
+  **both fixtures proven unique in-repo**; 4 store/badge tests.
+- *Measured:* uniqueness verify **0.12 ms** average on the 7×7 (13 nodes) and the 9×9 (11
+  nodes) — the 50 ms gate by a factor of 400. Propagation alone forces 2/32 cells on the empty
+  7×7, 17/55 on the empty 9×9 (the 7×7 fixture is the harder of the two to *start*).
+- *Learnings:* (1) the "required digit held by only one cell" rule is what makes propagation
+  solve the 3×3 outright; without it the tiny test puzzle needs search. (2) Mathimagics'
+  look-ahead (a value forced in every branch of a cell is forced) was not needed at these
+  sizes — recorded as the optional booster the plan named, untouched. (3) The browser's console
+  log persists across navigations: a stale error from before a fix reads as a live one —
+  confirm in a fresh tab before chasing it.
+- *Blockers:* none.
 
 ### E2 — Logical solver (technique classifier) + instrumentation ⏳
 

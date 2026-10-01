@@ -13,6 +13,7 @@ import { GameHeader } from './Header/GameHeader';
 import { KeyboardHints } from './KeyboardHints';
 import { SolvedDialog } from './SolvedDialog';
 import { ConfirmModal } from './ConfirmModal';
+import { KakuroDevBadge } from './KakuroDevBadge';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
@@ -82,6 +83,7 @@ export default function PlayExperience() {
 
   const { loading, error, fetchPuzzle } = usePuzzle();
   const status = useBoardStore((s) => s.status);
+  const boardVariant = useBoardStore((s) => s.variant);
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const resume = useBoardStore((s) => s.resume);
   const tick = useBoardStore((s) => s.tick);
@@ -321,6 +323,9 @@ export default function PlayExperience() {
       )}
 
       <Numpad />
+
+      {/* E1's visible proof that a real solver sits behind the board — development only. */}
+      {process.env.NODE_ENV === 'development' && boardVariant === 'kakuro' && <KakuroDevBadge />}
 
       <KeyboardHints />
 
