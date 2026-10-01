@@ -73,9 +73,9 @@ export function GameHeader() {
   return (
     <div className="w-full max-w-[520px] mx-auto mb-4 flex items-center justify-between gap-4 text-sm">
       <span className="capitalize font-medium">
-        {/* Kakuro carries a placeholder difficulty until its classifier exists (Kakuro plan E2) —
-            say so rather than present the placeholder as a grade. */}
-        {variant === 'kakuro' ? 'unrated' : difficulty} · {size}×{size}
+        {/* A Kakuro's difficulty is the classifier's label, or the literal 'unrated' — never a
+            placeholder dressed as a grade (Kakuro plan D8). */}
+        {difficulty} · {size}×{size}
       </span>
 
       <div className="flex items-center gap-3">

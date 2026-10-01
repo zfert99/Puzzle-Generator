@@ -1,7 +1,15 @@
 # KakuroDevBadge (`KakuroDevBadge.tsx`)
 
-A one-line, development-only readout under a Kakuro board: "solver: unique ✓ · 13 nodes" (or
-"NOT unique — N solutions found" / "node budget exhausted").
+A three-line, development-only readout under a Kakuro board:
+
+```text
+exact: unique ✓ · 8 nodes
+ladder: hard (tier 3) · score 102.9 · comboRestriction×29 nakedSingle×30 … sumBounds×13
+metrics: 32 cells · fixed 7 · implied 8 · rating 3.41 · ACRL 3.75 · magic runs 7
+```
+
+(or "NOT unique — N solutions found" / "node budget exhausted" on the first line, and
+"beyond tier 3 (chains not built yet)" on the second for a puzzle the ladder cannot finish).
 
 ## Why it exists
 
@@ -14,8 +22,9 @@ the node count as a rough difficulty signal while the classifier is built.
 
 ```text
 read the store's runs and grid size
-count the puzzle's solutions (limit 2) — memoized on runs/size, so once per game
-render the verdict with the search-node count
+count the puzzle's solutions (limit 2)                — the exact solver
+classify, score and measure the puzzle                — the logical solver (E2a)
+all memoized on runs/size, so once per game; render the three lines
 ```
 
 Nodes, not milliseconds: the node count is a pure function of the puzzle, so it can be derived

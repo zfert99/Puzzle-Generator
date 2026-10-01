@@ -28,6 +28,12 @@
 
 ## Journal
 
+- **2026-10-01 (E2a)** Review follow-up merged (#111). **E2a built** — logical solver T1–T3,
+  classifier, metrics, scorer, hints that name their technique with a lead-up; fixtures re-cut
+  to easy/medium/hard per size (hill-climbed against the ladder itself) with the two chain
+  fills kept for E2b. `[decision]` E2 split into E2a/E2b. `[bug]` B5 hidden pair was unsound
+  (Sudoku's "every digit is present" does not hold in a run). `[measure]` ladder-solvable fill
+  search timings. `[learning]` L12.
 - **2026-10-01 (review)** E1 merged (#110). Owner ran the hosted `/code-review` over the four
   merged slices (V0–E1): **10 findings, all addressed** in a follow-up PR — see the plan's
   "Review follow-up" step-log for the full list with outcomes, and B2–B4 below. `[bug]` B2 hint
@@ -115,6 +121,7 @@
 
 | # | Found | Slice | Symptom | Cause | Fix |
 |---|---|---|---|---|---|
+| B5 | 2026-10-01 | E2a | The first hidden-pair draft placed a wrong digit on the 7×7 fixture | Sudoku's hidden pair assumes every house contains every digit; a Kakuro run need not contain any given digit, so two merely-possible digits confined to two cells prove nothing | Hidden single/pair only consider digits every remaining combination requires; soundness tests (all fixtures + random unique grids) pin it — E2a PR |
 | B2 | 2026-10-01 (review) | E1 | Kakuro `hint()` fell back to a blind reveal whenever the *first* solver-forced cell disagreed with the solution, even if another forced cell was a sound deduction | The check-against-solution was applied to one pick, not iterated | Take the selected cell if forced *and* agreeing, else the first agreeing forced cell; test plants a consistent-but-wrong 3 and asserts one correct placement — review follow-up PR |
 | B3 | 2026-10-01 (review) | E1 | `countKakuroSolutions({ runs: [] })` reported **1** solution (the empty grid); `% 0` on the zero-length ring buffer gave NaN | No guard for a shape with no runs | Return 0 solutions / contradiction up front; tested |
 | B4 | 2026-10-01 (review) | V1 | `validateKakuroLayout`'s min-hints floor counted every interior black cell, so a solid black blob heading no run passed a floor it should fail | Misread Mathimagics' "interior hints" as "interior blacks" | Count black cells with a white cell to the right or below; test with 12 blacks / 4 hints at 9×9 |
@@ -132,6 +139,7 @@
 | L7 | **Don't fill-and-retry a fixed layout; repair the fill.** Independent random fills of one layout were unique 0 times in 3,000, while a one-cell-at-a-time hill-climb on the same layout converged. Treat "P(unique) per random fill" as ≈ 0 until E3 measures otherwise | V1 fixture authoring, 2026-09-30 |
 | L8 | **Never mutate hydrated store state to "finish" it — derive in `merge` or `setState`.** A mutation after hydration notifies no subscriber, so whatever rendered first keeps the stale slice; the bug only shows for a field a component reads on first paint, which is why `peers` (read only inside actions) hid it for months | B1, V2, 2026-10-01 |
 | L9 | **A hint from a solver must be re-checked against the answer before it is placed.** Propagation from a board that already holds a wrong digit can force a digit that is consistent with the mistake and wrong against the solution; "the solver said so" is not "it is correct" once the premises are the player's | E1, 2026-10-01 |
+| L12 | **Port a Sudoku technique only after asking what house property it relies on.** "Hidden" rules rest on "every digit is present in the unit"; Kakuro runs have no such property, so the port needs a `required` guard. Expect the same question for every classic technique E2b borrows (X-wing, chains: what plays the role of the house?) | B5, 2026-10-01 |
 | L10 | **A derived store field needs a test that hydrates from storage**, not one that calls `startNewGame` — the latter can never see a rebuild that is missing or late. Snapshot localStorage, wipe the store, `persist.rehydrate()`, read the field; prove the test bites by deleting the rebuild once | Review finding 1, 2026-10-01 |
 | L11 | **When a review names a cheap cleanup, take it in the same follow-up** — the private `popcount`, the empty `if` branch and the `as Variant` cast each cost minutes to fix and would otherwise have been copied by the next slice | Review findings 5–7, 2026-10-01 |
 | L4 | **An honest top tier is the one the published comparison set actually uses.** Before transplanting a top-tier mechanism from another puzzle (Keisan's bounded T&E), check what the publishers' hardest tier requires — Kakuro's is chains, so a guess-based Extreme would have been dishonest by construction | G5 |
@@ -141,5 +149,7 @@
 | Date | Commit | What | Numbers |
 |---|---|---|---|
 | 2026-09-30 | uncommitted (V1, on `bfa0fcb`) | **Random fill → unique?** Fixed 7×7 layout (32 whites), randomized run-all-different fill, derive clues, count solutions (stop at 2). Throwaway script, crude MRV counter with min/max sum pruning | **0 unique / 3,000 fills** in 2.4 s (~0.8 ms per fill+count) |
+| 2026-10-01 | E2a (uncommitted) | **Ladder-solvable fill search** — hill-climb on a fixed layout, scoring a fill by (non-unique solution count) then (cells the T1–N ladder leaves undecided); one cell mutated per step | 7×7: tier-3 fill in 1.2 s, tier-2 in 0.5 s, tier-1 in 2.4 s (first restart each). 9×9: tier-3 in 11 s, tier-2 in 92 s (restart 1 stuck at a non-unique dead end, restart 2 solved), tier-1 in 69 s. Random fills: never ladder-solvable |
+| 2026-10-01 | E2a | **Ladder on the served fixtures** (`fixed` / `implied` / `rating`) | 7×7 e/m/h: 32/32/1.00 · 5/32/1.00 · 7/8/3.41. 9×9 e/m/h: 55/55/1.00 · 8/55/1.00 · 22/22/2.86. `*_CHAINS` fills: T3 stalls at 27 (7×7) / 29 (9×9) undecided. Classify 9×9 ≈ 6 ms |
 | 2026-10-01 | E1 (uncommitted) | **Uniqueness verify time**, `countKakuroSolutions` (limit 2) on the baked fixtures, 200 runs after warm-up, Node 22 via tsx | 7×7: **0.122 ms** avg, 13 nodes. 9×9: **0.123 ms** avg, 11 nodes. Gate was < 50 ms |
 | 2026-09-30 | same | **Hill-climbed fill → unique?** Same counter (cap 300 solutions); mutate one cell to a digit legal in both its runs, accept if the solution count does not rise | 7×7 (32 whites): unique in **~2.3 s**, first restart. 9×9 (55 whites): unique in **~105 s**, first restart. One sample each — a signal for E3, not a yield figure |

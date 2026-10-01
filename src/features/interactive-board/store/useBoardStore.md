@@ -216,10 +216,18 @@ budget (AGENTS.md §3).
 ## Kakuro hints come from the solver (October 2026, plan slice E1)
 
 For every other type `hint()` reveals a solution digit — the selected empty cell, else the
-first empty one. For a Kakuro it first asks the exact solver what **propagation alone forces**
-from the board as it stands (`deduceKakuro`, no search): the selected cell if it is one of the
-forced ones, else the first forced cell. So the first hint on the empty 7×7 fills (3,5) — the
-6-in-two run only {2,4} can make, crossed by its down runs — not the top-left white cell.
+first empty one. For a Kakuro a hint is a **deduction** whenever the solvers can make one:
+
+1. The **logical solver** first (`explainKakuroHint`, E2a): the next placement a human could
+   make, with a named technique and a plain-English reason, preferring the selected cell when
+   the ladder reaches it within a short detour. The eliminations on the way are the lead-up.
+2. Else the **exact solver's propagation** (`deduceKakuro`, E1): sound but unexplained — the
+   selected cell if forced, else the first forced cell.
+3. Else the plain reveal.
+
+Every hint records a `HintNote` in `lastHint` (technique, explanation, lead-up — `technique:
+null` for the fallbacks), which `HintNote.tsx` renders under the board. Session state: cleared
+by `startNewGame`, never persisted.
 
 A deduced digit is used **only if it equals the solution's.** From a board holding a wrong
 entry, propagation can force a digit that is consistent with the mistake but not with the

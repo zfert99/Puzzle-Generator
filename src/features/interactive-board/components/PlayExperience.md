@@ -21,11 +21,11 @@ so the board renders the cage overlay. Classic mode is unchanged.
 **Kakuro (October 2026, plan slice V2).** A fourth toggle. Sizes are a per-variant table
 (`SIZES`, plan rule D11): Kakuro offers 7/9, and switching type falls back to the new type's
 smallest size when the current one isn't offered (7 → 9 leaving Kakuro; 4 → 7 entering it).
-There is **no difficulty picker** for Kakuro yet — a note says one hand-made puzzle per size
-while the generator is built — because `usePuzzle` serves a fixture, not a generated board
-(the real ladder arrives with the plan's E5). `VARIANT_LABEL` is the one place the four display
-names live (Continue label, toggle). The Continue label reads "unrated" for a saved Kakuro, as
-the header does — its difficulty is a placeholder until E2.
+Kakuro's difficulty picker offers **easy / medium / hard** (one hand-made, solver-graded
+fixture each per size — E2a); expert and extreme are shown but locked, with a note that they
+arrive with the generator (`topTiersLocked` = mini grid OR Kakuro). `VARIANT_LABEL` is the one
+place the four display names live (Continue label, toggle). A Kakuro's difficulty is a real value (`'easy'`…, or the
+literal `'unrated'`), so the Continue label and header show it as-is.
 
 ## Menu-first, with save & continue
 
@@ -124,3 +124,8 @@ Under a Kakuro board, and only when `NODE_ENV === 'development'`, the game view 
 `KakuroDevBadge` — the exact solver's uniqueness verdict and node count. It reads the *board's*
 variant from the store (not the menu's `variant` state), so it follows the game actually being
 played.
+
+## Hint note (October 2026, Kakuro E2a)
+
+The game view renders `HintNote` under the numpad: the last hint's reason and lead-up, from the
+store's `lastHint`. See `HintNote.md`.

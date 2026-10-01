@@ -6,6 +6,10 @@ against its solution. Plan: [kakuro-implementation-plan.md](../../../../Docs/kak
 
 ## What makes Kakuro different
 
+`KakuroDifficulty` is the five published tiers plus `'unrated'` — a puzzle the classifier could
+not finish with the techniques built so far (or has not graded). The label comes from the
+classifier or not at all (D8); it is never a placeholder dressed as a grade.
+
 There is no row, column or box rule. The only constraint unit is the **run** — a maximal
 horizontal or vertical strip of white cells. A run's digits must add up to its clue and must all
 be different. Digits are 1–9 at every grid size, which is why `gridSize` is a plain `number`

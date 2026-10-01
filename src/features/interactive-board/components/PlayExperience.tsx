@@ -14,6 +14,7 @@ import { KeyboardHints } from './KeyboardHints';
 import { SolvedDialog } from './SolvedDialog';
 import { ConfirmModal } from './ConfirmModal';
 import { KakuroDevBadge } from './KakuroDevBadge';
+import { HintNote } from './HintNote';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 
@@ -76,8 +77,9 @@ export default function PlayExperience() {
   const [resumeHandled, setResumeHandled] = useState(false);
   const isKiller = variant === 'killer';
   const isCalc = variant === 'calc';
-  // Kakuro has no generator yet: one hand-baked puzzle per size, no difficulty to choose (the
-  // real ladder arrives with the Kakuro plan's E5 slice).
+  // Kakuro has no generator yet: hand-baked easy/medium/hard per size, graded by the logical
+  // solver's ladder; expert and extreme arrive with the chain tiers (Kakuro plan E2b) and the
+  // generator (E5).
   const isKakuro = variant === 'kakuro';
   const wantsResume = searchParams.get('resume') === '1';
 
@@ -112,6 +114,8 @@ export default function PlayExperience() {
   }, [view, status, tick]);
 
   const miniGrid = gridSize !== 9;
+  // Expert/Extreme are 9×9-only for the Sudoku family, and not yet available at all for Kakuro.
+  const topTiersLocked = miniGrid || isKakuro;
 
   const handleGridSizeChange = (size: SelectableSize) => {
     setGridSize(size);
@@ -125,7 +129,7 @@ export default function PlayExperience() {
     // variant, so the guard is uniform: clamp them off any non-9 grid.
     const nextSize = SIZES[v].includes(gridSize) ? gridSize : SIZES[v][0];
     if (nextSize !== gridSize) setGridSize(nextSize);
-    if (nextSize !== 9 && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    if ((nextSize !== 9 || v === 'kakuro') && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
   };
 
   const startFresh = async () => {
@@ -182,7 +186,7 @@ export default function PlayExperience() {
             >
               Continue{' '}
               {saved.variant === 'classic' ? `${saved.gridSize}×${saved.gridSize}` : VARIANT_LABEL[saved.variant]}{' '}
-              {saved.variant === 'kakuro' ? 'unrated' : saved.difficulty} · {formatElapsed(saved.elapsedTime)}
+              {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
             </button>
             <p className="text-xs text-ink-soft text-center mt-3">— or start a new game —</p>
           </div>
@@ -209,11 +213,6 @@ export default function PlayExperience() {
         {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6/9, Kakuro 7/9. */}
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} sizes={SIZES[variant]} />
 
-        {isKakuro ? (
-          <p className="text-xs text-ink-soft text-center mb-6">
-            Kakuro is new: one hand-made puzzle per size while the generator is built.
-          </p>
-        ) : (
         <div className="mb-6">
           {/* Span + aria-labelledby + aria-pressed (QA F10) — same reasoning as GridSizeSelector. */}
           <span id="play-difficulty-label" className="block text-sm font-medium text-ink-soft mb-2 text-center">
@@ -221,7 +220,7 @@ export default function PlayExperience() {
           </span>
           <div role="group" aria-labelledby="play-difficulty-label" className="flex flex-wrap justify-center gap-2">
             {ALL_DIFFICULTIES.map((d) => {
-              const disabled = miniGrid && (d === 'expert' || d === 'extreme');
+              const disabled = topTiersLocked && (d === 'expert' || d === 'extreme');
               return (
                 <button
                   key={d}
@@ -238,8 +237,14 @@ export default function PlayExperience() {
               );
             })}
           </div>
-          {miniGrid && (
-            <p className="text-xs text-ink-soft text-center mt-2">Expert and Extreme are only available for 9×9 grids.</p>
+          {isKakuro ? (
+            <p className="text-xs text-ink-soft text-center mt-2">
+              Kakuro is new: hand-made puzzles, graded by the solver. Expert and Extreme arrive with the generator.
+            </p>
+          ) : (
+            miniGrid && (
+              <p className="text-xs text-ink-soft text-center mt-2">Expert and Extreme are only available for 9×9 grids.</p>
+            )
           )}
           {isKiller && difficulty === 'extreme' && (
             <p className="text-xs text-ink-soft text-center mt-2">Extreme Killers are rare finds — generating one can take ~10 seconds.</p>
@@ -248,7 +253,6 @@ export default function PlayExperience() {
             <p className="text-xs text-ink-soft text-center mt-2">Extreme Keisan needs many hypothesis steps — generating one can take a few seconds.</p>
           )}
         </div>
-        )}
 
         {/* Mystery / No-Op toggle — Keisan only. Hides the cage operators; an orthogonal modifier over
             any size/difficulty (the operator becomes part of the puzzle). */}
@@ -324,7 +328,9 @@ export default function PlayExperience() {
 
       <Numpad />
 
-      {/* E1's visible proof that a real solver sits behind the board — development only. */}
+      <HintNote />
+
+      {/* E1/E2's visible proof that real solvers sit behind the board — development only. */}
       {process.env.NODE_ENV === 'development' && boardVariant === 'kakuro' && <KakuroDevBadge />}
 
       <KeyboardHints />

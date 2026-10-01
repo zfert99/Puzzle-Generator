@@ -4,7 +4,7 @@ import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudok
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
-import { KAKURO_FIXTURES } from '@/features/engine/kakuro/kakuro-fixtures';
+import { findKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
 
 type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle;
 
@@ -27,8 +27,9 @@ interface PuzzleRequest {
  *
  * **Kakuro has no generator yet** (Kakuro plan: the generator is slice E4/E5). Until then a
  * Kakuro request is served from the hand-baked fixtures without touching the network — static
- * data, so the hydration concern above does not apply — and `difficulty` is ignored: there is
- * one puzzle per size. `/api/puzzle` is left untouched until a real generator exists.
+ * data, so the hydration concern above does not apply. There is one fixture per size and
+ * difficulty for easy/medium/hard, each labelled by the classifier; `/api/puzzle` is left
+ * untouched until a real generator exists.
  */
 export function usePuzzle() {
   const [puzzle, setPuzzle] = useState<AnyPuzzle | null>(null);
@@ -38,10 +39,10 @@ export function usePuzzle() {
   const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
     if (variant === 'kakuro') {
-      const fixture = KAKURO_FIXTURES.find((p) => p.gridSize === gridSize);
+      const fixture = findKakuroFixture(gridSize, difficulty);
       if (!fixture) {
-        // Surface it like a failed request would — never quietly hand back a different size.
-        setError(`No Kakuro puzzle at ${gridSize}×${gridSize} yet`);
+        // Surface it like a failed request would — never quietly hand back a different puzzle.
+        setError(`No ${difficulty} Kakuro at ${gridSize}×${gridSize} yet`);
         return null;
       }
       setPuzzle(fixture);

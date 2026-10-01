@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { KAKURO_FIXTURES, KAKURO_FIXTURE_7X7, KAKURO_FIXTURE_9X9, parseKakuroFixture } from './kakuro-fixtures';
+import { ALL_KAKURO_FIXTURES, KAKURO_FIXTURES, KAKURO_FIXTURE_7X7_CHAINS, KAKURO_FIXTURE_9X9_CHAINS, findKakuroFixture, parseKakuroFixture } from './kakuro-fixtures';
+import { classifyKakuro } from './kakuro-logical-solver';
 import { validateKakuroLayout, whiteMaskOf } from './kakuro-layout';
 import { validateKakuroRuns } from './kakuro-types';
 
@@ -46,7 +47,7 @@ describe('parseKakuroFixture', () => {
 });
 
 describe('baked fixtures', () => {
-  it.each(KAKURO_FIXTURES.map((puzzle) => [`${puzzle.gridSize}×${puzzle.gridSize}`, puzzle] as const))(
+  it.each(ALL_KAKURO_FIXTURES.map((puzzle) => [`${puzzle.gridSize}×${puzzle.gridSize} ${puzzle.difficulty}`, puzzle] as const))(
     '%s is a legal layout whose runs match its solution',
     (_name, puzzle) => {
       expect(validateKakuroLayout(whiteMaskOf(puzzle.solution))).toEqual([]);
@@ -55,15 +56,35 @@ describe('baked fixtures', () => {
     }
   );
 
-  it('carries the sizes and shapes the docs describe', () => {
+  it('serves easy, medium and hard at both sizes, on the two hand-drawn layouts', () => {
     const whites = (solution: number[][]) => solution.flat().filter((digit) => digit > 0).length;
+    for (const size of [7, 9]) {
+      for (const difficulty of ['easy', 'medium', 'hard'] as const) {
+        const puzzle = findKakuroFixture(size, difficulty);
+        expect(puzzle, `${size}×${size} ${difficulty}`).toBeDefined();
+        expect(whites(puzzle!.solution)).toBe(size === 7 ? 32 : 55);
+        expect(puzzle!.runs).toHaveLength(size === 7 ? 20 : 38);
+      }
+    }
+    expect(findKakuroFixture(6, 'easy')).toBeUndefined();
+    expect(findKakuroFixture(7, 'expert')).toBeUndefined();
+  });
 
-    expect(KAKURO_FIXTURE_7X7.gridSize).toBe(7);
-    expect(whites(KAKURO_FIXTURE_7X7.solution)).toBe(32);
-    expect(KAKURO_FIXTURE_7X7.runs).toHaveLength(20);
+  it.each(KAKURO_FIXTURES.map((puzzle) => [`${puzzle.gridSize}×${puzzle.gridSize} ${puzzle.difficulty}`, puzzle] as const))(
+    '%s carries exactly the label the classifier assigns',
+    (_name, puzzle) => {
+      const graded = classifyKakuro(puzzle);
+      expect(graded.result.solved).toBe(true);
+      expect(graded.difficulty).toBe(puzzle.difficulty);
+    }
+  );
 
-    expect(KAKURO_FIXTURE_9X9.gridSize).toBe(9);
-    expect(whites(KAKURO_FIXTURE_9X9.solution)).toBe(55);
-    expect(KAKURO_FIXTURE_9X9.runs).toHaveLength(38);
+  it('keeps the two chain fixtures unrated: the tier 1–3 ladder cannot finish them', () => {
+    for (const puzzle of [KAKURO_FIXTURE_7X7_CHAINS, KAKURO_FIXTURE_9X9_CHAINS]) {
+      const graded = classifyKakuro(puzzle);
+      expect(graded.result.solved).toBe(false);
+      expect(graded.result.contradiction).toBe(false);
+      expect(graded.difficulty).toBe('unrated');
+    }
   });
 });

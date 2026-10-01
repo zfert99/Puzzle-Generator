@@ -92,6 +92,91 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro E2a: logical solver T1–T3, classifier, metrics, scorer, explained hints
+
+Branch `feature/kakuro-e2` on `ca373a8` (main, after the review follow-up). E2 re-sliced into
+E2a (this) and E2b (the chain engine, next). New: `kakuro-logical-solver.ts`, `kakuro-score.ts`,
+`HintNote.tsx`; fixtures re-cut to easy/medium/hard per size (+ the two originals as `*_CHAINS`
+test fixtures); the Kakuro menu gets the difficulty picker, the header the classifier's grade,
+the Hint a named technique with a lead-up. ~1,150 non-test code lines (the solver is ~620 of
+them), ~325 test lines, ~280 doc lines — **well over the ~400 guideline**; the eight techniques,
+the classifier and the fixtures that prove tier separation are one unit, and the hint wiring is
+the visible acceptance. E2b will be its own slice.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 79 files, **686 passed**, 0 failed — 35 new (logical solver 15, fixtures 4 reworked + 2, store 0 changed, badge 2, hook 0 changed, e2e 1 extended) |
+| Playwright `e2e/play.spec.ts` (dev server) | **9 passed** incl. the Kakuro spec, now asserting the grade in the header and the explained hint |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Benchmarks | none exist for Kakuro yet (plan: E5). Measured ad hoc: classify a 9×9 ≈ 6 ms; the exact solver's search was not touched |
+
+### Findings
+
+- **B5 (fixed before any test existed):** the first hidden-pair draft was unsound — it borrowed
+  Sudoku's "every digit is present in the unit" assumption, which a Kakuro run does not have —
+  and placed a wrong digit on the 7×7 on the very first run. Caught by running the solver on the
+  fixtures and checking every placement against the solution *before* writing tests; the rule
+  now only considers digits every remaining combination requires, and soundness tests pin it.
+- The original two fixtures are **not finishable by T1–T3** (27 / 29 cells undecided). Not a bug
+  — they were hill-climbed for uniqueness only — but it meant the ladder could not grade a single
+  served puzzle. Resolved by hill-climbing new fills with the ladder itself as the objective
+  (one per tier per size); the originals stay as E2b's acceptance material.
+- The random-grid soundness fuzz found only ~2 unique grids per 120 trials; the loop now caps at
+  1,500 trials and stops at 30 unique (sub-ms each, ~0.3 s total) — budgeted up front per the
+  previous entry's lesson.
+
+### Invariants checked
+
+No slot key, write, query, migration or dependency. AI-written logic re-derived where it could be
+plausible-but-wrong:
+
+- **Soundness, mechanically:** for every fixture and ~30 random unique grids, every placement
+  equals the solution and no elimination removes the solution's digit at that cell. This is the
+  test that would have caught B5.
+- **Tier separation is real, not nominal:** the medium 7×7 is *not* solved with `maxTier: 1`, the
+  hard 7×7 *not* with `maxTier: 2` (tested) — so "hard" means tier-3 work was necessary.
+- **Labels cannot drift:** every served fixture's baked `difficulty` is re-derived by
+  `classifyKakuro` in a test.
+- **The "required" guard** on hidden single/pair re-read against the combination semantics: a
+  digit in the AND of all open combinations must be placed in the run; a digit in only some need
+  not be. Locked candidates deliberately omitted (two runs meet in one cell → hidden single).
+- **Hint honesty:** the explained hint is still checked against the solution before placing
+  (unchanged from E1/review), and the `preferCell` detour includes the earlier placements in the
+  lead-up rather than hiding them.
+
+### Docs sweep
+
+Mirrored `.md` for all 13 touched/new source files. Reverse sweep for `KAKURO_FIXTURE_7X7` /
+`KAKURO_FIXTURE_9X9` (renamed `*_CHAINS`): tests repointed; `kakuro-fixtures.md` rewritten;
+historical step-logs left. "Placeholder difficulty" wording removed from the hook, header and
+menu docs. Plan: E2 split, E2a step-log, slice table; log: journal, B5, L12, two measurement
+rows; roadmap + project-status lines.
+
+### Verified vs read
+
+- **Verified:** the table; in the browser — hard 7×7 from the picker, header "hard · 7×7", two
+  Hints with the note and a 14-step lead-up, dev badge's three lines; fresh console clean.
+- **Read only:** the 9×9 fixtures in the browser (unit + classify only); light theme.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lessons
+
+- **Run a new solver against the answer before writing its tests.** A soundness sweep over the
+  fixtures (every placement vs the solution) costs one script and caught B5 in seconds; unit
+  tests written from the same misunderstanding would have passed.
+- **When a fixture cannot exercise the thing you built, search for one with the thing itself as
+  the objective.** The ladder graded nothing until the hill-climb scored fills by "cells the
+  ladder leaves undecided"; that also yielded a clean tier-separation test for free.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up: all 10 `/code-review` findings addressed
 
 Branch `feature/kakuro-review-1` on `da59eee` (main, after E1). The owner ran the hosted

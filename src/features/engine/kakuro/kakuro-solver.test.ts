@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KAKURO_FIXTURE_7X7, KAKURO_FIXTURE_9X9, KAKURO_FIXTURES, parseKakuroFixture } from './kakuro-fixtures';
+import { ALL_KAKURO_FIXTURES, KAKURO_FIXTURE_7X7_CHAINS, KAKURO_FIXTURE_9X9_CHAINS, parseKakuroFixture } from './kakuro-fixtures';
 import { deriveRuns } from './kakuro-layout';
 import { countKakuroSolutions, deduceKakuro, isKakuroUnique, type KakuroShape } from './kakuro-solver';
 import type { Run } from './kakuro-types';
@@ -127,14 +127,14 @@ describe('countKakuroSolutions', () => {
   });
 
   it('reports budget exhaustion rather than guessing', () => {
-    const result = countKakuroSolutions(KAKURO_FIXTURE_9X9, { nodeBudget: 1 });
+    const result = countKakuroSolutions(KAKURO_FIXTURE_9X9_CHAINS, { nodeBudget: 1 });
     expect(result.exhausted).toBe(true);
-    expect(isKakuroUnique(KAKURO_FIXTURE_9X9, 1)).toBeNull();
+    expect(isKakuroUnique(KAKURO_FIXTURE_9X9_CHAINS, 1)).toBeNull();
   });
 });
 
 describe('the baked fixtures', () => {
-  it.each(KAKURO_FIXTURES.map((p) => [`${p.gridSize}×${p.gridSize}`, p] as const))(
+  it.each(ALL_KAKURO_FIXTURES.map((p) => [`${p.gridSize}×${p.gridSize} ${p.difficulty}`, p] as const))(
     '%s has exactly one solution, and it is the baked one',
     (_name, puzzle) => {
       const result = countKakuroSolutions(puzzle);
@@ -146,7 +146,7 @@ describe('the baked fixtures', () => {
 
   it('verifies the 9×9 well inside the 50 ms gate (loose bound — timing under load)', () => {
     const started = performance.now();
-    for (let i = 0; i < 10; i++) countKakuroSolutions(KAKURO_FIXTURE_9X9);
+    for (let i = 0; i < 10; i++) countKakuroSolutions(KAKURO_FIXTURE_9X9_CHAINS);
     const perVerify = (performance.now() - started) / 10;
     expect(perVerify).toBeLessThan(500);
   });
@@ -154,7 +154,7 @@ describe('the baked fixtures', () => {
   it('becomes non-unique when one cell is bumped by the ±1 clue trick (research G10)', () => {
     // Raise the across AND down clue through one white cell by 1: the puzzle can no longer be
     // the baked solution, and the trick is Mathimagics' recipe for multi-solution test cases.
-    const runs = KAKURO_FIXTURE_7X7.runs.map((run) => ({ ...run, cells: [...run.cells] }));
+    const runs = KAKURO_FIXTURE_7X7_CHAINS.runs.map((run) => ({ ...run, cells: [...run.cells] }));
     const cell = runs[0].cells[0];
     for (const run of runs) if (run.cells.includes(cell)) run.sum += 1;
     const result = countKakuroSolutions({ gridSize: 7, runs }, { limit: 10 });
@@ -188,7 +188,7 @@ describe('deduceKakuro', () => {
   });
 
   it('only ever forces solution digits on the baked puzzles', () => {
-    for (const puzzle of KAKURO_FIXTURES) {
+    for (const puzzle of ALL_KAKURO_FIXTURES) {
       const empty = puzzle.solution.map((row) => row.map(() => 0));
       const { forced, contradiction } = deduceKakuro(puzzle, empty);
       expect(contradiction).toBe(false);

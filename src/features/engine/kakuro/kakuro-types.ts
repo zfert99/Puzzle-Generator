@@ -11,7 +11,12 @@
 
 import type { GridConfig, GridSize } from '../sudoku';
 
-export type KakuroDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
+/**
+ * The five published tiers, plus `'unrated'`: a puzzle the classifier (`kakuro-logical-solver`)
+ * could not finish with the techniques built so far, or one that has not been graded yet. The
+ * label comes from the classifier or not at all (plan decision D8) — never from a guess.
+ */
+export type KakuroDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme' | 'unrated';
 
 export type RunDirection = 'across' | 'down';
 
