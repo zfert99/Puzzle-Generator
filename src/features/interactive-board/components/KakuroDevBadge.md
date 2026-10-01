@@ -9,7 +9,7 @@ metrics: 32 cells · fixed 7 · implied 8 · rating 3.41 · ACRL 3.75 · magic r
 ```
 
 (or "NOT unique — N solutions found" / "node budget exhausted" on the first line, and
-"beyond tier 3 (chains not built yet)" on the second for a puzzle the ladder cannot finish).
+"beyond tier 5 (no chain within the bound)" on the second for a puzzle the ladder cannot finish).
 
 ## Why it exists
 

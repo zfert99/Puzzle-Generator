@@ -36,20 +36,21 @@ a digit repeated within a run.
 ## The fixtures
 
 Two hand-drawn layouts (7×7: 32 whites, 20 runs; 9×9: 55 whites, 38 runs), each carrying
-**three served fills** — easy, medium, hard — and one **chain** fill kept for tests only.
+**five served fills** — the full ladder — and one extra fill kept for tests only.
 
 | Group | What | Difficulty |
 |---|---|---|
-| `KAKURO_FIXTURES` (served) | one per size × easy / medium / hard | the tier the logical ladder needs: T1 / T2 / T3 |
-| `KAKURO_FIXTURE_7X7_CHAINS`, `_9X9_CHAINS` | the first fills found (V1): unique, but the T1–3 ladder stalls with ~27–29 cells undecided | `'unrated'` — E2b's chain-tier test material |
+| `KAKURO_FIXTURES` (served) | one per size × easy / medium / hard / expert / extreme | the tier the logical solver needs: T1–T3 by technique, T4 = chains ≤ 4, T5 = longer chains |
+| `KAKURO_FIXTURE_7X7_CHAINS`, `_9X9_CHAINS` | the first fills found (V1): unique; the T1–3 ladder stalls with 27 / 29 cells undecided, then one or two chains of exactly length 4 finish them | `'expert'` — where the tier-4 bound was measured from |
 
 `findKakuroFixture(size, difficulty)` is what `usePuzzle` serves; `ALL_KAKURO_FIXTURES` is what
 the uniqueness and soundness tests sweep.
 
 The digits were **not** typed by hand. A throwaway hill-climb (not in the repo) mutated one cell
 at a time, scoring a fill by the repo's own solvers: non-unique counts first, then "cells the
-ladder leaves undecided" with the ladder capped at the target tier. Finding a 7×7 at each tier
-took 0.5–2.4 s; the 9×9s took 11 s (hard), ~90 s (medium, one restart) and ~70 s (easy) — see
+ladder leaves undecided" with the ladder capped at the target tier (and, for the chain tiers,
+"solvable one tier lower" as a penalty). Finding a 7×7 at each tier took 0.1–2.4 s; the 9×9s
+took 11–90 s each, some needing a restart out of a non-unique dead end — see
 [kakuro-log.md](../../../../Docs/kakuro-log.md) → Measurements. The tests here check that every
 fixture is legal and self-consistent, that **every served label equals what `classifyKakuro`
 assigns** (so a label can never drift from the solver), and that the chain fills stay unrated;

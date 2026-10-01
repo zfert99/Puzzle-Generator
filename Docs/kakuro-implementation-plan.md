@@ -6,9 +6,11 @@
 > [#109](https://github.com/zfert99/Puzzle-Generator/pull/109) and E1
 > [#110](https://github.com/zfert99/Puzzle-Generator/pull/110) and the review follow-up
 > [#111](https://github.com/zfert99/Puzzle-Generator/pull/111), E2a
-> [#112](https://github.com/zfert99/Puzzle-Generator/pull/112) and its review follow-up merged
-> 2026-10-01; V3 (PDF) still deferred, **E2b (chains) next**) · **Branch:** one per slice off
-> `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`) ·
+> [#112](https://github.com/zfert99/Puzzle-Generator/pull/112) and its review follow-up
+> [#113](https://github.com/zfert99/Puzzle-Generator/pull/113) merged 2026-10-01; **E2b (chains)
+> built, in review** — the full easy→extreme ladder is served at both sizes; V3 (PDF) and E3
+> (yield spike) next) · **Branch:** one per slice off `main` (`feature/kakuro`, `-v1`, `-v2`,
+> `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -191,7 +193,7 @@ prefixes: **V** = visual surface on baked content · **E** = engine · **R** = r
 | 3 | V3 — PDF on the baked puzzle | A printable Kakuro page in the booklet |
 | 4 | E1 — Combination table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixture |
 | 5 | E2a — Logical solver T1–T3 + classifier + metrics + scorer | Easy/medium/hard Kakuro graded by the solver; hints that name their technique and show the lead-up |
-| 5′ | E2b — Chain tiers (T4 whips, T5 g-whips) | Expert/extreme grades; the `*_CHAINS` fixtures finally solved by logic |
+| 5′ | E2b — Chain tiers (T4 / T5 forcing chains by length) | Expert and extreme Kakuro served at both sizes; the `*_CHAINS` fixtures solved by logic; chain hints that spell out the contradiction |
 | 6 | E3 — Yield measurement spike | Numbers in the log; the mini size chosen (D6′) |
 | 7 | E4 — Layout + fill + clue derivation | "New puzzle" produces a fresh board |
 | 8 | E5 — Difficulty configs + `generateKakuro` + benchmark | The difficulty and size pickers go live; hub card live |
@@ -434,7 +436,41 @@ in one PR; recorded here in full at the owner's request):**
 follow-up). The `/code-review` run was triggered by the owner (it is billed); the agent fixed
 and re-reported.
 
-### E2 — Logical solver (technique classifier) + instrumentation 🚧 (E2a ✅ built · E2b ⏳)
+**Step-log — E2b (2026-10-01, built, in review):**
+
+- *Process:* `kakuro-chains.ts` — Berthier's redundant-variable model (a "which combination"
+  variable per run makes every constraint a binary link) and a forcing-chain search over it:
+  suppose a candidate, follow forced consequences (linked candidates false; a variable with one
+  candidate left is true), and eliminate the candidate if a variable empties; the count of
+  forced truths is the length. Two ladder techniques: `shortChain` (tier 4, length ≤ 4) and
+  `longChain` (tier 5, ≤ 12); the chain's explanation spells the path out ("If row 4, column 6
+  were 2: row 3, column 6 → 1, 7-in-two across (row 4) → {2,5}, …, and then 6-in-two across
+  (row 3) has no combination left — so 2 is impossible there (chain of 4)"). Both `*_CHAINS`
+  fixtures now solve by logic (tier 4, one and two chains); the hill-climb found expert and
+  extreme fills at both sizes with the chain solver as the objective, so **the full ladder is
+  served** and the Kakuro menu unlocks expert/extreme at 7×7 too. 4 chain tests + tier-4/5
+  separation tests; the soundness sweeps (every placement = solution, no elimination removes a
+  solution digit) now cover chain steps on all 12 fixtures and random unique grids.
+- *Divergences from the spec, and why:* (1) **braids, not whips.** The spec said whips; what a
+  single propagation loop naturally finds is Berthier's braid (a whip with "memory"). Braids
+  and whips rate puzzles almost identically and the braid is simpler; a whip-only mode can be
+  added if calibration ever wants the stricter rating. (2) **No g-whips.** Nothing built or
+  searched needed the "a required digit must land somewhere" g-link; added when a fill needs
+  it. (3) **No surface sums** (an accelerator, per G4 and L3). (4) The chain spike and the tier
+  bound happened in the same slice — the fixtures made the bound obvious.
+- *Measured:* the two original fills need chains of **exactly 4** after the tier-3 standstill
+  (not 3 — tested), which set `CHAIN_TIER4_MAX_LENGTH = 4`. Searched fills: 7×7 extreme chains
+  of 6 and 10; 9×9 extreme 8 and 7; both experts a single chain of 4. Classify: ~7 ms expert,
+  ~35 ms extreme; hints ~1 ms. Search times: 7×7 expert 1.5 s, 7×7 extreme 0.07 s (!), 9×9
+  expert 63 s and 9×9 extreme 45 s, each with restarts out of non-unique dead ends.
+- *Learnings:* (1) a raw chain context must assert single-combination runs as facts before the
+  supposition, or a chain that depends on an already-forced run is missed (a unit test caught it
+  on the 3×3). (2) Both original fills land exactly on the tier boundary — one fixture is never
+  a calibration; E5's distribution is.
+- *Blockers:* none. **Still owed to E5:** the T4/T5 bounds are provisional (set from four
+  fixtures); the "T4 must be populated" gate decides them.
+
+### E2 — Logical solver (technique classifier) + instrumentation ✅ (E2a ✅ · E2b ✅ built, in review)
 
 - Tier *definitions* follow Simonis (G9): a puzzle's tier is the **weakest technique level that
   finishes it search-free**. This is ordinal, not a weighted sum — the scorer below only orders

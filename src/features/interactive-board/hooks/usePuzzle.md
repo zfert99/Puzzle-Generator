@@ -44,8 +44,8 @@ four and the board's `startNewGame` handles any of them.
 Kakuro has no generator yet (its plan builds one in slices E4/E5). A Kakuro request short-circuits
 before `fetch`: the hook picks the hand-baked fixture for the requested size from
 `findKakuroFixture(size, difficulty)`, sets it, and returns it — `loading` never flips and
-`/api/puzzle` is untouched until a real generator exists. There is one fixture per size for
-easy, medium and hard, each labelled by the classifier (E2a). A size/difficulty with no fixture
+`/api/puzzle` is untouched until a real generator exists. There is one fixture per size and
+level — the full easy-to-extreme ladder — each labelled by the classifier (E2a/E2b). A size/difficulty with no fixture
 sets `error` ("No expert Kakuro at 7×7 yet") and returns `null`, exactly as a failed request
 would — never a quiet substitution (the first draft fell back to the 7×7; a review finding). `difficulty` is ignored: there is one
 puzzle per size. The fixtures are static data, so the hydration concern below does not apply to

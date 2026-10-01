@@ -151,20 +151,40 @@ describe('KakuroLogicalSolver', () => {
     expect(result.solved).toBe(false);
   });
 
-  it('stalls honestly on the chain fixture instead of guessing', () => {
-    const result = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS).solve({ recordSteps: true });
-    expect(result.solved).toBe(false);
-    expect(result.contradiction).toBe(false);
-    assertSound(KAKURO_FIXTURE_7X7_CHAINS, result.steps);
+  it('stalls honestly at tier 3 on the chain fixture, then finishes it with chains (never guessing)', () => {
+    const capped = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS).solve({ maxTier: 3, recordSteps: true });
+    expect(capped.solved).toBe(false);
+    expect(capped.contradiction).toBe(false);
+    assertSound(KAKURO_FIXTURE_7X7_CHAINS, capped.steps);
+
+    const full = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS).solve({ recordSteps: true });
+    expect(full.solved).toBe(true);
+    expect(full.hardestTier).toBe(4);
+    expect(full.techniqueCounts.shortChain).toBe(1);
+    expect(full.techniqueCounts.longChain).toBeUndefined();
+    assertSound(KAKURO_FIXTURE_7X7_CHAINS, full.steps);
   });
 });
 
 describe('classifyKakuro', () => {
-  it('grades the served 7×7s easy / medium / hard and leaves the chain fixture unrated', () => {
+  it('grades the served 7×7s easy … extreme, and the original chain fixture expert', () => {
     expect(classifyKakuro(easy7)).toMatchObject({ tier: 1, difficulty: 'easy' });
     expect(classifyKakuro(medium7)).toMatchObject({ tier: 2, difficulty: 'medium' });
     expect(classifyKakuro(hard7)).toMatchObject({ tier: 3, difficulty: 'hard' });
-    expect(classifyKakuro(KAKURO_FIXTURE_7X7_CHAINS)).toMatchObject({ tier: null, difficulty: 'unrated' });
+    expect(classifyKakuro(findKakuroFixture(7, 'expert')!)).toMatchObject({ tier: 4, difficulty: 'expert' });
+    expect(classifyKakuro(findKakuroFixture(7, 'extreme')!)).toMatchObject({ tier: 5, difficulty: 'extreme' });
+    expect(classifyKakuro(KAKURO_FIXTURE_7X7_CHAINS)).toMatchObject({ tier: 4, difficulty: 'expert' });
+  });
+
+  it('separates the chain tiers: expert is not finished by tier 3, extreme not by tier 4', () => {
+    for (const size of [7, 9]) {
+      const expert = findKakuroFixture(size, 'expert')!;
+      const extreme = findKakuroFixture(size, 'extreme')!;
+      expect(new KakuroLogicalSolver(expert).solve({ maxTier: 3 }).solved, `${size} expert @3`).toBe(false);
+      expect(new KakuroLogicalSolver(expert).solve({ maxTier: 4 }).solved, `${size} expert @4`).toBe(true);
+      expect(new KakuroLogicalSolver(extreme).solve({ maxTier: 4 }).solved, `${size} extreme @4`).toBe(false);
+      expect(new KakuroLogicalSolver(extreme).solve({ maxTier: 5 }).solved, `${size} extreme @5`).toBe(true);
+    }
   });
 });
 
@@ -239,15 +259,15 @@ describe('explainKakuroHint', () => {
   });
 
   it('by default never detours: an unreachable preferred cell yields a real placement elsewhere, with no phantom placements in the lead-up', () => {
-    // On the chain fixture only two cells are ever placeable from empty (the 6-in-two {2,4}
-    // crossed by its down runs). Prefer a cell that is not one of them: the hint must land on a
-    // placeable cell, and nothing in its lead-up may be a placement the board does not have.
+    // Capped at tier 3 the chain fixture stalls, so a cell the capped ladder never places cannot
+    // be honoured: the hint must land on a placeable cell, and nothing in its lead-up may be a
+    // placement the board does not have.
     const empty = KAKURO_FIXTURE_7X7_CHAINS.solution.map((row) => row.map(() => 0));
-    const unreachable = KAKURO_FIXTURE_7X7_CHAINS.runs[0].cells[0]; // the ladder never places it from empty
-    const ladder = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS).solve({ recordSteps: true });
+    const unreachable = KAKURO_FIXTURE_7X7_CHAINS.runs[0].cells[0];
+    const ladder = new KakuroLogicalSolver(KAKURO_FIXTURE_7X7_CHAINS).solve({ maxTier: 3, recordSteps: true });
     expect(ladder.steps.some((s) => s.placed?.cell === unreachable)).toBe(false);
 
-    const hint = explainKakuroHint(KAKURO_FIXTURE_7X7_CHAINS, empty, { preferCell: unreachable })!;
+    const hint = explainKakuroHint(KAKURO_FIXTURE_7X7_CHAINS, empty, { preferCell: unreachable, cap: 3 })!;
 
     expect(hint.cell).not.toBe(unreachable);
     expect(hint.digit).toBe(digitAt(KAKURO_FIXTURE_7X7_CHAINS, hint.cell));

@@ -7,20 +7,31 @@
  * (`kakuro-solver.ts`), which counts solutions for the uniqueness gate; this one never guesses.
  *
  * A class, with no inheritance (AGENTS.md §1): the candidate state is genuinely stateful and
- * every technique reads and writes it. Tiers 1–3 are the plan's E2a slice; the chain tiers
- * (T4 whips, T5 g-whips — E2b) are not built yet, so a puzzle needing more comes back
- * `solved: false` and ungraded rather than guessed at.
+ * every technique reads and writes it. Tiers 1–3 are the technique ladder (E2a); tiers 4–5 are
+ * forcing chains by length over the redundant-variable model (`kakuro-chains.ts`, E2b). A
+ * puzzle needing a chain longer than the tier-5 bound comes back `solved: false` and ungraded
+ * rather than guessed at.
  *
  * See `kakuro-logical-solver.md` for the "why" of each technique and the tier boundaries.
  */
 
 import { maskToDigits, popcount } from '../grid-utils';
+import { findFirstChainElimination, type ChainContext } from './kakuro-chains';
 import { ALL_DIGITS_MASK, runComboMasks } from './kakuro-combinations';
 import type { KakuroShape } from './kakuro-solver';
 import type { KakuroDifficulty, Run } from './kakuro-types';
 
-/** 0 = already solved; 1–3 = the ladder built so far; 4–5 reserved for the chain tiers (E2b). */
+/** 0 = already solved; 1–3 = the technique ladder; 4–5 = forcing chains by length (E2b). */
 export type KakuroTier = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * Chain-length bounds: a chain of at most `CHAIN_TIER4_MAX_LENGTH` forced truths is tier 4
+ * (expert); anything longer, up to `CHAIN_TIER5_MAX_LENGTH`, is tier 5 (extreme). Provisional —
+ * set from where the two `*_CHAINS` fixtures land; E5 recalibrates against measured
+ * distributions and the plan's "T4 must be populated" gate.
+ */
+export const CHAIN_TIER4_MAX_LENGTH = 4;
+export const CHAIN_TIER5_MAX_LENGTH = 12;
 
 /** Every technique the deduction loop can apply, in priority order. */
 export type KakuroTechnique =
@@ -31,7 +42,9 @@ export type KakuroTechnique =
   | 'nakedSubset'
   | 'hiddenSubset'
   | 'sumBounds'
-  | 'runAssignments';
+  | 'runAssignments'
+  | 'shortChain'
+  | 'longChain';
 
 /** The tier each technique belongs to — the ladder (plan §1, research). */
 export const TECHNIQUE_TIER: Record<KakuroTechnique, KakuroTier> = {
@@ -43,6 +56,8 @@ export const TECHNIQUE_TIER: Record<KakuroTechnique, KakuroTier> = {
   hiddenSubset: 3,
   sumBounds: 3,
   runAssignments: 3,
+  shortChain: 4,
+  longChain: 5,
 };
 
 /** The tier → published difficulty map. Provisional until E5 calibrates it against measurements. */
@@ -581,6 +596,48 @@ export class KakuroLogicalSolver {
     return null;
   }
 
+  /**
+   * Forcing chains (tiers 4–5): suppose a candidate, follow the forced consequences through the
+   * binary links of the redundant-variable model, and eliminate it if they contradict. Short
+   * chains are expert work; long ones extreme. See `kakuro-chains.ts`.
+   */
+  private applyChain(maxLength: number, technique: 'shortChain' | 'longChain'): KakuroStep | null {
+    const chain = findFirstChainElimination(this.chainContext(), maxLength);
+    if (!chain) return null;
+    const bit = 1 << (chain.digit - 1);
+    this.restrict(chain.cell, ~bit);
+    return {
+      technique,
+      tier: TECHNIQUE_TIER[technique],
+      run: this.runOf(chain.cell, 0) !== -1 ? this.runOf(chain.cell, 0) : this.runOf(chain.cell, 1),
+      eliminated: [{ cell: chain.cell, mask: bit }],
+      explanation: chain.explanation,
+    };
+  }
+
+  private chainContext(): ChainContext {
+    return {
+      size: this.size,
+      runs: this.runs,
+      masks: this.masks,
+      placed: this.placed,
+      cellRuns: this.cellRuns,
+      // Only combinations every cell of the run could still take part in — the same filter
+      // `feasibleCombos` applies, so a chain never reasons from a combination tier 2 would reject.
+      openCombos: (r) => {
+        const { cells, combos } = this.openCombos(r);
+        let cellsUnion = 0;
+        for (const cell of cells) cellsUnion |= this.masks[cell];
+        return combos.filter((combo) => (combo & ~cellsUnion) === 0 && cells.every((cell) => (this.masks[cell] & combo) !== 0));
+      },
+      runLabel: (r) => {
+        const { cells, residual } = this.remainingOf(r);
+        return this.runLabel(r, residual, cells.length);
+      },
+      cellText: (cell) => this.cellText(cell),
+    };
+  }
+
   // ---- the loop ----
 
   private readonly techniques: { name: KakuroTechnique; apply: () => KakuroStep | null }[] = [
@@ -592,6 +649,8 @@ export class KakuroLogicalSolver {
     { name: 'hiddenSubset', apply: () => this.applyHiddenSubset() },
     { name: 'sumBounds', apply: () => this.applySumBounds() },
     { name: 'runAssignments', apply: () => this.applyRunAssignments() },
+    { name: 'shortChain', apply: () => this.applyChain(CHAIN_TIER4_MAX_LENGTH, 'shortChain') },
+    { name: 'longChain', apply: () => this.applyChain(CHAIN_TIER5_MAX_LENGTH, 'longChain') },
   ];
 
   isSolved(): boolean {
