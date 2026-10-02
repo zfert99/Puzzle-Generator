@@ -84,7 +84,7 @@ blank-clue difficulty lever (research §3) read the same way by the workbench, t
 tests, and later E3/E4 instrumentation and E5 bands, so no two consumers can count it
 differently.
 
-## `clueStatus(line, clue)` and `clueFlatIndex(side, index, size)`
+## `clueStatus(line, clue)`, `clueFlatIndex(side, index, size)` and `clueFromFlatIndex(flat, size)`
 
 `clueStatus` is the board's verdict on one clue, judged on the **filled prefix** only — the cells
 from the clue's edge up to the first empty one (Tatham's `check_errors`, gap-findings G10,
@@ -108,6 +108,9 @@ otherwise       → open
 
 `clueFlatIndex` packs the four sides into one 4N-long array (top, bottom, left, right, each in
 index order) — the board's "marked done" flags live in that order.
+
+`clueFromFlatIndex` is its inverse — the board's announcer needs the side and index back from a
+flipped "done" flag (G8). Both directions live here so the packing is written down once.
 
 ## `deriveClues(solution)`
 

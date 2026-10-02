@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Board } from './Board';
@@ -292,6 +292,21 @@ describe('Board — Skyscrapers', () => {
     expect(screen.getByRole('gridcell', { name: 'Clue 2, from the left of row 2, satisfied' })).toHaveAttribute('data-status', 'satisfied');
   });
 
+  it('does not announce a new game\'s reset of the done marks as a clue event', async () => {
+    const user = userEvent.setup();
+    render(<Board />);
+    await user.click(screen.getByRole('gridcell', { name: 'Clue 4, from the top of column 1, unsolved' }));
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain('marked done');
+    // Same size, no digits entered: the grid diff has nothing to say, so a stale done-flag diff
+    // would be the only voice — and it would describe the NEW game's clue at that index.
+    act(() =>
+      useBoardStore
+        .getState()
+        .startNewGame(parseSkyscrapersFixture(['1234', '2413', '3142', '4321'], { top: 'xxxx', bottom: 'xxxx', left: 'xxxx', right: 'xxxx' }))
+    );
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).not.toContain('unsolved');
+  });
+
   it('marks a clue done by click, and by keyboard via C, arrows and Enter', async () => {
     const user = userEvent.setup();
     render(<Board />);
@@ -319,6 +334,10 @@ describe('Board — Skyscrapers', () => {
     // The mark is announced (G8): a screen reader does not re-read the focused cell's own name
     // when it changes, so the live region says it.
     expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain('Clue 2, from the top of column 2, marked done');
+    // Un-marking announces the clue's restored name — the listener's state word, not the engine's "open".
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('gridcell', { name: 'Clue 2, from the top of column 2, unsolved' })).toBeInTheDocument();
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Clue 2, from the top of column 2, unsolved');
     // A digit typed while a clue has focus never lands on the board.
     await user.keyboard('3');
     expect(screen.queryAllByRole('gridcell', { name: /^Value/ })).toHaveLength(0);

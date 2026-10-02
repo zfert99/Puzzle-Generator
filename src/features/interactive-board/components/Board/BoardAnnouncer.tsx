@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useSetting } from '@/features/settings/useSettings';
-import { GUTTER_SIDES } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { clueFromFlatIndex } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { describeSkyscraperClue, skyscraperClueState } from '../../skyscrapers-board';
 
 /**
@@ -36,6 +36,7 @@ export function BoardAnnouncer() {
   const [prevGrid, setPrevGrid] = useState(grid);
   const [prevStatus, setPrevStatus] = useState(status);
   const [prevDone, setPrevDone] = useState(doneClues);
+  const [prevClues, setPrevClues] = useState(edgeClues);
   const [message, setMessage] = useState('');
 
   if (status !== prevStatus) {
@@ -43,15 +44,18 @@ export function BoardAnnouncer() {
     if (status === 'solved') setMessage('Puzzle solved');
   }
   // Marking a Skyscrapers clue done changes the focused cell's own name, which screen readers do
-  // not re-announce on their own (G8) — say the clue's new name here.
+  // not re-announce on their own (G8) — say the clue's new name here. A new game resets every
+  // flag at once (and swaps the clues), which is not a mark: `edgeClues` changes with the game,
+  // so that render only re-bases the diff.
+  const gameChanged = edgeClues !== prevClues;
+  if (gameChanged) setPrevClues(edgeClues);
   if (doneClues !== prevDone) {
     const before = prevDone;
     setPrevDone(doneClues);
-    if (edgeClues && before.length === doneClues.length) {
+    if (edgeClues && !gameChanged && before.length === doneClues.length) {
       const flat = doneClues.findIndex((done, i) => done !== before[i]);
       if (flat !== -1) {
-        const side = GUTTER_SIDES[Math.floor(flat / size)];
-        const index = flat % size;
+        const { side, index } = clueFromFlatIndex(flat, size);
         const { clue, status } = skyscraperClueState(edgeClues, grid, side, index);
         const next = describeSkyscraperClue(side, index, clue, status, doneClues[flat]);
         if (next !== message) setMessage(next);

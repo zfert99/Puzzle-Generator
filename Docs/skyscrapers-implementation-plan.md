@@ -349,7 +349,9 @@ digits for all three fixtures.
 - **A11y (D9, G8):** the WAI-ARIA grid the board already uses, now (N+2)×(N+2): gutter cells
   `role="gridcell"` + `aria-readonly="true"` with names that spell direction and state — "Clue 3,
   looking down from the top of column 2, open" / "…, satisfied" / "…, violated"; corners
-  `aria-hidden`; play cells keep "row r column c" plus the two clues that look at the cell
+  `aria-hidden` *(as built in V2 — the G8 pass after R1 shortened the names to "Clue 3, from the
+  top of column 2, unsolved" / "No clue, top of column 2" and named the corners "Corner"; see the
+  G8 follow-up under R1)*; play cells keep "row r column c" plus the two clues that look at the cell
   ("row 3 column 4; left clue 2, top clue 3") so a screen-reader user has the constraints in
   hand; roving tabindex over play cells only, with a **"jump to clues"** key (e.g. `C`) that
   moves focus into the gutter and arrow keys walking along it; `aria-invalid` on a cell in a

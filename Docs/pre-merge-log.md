@@ -133,6 +133,12 @@ axe journey over a started Skyscrapers board in `e2e/a11y.spec.ts`; docs. **~60 
 
 - The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
   may run `/code-review high` on the PR. `/security-review` not applicable.
+- Owner ran `/code-review high` — 5 findings, all fixed in the follow-up commit: the announcer
+  spoke a new same-size game's reset of the done flags as a clue event (now re-based when
+  `edgeClues` changes, with a test); the announcer hand-rolled the inverse of `clueFlatIndex`
+  (now `clueFromFlatIndex` beside it); the new axe journey checked the rules dialog once instead
+  of calling `dismissRulesIfShown` (a race); the plan's V2 a11y bullet and the D9 decision row
+  still described the pre-G8 names; the un-mark announcement was untested.
 
 ### Lessons
 

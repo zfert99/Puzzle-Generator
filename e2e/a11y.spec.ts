@@ -201,8 +201,7 @@ test.describe('a11y: the Skyscrapers board (four-sided clue gutter — plan G8)'
     await page.getByRole('button', { name: /^Play$/ }).click();
     const grid = page.getByRole('grid', { name: /skyscrapers board/i });
     await expect(grid).toBeVisible();
-    const dialog = page.getByRole('dialog', { name: 'How to play Skyscrapers' });
-    if (await dialog.isVisible()) await page.getByRole('button', { name: 'Got it' }).click();
+    await dismissRulesIfShown(page);
     // Every cell of the gutter has a name a listener can act on — corners included (L5).
     await expect(grid.getByRole('gridcell', { name: 'Corner' })).toHaveCount(4);
     await expect(grid).toHaveAttribute('aria-describedby', 'skyscrapers-gutter-help');

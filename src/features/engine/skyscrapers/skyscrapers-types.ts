@@ -237,6 +237,11 @@ export function clueFlatIndex(side: GutterSide, index: number, size: number): nu
   return GUTTER_SIDES.indexOf(side) * size + index;
 }
 
+/** The inverse of `clueFlatIndex`: which clue a flat position names. The one place the packing is undone. */
+export function clueFromFlatIndex(flat: number, size: number): { side: GutterSide; index: number } {
+  return { side: GUTTER_SIDES[Math.floor(flat / size)], index: flat % size };
+}
+
 /** Every one of the 4N clues a solved square implies — the generator's starting point (E4). */
 export function deriveClues(solution: readonly (readonly number[])[]): SkyscraperClues {
   const size = solution.length;
