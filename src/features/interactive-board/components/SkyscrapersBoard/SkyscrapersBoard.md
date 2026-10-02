@@ -1,15 +1,15 @@
 # SkyscrapersBoard: Plain English Pseudocode
 
-The **looks-only** Skyscrapers board (plan slice V0 in
+The **looks-only** Skyscrapers board (plan slices V0–V1 in
 [skyscrapers-implementation-plan.md](../../../../../Docs/skyscrapers-implementation-plan.md)). It
-draws the shape of a Skyscrapers puzzle — an empty N×N play area with a heavier frame, inside a
-one-cell clue gutter on all four sides — and nothing else: no digits, no selection, no input, no
-store. It exists so the four-sided gutter is designed once, on screen, before any puzzle logic is
-written; V2 replaces it with the interactive board on `useBoardStore`.
+draws a puzzle's clue digits in a one-cell gutter on all four sides of an empty N×N play area
+with a heavier frame — and nothing else: no selection, no input, no store. It exists so the
+gutter is designed once, on screen, before any puzzle logic is written; V2 replaces it with the
+interactive board on `useBoardStore`.
 
 ## Why a Server Component
 
-There is no state to own and the size is static data, so there is nothing to hydrate and no
+There is no state to own and the puzzle is static data, so there is nothing to hydrate and no
 server/client mismatch to worry about. It gains `"use client"` only when it becomes interactive.
 
 ## Where the geometry comes from
@@ -21,14 +21,14 @@ renderer (V3) is a known second consumer, so the helpers start in the engine (lo
 instead of moving there later as Kakuro's did. This component only decides how each display cell
 is drawn and named.
 
-## `gutterLabel(side, index)`
+## `gutterLabel(side, index, clue)`
 
 A screen-reader user cannot see which edge a clue cell sits on, so its accessible name spells the
-direction the clue reads in (plan decision D9): "Clue cell, looking down from the top of column 3,
-blank". V0 has no clue values, so every gutter cell is "blank"; V1 replaces the last word with the
-digit, and V2 adds the state (open / satisfied / violated / done).
+direction the clue reads in (plan decision D9): "Clue 3, looking down from the top of column 2".
+A blank clue (0) still gets a name — "Clue cell, looking …, blank" — so the gutter keeps its shape
+for assistive technology. V2 adds the state (open / satisfied / violated / done).
 
-## `SkyscrapersBoard({ size })`
+## `SkyscrapersBoard({ puzzle })`
 
 Renders the display cells as a CSS grid. It already uses the WAI-ARIA grid skeleton (`grid` →
 `row` → `gridcell`) because V2 needs exactly that structure, and it keeps the grid
@@ -48,7 +48,8 @@ for each display row r:
     render a row wrapper with aria-rowindex (out of layout — cells stay direct grid items)
     for each cell c, with aria-colindex:
         corner → an empty read-only gridcell, no label, no styling
-        gutter → a read-only gridcell labelled by gutterLabel
+        gutter → a read-only gridcell labelled by gutterLabel, showing the clue digit
+                 (nothing for a blank clue)
         play   → a gridcell "Row r, column c, empty"; add the frame class(es) on the
                  edge cells of the play area (first/last play row and column)
 ```
