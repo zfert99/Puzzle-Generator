@@ -35,7 +35,10 @@
   button deduces; a dev badge reads "unique ✓ · n nodes". `[measure]` verify 0.07 / 0.40 / 1.1 ms
   at 5 / 6 / 7 — the 50 ms gate by 45×; propagation alone solves the 5-clue 5×5. **Every fixture
   is now proven unique in-repo**, the 4×4 pair proven non-unique, the 204/576 ambiguity and the
-  G5 4×4 facts reproduced as tests (L3 closed). `[learning]` L10.
+  G5 4×4 facts reproduced as tests (L3 closed). `[learning]` L10. Owner ran `/code-review high`:
+  **6 findings, all fixed in-PR** (table in the plan under E1) — the one with teeth: an
+  out-of-range clue indexed past the bucket table; copy-on-narrow measured at ~5% per node, the
+  two-closure first draft at −40% (L11); the hint deducers left the store for a registry.
 - **2026-10-02 (V3)** V2 merged ([#130](https://github.com/zfert99/Puzzle-Generator/pull/130))
   on the owner's visual verdict. **V3 built** on `feature/skyscrapers-v3`: `drawSkyscrapersGrid` +
   `generateSkyscrapersPDF` on the shared nav helpers (G9's print numbers applied: clue digits
@@ -146,6 +149,7 @@
 |---|---|---|
 | L1 | **Reuse a Latin technique only after checking the house property it rests on — and write the answer down.** Kakuro needed a `required` guard because a run need not contain every digit; Skyscrapers rows and columns are full permutations, so hidden singles / pairs / fish are sound unchanged. E2 asserts this in a test so the question is answered on record rather than re-asked per technique | Plan authoring, 2026-10-01 (Kakuro L12 applied in reverse) |
 | L2 | **Put display-coordinate helpers in the engine's types module from day one when two consumers are already in the plan.** Kakuro's clue picture lived in board code until the PDF became a second consumer and had to move (its V3 step-log); Skyscrapers' gutter indexing has the board *and* the PDF as known consumers before V0 | Kakuro V3 step-log, applied 2026-10-01 |
+| L11 | **Measure a hot-loop "optimisation" before believing it, and keep closures out of the loop.** The first copy-on-narrow draft split `filterLine` into two small closures for readability and ran 40% slower per node than the code it replaced; the single-pass rewrite without closures recovered it and won ~5%. A best-of-N benchmark on a sparse instance, run before and after via `git stash`, is cheap and settles it | E1 review, 2026-10-02 |
 | L10 | **Pick a test instance from the measurement, not from memory.** Three of E1's first five tests failed because the "obvious" 4×4 Latin square is the research's own non-unique counterexample — the one square that cannot carry a uniqueness claim. When a measurement has already sorted instances into classes, draw the test instance from the class the assertion needs | E1, 2026-10-02 |
 | L9 | **A helper moved into the engine "for the second consumer" is only reused if the second consumer calls it.** V0's review put `buildDisplayCells` in the engine because the PDF was coming; V3's first draft then wrote its own side→row/column mapping anyway. When a slice is the consumer a helper was moved for, start from that helper, and let a test or review catch a second mapping as a defect, not a style choice | V3 review, 2026-10-02 |
 | L8 | **A focusable control inside a widget with its own key handler must decide where focus goes after a click.** `tabIndex -1` makes an element reachable by keyboard only in theory — a mouse click focuses it too — so a click on a gutter clue silently switched the board into gutter mode and swallowed the next digits. Any control that is "keyboard-only" by design needs its click handler to hand focus back explicitly | V2 review, 2026-10-02 |

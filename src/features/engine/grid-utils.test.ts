@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { copyGrid, createEmptyGrid, fillGrid, isLatinSquare, isValid, popcount, shuffle } from './grid-utils';
+import { copyGrid, createEmptyGrid, digitOfBit, fillGrid, isLatinSquare, isValid, popcount, shuffle } from './grid-utils';
 import { getGridConfig, GridSize } from './sudoku';
 
 /** Rows and columns only — the boxless (Latin-square) invariant for KenKen sizes 5/7. */
@@ -167,5 +167,11 @@ describe('isLatinSquare', () => {
     expect(isLatinSquare([[1, 0], [0, 1]])).toBe(false);
     expect(isLatinSquare([[1, 2], [2]])).toBe(false);
     expect(isLatinSquare([[1, 2, 3], [2, 3, 1]])).toBe(false);
+  });
+});
+
+describe('digitOfBit', () => {
+  it('inverts 1 << (digit - 1) for every digit 1..9', () => {
+    for (let digit = 1; digit <= 9; digit++) expect(digitOfBit(1 << (digit - 1))).toBe(digit);
   });
 });

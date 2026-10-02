@@ -277,3 +277,11 @@ solution** (L9: a board holding a wrong height can force a height that is consis
 mistake). A contradiction, or no agreeing forced cell, falls through to the plain reveal. The
 note names no technique yet (`technique: null`, "forced by the clues and the row and column it
 sits in"); E2's logical solver adds the named step and the lead-up.
+
+### Solver-driven hints live in `hint-deducers.ts` (October 2026, Skyscrapers E1 review)
+
+The per-variant blocks that used to sit inside `hint` — Kakuro's explained/forced deduction and
+Skyscrapers' forced deduction — moved to `hint-deducers.ts`: `hint` builds a narrow `HintContext`
+(grid, solution, config, the preferred cell, runs, edge clues), asks `deduceHintFor(variant, …)`,
+and uses its `{ target, note }` or falls back to the reveal. The agree-with-the-solution rule (L9)
+is written once there instead of per variant.

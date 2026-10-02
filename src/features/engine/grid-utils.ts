@@ -74,6 +74,14 @@ export function isLatinSquare(grid: readonly (readonly number[])[], size: number
   return true;
 }
 
+/**
+ * The 1-based digit of a single-bit candidate mask (bit d−1 ↔ digit d): the inverse of
+ * `1 << (digit - 1)`. Shared by every exact solver that reads a solved cell back out of its mask.
+ */
+export function digitOfBit(bit: number): number {
+  return 32 - Math.clz32(bit);
+}
+
 export function createEmptyGrid(size: number): number[][] {
   // Inline bound (see MAX_GRID_SIZE) — defense-in-depth against a resource-exhaustion allocation.
   if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {

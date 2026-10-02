@@ -9,12 +9,11 @@ import { OPERATOR_SYMBOL } from '@/features/engine/calc/calc-types';
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
 import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
-import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
-import { explainKakuroHint, type KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
+import type { KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
 import type { SkyscraperClues, SkyscrapersPuzzle, GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { GUTTER_SIDES, clueFlatIndex, skyscrapersGridConfig } from '@/features/engine/skyscrapers/skyscrapers-types';
-import { deduceSkyscrapers } from '@/features/engine/skyscrapers/skyscrapers-solver';
 import { computePeers, toggleBit } from '../board-utils';
+import { deduceHintFor } from '../hint-deducers';
 import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
 /**
@@ -426,55 +425,22 @@ export const useBoardStore = create<BoardState>()(
         const isEditableEmpty = (r: number, c: number) => grid[r][c] === 0 && !givens[r][c];
         let target: { r: number; c: number } | null = null;
         let note: HintNote | null = null;
-        const agrees = (f: { cell: number; digit: number }) =>
-          f.digit === solution[Math.floor(f.cell / config.size)][f.cell % config.size];
 
-        // Kakuro: a hint is a DEDUCTION, not a reveal, whenever the solvers can make one from the
-        // board as it stands. First choice is the logical solver's next placement — a named
-        // technique with a plain-English reason ("16-in-two: only {7,9}"); second is the exact
-        // solver's propagation (sound, but unexplained): the selected cell if it is forced, else
-        // the first forced cell. Either is used only if its digit agrees with the solution: from
-        // a board holding a wrong entry, a deduction can be consistent with the mistake and wrong
-        // against the answer, and a hint must never plant one — but one bad forced cell must not
-        // discard the rest. Nothing usable falls through to the plain reveal below.
-        if (variant === 'kakuro') {
-          const shape = { gridSize: config.size, runs };
-          const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
-          const preferCell =
-            selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c) ? selectedIndex : undefined;
-          // No detour (the default): the selected cell is honoured only when it is the very next
-          // deduction, so the explanation always describes the board as the player sees it.
-          const explained = explainKakuroHint(shape, grid, { preferCell });
-          if (explained && agrees(explained)) {
-            target = { r: Math.floor(explained.cell / config.size), c: explained.cell % config.size };
-            note = { cell: explained.cell, digit: explained.digit, technique: explained.technique, explanation: explained.explanation, leadUp: explained.leadUp };
-          } else {
-            const { forced, contradiction } = deduceKakuro(shape, grid);
-            if (!contradiction) {
-              const pick = forced.find((f) => f.cell === selectedIndex && agrees(f)) ?? forced.find(agrees);
-              if (pick) {
-                target = { r: Math.floor(pick.cell / config.size), c: pick.cell % config.size };
-                note = { ...pick, technique: null, explanation: 'Forced by the runs it sits in (no single named step)', leadUp: [] };
-              }
-            }
-          }
-        }
-
-        // Skyscrapers (plan slice E1): the exact solver's propagation — the selected cell if it is
-        // forced, else the first forced cell — accepted only if it agrees with the solution (L9: a
-        // board holding a mistake can force a height that is consistent with the mistake). The
-        // logical solver (E2) adds the named technique and the reason; until then the note says
-        // the height is forced, without a single named step.
-        if (variant === 'skyscrapers' && edgeClues) {
-          const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
-          const { forced, contradiction } = deduceSkyscrapers({ gridSize: config.size, clues: edgeClues }, grid);
-          if (!contradiction) {
-            const pick = forced.find((f) => f.cell === selectedIndex && agrees(f)) ?? forced.find(agrees);
-            if (pick) {
-              target = { r: Math.floor(pick.cell / config.size), c: pick.cell % config.size };
-              note = { ...pick, technique: null, explanation: 'Forced by the clues and the row and column it sits in (no single named step)', leadUp: [] };
-            }
-          }
+        // A variant with a solver behind it (Kakuro, Skyscrapers — see `hint-deducers.ts`) gets a
+        // DEDUCTION, not a reveal, whenever the solver can make one from the board as it stands
+        // and the deduced digit agrees with the solution. Nothing usable falls through to the
+        // plain reveal below.
+        const deduced = deduceHintFor(variant, {
+          grid,
+          solution,
+          config,
+          preferredCell: selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c) ? selectedCell.r * config.size + selectedCell.c : null,
+          runs,
+          edgeClues,
+        });
+        if (deduced) {
+          target = deduced.target;
+          note = deduced.note;
         }
 
         // Otherwise prefer the selected empty cell, else reveal the first empty cell.

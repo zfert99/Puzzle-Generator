@@ -107,11 +107,18 @@ of the slice.
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean |
 | `npx tsc --noEmit` · `npm run build` | clean · clean |
-| `npx vitest run` | **89 files / 857 tests green** (25 new); no entry from the Known flaky tests table fired |
+| `npx vitest run` | **89 files / 859 tests green** (27 new); no entry from the Known flaky tests table fired |
 | Benchmarks | the slice's gate is a measurement, not a benchmark row (E5 adds `benchmark-skyscrapers.ts`): uniqueness verify **5×5 0.07 ms · 6×6 0.40 ms · 7×7 1.1 ms** (200 warm runs each) against the 50 ms gate; table build 1.2 / 3.5 / 9.7 ms, 205 ms at 9×9 |
 
 ### Findings
 
+- **`/code-review high` (owner-run, on the branch): 6 findings, all fixed in-PR.** The one with
+  teeth: a clue outside 0..N (a corrupt save) indexed past the bucket table and threw inside the
+  Hint action — `compile` now maps it to an empty bucket (tested with 9, −1, 2.5). Also:
+  copy-on-narrow survivor lists (measured ~5% per node at 7×7 and 9×9 — the copies were transient,
+  not retained; the first two-closure draft was 40% slower, L11); the propagation scratch buffer
+  lives in `Compiled`; a stale comment fixed; `digitOfBit` shared via `grid-utils`; the hint
+  deducers moved out of the store into a registry (`hint-deducers.ts`).
 - **Three of the first five solver tests were wrong, not the solver.** The "obvious" 4×4 Latin
   square is the research's own non-unique counterexample (it shares all 16 clues with a twin), so
   every uniqueness claim on it failed; "visible 4 from the right" is the *descending* permutation;
@@ -151,10 +158,14 @@ row), roadmap, Docs index, project-status.
 
 - `/security-review`: **not run** — pure engine code and a dev-only badge; no auth, data or
   route surface.
-- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+- `/code-review`: **run by the owner** (`/code-review high`, in-session) — 6 findings, all fixed
+  before merge (above).
 
 ### Lesson
 
+- **Benchmark a hot-loop change before and after, best-of-N, with `git stash` for the baseline.**
+  The first copy-on-narrow draft was 40% slower per node (two closures inside the loop); only the
+  measurement said so. Five minutes of script beats a plausible story.
 - **A blank-clue count is a solver oracle that costs nothing.** For any constraint type whose
   unconstrained instance has a known count (Latin squares: 12, 576, 161,280), count it with every
   clue blank — a propagation or search bug shows up as the wrong total before any fixture is

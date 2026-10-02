@@ -550,6 +550,21 @@ record the real number); fuzz clean; board hint driven by the solver.
   (2) Three of the first five tests were wrong, not the solver: the 4×4 square I reached for is
   the research's non-unique one. A test square must be chosen *from* the measurement, not from
   memory — L10.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 6 findings, all fixed
+  before merge):* (1) **a clue outside 0..N indexed past the bucket table** and would have thrown
+  inside the Hint action on a corrupt save — `compile` now maps any such clue to an empty bucket
+  (a contradiction), tested with 9, −1 and 2.5 on a 5×5. (2) Every search node copied all 2N
+  survivor lists — now **copy-on-narrow** (`owned` flags; a list is copied only when a node first
+  drops something from it). Measured, best of 7: 7×7 sparse 32.3 → 31.0 µs/node; 9×9 with four
+  clues 2.87 → 2.72 ms/node, retained heap +1 MB both ways — the copies were transient garbage,
+  not retained memory, and the true 9×9 cost is *scanning* 362,880-entry lists, which is the
+  cheap-rule pre-pass's job if E3 keeps 9×9. The first rewrite used two closures in the hot loop
+  and was 40% *slower*; the shipped one is a single closure-free pass (L11). (3) The
+  `positionMasks` scratch moved into `Compiled` — no allocation per `propagate`. (4) The
+  `filterLine` doc now matches the strategy. (5) `digitOfBit` lives in `grid-utils.ts`, used by
+  the Kakuro and Skyscrapers solvers. (6) The per-variant hint blocks left the store for
+  `hint-deducers.ts` — a registry with the agree-with-the-solution rule written once; a new
+  variant's solver is one entry.
 - *Blockers:* none. **Gate passed by measurement;** visible on the board: the Hint button places
   a solver-forced height with a "forced by the clues" note, and the dev badge reads unique ✓.
 

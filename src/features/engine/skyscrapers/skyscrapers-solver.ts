@@ -10,11 +10,12 @@
  * constraint (every listed permutation already matches the clues), so there is no separate
  * all-different or clue rule. Then MRV depth-first search with a node budget — the Killer /
  * Keisan / Kakuro shape with the line as the constraint unit. Hot paths stay monomorphic: one
- * compiled puzzle shape, typed arrays, survivor lists that only ever shrink (AGENTS.md §5).
+ * compiled puzzle shape, typed arrays, scratch buffers allocated once, survivor lists shared
+ * down the search tree and copied only when narrowed (AGENTS.md §5).
  * See `skyscrapers-solver.md` for the "why" of each step.
  */
 
-import { popcount } from '../grid-utils';
+import { digitOfBit, popcount } from '../grid-utils';
 import { bucketIndex, permutationTable, type PermutationTable } from './skyscrapers-visibility';
 import type { SkyscraperClues } from './skyscrapers-types';
 
@@ -50,11 +51,6 @@ export interface SkyscrapersDeduction {
   contradiction: boolean;
 }
 
-/** 1-based height of a single-bit mask (bit h−1 ↔ height h). */
-function heightOf(bit: number): number {
-  return 32 - Math.clz32(bit);
-}
-
 /**
  * A puzzle compiled once per solve: the table for its size, and for each of the 2N lines (rows
  * first, then columns) the flat cell indices in reading order and the bucket its clue pair
@@ -69,7 +65,12 @@ interface Compiled {
   cellLines: Int32Array;
   queue: Int32Array;
   queued: Uint8Array;
+  /** Scratch for `filterLine`: the OR of surviving heights per position. Reused, never reallocated. */
+  positionMasks: Int32Array;
 }
+
+/** A line whose clue pair admits nothing — a clue outside 0..N, or a pair that cannot both hold. */
+const EMPTY_BUCKET = new Int32Array(0);
 
 function compile(shape: SkyscrapersShape): Compiled {
   const size = shape.gridSize;
@@ -78,6 +79,15 @@ function compile(shape: SkyscrapersShape): Compiled {
   const lineCells: Int32Array[] = [];
   const lineBucket: Int32Array[] = [];
   const cellLines = new Int32Array(size * size * 2);
+  // A clue the puzzle cannot hold (outside 0..N, or not an integer) must never become an index
+  // past the (N+1)² buckets — it is a contradiction, so the line gets the empty list. The
+  // validator rejects such puzzles, but the solver is also reached from persisted data.
+  const bucketFor = (left: number | undefined, right: number | undefined): Int32Array => {
+    const l = left ?? 0;
+    const r = right ?? 0;
+    const valid = (clue: number) => Number.isInteger(clue) && clue >= 0 && clue <= size;
+    return valid(l) && valid(r) ? table.buckets[bucketIndex(size, l, r)] : EMPTY_BUCKET;
+  };
 
   for (let r = 0; r < size; r++) {
     const cells = new Int32Array(size);
@@ -86,7 +96,7 @@ function compile(shape: SkyscrapersShape): Compiled {
       cellLines[(r * size + c) * 2] = r;
     }
     lineCells.push(cells);
-    lineBucket.push(table.buckets[bucketIndex(size, clues.left[r] ?? 0, clues.right[r] ?? 0)]);
+    lineBucket.push(bucketFor(clues.left[r], clues.right[r]));
   }
   for (let c = 0; c < size; c++) {
     const cells = new Int32Array(size);
@@ -95,7 +105,7 @@ function compile(shape: SkyscrapersShape): Compiled {
       cellLines[(r * size + c) * 2 + 1] = size + c;
     }
     lineCells.push(cells);
-    lineBucket.push(table.buckets[bucketIndex(size, clues.top[c] ?? 0, clues.bottom[c] ?? 0)]);
+    lineBucket.push(bucketFor(clues.top[c], clues.bottom[c]));
   }
 
   return {
@@ -106,6 +116,7 @@ function compile(shape: SkyscrapersShape): Compiled {
     cellLines,
     queue: new Int32Array(size * 2),
     queued: new Uint8Array(size * 2),
+    positionMasks: new Int32Array(size),
   };
 }
 
@@ -123,23 +134,34 @@ function initialMasks(compiled: Compiled, grid?: readonly number[][]): Int32Arra
 
 /**
  * Narrow one line: keep the permutations compatible with every cell's current candidates, OR
- * the kept heights per position, and AND that into the cells. Returns the kept list (the same
- * array when nothing was dropped), or `null` when no permutation survives — a contradiction.
- * The survivor list only ever shrinks, so a child node can share its parent's list until it
- * narrows it (search copies the array of lists, never the lists).
+ * the kept heights per position (into `compiled.positionMasks`), and let the caller AND that
+ * into the cells. Returns the list to keep — the **same** array when nothing was dropped — or
+ * `null` when no permutation survives (a contradiction).
+ *
+ * Copy-on-narrow: a node shares its parent's lists until it actually drops something from one.
+ * When it does, an `owned` list is compacted in place; a borrowed one is copied first. So the
+ * first pass only scans, and the (rarer) narrowing pass does the writing — a node that touches
+ * a 5,040-entry blank-clue line without narrowing it pays no copy at all.
  */
 function filterLine(
   compiled: Compiled,
   masks: Int32Array,
   cells: Int32Array,
   survivors: Int32Array,
-  positionMasks: Int32Array
+  owned: boolean
 ): Int32Array | null {
-  const { size, table } = compiled;
+  const { size, table, positionMasks } = compiled;
   const heights = table.heights;
   positionMasks.fill(0);
+  const length = survivors.length;
+  let out = survivors;
+  let narrowed = false;
   let kept = 0;
-  for (let k = 0; k < survivors.length; k++) {
+
+  // One pass, no closures (this is the hot loop). Until the first drop, every kept index equals
+  // its scan index, so nothing is written; at the first drop a borrowed list is copied up to
+  // that point and writes begin — an owned list is compacted in place (kept ≤ k always).
+  for (let k = 0; k < length; k++) {
     const p = survivors[k];
     const base = p * size;
     let ok = true;
@@ -149,12 +171,23 @@ function filterLine(
         break;
       }
     }
-    if (!ok) continue;
-    survivors[kept++] = p; // compaction in place is safe: `survivors` is this node's own copy
+    if (!ok) {
+      if (!narrowed) {
+        narrowed = true;
+        if (!owned) {
+          out = new Int32Array(length);
+          out.set(survivors.subarray(0, k));
+        }
+      }
+      continue;
+    }
+    if (narrowed) out[kept] = p;
+    kept++;
     for (let i = 0; i < size; i++) positionMasks[i] |= 1 << (heights[base + i] - 1);
   }
+  if (!narrowed) return survivors; // nothing dropped: the list is unchanged, no copy
   if (kept === 0) return null;
-  return kept === survivors.length ? survivors : survivors.subarray(0, kept);
+  return out.subarray(0, kept);
 }
 
 /**
@@ -162,10 +195,15 @@ function filterLine(
  * line, so a deduction crosses from rows to columns and back until nothing moves. Returns
  * `false` on contradiction.
  */
-function propagate(compiled: Compiled, masks: Int32Array, survivors: Int32Array[], queueLength: number): boolean {
-  const { size, lineCells, cellLines, queue, queued } = compiled;
+function propagate(
+  compiled: Compiled,
+  masks: Int32Array,
+  survivors: Int32Array[],
+  owned: Uint8Array,
+  queueLength: number
+): boolean {
+  const { size, lineCells, cellLines, queue, queued, positionMasks } = compiled;
   const ring = queue.length;
-  const positionMasks = new Int32Array(size);
   let head = 0;
   let tail = queueLength % ring;
   let pending = queueLength;
@@ -177,9 +215,12 @@ function propagate(compiled: Compiled, masks: Int32Array, survivors: Int32Array[
     queued[line] = 0;
 
     const cells = lineCells[line];
-    const kept = filterLine(compiled, masks, cells, survivors[line], positionMasks);
+    const kept = filterLine(compiled, masks, cells, survivors[line], owned[line] === 1);
     if (kept === null) return false;
-    survivors[line] = kept;
+    if (kept !== survivors[line]) {
+      survivors[line] = kept;
+      owned[line] = 1; // narrowed: whatever we hold now is ours (compacted in place, or a fresh copy)
+    }
     for (let i = 0; i < size; i++) {
       const cell = cells[i];
       const next = masks[cell] & positionMasks[i];
@@ -200,25 +241,29 @@ function propagate(compiled: Compiled, masks: Int32Array, survivors: Int32Array[
 }
 
 /** Queue every line and propagate — the opening move and the deduction entry point. */
-function propagateAll(compiled: Compiled, masks: Int32Array, survivors: Int32Array[]): boolean {
+function propagateAll(compiled: Compiled, masks: Int32Array, survivors: Int32Array[], owned: Uint8Array): boolean {
   const { queue, queued } = compiled;
   for (let line = 0; line < queue.length; line++) {
     queue[line] = line;
     queued[line] = 1;
   }
-  return propagate(compiled, masks, survivors, queue.length);
+  return propagate(compiled, masks, survivors, owned, queue.length);
 }
 
-/** A fresh, private copy of every line's starting bucket (the lists are narrowed in place). */
+/**
+ * The starting lists are the table's own buckets, borrowed (never written): `owned` starts all
+ * zero, and the first narrowing of a line copies it. The table is shared by every solve.
+ */
 function initialSurvivors(compiled: Compiled): Int32Array[] {
-  return compiled.lineBucket.map((bucket) => bucket.slice());
+  return compiled.lineBucket.slice();
 }
 
 /**
  * Count the puzzle's solutions up to `limit`, from an optional starting grid. Propagation
  * first; then MRV search on the cell with the fewest candidates, re-propagating its two lines
- * after each trial height. Each node copies the masks and every survivor list, because
- * `filterLine` compacts a list in place — a child must never narrow its parent's list.
+ * after each trial height. Each node copies the masks and the *array* of list references; a
+ * list itself is copied only when the node first narrows it (copy-on-narrow, tracked by `owned`),
+ * so a blank-clue line's 5,040-entry list is shared down the tree until a cell in it is set.
  */
 export function countSkyscrapersSolutions(shape: SkyscrapersShape, options: SkyscrapersCountOptions = {}): SkyscrapersCountResult {
   const { limit = 2, nodeBudget = 200_000, grid } = options;
@@ -229,16 +274,18 @@ export function countSkyscrapersSolutions(shape: SkyscrapersShape, options: Skys
 
   const masks = initialMasks(compiled, grid);
   const survivors = initialSurvivors(compiled);
-  if (!propagateAll(compiled, masks, survivors)) return result;
+  const owned = new Uint8Array(survivors.length);
+  if (!propagateAll(compiled, masks, survivors, owned)) return result;
 
   const record = (solved: Int32Array) => {
     const out: number[][] = Array.from({ length: size }, () => Array<number>(size).fill(0));
-    for (let cell = 0; cell < size * size; cell++) out[Math.floor(cell / size)][cell % size] = heightOf(solved[cell]);
+    for (let cell = 0; cell < size * size; cell++) out[Math.floor(cell / size)][cell % size] = digitOfBit(solved[cell]);
     result.solution = out;
   };
 
   // Returns true to stop the whole search (limit reached or budget exhausted).
   const search = (current: Int32Array, lines: Int32Array[]): boolean => {
+    // `lines` is this node's own array of references; a child borrows every list again.
     if (++result.nodes > nodeBudget) {
       result.exhausted = true;
       return true;
@@ -267,16 +314,14 @@ export function countSkyscrapersSolutions(shape: SkyscrapersShape, options: Skys
       remaining &= remaining - 1;
       const next = current.slice();
       next[best] = bit;
-      // The child narrows lists in place, so it takes its own copy of every list (2N small
-      // arrays — the lists are already narrowed by the parent, so this is cheap after the first
-      // few levels).
-      const nextLines = lines.map((list) => list.slice());
+      const nextLines = lines.slice();
+      const nextOwned = new Uint8Array(lines.length); // borrowed from the parent until narrowed
       queued.fill(0);
       queue[0] = row;
       queue[1] = column;
       queued[row] = 1;
       queued[column] = 1;
-      if (propagate(compiled, next, nextLines, 2) && search(next, nextLines)) return true;
+      if (propagate(compiled, next, nextLines, nextOwned, 2) && search(next, nextLines)) return true;
     }
     return false;
   };
@@ -302,14 +347,14 @@ export function deduceSkyscrapers(shape: SkyscrapersShape, grid: readonly number
   const compiled = compile(shape);
   const masks = initialMasks(compiled, grid);
   const survivors = initialSurvivors(compiled);
-  if (!propagateAll(compiled, masks, survivors)) return { forced: [], contradiction: true };
+  if (!propagateAll(compiled, masks, survivors, new Uint8Array(survivors.length))) return { forced: [], contradiction: true };
 
   const { size } = compiled;
   const forced: { cell: number; digit: number }[] = [];
   for (let cell = 0; cell < size * size; cell++) {
     if (grid[Math.floor(cell / size)][cell % size] !== 0) continue;
     const mask = masks[cell];
-    if ((mask & (mask - 1)) === 0) forced.push({ cell, digit: heightOf(mask) });
+    if ((mask & (mask - 1)) === 0) forced.push({ cell, digit: digitOfBit(mask) });
   }
   return { forced, contradiction: false };
 }

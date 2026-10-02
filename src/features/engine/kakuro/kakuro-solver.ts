@@ -10,7 +10,7 @@
  * inside propagation (AGENTS.md §5). See `kakuro-solver.md` for the "why" of each step.
  */
 
-import { popcount } from '../grid-utils';
+import { digitOfBit, popcount } from '../grid-utils';
 import { ALL_DIGITS_MASK, runComboMasks } from './kakuro-combinations';
 import type { Run } from './kakuro-types';
 
@@ -44,11 +44,6 @@ export interface KakuroDeduction {
   forced: { cell: number; digit: number }[];
   /** The given grid cannot be completed — some cell lost every candidate. */
   contradiction: boolean;
-}
-
-/** 1-based digit of a single-bit mask. */
-function digitOf(bit: number): number {
-  return 32 - Math.clz32(bit);
 }
 
 /**
@@ -263,7 +258,7 @@ export function countKakuroSolutions(shape: KakuroShape, options: KakuroCountOpt
   const record = (solved: Int32Array) => {
     const size = shape.gridSize;
     const out: number[][] = Array.from({ length: size }, () => Array<number>(size).fill(0));
-    for (const cell of whites) out[Math.floor(cell / size)][cell % size] = digitOf(solved[cell]);
+    for (const cell of whites) out[Math.floor(cell / size)][cell % size] = digitOfBit(solved[cell]);
     result.solution = out;
   };
 
@@ -338,7 +333,7 @@ export function deduceKakuro(shape: KakuroShape, grid: readonly number[][]): Kak
   for (const cell of compiled.whites) {
     if (grid[Math.floor(cell / size)][cell % size] !== 0) continue;
     const mask = masks[cell];
-    if ((mask & (mask - 1)) === 0) forced.push({ cell, digit: digitOf(mask) });
+    if ((mask & (mask - 1)) === 0) forced.push({ cell, digit: digitOfBit(mask) });
   }
   return { forced, contradiction: false };
 }

@@ -161,6 +161,17 @@ describe('countSkyscrapersSolutions', () => {
     expect(countSkyscrapersSolutions(shape, { grid, limit: 10 }).solutions).toBe(0);
   });
 
+  it('treats a clue the puzzle cannot hold as a contradiction, never as an index past the table', () => {
+    const clues = deriveClues(randomSquare(5));
+    clues.left[0] = 9; // a corrupt save, or a hand-edited fixture
+    expect(countSkyscrapersSolutions({ gridSize: 5, clues })).toMatchObject({ solutions: 0, exhausted: false });
+    expect(deduceSkyscrapers({ gridSize: 5, clues }, Array.from({ length: 5 }, () => Array(5).fill(0))).contradiction).toBe(true);
+    clues.left[0] = -1;
+    expect(countSkyscrapersSolutions({ gridSize: 5, clues }).solutions).toBe(0);
+    clues.left[0] = 2.5;
+    expect(countSkyscrapersSolutions({ gridSize: 5, clues }).solutions).toBe(0);
+  });
+
   it('reports budget exhaustion rather than guessing', () => {
     const blank: SkyscraperClues = { top: [0, 0, 0, 0, 0], bottom: [0, 0, 0, 0, 0], left: [0, 0, 0, 0, 0], right: [0, 0, 0, 0, 0] };
     const result = countSkyscrapersSolutions({ gridSize: 5, clues: blank }, { limit: 1000, nodeBudget: 20 });
