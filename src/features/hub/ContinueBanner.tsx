@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
-import { difficultyForKey, formatDailyKey, isDailyVariant, toUtcDateString } from '@/lib/db/daily-row';
+import { difficultyForKey, formatDailyKey, isDailyVariant, sectionForKey, toUtcDateString } from '@/lib/db/daily-row';
 import { slotLabel } from '@/features/dailies/slot-display';
 
 /**
@@ -36,7 +36,7 @@ export function ContinueBanner() {
         variant: saved.variant,
         difficulty: difficultyForKey(saved.difficulty),
         gridSize: saved.gridSize,
-        section: saved.gridSize < 9 ? 'mini' : 'standard',
+        section: sectionForKey(saved.difficulty, saved.gridSize),
       })
     : formatDailyKey(saved.difficulty);
   const what = saved.mode === 'daily' ? (isAnotherDaysDaily ? `Practice · ${board}` : `Daily · ${board}`) : board;

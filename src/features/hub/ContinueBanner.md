@@ -43,3 +43,9 @@ when they differ.
 The link is unchanged (`/daily?resume=1`): `/daily` is the correct home for any daily-shaped board
 whose date isn't today — it already handles the expired case, drops the submit, and now marks the
 board "practice" in its own header. `ContinueBanner.test.tsx` pins the distinction.
+
+## Section by key (Skyscrapers R1 — D5)
+
+The saved board's section comes from `sectionForKey(saved.difficulty, saved.gridSize)`, not from
+"smaller than 9×9": a saved `hard` Skyscrapers is a 6×6 **standard** and labels as
+"Hard 6×6 · Skyscrapers".

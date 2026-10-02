@@ -48,3 +48,9 @@ day's boards up via `onSlotsLoaded` so a controlled parent (the archive) can app
 This stops being strictly necessary at 5 puzzle types, where the standard set becomes a full 5-rung
 bijection and every rung exists every day — but it stays correct then, and archived dates (whose
 retired keys predate the restructure entirely) still rely on it.
+
+## The size shows for any non-9×9 board (Skyscrapers R1 — D5)
+
+`slotLabel` used to add the size for minis only ("Hard 6×6 · Keisan"), since every standard was
+9×9. Skyscrapers' standard is the 6×6, so the size now shows whenever the board is a mini **or** not
+9×9: "Hard 6×6 · Skyscrapers" beside "Hard · Kakuro". `VARIANT_LABEL` gained `Skyscrapers`.

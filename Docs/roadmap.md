@@ -652,7 +652,7 @@ revisited under the same rule later.
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/skyscrapers`), then one branch per slice off `main`
-> **Status:** 🚧 In Progress — plan written 2026-10-01 ([#127](https://github.com/zfert99/Puzzle-Generator/pull/127)); build started
+> **Status:** ✅ Done (2026-10-02) — plan written 2026-10-01 ([#127](https://github.com/zfert99/Puzzle-Generator/pull/127)); build started
 > 2026-10-01 with **V0** (a looks-only board at the three planned sizes; merged 2026-10-02),
 > **V1** (types, three baked fixtures, clue digits — and the first measurement: random 7×7
 > squares are never unique with all clues, so the generator repairs instead of rejecting; merged
@@ -674,7 +674,10 @@ revisited under the same rule later.
 > the 7×7 easy question goes to E5's per-size tier sets; merged 2026-10-02) and **E5** (every
 > puzzle at exactly the requested tier; per-size tier sets — 5×5 easy–hard, 6×6 all, 7×7
 > medium–extreme; `/api/generate` generates; the **hub card is live**; `benchmark-skyscrapers.ts`,
-> every cell under a second; 1,500-puzzle fuzz clean). R1 (the daily) remains. Full plan:
+> every cell under a second; 1,500-puzzle fuzz clean; merged 2026-10-02) and **R1** (Skyscrapers in
+> the daily: the 6×6 is its standard — the first non-9×9 standard, owner's call D5 — and the 5×5
+> its mini; the day is **5 + 3 = 8 boards**, every rung played every day; sections are filed by key,
+> not size; the clues ride the `cages` column). **Phase 11 complete 2026-10-02.** Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;
@@ -812,8 +815,8 @@ The `/daily` grew to a **30-board wall** (Classic + Killer + Keisan ladders + 15
 overwhelms the ritual and scatters a small player base across empty leaderboards. Restructure:
 **one daily slot per puzzle TYPE, with the DIFFICULTY randomized** — N types → N standard +
 N mini boards at launch (**3 + 3 = 6**); since Kakuro the mini count is fixed at **three slots seating
-3 of the N types** (D4 in `kakuro-log.md`), so the day is **4 + 3 = 7 now** and **5 + 3 = 8** when the
-fifth type lands.
+3 of the N types** (D4 in `kakuro-log.md`), so the day was **4 + 3 = 7** at four types and is
+**5 + 3 = 8** since Skyscrapers (its R1, October 2026 — every rung played every day).
 Standard = 3 distinct random difficulties (9×9); minis = 3-tier (e/m/h), size easy/medium = 4×4,
 hard = random(4×4/6×6). Also adds a **Killer 4×4 (easy-only)** generator and archive **completion
 counts (X/N)**; medals/gold-days remain deferred to Phase 9. **This supersedes the earlier
@@ -877,7 +880,7 @@ its own engine module rather than an extension of `killer/`. Headlines from the 
 Slots into the daily as one more type-as-slot entry (3+3 → 4+4) with no daily-system surgery, which
 is what the [restructure](daily-redesign-plan.md) was built for.
 
-### Skyscrapers (Towers) 🚧 In Progress — now Phase 11 (plan written 2026-10-01, build started 2026-10-01)
+### Skyscrapers (Towers) ✅ Done — Phase 11 (plan written 2026-10-01, build started 2026-10-01, complete 2026-10-02)
 
 **Promoted to [Phase 11](#phase-11--skyscrapers-towers-) — plan:
 [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md), running log:
@@ -902,8 +905,9 @@ planned type on 2026-10-01; research: [skyscrapers.md](research/skyscrapers.md).
 - **Recommended sizes to measure:** mini 5×5 (vs 4×4), standard 6×6, large 7×7 (vs 9×9) — per the
   owner's per-type-sizes rule (D11), settled by tier reachability and yield, not by inheritance.
 
-Slots into the daily as the fifth type-as-slot entry (4 + 3 → 5 + 3), the end state the
-[restructure](daily-redesign-plan.md) was designed for.
+Slotted into the daily as the fifth type-as-slot entry (4 + 3 → 5 + 3, R1), the end state the
+[restructure](daily-redesign-plan.md) was designed for — with the 6×6 as its standard, the first
+non-9×9 standard (D5).
 
 ### Multiplayer Speed Races 🔜 Up next (deferred from Phase 4)
 

@@ -19,7 +19,10 @@ object mocks the boundary without touching the network.
 per type + 3 mini, 7 boards at four types; see `daily-row.md`) and stores it, which is exactly
 what a scheduled job needs. Seed and cron both go through here so they can never drift apart.
 `generatePuzzleFor` dispatches on the slot's rolled variant: classic, Killer, Keisan, and since
-R1 Kakuro (`generateKakuro` at the slot's tier and size — 6×6 or 9×9). A seeded dry run of five
+R1 Kakuro (`generateKakuro` at the slot's tier and size — 6×6 or 9×9), and since Skyscrapers R1
+`generateSkyscrapers` at the slot's tier and size (the 5×5 mini or the 6×6 standard — D5; the
+Sudoku-family branches narrow `DailySize` back to 4/6/9, which is all `SIZES` ever hands them). A
+seeded dry run of five
 days with the real engines came in at 0.3–10.6 s per day; the slow case was a 9×9 easy Kakuro
 walking down from a hard base, inside the cron's budget.
 
@@ -165,3 +168,13 @@ makes sense. **Neither is current** — see `generateDailyPuzzles` above for wha
   per-day roll over 6 slots and dropped `maxDuration` to 60. Critically, the old loop's idempotency
   came free from the fixed key set; the roll is random, so it needs the explicit guard documented
   above.
+
+## A standard slot falls back only to another type's standard size (Skyscrapers R1 review)
+
+While every standard was 9×9 the size pool alone kept the two sections apart. Skyscrapers' 6×6
+standard (D5) put a 6 in the standard pool, and `isEligible(type, 6, hard)` is true for any type
+that ships a 6×6 **mini** — so a failed 9×9 `hard` could have been replaced by a 6×6 Killer mini
+board under the standard key. `eligibleAlternatives` now has two shapes: a **standard** slot's
+substitutes are the other types each at **its own standard size**; a **mini** slot keeps the
+size-ordered pool over the mini sizes. A test fails the rolled `hard` slot and asserts the
+substitute's size is its type's standard.

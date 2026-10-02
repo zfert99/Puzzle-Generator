@@ -25,7 +25,7 @@ duplicating.
 id          uuid, generated
 date        the UTC calendar day this puzzle belongs to
 difficulty  the daily-board KEY (idempotency handle + API/leaderboard identity)
-variant     puzzle TYPE: DailyVariant = classic | killer | calc | kakuro (stored, not inferred
+variant     puzzle TYPE: DailyVariant = classic | killer | calc | kakuro | skyscrapers (stored, not inferred
             from the key; the union is defined HERE and re-exported by daily-row.ts as Variant)
 grid        the unsolved puzzle (JSON) sent to clients
 solution    the solved grid (JSON) — SERVER-ONLY, never sent for an unsolved daily
@@ -88,6 +88,11 @@ operator+target) is told by the row's **`variant`** column. Historically the typ
 the `difficulty` key (`killer-*`, `calc*`, or the legacy single `'killer'` key); that inference is
 being retired in favor of stored `variant` (see above). Migrations: `0003_killer_daily_cages.sql`
 (added `cages`), `0004_safe_pyro.sql` (added `variant`).
+
+Since Skyscrapers plan slice R1 the same column also carries a Skyscrapers row's **edge clues**
+(`StoredSkyscraperClue { side, index, count }`, one entry per present clue — Skyscrapers D2), with
+the entry count as `clue_count`; `/api/daily` restores the four gutter arrays from them. The
+`DailyVariant` union gained `'skyscrapers'`; no migration either way (text + jsonb).
 
 ## Security note
 

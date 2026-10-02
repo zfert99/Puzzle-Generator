@@ -92,6 +92,78 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers R1: the fifth daily type, with the first non-9×9 standard
+
+Branch `feature/skyscrapers-r1` on `4c5fb42`. Diff: `schema.ts` (`DailyVariant` + `StoredSkyscraperClue`),
+`daily-row.ts` (sizes, profiles, the 5-rung bijection, `sectionForKey`, the clue store/restore pair),
+`dailies.service.ts` dispatch, `/api/daily` (`clues`), `/api/daily/slots`, `DailyExperience`,
+`ContinueBanner`, `attempts.service.ts` + `/api/me/progress` (section in SQL), `slot-display.ts`,
+`useDaily.ts`, the cron comment; tests; docs. **~200 LOC of source**; no migration.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **93 files / 915 tests green** (12 new, 9 rewritten); no entry from the Known flaky tests table fired |
+| Dry run | five seeded days through the real engines with no database: 8 rows / 8 distinct keys every day, every profile present, Skyscrapers in both sections, 0.7–10.5 s per day against the cron's 60 s |
+| Live seed | **not run from the workstation** (L25 — the shared database; a Skyscrapers row before the serving code deploys would be served as a classic board of zeros); the first cron after deploy is the round-trip |
+
+### Findings
+
+- **"Standard = 9×9" was a coincidence written in four places.** `isEligible` always read the
+  type's own standard size, but `/api/daily/slots`, the playing label, the continue banner and the
+  archive progress aggregate each filed a board as a mini iff it was smaller than 9×9 — correct
+  until the first 6×6 standard. All four now call `sectionForKey` (key first; size only for retired
+  keys whose prefixes lie), and the aggregate carries the same rule as a SQL `CASE`, grouping by
+  section instead of size (L21).
+- **The owner's D5 call was forced by E5's tier sets, and recorded as such.** Only the 6×6 offers all
+  five rungs, and the roll's bijection needs every type on the whole ladder; the mini-only and
+  7×7-minus-easy alternatives were put to the owner with that reasoning.
+- **A fifth size type leaked into the Sudoku-family dispatch.** `DailySize` admitting 5 made
+  `generateKillerSudoku(…, { gridSize: slot.gridSize })` a type error; the two branches narrow back
+  to 4/6/9 with a comment, since `SIZES` never hands them a 5.
+- The scratchpad dry run first failed with `MODULE_NOT_FOUND`: `daily-row.ts` imports `@/…` aliases
+  that `tsx` cannot resolve from outside the repo — `--tsconfig tsconfig.json` fixes it (noted for
+  the next spike that imports a `lib/` module).
+- **`/code-review high` (owner-run, on the PR): 7 findings, all fixed in-PR.** The one with teeth:
+  the generation fallback for a failed STANDARD slot drew its size pool from `SIZES[*].standard`,
+  which now contains a 6, and `isEligible(type, 6, hard)` is true for any type with a 6×6 mini — a
+  failed 9×9 `hard` Killer could have been replaced by a 6×6 Killer mini board under the standard
+  key. A standard slot now falls back only to other types at their standard sizes (tested). Also:
+  `restoreSkyscraperClues` skips an unknown side; the SQL section rule reads its rung list and mini
+  prefix from the registry; the unused clue-count alias is gone; the daily route's payload is a
+  `switch`; the progress route's doc matches the code.
+
+### Invariants checked
+
+- `isEligible ⟺ getProfile` over the whole five-type space (the Risk #1 tripwire) with the new rows.
+- Every roll: 8 slots, 8 distinct keys, all 5 rungs, every type at its own standard size, 3 distinct
+  mini types, Skyscrapers only ever 5×5 in a mini and 6×6 in a standard — over 300 seeds.
+- A stored Skyscrapers row round-trips its clues exactly (store → restore), an out-of-range stored
+  index is ignored, and the route serves `clues` with neither `cages` nor `runs`.
+- Retired keys still file by size (the archive-day regression test is unchanged and green).
+
+### Review statements
+
+- The owner ran `/code-review high` on the PR (7 findings, fixed above); the agent did not launch
+  it. `/security-review`: the daily tables are shared, public and read-only to clients; the progress
+  aggregate's `user_id` stays in the JOIN condition (asserted) — not required beyond that.
+
+### Lessons
+
+- **Grep for the consequences of a convention before trusting "the mechanism already supports it".**
+  The registry supported a 6×6 standard; four consumers did not.
+- **A scratch script that imports a repo module with path aliases needs the repo's tsconfig** —
+  `npx tsx --tsconfig tsconfig.json <script>`.
+- **When a table gains a value that used to be constant, re-read every pool built FROM that table,
+  not just every rule that reads it.** The fallback pool was correct by construction while all
+  standards were 9; the review, not the type-checker, found the 6 leaking across sections.
+
+---
+
 ## 2026-10-02 — Skyscrapers E5: exactly the requested tier, per-size tier sets, the hub card
 
 Branch `feature/skyscrapers-e5` on `93056d5`. Diff: `skyscrapers.ts` in its final form (exact-tier

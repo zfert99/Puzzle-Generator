@@ -61,7 +61,8 @@ exactly as they are. A player's board never changes under them mid-day.
 ## `maxDuration` (daily restructure Step 3b)
 
 Lowered **120 s → 60 s**. The old budget covered generating all 30 registry boards including every
-slow tier; the roll now produces **6** boards, of which at most one standard slot can be a 9×9
+slow tier; the roll now produces **8** boards (5 standard + 3 minis at five types since Skyscrapers
+R1; 6 at launch), of which at most one standard slot can be a 9×9
 extreme (the ~5.5 s Killer-extreme being the worst case) alongside millisecond-scale minis. 60 s
 keeps a wide margin over the realistic worst case while trimming a function budget that no longer
 reflected the work.

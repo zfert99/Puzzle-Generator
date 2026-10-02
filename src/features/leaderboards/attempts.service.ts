@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts, dailyPuzzles, type SolveAttempt } from '@/lib/db/schema';
+import { MINI_KEY_PREFIX, STANDARD_RUNGS } from '@/lib/db/daily-row';
 
 /**
  * Ownership-scoped reads of a user's solve attempts — the data-access half of the BOLA
@@ -76,8 +77,8 @@ export function getTodayCompletions(
 export interface DailyProgressRow {
   /** ISO `YYYY-MM-DD` (UTC), straight from the `date` column. */
   date: string;
-  /** Board size (4/6/9), derived from the stored grid — there is no `grid_size` column. */
-  gridSize: number;
+  /** Which section the boards belong to — `sectionForKey`, computed in SQL. */
+  section: 'standard' | 'mini';
   /** How many boards of that size the day HELD — the X/N denominator. */
   total: number;
   /** How many of them THIS user completed. */
@@ -100,10 +101,12 @@ export interface DailyProgressRow {
  * the ON clause) would count *everyone's* completions, so `attempts.service.test.ts` asserts the
  * join condition carries it.
  *
- * **Why it groups by size rather than returning a section.** A board is a mini iff it is smaller
- * than 9×9 — the same grid-size rule `/api/daily/slots` derives `section` from, and the only one
- * that stays correct for retired archive keys (`mini4-*`, `killer6-*`, `calc4-*`), whose key
- * prefixes lie. Folding size → section is left to the caller so this stays a plain aggregate.
+ * **Why it groups by a section computed in SQL.** The section used to be folded from the grid size
+ * by the caller ("smaller than 9×9 ⇒ mini"), which held until Skyscrapers brought the first 6×6
+ * **standard** (Skyscrapers plan D5). The rule is now `sectionForKey`'s: an active key decides (a
+ * bare rung is standard, `mini-*` a mini) and the grid size is only the fallback for retired keys
+ * (`mini4-*`, `killer6-*`, `calc4-*`), whose prefixes lie but whose standards were all 9×9. The
+ * same rule is written here as a CASE so the aggregate stays one GROUP BY.
  */
 export function getDailyProgress(
   db: Database,
@@ -112,11 +115,18 @@ export function getDailyProgress(
   /** EXCLUSIVE upper bound — the first day of the following month (`firstDayOfNextMonth`). */
   beforeIso: string,
 ): Promise<DailyProgressRow[]> {
-  const gridSize = sql<number>`jsonb_array_length(${dailyPuzzles.grid})`;
+  // `sectionForKey` in SQL — the rung list and the mini prefix come from the registry, so the two
+  // copies of the rule cannot drift: rung keys → standard, `mini-%` → mini, retired keys by size.
+  const rungs = sql.join(STANDARD_RUNGS.map((rung) => sql`${rung}`), sql`, `);
+  const section = sql<'standard' | 'mini'>`case
+    when ${dailyPuzzles.difficulty} in (${rungs}) then 'standard'
+    when ${dailyPuzzles.difficulty} like ${`${MINI_KEY_PREFIX}%`} then 'mini'
+    when jsonb_array_length(${dailyPuzzles.grid}) < 9 then 'mini'
+    else 'standard' end`;
   return db
     .select({
       date: dailyPuzzles.date,
-      gridSize: gridSize.mapWith(Number),
+      section,
       total: sql<number>`count(*)`.mapWith(Number),
       done: sql<number>`count(${solveAttempts.id})`.mapWith(Number),
     })
@@ -130,7 +140,7 @@ export function getDailyProgress(
       ),
     )
     .where(and(gte(dailyPuzzles.date, fromIso), lt(dailyPuzzles.date, beforeIso)))
-    .groupBy(dailyPuzzles.date, gridSize);
+    .groupBy(dailyPuzzles.date, section);
 }
 
 export interface PersonalBest {

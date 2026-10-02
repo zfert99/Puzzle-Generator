@@ -59,12 +59,21 @@ Values were **moved verbatim** from the pre-restructure registry; only `killer-4
 free — otherwise it would ask for puzzles the engines can't honestly grade.
 
 ```text
-9×9  -> always eligible (every type grades the full 5-rung ladder)
-expert/extreme at 4×4 or 6×6 -> never (no expert/extreme minis)
+the type's STANDARD size (SIZES[variant].standard: 9×9 for four types, 6×6 for Skyscrapers)
+     -> always eligible (every type grades the full 5-rung ladder at its standard size)
+a size the type does not ship -> never
+expert/extreme at a mini size -> never (no expert/extreme minis)
 killer at 4×4 -> easy ONLY  (de-risked: a 16-cell no-givens grid collapses to tier-1 logic
                              — see Docs/research/killer-4x4-feasibility.md)
-otherwise (classic/calc minis, killer 6×6) -> eligible at e/m/h
+otherwise (classic/calc minis, killer 6×6, kakuro 6×6, skyscrapers 5×5) -> eligible at e/m/h
 ```
+
+**Skyscrapers' standard is the 6×6 (Skyscrapers plan D5, owner's call 2026-10-02)** — the first
+non-9×9 standard. It is the only Skyscrapers size that offers all five rungs (E5's tier sets: the
+5×5 tops out at hard, the 7×7 has no easy), and a standard slot must cover the whole ladder for the
+roll's bijection. Its mini is the 5×5. Nothing in the mechanism keyed on 9 — `isEligible` always
+read `SIZES[variant].standard` — but every surface that *filed* a board by "smaller than 9×9 ⇒
+mini" had to move to `sectionForKey` (below).
 
 A test asserts `isEligible ⟺ getProfile` over the whole space, so a rolled slot can never be missing
 its floor/bot time (plan Risk #1).
@@ -77,7 +86,8 @@ once. `rng` is injected so the roll is deterministic in tests.
 
 ```text
 Standard:
-  shuffle the 5 rungs, take one per type (4); shuffle the types; pair them up.
+  shuffle the 5 rungs, take one per type (5 at five types — every rung, every day, a bijection);
+  shuffle the types; pair them up, each at its OWN standard size (Skyscrapers at 6×6).
   Every pairing is valid (all types cover their standard size), so no filtering is needed.
 
 Minis (miniConfigurations):
@@ -97,12 +107,28 @@ the roller test bounds every type's share to 15–35%. The `Variant` union itsel
 column (`schema.ts` `DailyVariant`) and is re-exported here, so the registry and the column can
 never list different types.
 
-Return the 6 planned slots (key, section, variant, gridSize, difficulty).
+Return the 8 planned slots (key, section, variant, gridSize, difficulty) — 5 standard + 3 minis.
 ```
 
 Enumerate-then-filter (rather than roll-and-retry) is what guarantees Killer only ever lands on
 easy-4×4 or a 6×6 slot, and a valid assignment always exists because classic/Keisan cover
 medium/hard at 4×4.
+
+## `sectionForKey(key, gridSize)` (Skyscrapers R1 — D5)
+
+```text
+a bare rung (easy…extreme)  -> 'standard'   (active standard — whatever its size)
+mini-<tier>                 -> 'mini'       (active mini)
+anything else (retired key) -> gridSize < 9 ? 'mini' : 'standard'
+```
+
+**Why a key rule with a size fallback, not either alone.** "Smaller than 9×9 ⇒ mini" was the rule
+everywhere a board was filed — `/api/daily/slots`, the playing label, the continue banner, the
+archive progress aggregate — and it held while every standard was 9×9. Skyscrapers' 6×6 standard
+(D5) breaks it: a `hard` Skyscrapers would be filed under the minis. The key is the truth for active
+boards. The size stays as the fallback for **retired** keys because their prefixes lie (`mini4-*`,
+`killer6-*`, `calc4-*` are minis without a `mini-` prefix) while every retired standard was 9×9. The
+same rule is written once more as SQL in `attempts.service.ts`'s progress aggregate.
 
 ## Keys: active vs. retired
 
@@ -143,10 +169,21 @@ Return a row with:
   cages      = the cage partition for Killer/Keisan, else null
 ```
 
-`variant` is derived from the **puzzle object itself** (Killer/Keisan carry an explicit `variant`;
-classic doesn't) rather than from the registry — which is what keeps it correct now that the roller
-assigns types to rung-keyed slots. Killer/Keisan ship no givens, so their `grid` is all zeros and
-the cage count stands in for `clue_count`.
+`variant` is derived from the **puzzle object itself** (Killer/Keisan/Kakuro/Skyscrapers carry an
+explicit `variant`; classic doesn't) rather than from the registry — which is what keeps it correct
+now that the roller assigns types to rung-keyed slots. Killer/Keisan ship no givens, so their `grid`
+is all zeros and the cage count stands in for `clue_count`; a Skyscrapers grid is likewise all
+zeros (D3) and its present-clue count is the stat.
+
+## `toDailyPuzzleRow` and Skyscrapers (Skyscrapers R1 — D2)
+
+A Skyscrapers' **edge clues ride the `cages` column** as `StoredSkyscraperClue { side, index,
+count }[]`, one entry per present clue — `storeSkyscraperClues(clues)`; a blank is simply absent,
+so the entry count is the clue count. `/api/daily` turns them back into the four length-N gutter
+arrays with `restoreSkyscraperClues(stored, size)` (an out-of-range index or an unknown side is
+skipped rather than thrown on — the column is persisted data the route must survive) and hands them
+to the board as `clues`, so `startNewGame` sees a
+`SkyscrapersPuzzle`. No migration, the Keisan/Kakuro rule: the row's `variant` gates every reader.
 
 ## `toUtcDateString(now)`
 
@@ -237,6 +274,14 @@ no migration was needed. The row's `variant` says which interpretation applies, 
 already did for Killer vs Keisan; `clue_count` holds the run count, the analogous display stat.
 `/api/daily` hands the column back as `runs` for a Kakuro row so `startNewGame` sees a
 `KakuroPuzzle`.
+
+## Skyscrapers profile rows are estimates (Skyscrapers R1)
+
+No Skyscrapers telemetry exists either (research gap G6): the only public numbers are a
+~3.4–4.5 s hall-of-fame on small easy grids and GM Puzzles' 9–36 min "very hard" 6×6. The **6×6
+standard** (36 cells, no givens) floors sit well below record pace (8–20 s across the ladder,
+≈ 0.2–0.5 s per cell) and the bot near a typical skilled pace (1.5–10 min); the 5×5 mini (25 cells)
+scales down (4–6 s; 45 s–2 min). Flagged as estimates in the code; tune from live attempts.
 
 ## Kakuro profile rows are estimates (R1)
 

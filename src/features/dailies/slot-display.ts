@@ -21,6 +21,7 @@ const VARIANT_LABEL: Record<Variant, string> = {
   killer: 'Killer',
   calc: 'Keisan',
   kakuro: 'Kakuro',
+  skyscrapers: 'Skyscrapers',
 };
 
 /**
@@ -35,9 +36,13 @@ export function reconcileSelectedKey(slots: readonly DailySlotInfo[], current: s
   return slots.some((s) => s.key === current) ? current : slots[0].key;
 }
 
-/** Compose a human label from a slot's difficulty + type (+ size for minis): "Hard · Killer". */
+/**
+ * Compose a human label from a slot's difficulty + type, with the size whenever it is not the
+ * 9×9 everyone assumes: every mini ("Hard 6×6 · Keisan") and a non-9×9 standard ("Hard 6×6 ·
+ * Skyscrapers" — the first, Skyscrapers plan D5). A 9×9 standard stays "Hard · Killer".
+ */
 export function slotLabel(slot: DailySlotInfo): string {
   const difficulty = slot.difficulty.charAt(0).toUpperCase() + slot.difficulty.slice(1);
-  const size = slot.section === 'mini' ? ` ${slot.gridSize}×${slot.gridSize}` : '';
+  const size = slot.section === 'mini' || slot.gridSize !== 9 ? ` ${slot.gridSize}×${slot.gridSize}` : '';
   return `${difficulty}${size} · ${VARIANT_LABEL[slot.variant] ?? slot.variant}`;
 }

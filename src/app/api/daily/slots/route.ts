@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { dailyPuzzles } from '@/lib/db/schema';
-import { toUtcDateString, difficultyForKey, isIsoDate, STANDARD_RUNGS } from '@/lib/db/daily-row';
+import { toUtcDateString, difficultyForKey, isIsoDate, sectionForKey, STANDARD_RUNGS } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
 // Touches the DB (Node-only driver) and reads server time — keep off the Edge runtime.
@@ -56,13 +56,12 @@ export async function GET(req: NextRequest) {
         variant: r.variant,
         difficulty: difficultyForKey(r.key),
         gridSize: r.grid.length,
-        // Section is derived from the GRID SIZE, not the key prefix: a board is a mini iff it is
-        // smaller than 9×9. That holds for the active slot keys (standard is always 9×9, `mini-*`
-        // never is) AND for retired keys on archived dates — keying off the `mini-` prefix instead
-        // would file every legacy mini (`mini4-*`, `killer6-*`, `calc4-*`) under Standard and, since
-        // `slotLabel` only shows the size for minis, render them with duplicate ambiguous labels
-        // ("Medium · Classic" three times over).
-        section: r.grid.length < 9 ? ('mini' as const) : ('standard' as const),
+        // Section from the KEY for active boards, the grid size only for retired keys
+        // (`sectionForKey`): a bare rung is standard even at 6×6 — Skyscrapers' standard is the 6×6
+        // (D5) — while the retired minis (`mini4-*`, `killer6-*`, `calc4-*`) carry no `mini-` prefix
+        // and are told apart by size, as before. Filing a legacy mini under Standard would render
+        // duplicate ambiguous labels ("Medium · Classic" three times over).
+        section: sectionForKey(r.key, r.grid.length),
       }))
       .sort((a, b) => sortIndex(a.key) - sortIndex(b.key));
 

@@ -12,7 +12,9 @@ personal, so a signed-out visitor gets no markers at all rather than a calendar 
 requireUserId()                                  # 401 if signed out
 month = ?month ?? current UTC month              # 400 unless isIsoMonth (rejects 00/13 AND year 0000)
 rows  = getDailyProgress(userId, month-01, firstDayOfNextMonth(month))   # half-open range
-fold each row into its set: grid < 9x9 -> mini, else standard
+fold each row into its set by row.section (computed in SQL by the aggregate — `sectionForKey`'s
+  rule: a rung key is standard, mini-* a mini, a retired key goes by size; a 6×6 Skyscrapers
+  standard is a STANDARD, not a mini)
 -> 200 { month, days: { "2026-08-01": { standard: {done,total}, mini: {done,total} } } }
 ```
 

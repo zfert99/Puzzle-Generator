@@ -131,8 +131,9 @@ key with no variant context).
 - `selectedLabel` — looks the selected key up in **today's** slots. Correct for the picker and Play
   button, which only ever offer today's boards.
 - `playingLabel` — composed from the **board actually loaded** (`variant`/`gridSize` straight out of
-  the board store, with `difficultyForKey` stripping any `mini-` prefix and `gridSize < 9` deciding
-  the mini/standard split, the same rule `/api/daily/slots` uses).
+  the board store, with `difficultyForKey` stripping any `mini-` prefix and `sectionForKey` deciding
+  the mini/standard split — by key, with size only for retired keys, since a 6×6 can be a standard
+  (Skyscrapers, D5) — the same rule `/api/daily/slots` uses).
 
 They diverge whenever `dailyDate` isn't today — an archive replay or a daily left running past the
 UTC rollover. **A slot key is not an identity:** `hard` held Killer on 3 August and Keisan on

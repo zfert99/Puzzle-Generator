@@ -10,7 +10,7 @@ vi.mock('@/lib/db/client', () => ({ db: {} }));
 const requireUserId = vi.fn(async () => 'test-user-id');
 vi.mock('@/features/auth/session', () => ({ requireUserId: () => requireUserId() }));
 
-const progressRows: { date: string; gridSize: number; total: number; done: number }[] = [];
+const progressRows: { date: string; section: 'standard' | 'mini'; total: number; done: number }[] = [];
 const getDailyProgress = vi.fn(async () => progressRows);
 vi.mock('@/features/leaderboards/attempts.service', () => ({
   getDailyProgress: (...args: unknown[]) => getDailyProgress(...(args as [])),
@@ -36,10 +36,10 @@ describe('GET /api/me/progress', () => {
 
   it('folds board sizes into the Standard and Mini sets, per date', async () => {
     setRows([
-      { date: '2026-08-01', gridSize: 9, total: 3, done: 2 },
-      { date: '2026-08-01', gridSize: 4, total: 2, done: 1 },
-      { date: '2026-08-01', gridSize: 6, total: 1, done: 1 },
-      { date: '2026-08-02', gridSize: 9, total: 3, done: 0 },
+      { date: '2026-08-01', section: 'standard', total: 3, done: 2 },
+      { date: '2026-08-01', section: 'mini', total: 2, done: 1 },
+      { date: '2026-08-01', section: 'mini', total: 1, done: 1 },
+      { date: '2026-08-02', section: 'standard', total: 3, done: 0 },
     ]);
 
     const res = await GET(buildRequest('?month=2026-08'));
@@ -47,7 +47,7 @@ describe('GET /api/me/progress', () => {
     const { month, days } = await res.json();
 
     expect(month).toBe('2026-08');
-    // Both mini sizes land in one set; the standard set stays separate.
+    // Every mini row lands in one set (the aggregate already filed them); the standard set stays separate.
     expect(days['2026-08-01']).toEqual({ standard: { done: 2, total: 3 }, mini: { done: 2, total: 3 } });
     // A day the user completed nothing on still reports its denominator (0/3), not nothing.
     expect(days['2026-08-02']).toEqual({ standard: { done: 0, total: 3 }, mini: { done: 0, total: 0 } });
@@ -60,9 +60,9 @@ describe('GET /api/me/progress', () => {
    */
   it('uses the day’s own board count as N, including pre-restructure days', async () => {
     setRows([
-      { date: '2026-07-15', gridSize: 9, total: 15, done: 4 },
-      { date: '2026-07-15', gridSize: 4, total: 9, done: 1 },
-      { date: '2026-07-15', gridSize: 6, total: 6, done: 0 },
+      { date: '2026-07-15', section: 'standard', total: 15, done: 4 },
+      { date: '2026-07-15', section: 'mini', total: 9, done: 1 },
+      { date: '2026-07-15', section: 'mini', total: 6, done: 0 },
     ]);
 
     const { days } = await (await GET(buildRequest('?month=2026-07'))).json();

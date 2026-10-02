@@ -106,10 +106,10 @@ describe('getDailyProgress', () => {
     return { db, captured };
   }
 
-  it('counts a day the user completed nothing on, and groups by (date, size)', async () => {
+  it('counts a day the user completed nothing on, and groups by (date, section)', async () => {
     const rows = [
-      { date: '2026-08-01', gridSize: 9, total: 3, done: 0 },
-      { date: '2026-08-01', gridSize: 4, total: 2, done: 0 },
+      { date: '2026-08-01', section: 'standard', total: 3, done: 0 },
+      { date: '2026-08-01', section: 'mini', total: 2, done: 0 },
     ];
     const { db, captured } = progressStub(rows);
 
@@ -119,7 +119,7 @@ describe('getDailyProgress', () => {
     // is exactly what the LEFT JOIN buys — a WHERE-scoped inner join would drop it entirely.
     expect(progress).toEqual(rows);
     expect(captured.filter).toBeDefined(); // the date range
-    expect(captured.groupCols).toHaveLength(2); // date + size
+    expect(captured.groupCols).toHaveLength(2); // date + section
   });
 
   /**

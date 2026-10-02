@@ -169,10 +169,10 @@ the visibility constraint, a four-sided gutter, and the clue-removal generator.
 | # | Decision | Status |
 |---|---|---|
 | D1 | Display **Skyscrapers**, subtitle **Towers**; engine/slug `skyscrapers`; the title is **one constant with "Towers" wired as the fallback title** (a live EU/UK "SKYSCRAPER" games-software mark exists; US/JP clear); no publisher affiliation implied; the technique name "Skyscraper" is reserved in `STRATEGY_NAMES`' vocabulary so a future HumanSolver pattern never collides with the type label | **Locked 2026-10-01** (G1 resolved); professional read before any EU logo / paid use |
-| D2 | **Interior N×N `grid` + `solution`, plus `clues: { top, bottom, left, right }`** (length-N arrays, **0 = blank**); display is (N+2)×(N+2). `grid.length === N` stays true everywhere. Daily storage: clues ride the existing `cages` jsonb as `StoredSkyscraperClue[]` with `variant` gating every reader (no migration) — the nullable-`clues`-column alternative is recorded | **Proposed — owner may veto the column reuse** |
+| D2 | **Interior N×N `grid` + `solution`, plus `clues: { top, bottom, left, right }`** (length-N arrays, **0 = blank**); display is (N+2)×(N+2). `grid.length === N` stays true everywhere. Daily storage: clues ride the existing `cages` jsonb as `StoredSkyscraperClue[]` with `variant` gating every reader (no migration) — the nullable-`clues`-column alternative is recorded | **Applied by R1 (2026-10-02):** `StoredSkyscraperClue { side, index, count }[]` rides the `cages` jsonb (one entry per present clue; `storeSkyscraperClues` / `restoreSkyscraperClues` in `daily-row.ts`), `variant` gating every reader; no migration |
 | D3 | **No givens at any published tier** (the commercial norm; Tatham allows them). `grid` keeps the slot so Tatham-style fixtures round-trip; the generator never emits givens in v1 | Proposed (research) |
 | D4 | **Three sizes, chosen for Skyscrapers:** mini **5×5** (vs 4×4), standard **6×6**, large **7×7** (vs 9×9). **Planned at the recommendation** — V0–V2 build and show 5/6/7 — and **still measured by E3** (tier reachability at guess count 0 and per-tier yield at 5/6/7 and at 4, 9 for the alternatives; 7-vs-9 line-filter wall time), which can overturn any of the three. 4×4 survives, if at all, as a tutorial board; 9×9 as a later weekly special | **Settled by E3 (2026-10-02): mini 5×5, standard 6×6, large 7×7** — 9×9 fails repair (0/8 in 60 s) and timing (60–100 ms per count, 130–470 ms per classify); 4×4 has no expert tier and its hard is a 24-arrangement scan — tutorial board at most ([findings §3b](research/skyscrapers-feasibility-findings.md)) |
-| D5 | **A 6×6 standard is the first non-9×9 daily standard.** `DailySize` widens (5, 6-as-standard); the standard roll becomes a 5-rung bijection at 5 types; slot labels carry the size where it is not 9×9 ("Hard 6×6 · Skyscrapers"); the "standard = 9×9" copy in the daily plan and roadmap is amended | Proposed; G11 |
+| D5 | **A 6×6 standard is the first non-9×9 daily standard.** `DailySize` widens (5, 6-as-standard); the standard roll becomes a 5-rung bijection at 5 types; slot labels carry the size where it is not 9×9 ("Hard 6×6 · Skyscrapers"); the "standard = 9×9" copy in the daily plan and roadmap is amended | **Owner's call 2026-10-02 ("do the recommendation"): the 6×6 is Skyscrapers' daily standard** — the only Skyscrapers size offering all five rungs. Applied by R1: `DailySize` admits 5 and a 6×6 standard, the roll is a 5-rung bijection, `sectionForKey` replaces "smaller than 9×9 ⇒ mini" everywhere a board is filed, `slotLabel` shows the size for any non-9×9 board, copy amended |
 | D6 | **Every published tier is logic-only.** Five rungs mapped from the research ladder: Easy = rungs 0–4 **plus the small line scan (≤ 3 arrangements fit — E3b)** · Medium = + rung 5 **and the one-line enumeration (≤ 12)** · Hard = + rungs 6–7 (the long line filter, Latin pairs/triples) · Expert = + rung 8 · Extreme = + rung 9. **Rung 10 (bifurcation) is a reject, never a tier.** Guess count 0; copy says "solvable by logic alone" | Proposed (research-backed; rungs 5–7 ordering is G7) |
 | D7 | Difficulty label from the **classifier post-generation**; generator parameters (which clues to remove, in what order) only bias | Locked (research + Kakuro D8 precedent) |
 | D8 | **Visual first, simplest → hardest** (Kakuro D12): V0 looks-only board → V1 types + baked fixtures → V2 board → V3 PDF → E1 exact solver (Hint) → E2 classifier (badge, technique hints) → E3 yield spike → E4 generator ("New puzzle") → E5 tiers + pickers + **hub card** → R1 daily. The deep link exists from V2; the hub card waits for E5. The owner may reorder slices (Kakuro pulled E1 ahead of V3) | Locked (owner rule, inherited) |
@@ -201,8 +201,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 6 | E3 — Yield measurement spike ✅ | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
 | 6b | E3b — Line-scan re-tier ✅ | The 5×5 fixture reads **easy**; easy/medium 6×6 exist (all-clue floor 25% / 61%); every tier reachable by removal at 5/6/7 |
 | 7 | E4 — Clue-removal generator ✅ | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
-| 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark 🚧 | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
-| 9 | R1 — Daily rotation (5 types) | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
+| 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark ✅ | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
+| 9 | R1 — Daily rotation (5 types) 🚧 | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
 
 ### V0 — Looks-only static board ✅
 
@@ -944,7 +944,7 @@ longer hard-dominated; classify still < 20 ms at 7×7.
   second `next dev` from one checkout); CI's Playwright job runs it against a production build.
   Merged 2026-10-02 ([#136](https://github.com/zfert99/Puzzle-Generator/pull/136)).
 
-### E5 — Difficulty configs + `generateSkyscrapers(difficulty, { gridSize })` + benchmark 🚧
+### E5 — Difficulty configs + `generateSkyscrapers(difficulty, { gridSize })` + benchmark ✅
 
 - `skyscrapers.ts`: per-size `DIFFICULTY_CONFIG` for the three D4 sizes — removal-order bias,
   target rung, score bands from **measured** per-size distributions (never reuse cuts across
@@ -1031,9 +1031,10 @@ tier and size; T4 and T5 **populated** at the standard size.
   fair-share retry path is tested through a `generateOne` seam (a stand-in that misses one share;
   one that throws not-offered is never retried).
 - *Blockers:* none. The e2e hub/play specs were updated but **not run locally** (the port-3000
-  server belongs to another session); CI runs them.
+  server belongs to another session); CI runs them. Merged 2026-10-02
+  ([#137](https://github.com/zfert99/Puzzle-Generator/pull/137)).
 
-### R1 — Daily rotation (5 types) ⏳
+### R1 — Daily rotation (5 types) 🚧
 
 - `Variant` → the five-type union in `daily-row.ts` and the `schema.ts` `$type` (**no migration**
   — `text` column); `StoredCage` union gains `StoredSkyscraperClue` (D2) **or** the nullable
@@ -1063,6 +1064,57 @@ tier and size; T4 and T5 **populated** at the standard size.
 
 **Gate:** the daily plan's end-to-end checklist green at 5 types; `/daily` shows the fifth type in
 both sections over a week of seeded rolls; the first real cron after deploy round-trips.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-r1`):**
+
+- *Process:* **D5 decided by the owner** ("do the recommendation"): the 6×6 is Skyscrapers' daily
+  standard — the only Skyscrapers size offering all five rungs (E5's tier sets), which the roll's
+  bijection needs; the alternatives put to the owner were mini-only and a 7×7-minus-easy standard.
+  `DailyVariant` gained `'skyscrapers'` (`schema.ts`, no migration); `StoredCage` gained
+  `StoredSkyscraperClue { side, index, count }` — **D2 applied**: the clues ride the `cages` jsonb,
+  one entry per present clue (`storeSkyscraperClues` / `restoreSkyscraperClues` in `daily-row.ts`,
+  the entry count as `clue_count`), `/api/daily` hands them back as `clues`. `DailySize` admits 5;
+  `SIZES.skyscrapers = { mini: [5], standard: 6 }`; eight `PROFILE` rows from cell count (G6,
+  flagged as estimates). `rollDailyAssignment` now draws all five rungs — a **bijection** — and
+  seats 3 of 5 types into the minis; the day is **5 + 3 = 8**. **The first non-9×9 standard broke
+  every "smaller than 9×9 ⇒ mini" rule:** `/api/daily/slots`, the playing label, the continue banner
+  and the archive progress aggregate all filed boards by size; they now share **`sectionForKey(key,
+  size)`** — a bare rung is standard, `mini-*` a mini, and the size decides only for retired keys
+  (whose prefixes lie but whose standards were all 9×9) — written once more as a SQL `CASE` in the
+  progress aggregate, whose rows now carry `section` instead of `gridSize`. `slotLabel` shows the
+  size for any non-9×9 board ("Hard 6×6 · Skyscrapers"); `dailies.service` dispatches
+  `generateSkyscrapers`; `useDaily` carries the `clues` payload; the cron comment says 8; the daily
+  plan's "standard = 9×9" copy is amended. Tests (11 new, 9 rewritten): eligibility per type with the
+  6×6 standard; the roller at 8 slots (5 distinct rungs, every type at its own standard size, 3
+  distinct mini types; Skyscrapers only 5×5 in a mini and 6×6 in a standard; both sections reached
+  over 300 seeds); `sectionForKey` for active and retired keys; the clue store/restore round trip
+  and the Skyscrapers row mapping; the service at 8 with a Skyscrapers fake; the daily route serving
+  `clues`; the slots route filing a 6×6 `hard` as standard and retired minis by size; labels for a
+  6×6 standard and a 5×5 mini; the progress route and aggregate by section.
+- *Measured:* a seeded dry run of five days through the **real engines with no database**
+  (`tsx --tsconfig`, the scratchpad script): **8 rows and 8 distinct keys every day**, every profile
+  present, Skyscrapers in the standard section 5/5 days and in a mini 5/5 (3 of 5 types seat, so
+  ~60% is the long-run expectation), **0.7–10.5 s per day** (the slow day a 9×9 Kakuro easy plus a
+  Killer extreme) — inside the cron's 60 s.
+- *Divergence:* as Kakuro's R1 — the gate's "first real cron after deploy round-trips" happens on
+  the first cron after this deploys; **nothing was seeded from the workstation** (L25: its
+  `DATABASE_URL` is the shared instance, and a Skyscrapers row written before the serving code
+  deploys would be served by the old route as a classic board of zeros). G8's screen-reader pass
+  over the four-sided gutter is still owed (recorded, not done here).
+- *Learnings:* L21 — a convention that held by coincidence ("every standard is 9×9") lives in more
+  places than the one that defines it; the first exception has to be found by grep, not by the
+  type-checker, and the fix is one named rule shared by every filer.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 7 findings, all fixed
+  before merge):* (1) **the generation fallback could serve a mini-size board under a standard
+  key** — with a 6 in the standard size pool, `isEligible(type, 6, hard)` is true for any type with
+  a 6×6 mini; a standard slot now falls back only to other types at *their* standard sizes
+  (tested). (2) `restoreSkyscraperClues` skips a stored entry with an unknown side instead of
+  throwing. (3) The SQL section `CASE` takes its rung list and mini prefix from the registry
+  (`STANDARD_RUNGS`, `MINI_KEY_PREFIX`). (4) A test fails the rolled `hard` standard slot and
+  asserts the substitute's size. (5) The unused `skyscrapersClueCount` alias is gone. (6) The daily
+  route's payload is a `switch` (`typedPayload`). (7) The progress route's doc describes the
+  section fold.
+- *Blockers:* none. **Phase 11 is complete** once this merges.
 
 ### Deferred / follow-ons (not v1)
 

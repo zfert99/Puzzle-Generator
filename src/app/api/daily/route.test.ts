@@ -20,8 +20,8 @@ const row = (variant: string, cages: unknown) => ({
   date: '2026-10-01',
   difficulty: 'hard',
   variant,
-  grid: grid(variant === 'kakuro' ? 6 : 9),
-  solution: grid(variant === 'kakuro' ? 6 : 9, 1),
+  grid: grid(variant === 'kakuro' ? 6 : variant === 'skyscrapers' ? 5 : 9),
+  solution: grid(variant === 'kakuro' ? 6 : variant === 'skyscrapers' ? 5 : 9, 1),
   clueCount: 3,
   cages,
 });
@@ -40,6 +40,14 @@ describe('GET /api/daily — payload shape per variant', () => {
     const body = await (await GET(buildRequest())).json();
     expect(body).toMatchObject({ variant: 'kakuro', runs, gridSize: 6 });
     expect(body.cages).toBeUndefined();
+  });
+
+  it('serves a Skyscrapers row with its stored clues restored to the four gutter arrays (R1, D2)', async () => {
+    getDailyPuzzle.mockResolvedValue(row('skyscrapers', [{ side: 'top', index: 1, count: 3 }, { side: 'right', index: 4, count: 1 }]));
+    const body = await (await GET(buildRequest('?difficulty=hard'))).json();
+    expect(body).toMatchObject({ variant: 'skyscrapers', gridSize: 5, clues: { top: [0, 3, 0, 0, 0], bottom: [0, 0, 0, 0, 0], left: [0, 0, 0, 0, 0], right: [0, 0, 0, 0, 1] } });
+    expect(body.cages).toBeUndefined();
+    expect(body.runs).toBeUndefined();
   });
 
   it('serves Killer and Keisan rows with `cages`, and a classic row with neither', async () => {

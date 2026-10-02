@@ -3,6 +3,7 @@ import type { Database } from '@/lib/db/connection';
 import { generateDailyPuzzles, getDailyPuzzle } from './dailies.service';
 import {
   rollDailyAssignment,
+  SIZES,
   getProfile,
   difficultyForKey,
   type PlannedSlot,
@@ -41,12 +42,16 @@ function solution(size: number): number[][] {
   return Array.from({ length: size }, (_, r) => Array.from({ length: size }, (_, c) => ((r + c) % size) + 1));
 }
 
-/** A minimal engine-shaped puzzle for a slot (classic has no `variant`; killer/calc carry cages; kakuro runs). */
+/** A minimal engine-shaped puzzle for a slot (classic has no `variant`; killer/calc carry cages; kakuro runs; skyscrapers clues). */
 function fakePuzzle(slot: PlannedSlot) {
   const base = { grid: grid(slot.gridSize), solution: solution(slot.gridSize) };
   if (slot.variant === 'classic') return base as never;
   if (slot.variant === 'kakuro') {
     return { ...base, variant: 'kakuro', runs: [{ id: 0, dir: 'across', sum: 3, cells: [0, 1] }], difficulty: slot.difficulty, gridSize: slot.gridSize } as never;
+  }
+  if (slot.variant === 'skyscrapers') {
+    const blank = Array(slot.gridSize).fill(0);
+    return { ...base, variant: 'skyscrapers', clues: { top: [3, ...blank.slice(1)], bottom: blank, left: blank, right: blank }, difficulty: slot.difficulty, gridSize: slot.gridSize } as never;
   }
   return {
     ...base,
@@ -149,7 +154,7 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
     expect(attemptRows.length).toBeGreaterThan(0);
   });
 
-  it('generates one row per slot (7 at four types), each carrying its rolled variant', async () => {
+  it('generates one row per slot (8 at five types), each carrying its rolled variant', async () => {
     const rolled = rollDailyAssignment(mulberry32(SEED));
     let puzzleRows: NewDailyPuzzle[] = [];
     const db = makeDb({
@@ -162,11 +167,11 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
 
     const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
 
-    expect(result).toEqual({ isoDate: '2026-08-01', requested: 7, inserted: 7, skipped: false });
-    expect(puzzleRows).toHaveLength(7);
+    expect(result).toEqual({ isoDate: '2026-08-01', requested: 8, inserted: 8, skipped: false });
+    expect(puzzleRows).toHaveLength(8);
     // Keys match the roll; every row stores a real variant; classic rows carry no cages.
     expect(puzzleRows.map((r) => r.difficulty).sort()).toEqual(rolled.map((s) => s.key).sort());
-    expect(puzzleRows.every((r) => ['classic', 'killer', 'calc', 'kakuro'].includes(r.variant))).toBe(true);
+    expect(puzzleRows.every((r) => ['classic', 'killer', 'calc', 'kakuro', 'skyscrapers'].includes(r.variant))).toBe(true);
     for (const r of puzzleRows) {
       if (r.variant === 'classic') expect(r.cages).toBeNull();
       else expect(r.cages).not.toBeNull();
@@ -187,7 +192,7 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
 
     await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
 
-    expect(attemptRows).toHaveLength(7);
+    expect(attemptRows).toHaveLength(8);
     expect(attemptRows.every((r) => r.userId === BOT_USER_ID && r.completed && r.mistakes === 0)).toBe(true);
     const timeById = new Map(attemptRows.map((r) => [r.puzzleId, r.timeMs]));
     for (const row of selectRows) {
@@ -204,7 +209,7 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
     });
 
     const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: fakePuzzle });
-    expect(result).toEqual({ isoDate: '2026-08-01', requested: 7, inserted: 0, skipped: false });
+    expect(result).toEqual({ isoDate: '2026-08-01', requested: 8, inserted: 0, skipped: false });
   });
 
   it('never leaves a slot empty: falls back to an eligible board when a generator throws', async () => {
@@ -225,8 +230,8 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
 
     const result = await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: failKiller });
 
-    expect(result.requested).toBe(7);
-    expect(puzzleRows).toHaveLength(7);
+    expect(result.requested).toBe(8);
+    expect(puzzleRows).toHaveLength(8);
     expect(puzzleRows.some((r) => r.variant === 'killer')).toBe(false); // all Killer slots fell back
   });
 
@@ -271,6 +276,31 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
     expect(substitute.variant).not.toBe(miniHard.variant);
   });
 
+  it('keeps a STANDARD slot at a standard size when falling back — never a 6×6 mini board under a rung key (D5)', async () => {
+    // Fail the standard `hard` slot for whatever type rolled it; the substitute must be another
+    // type at THAT type's standard size (9×9, or 6×6 only if it is Skyscrapers).
+    const rolled = rollDailyAssignment(mulberry32(3));
+    const hard = rolled.find((s) => s.key === 'hard')!;
+    let puzzleRows: NewDailyPuzzle[] = [];
+    const failHard = (slot: PlannedSlot) => {
+      if (slot.key === 'hard' && slot.variant === hard.variant) throw new Error('boom');
+      return fakePuzzle(slot);
+    };
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: [],
+      onPuzzleValues: (rows) => {
+        puzzleRows = rows;
+      },
+    });
+
+    await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(3), generate: failHard });
+
+    const substitute = puzzleRows.find((r) => r.difficulty === 'hard')!;
+    expect(substitute.variant).not.toBe(hard.variant);
+    expect(substitute.grid).toHaveLength(SIZES[substitute.variant].standard);
+  });
+
   /**
    * A fallback necessarily DUPLICATES a type within its section — `rollDailyAssignment` hands each
    * section a permutation of the type list, so every type is already used once before any fallback
@@ -278,7 +308,7 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
    * the plan was corrected.) What must hold is that the day still gets its full set of
    * distinctly-KEYED boards, since the key is the leaderboard identity and the idempotency handle.
    */
-  it('still yields 7 distinctly-keyed boards when a fallback duplicates a type', async () => {
+  it('still yields 8 distinctly-keyed boards when a fallback duplicates a type', async () => {
     const rolled = rollDailyAssignment(mulberry32(SEED));
     const firstStandard = rolled.find((s) => s.section === 'standard')!;
     let puzzleRows: NewDailyPuzzle[] = [];
@@ -296,8 +326,8 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
 
     await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(SEED), generate: failFirstStandard });
 
-    expect(puzzleRows).toHaveLength(7);
-    expect(new Set(puzzleRows.map((r) => r.difficulty)).size).toBe(7); // keys stay unique
+    expect(puzzleRows).toHaveLength(8);
+    expect(new Set(puzzleRows.map((r) => r.difficulty)).size).toBe(8); // keys stay unique
     // The substituted standard slot kept 9×9 — only the type changed.
     const substituted = puzzleRows.find((r) => r.difficulty === firstStandard.key)!;
     expect(substituted.grid).toHaveLength(9);
