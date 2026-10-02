@@ -1,6 +1,7 @@
 # Skyscrapers (Towers) — Implementation Plan
 
-> **Status:** 📋 Planned — plan written 2026-10-01, nothing built. · **Branch:** one per slice off
+> **Status:** 🚧 In progress (plan written 2026-10-01; build started 2026-10-01 — V0 built, owner's
+> visual verdict pending). · **Branch:** one per slice off
 > `main` (`feature/skyscrapers`, then `-v1`, `-v2`, … as Kakuro did; never stacked — V1's step-log
 > in the Kakuro plan says why) · **Roadmap:** Phase 11 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings · measurements):**
@@ -166,7 +167,7 @@ the visibility constraint, a four-sided gutter, and the clue-removal generator.
 | D1 | Display **Skyscrapers**, subtitle **Towers**; engine/slug `skyscrapers`; the title is **one constant with "Towers" wired as the fallback title** (a live EU/UK "SKYSCRAPER" games-software mark exists; US/JP clear); no publisher affiliation implied; the technique name "Skyscraper" is reserved in `STRATEGY_NAMES`' vocabulary so a future HumanSolver pattern never collides with the type label | **Locked 2026-10-01** (G1 resolved); professional read before any EU logo / paid use |
 | D2 | **Interior N×N `grid` + `solution`, plus `clues: { top, bottom, left, right }`** (length-N arrays, **0 = blank**); display is (N+2)×(N+2). `grid.length === N` stays true everywhere. Daily storage: clues ride the existing `cages` jsonb as `StoredSkyscraperClue[]` with `variant` gating every reader (no migration) — the nullable-`clues`-column alternative is recorded | **Proposed — owner may veto the column reuse** |
 | D3 | **No givens at any published tier** (the commercial norm; Tatham allows them). `grid` keeps the slot so Tatham-style fixtures round-trip; the generator never emits givens in v1 | Proposed (research) |
-| D4 | **Three sizes, chosen for Skyscrapers:** mini **5×5** (vs 4×4), standard **6×6**, large **7×7** (vs 9×9). Settled by **E3's measurement** — tier reachability at guess count 0 and per-tier yield at 5/6/7 (and 4, 9 for the alternatives), 7-vs-9 line-filter wall time. 4×4 survives, if at all, as a tutorial board; 9×9 as a later weekly special | **Open — owner** (research recommendation on the table; E3 produces the numbers) |
+| D4 | **Three sizes, chosen for Skyscrapers:** mini **5×5** (vs 4×4), standard **6×6**, large **7×7** (vs 9×9). **Planned at the recommendation** — V0–V2 build and show 5/6/7 — and **still measured by E3** (tier reachability at guess count 0 and per-tier yield at 5/6/7 and at 4, 9 for the alternatives; 7-vs-9 line-filter wall time), which can overturn any of the three. 4×4 survives, if at all, as a tutorial board; 9×9 as a later weekly special | **Planned by owner 2026-10-01** ("plan for recommended but still measure"); E3 confirms or overturns |
 | D5 | **A 6×6 standard is the first non-9×9 daily standard.** `DailySize` widens (5, 6-as-standard); the standard roll becomes a 5-rung bijection at 5 types; slot labels carry the size where it is not 9×9 ("Hard 6×6 · Skyscrapers"); the "standard = 9×9" copy in the daily plan and roadmap is amended | Proposed; G11 |
 | D6 | **Every published tier is logic-only.** Five rungs mapped from the research ladder: Easy = rungs 0–4 · Medium = + rung 5 · Hard = + rungs 6–7 · Expert = + rung 8 · Extreme = + rung 9. **Rung 10 (bifurcation) is a reject, never a tier.** Guess count 0 everywhere, copy says "solvable by logic alone" | Proposed (research-backed; rungs 5–7 ordering is G7) |
 | D7 | Difficulty label from the **classifier post-generation**; generator parameters (which clues to remove, in what order) only bias | Locked (research + Kakuro D8 precedent) |
@@ -187,7 +188,7 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 
 | Order | Slice | What becomes visible |
 |---|---|---|
-| 0 | V0 — Looks-only static board | An empty 6×6 with a four-sided clue gutter at `/skyscrapers` — no digits, no input |
+| 0 | V0 — Looks-only static board 🚧 | Empty 5×5 / 6×6 / 7×7 boards with a four-sided clue gutter at `/skyscrapers` — no digits, no input |
 | 1 | V1 — Types + baked fixtures | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
 | 2 | V2 — Board on the baked puzzle | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
 | 3 | V3 — PDF on the baked puzzle | A printable Skyscrapers page in the booklet |
@@ -198,7 +199,7 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
 | 9 | R1 — Daily rotation (5 types) | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
 
-### V0 — Looks-only static board ⏳
+### V0 — Looks-only static board 🚧
 
 Before any types or store work, a page that only **looks** like a Skyscrapers, so the four-sided
 gutter is designed once and everything after lands on something visible (D8).
@@ -215,6 +216,42 @@ gutter is designed once and everything after lands on something visible (D8).
 **Gate:** the owner is happy with the empty boards in both themes, including at 360 px (a 7×7
 with its gutter is 9 tracks — the same footprint as a 9×9 Sudoku, so no new phone-width risk at
 the recommended sizes; 9×9 + gutter = 11 tracks would be, and is why 9×9 is the alternative).
+
+**Step-log (2026-10-01 — branch `feature/skyscrapers-v0`, built the day the plan merged):**
+
+- *Process:* `src/app/skyscrapers/page.tsx` (Server Component, `robots: { index: false }`, not in
+  the sitemap, no hub card or header link) renders the three D4 sizes side by side, each labelled
+  with its role (5×5 mini · 6×6 standard · 7×7 large), wrapping on narrow screens.
+  `SkyscrapersBoard` (`components/SkyscrapersBoard/`) is a static Server Component taking only
+  `size`: `buildDisplayCells` expands N into the (N+2)×(N+2) picture (play / gutter-by-side /
+  corner), `gutterLabel` spells the clue's reading direction (D9), the frame is drawn on the play
+  cells that touch the gutter, corners are `role="presentation"` + `aria-hidden`. CSS module:
+  per-cell right/bottom rules inside the play area, 3px frame on its edge cells, transparent
+  gutter, a size container with `--cell-size` for V1's digits. Mirrored `.md` for both files; 6
+  tests (track count, cell classification by position, label wording, ARIA roles and counts at
+  6×6, hidden corners, the `--tracks` variable).
+- *Learnings:* (1) Kakuro's gap-as-line trick is wrong here — it would draw lines between gutter
+  cells, which must read as open space; lines belong on the play cells and the frame on the
+  play area's edge cells. (2) No dark-theme override is needed because there are no filled blocks
+  to re-tint — the one case that forced Kakuro's dark rule does not exist in Skyscrapers.
+  (3) The owner's "plan for recommended but still measure" turned D4 from *open* into *planned*:
+  the visual slices build 5/6/7, and E3 keeps the power to overturn any of them.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 6 findings, all fixed
+  before merge):* (1) **hidden corners made the ARIA grid non-rectangular** — the top and bottom
+  rows exposed N cells, the middle rows N+2; corners are now empty read-only gridcells and every
+  row/cell carries `aria-rowindex` / `aria-colindex` with counts on the grid (D9), asserted by a
+  test. (2) The frame placement — the one off-by-one-prone piece of render logic — had no test;
+  it now has one per corner, edge and interior cell. (3) `npm run build` is the project's
+  separate build gate (the PR template) and CI does not run it; run and recorded. (4) The
+  display helpers were in the component despite L2 — `src/features/engine/skyscrapers/skyscrapers-types.ts`
+  now exists with `skyscrapersTracks` / `buildDisplayCells`, their tests and mirrored doc.
+  (5) Dead CSS (per-side and corner `transparent` rules) deleted. (6) The test-only `data-size`
+  attribute and the grid-level `aria-readonly` (false in V2) dropped; `aria-readonly` stays on
+  the gutter and corner cells.
+- *Blockers:* none. **Gate pending:** the owner's visual verdict in both themes and at 360 px.
+- *Carried into V1:* `skyscrapers-types.ts` gains the puzzle shape, clue arrays and
+  `visibleCount`; `gutterLabel` gains the clue digit; the route gains real clue digits from the
+  fixtures.
 
 ### V1 — Types + baked fixtures ⏳
 

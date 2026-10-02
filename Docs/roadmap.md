@@ -652,7 +652,9 @@ revisited under the same rule later.
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/skyscrapers`), then one branch per slice off `main`
-> **Status:** 📋 Planned — plan written 2026-10-01, nothing built. Full plan:
+> **Status:** 🚧 In Progress — plan written 2026-10-01 ([#127](https://github.com/zfert99/Puzzle-Generator/pull/127)); build started
+> 2026-10-01 with **V0** (a looks-only board at the three planned sizes, `/skyscrapers`); D4 sizes
+> planned at the recommendation (5/6/7) and still measured by E3. Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;
@@ -855,7 +857,7 @@ its own engine module rather than an extension of `killer/`. Headlines from the 
 Slots into the daily as one more type-as-slot entry (3+3 → 4+4) with no daily-system surgery, which
 is what the [restructure](daily-redesign-plan.md) was built for.
 
-### Skyscrapers (Towers) 📋 Planned — now Phase 11 (plan written 2026-10-01)
+### Skyscrapers (Towers) 🚧 In Progress — now Phase 11 (plan written 2026-10-01, build started 2026-10-01)
 
 **Promoted to [Phase 11](#phase-11--skyscrapers-towers-) — plan:
 [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md), running log:
