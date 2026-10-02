@@ -149,6 +149,33 @@ so the comparison needs no month-length table.
 The bound comes from `firstDayOfNextMonth` (pure string arithmetic), **not** `Date.UTC` — see its
 docblock in `daily-row.md` for why that distinction matters at years 0–99 and 9999.
 
+## `getDailySlotRows(db, isoDate)` (October 2026)
+
+**Why:** backs `GET /api/daily/slots` — the picker's "which boards exist on this day, and what is
+each one?". It used to be an inline Drizzle query in the route (AGENTS.md §1: routes are
+controllers, and every sibling daily read already lived here) that selected the full `grid` jsonb
+per row only to read `.length` in JS — every cell of every board over the wire, per picker load, to
+compute one integer. The size is now computed in Postgres.
+
+```text
+SELECT difficulty AS key, variant, jsonb_array_length(grid) AS gridSize
+  FROM daily_puzzles WHERE date = isoDate          # unordered; the route sorts
+```
+
+`jsonb_array_length` of a square grid is its side length (the grid is stored as rows). The `sql`
+fragment interpolates only a column reference, never input, so it adds no injection surface; the
+date still binds as a parameter through `eq`.
+
+## `PAST_DAY_CACHE_CONTROL` (October 2026)
+
+`'public, s-maxage=86400, stale-while-revalidate=86400'` — the one `Cache-Control` value the public
+date-keyed daily reads (`/api/daily`, `/api/daily/slots`, `/api/daily/days`) attach when the
+requested date or month is **strictly before today in UTC**. A finished day's boards never change
+(the cron writes them at 00:07 UTC that day, first-write-wins), so the CDN may hold them a day and
+serve stale while revalidating for another. It lives here, beside the queries, because "a past day
+is immutable" is a fact about this data, not about any one route. **Never** used by
+`/api/leaderboard` (its rows embed the viewer's own `isMe`) or any `/api/me/*` route.
+
 ## Security note
 
 All access is parameterized through Drizzle (AGENTS.md §6). Daily puzzles are shared,

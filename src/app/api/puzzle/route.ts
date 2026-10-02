@@ -146,6 +146,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(puzzle, { status: 200 });
     }
 
+    // ---- Classic branch: only an explicit or defaulted `'classic'`. An unknown variant used to
+    // fall through to here and be served a classic Sudoku — a typo'd or newer client got the wrong
+    // puzzle type with a 200 instead of an error it could act on.
+    if (variant !== 'classic') {
+      return NextResponse.json(
+        { error: 'Unknown puzzle variant: must be classic, killer, calc, kakuro, or skyscrapers' },
+        { status: 400 },
+      );
+    }
+
     // ==========================================
     // VALIDATION
     // ==========================================

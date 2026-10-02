@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
+import { isSudokuBudgetError } from '@/features/engine/sudoku';
 import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF, generateSkyscrapersPDF } from '@/features/pdf-generation/services/pdf.service';
-import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
-import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
+import { generateKillerBatch, isKillerBudgetError } from '@/features/engine/killer/killer-sudoku';
+import { generateCalcBatch, isCalcBudgetError } from '@/features/engine/calc/calc-sudoku';
 import { generateKakuroBatch, isKakuroBudgetError } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
 import { SKYSCRAPERS_LADDER, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersLevelOffered, type SkyscrapersLevel } from '@/features/engine/skyscrapers/skyscrapers-types';
@@ -18,6 +19,9 @@ const MAX_PUZZLES = 50;
 // Extreme of any variant blows the `maxDuration = 60` budget and 504s. Cap the Extreme sub-count so
 // no single request can exceed the function duration. Applied to all three variant branches below.
 const MAX_EXTREME = 5;
+
+/** Fixed (never echoing the input) 400 message for a `variant` this route does not serve. */
+const UNKNOWN_VARIANT_ERROR = 'Unknown puzzle variant: must be classic, killer, calc, kakuro, or skyscrapers';
 
 /**
  * Kakuro request shape (plan slices V3 → E5). Sizes are Kakuro's own (D11), not the Sudoku
@@ -52,6 +56,37 @@ const skyscrapersRequestSchema = z.object({
   expert: skyscrapersCount,
   extreme: skyscrapersCount,
 });
+
+/**
+ * One wall-clock budget for a whole batch, every variant: 45 s inside `maxDuration = 60`, leaving
+ * room for the PDF render. Kakuro and Skyscrapers default to this inside their batch functions; the
+ * Killer, Keisan and classic batches default to *no* budget (their other callers — the daily cron,
+ * benchmarks — must not be cut short), so the route passes it explicitly to all five for one rule.
+ */
+const BATCH_BUDGET_MS = 45_000;
+
+/**
+ * The shared 503 for a batch that ran out of its budget — a request too large for this machine's
+ * time budget, not a fault, so it is logged at `warn` as `generation_budget` and answered with a
+ * `Retry-After` and how far it got. The count is parsed from the engine's own message
+ * (`… after N [of M] puzzles …`, the shape every batch uses); the total is the route's own.
+ */
+function budgetExceededResponse(
+  variant: string,
+  label: string,
+  error: Error,
+  total: number,
+  context: Record<string, unknown>,
+  startTime: number,
+): NextResponse {
+  logger.warn({ event: 'generation_budget', variant, ...context, durationMs: Math.round(performance.now() - startTime) }, error.message);
+  const done = error.message.match(/after (\d+)/)?.[1];
+  const progress = done === undefined ? 'none' : `${done} of ${total}`;
+  return NextResponse.json(
+    { error: `That ${label} request is too large to finish in time (${progress} generated). Please ask for fewer puzzles per PDF.` },
+    { status: 503, headers: { 'Retry-After': '5' } },
+  );
+}
 
 /** A downloadable-PDF response with the given filename. */
 function pdfResponse(pdf: Buffer, filename: string): NextResponse {
@@ -132,7 +167,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
       }
 
-      const puzzles = generateKillerBatch({ easy, medium, hard, expert, extreme }, { gridSize: killerSize });
+      let puzzles;
+      try {
+        puzzles = generateKillerBatch({ easy, medium, hard, expert, extreme }, { gridSize: killerSize, timeBudgetMs: BATCH_BUDGET_MS });
+      } catch (error) {
+        if (!isKillerBudgetError(error)) throw error;
+        return budgetExceededResponse('killer', 'Killer', error, total, { counts: { easy, medium, hard, expert, extreme }, gridSize: killerSize }, startTime);
+      }
       const pdfBuffer = await generateKillerPDF(puzzles);
       logger.info(
         { event: 'generation_success', variant: 'killer', counts: { easy, medium, hard, expert, extreme }, durationMs: Math.round(performance.now() - startTime) },
@@ -167,7 +208,13 @@ export async function POST(req: NextRequest) {
       }
 
       const noOp = body?.noOp === true; // Mystery mode: hide operators
-      const puzzles = generateCalcBatch({ easy, medium, hard, expert, extreme }, { gridSize: calcSize, noOp });
+      let puzzles;
+      try {
+        puzzles = generateCalcBatch({ easy, medium, hard, expert, extreme }, { gridSize: calcSize, noOp, timeBudgetMs: BATCH_BUDGET_MS });
+      } catch (error) {
+        if (!isCalcBudgetError(error)) throw error;
+        return budgetExceededResponse('calc', 'Keisan', error, total, { counts: { easy, medium, hard, expert, extreme }, gridSize: calcSize, noOp }, startTime);
+      }
       const pdfBuffer = await generateCalcPDF(puzzles);
       logger.info(
         { event: 'generation_success', variant: 'calc', counts: { easy, medium, hard, expert, extreme }, gridSize: calcSize, noOp, durationMs: Math.round(performance.now() - startTime) },
@@ -194,19 +241,15 @@ export async function POST(req: NextRequest) {
       if (counts.extreme > MAX_EXTREME) {
         return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme Kakuro puzzles per PDF request` }, { status: 400 });
       }
-      // One budget for the batch (default 45 s inside `maxDuration = 60`): a request that cannot
-      // finish is answered with a 503 that says so — it is a request too large for the budget on
-      // this machine, not a fault — instead of timing out with the PDF half-built.
+      // One budget for the batch (BATCH_BUDGET_MS): a request that cannot finish is answered with
+      // a 503 that says so — a request too large for the budget on this machine, not a fault —
+      // instead of timing out with the PDF half-built.
       let puzzles;
       try {
-        puzzles = generateKakuroBatch(counts, { gridSize: kakuroSize });
+        puzzles = generateKakuroBatch(counts, { gridSize: kakuroSize, timeBudgetMs: BATCH_BUDGET_MS });
       } catch (error) {
         if (!isKakuroBudgetError(error)) throw error;
-        logger.warn({ event: 'generation_budget', variant: 'kakuro', counts, gridSize: kakuroSize, durationMs: Math.round(performance.now() - startTime) }, error.message);
-        return NextResponse.json(
-          { error: `That Kakuro request is too large to finish in time (${error.message.match(/after (\d+ of \d+)/)?.[1] ?? 'none'} generated). Please ask for fewer puzzles per PDF.` },
-          { status: 503, headers: { 'Retry-After': '5' } },
-        );
+        return budgetExceededResponse('kakuro', 'Kakuro', error, kakuroTotal, { counts, gridSize: kakuroSize }, startTime);
       }
       const pdfBuffer = await generateKakuroPDF(puzzles);
       logger.info(
@@ -238,18 +281,13 @@ export async function POST(req: NextRequest) {
       if (notOffered) {
         return NextResponse.json({ error: `${skySize}×${skySize} Skyscrapers offers ${SKYSCRAPERS_TIERS_BY_SIZE[skySize].join(', ')} — not ${notOffered}` }, { status: 400 });
       }
-      // One budget for the batch (default 45 s inside `maxDuration = 60`), the Kakuro contract: a
-      // request that cannot finish is a 503 that says so, not a PDF half-built at the timeout.
+      // One budget for the batch (BATCH_BUDGET_MS), the shared 503 contract.
       let puzzles;
       try {
-        puzzles = generateSkyscrapersBatch(counts, { gridSize: skySize });
+        puzzles = generateSkyscrapersBatch(counts, { gridSize: skySize, timeBudgetMs: BATCH_BUDGET_MS });
       } catch (error) {
         if (!isSkyscrapersBudgetError(error)) throw error;
-        logger.warn({ event: 'generation_budget', variant: 'skyscrapers', counts, gridSize: skySize, durationMs: Math.round(performance.now() - startTime) }, error.message);
-        return NextResponse.json(
-          { error: `That Skyscrapers request is too large to finish in time (${error.message.match(/after (\d+ of \d+)/)?.[1] ?? 'none'} generated). Please ask for fewer puzzles per PDF.` },
-          { status: 503, headers: { 'Retry-After': '5' } },
-        );
+        return budgetExceededResponse('skyscrapers', 'Skyscrapers', error, skyTotal, { counts, gridSize: skySize }, startTime);
       }
       const pdfBuffer = await generateSkyscrapersPDF(puzzles);
       logger.info(
@@ -257,6 +295,13 @@ export async function POST(req: NextRequest) {
         'Successfully generated Skyscrapers puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Skyscrapers.pdf');
+    }
+
+    // ---- Classic branch. `variant` absent (the PuzzleForm's classic request) or `'classic'` only:
+    // anything else is a typo or a client for a type this server doesn't know, and silently
+    // serving a classic Sudoku PDF in its place would hide that.
+    if (body?.variant !== undefined && body.variant !== 'classic') {
+      return NextResponse.json({ error: UNKNOWN_VARIANT_ERROR }, { status: 400 });
     }
 
     // Extract puzzle counts, defaulting to 0 if not provided
@@ -306,8 +351,15 @@ export async function POST(req: NextRequest) {
     // PUZZLE GENERATION
     // ==========================================
     
-    // Delegate the synchronous puzzle generation loops to the engine service
-    const puzzles = generatePuzzleBatch({ easy, medium, hard, expert, extreme, gridSize });
+    // Delegate the synchronous puzzle generation loops to the engine service, under the same
+    // batch budget and 503 contract as every other variant.
+    let puzzles;
+    try {
+      puzzles = generatePuzzleBatch({ easy, medium, hard, expert, extreme, gridSize }, { timeBudgetMs: BATCH_BUDGET_MS });
+    } catch (error) {
+      if (!isSudokuBudgetError(error)) throw error;
+      return budgetExceededResponse('classic', 'Sudoku', error, easy + medium + hard + expert + extreme, { counts: { easy, medium, hard, expert, extreme }, gridSize }, startTime);
+    }
 
 
     // ==========================================

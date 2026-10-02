@@ -92,6 +92,17 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Site-wide pass, slice 2 of 4: server/API (PII, atomic limiters, budgets)
+
+Branch `fix/api-leaderboard-pii-rate-limit-budgets` on `6ac8020` (slice 1 merged as #140). Files:
+`src/app/api/**`, `leaderboard.service.*`, `dailies.service.*`, `rate-limit.*`,
+`rate-limit-storage.*`, `auth-schema.md` — the S1–S7 items of the pass's record. Gate on this
+cut: lint · tsc · `npx vitest run` **97 files / 974 tests** · markdownlint, all green. Security
+self-review (authorize → validate → mutate, fixed-text 400/503 bodies, parameterized SQL, public
+caching only on anonymous past-date 200s): no findings. Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-02 — Site-wide optimization + QA pass (built, not yet landed)
 
 Branch `chore/site-wide-optimization-qa` on `6db9c70`. The full record — findings by area,

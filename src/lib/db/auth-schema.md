@@ -31,7 +31,7 @@ passkey      id(text PK), userId->user(cascade), publicKey, credentialID, counte
 **Why:** A public leaderboard handle so a full account name (e.g. a Google real name) isn't
 shown. Nullable until the user picks one; unique when set. It's a better-auth
 *additionalField* (see [auth.ts](../../features/auth/auth.md)), settable via `updateUser`;
-the leaderboard coalesces `username → name`.
+the leaderboard shows `username`, else the neutral `'Player'` — never `name`, which for an email sign-up is the email's local part and for Google the legal name (October 2026); Puzzle Bot is labelled from `BOT_NAME` by id.
 
 ## Note
 

@@ -1,4 +1,4 @@
-import { and, eq, gte, lt, min } from 'drizzle-orm';
+import { and, eq, gte, lt, min, sql } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { dailyPuzzles, solveAttempts, type DailyPuzzle } from '@/lib/db/schema';
 import {
@@ -319,6 +319,42 @@ export async function getArchiveMonth(db: Database, month: string): Promise<Arch
     .orderBy(dailyPuzzles.date);
 
   return { days: rows.map((r) => r.date), first: firstRow?.first ?? null };
+}
+
+/**
+ * `Cache-Control` for a public daily read whose date (or month) is **strictly before today, UTC**.
+ * Such a day is over: its boards were generated at 00:07 UTC that day and never change after, so
+ * the CDN may hold the response for a day and serve it stale while revalidating for another. Only
+ * the date-keyed public reads use it (`/api/daily`, `/api/daily/slots`, `/api/daily/days`) — never
+ * `/api/leaderboard` (its rows embed the viewer's own `isMe`) nor any `/api/me/*` route, whose
+ * responses are per-session and must not be shared through a public cache.
+ */
+export const PAST_DAY_CACHE_CONTROL = 'public, s-maxage=86400, stale-while-revalidate=86400';
+
+/** One board of a day, as the `/daily` picker lists it — metadata only, never grid contents. */
+export interface DailySlotRow {
+  /** The stored slot key (`daily_puzzles.difficulty`) — a rung, a `mini-*` tier, or a retired key. */
+  key: string;
+  variant: DailyPuzzle['variant'];
+  /** Side length of the stored grid (boards are square, so its row count). */
+  gridSize: number;
+}
+
+/**
+ * The boards stored for one UTC date, for `/api/daily/slots`. The grid size is computed in
+ * Postgres with `jsonb_array_length(grid)` rather than by selecting the whole `grid` jsonb per row
+ * only to read `.length` in JS — the picker needs one integer, not up to 81 cells × 11 boards
+ * shipped over the wire on every page load. Unordered: presentation order is the route's concern.
+ */
+export async function getDailySlotRows(db: Database, isoDate: string): Promise<DailySlotRow[]> {
+  return db
+    .select({
+      key: dailyPuzzles.difficulty,
+      variant: dailyPuzzles.variant,
+      gridSize: sql<number>`jsonb_array_length(${dailyPuzzles.grid})`.mapWith(Number),
+    })
+    .from(dailyPuzzles)
+    .where(eq(dailyPuzzles.date, isoDate));
 }
 
 /**

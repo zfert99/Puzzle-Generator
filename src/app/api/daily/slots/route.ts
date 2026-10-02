@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { dailyPuzzles } from '@/lib/db/schema';
+import { getDailySlotRows, PAST_DAY_CACHE_CONTROL } from '@/features/dailies/dailies.service';
 import { toUtcDateString, difficultyForKey, isIsoDate, sectionForKey, STANDARD_RUNGS } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
@@ -45,27 +44,30 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Cannot fetch a future daily' }, { status: 400 });
     }
 
-    const rows = await db
-      .select({ key: dailyPuzzles.difficulty, variant: dailyPuzzles.variant, grid: dailyPuzzles.grid })
-      .from(dailyPuzzles)
-      .where(eq(dailyPuzzles.date, isoDate));
+    const rows = await getDailySlotRows(db, isoDate);
 
     const slots = rows
       .map((r) => ({
         key: r.key,
         variant: r.variant,
         difficulty: difficultyForKey(r.key),
-        gridSize: r.grid.length,
+        gridSize: r.gridSize,
         // Section from the KEY for active boards, the grid size only for retired keys
         // (`sectionForKey`): a bare rung is standard even at 6×6 — Skyscrapers' standard is the 6×6
         // (D5) — while the retired minis (`mini4-*`, `killer6-*`, `calc4-*`) carry no `mini-` prefix
         // and are told apart by size, as before. Filing a legacy mini under Standard would render
         // duplicate ambiguous labels ("Medium · Classic" three times over).
-        section: sectionForKey(r.key, r.grid.length),
+        section: sectionForKey(r.key, r.gridSize),
       }))
       .sort((a, b) => sortIndex(a.key) - sortIndex(b.key));
 
-    return NextResponse.json({ date: isoDate, slots }, { status: 200 });
+    // A finished day's board list never changes, so it may sit in the CDN. Not when it is EMPTY: a
+    // past day with no rows is a cron miss awaiting a backfill, and caching it would hide the fix.
+    const cacheable = isoDate < todayIso && slots.length > 0;
+    return NextResponse.json(
+      { date: isoDate, slots },
+      { status: 200, headers: cacheable ? { 'Cache-Control': PAST_DAY_CACHE_CONTROL } : undefined },
+    );
   } catch (error: unknown) {
     const err = error as Error;
     logger.error(

@@ -9,7 +9,7 @@ past date serves that day's puzzle for the **archive** (unranked replay). Future
 **Why:** The route only validates input and delegates to `getDailyPuzzle` in the dailies
 service (AGENTS.md §1 — routes are controllers, DB access lives in services). It computes
 "today" from the server clock in UTC and forces dynamic rendering so a day-stale response
-is never cached.
+is never cached — *today's* response, that is; see "Public caching of past dates" below.
 
 ```text
 Read `difficulty` + optional `date` from the query string.
@@ -17,7 +17,8 @@ If difficulty is not a daily difficulty -> 400.
 isoDate = date ?? today's UTC date; if not a real date (isIsoDate) -> 400; if in the future -> 400.
 Ask the service for that day's puzzle.
 If none exists yet (cron hasn't run / no puzzle for that day) -> 404 with a clear message.
-Otherwise -> 200 { date, difficulty, gridSize: 9, grid, solution, clueCount }.
+Otherwise -> 200 { date, difficulty, gridSize: 9, grid, solution, clueCount },
+  with Cache-Control: PAST_DAY_CACHE_CONTROL only when isoDate < today (UTC).
 On any thrown error -> log server-side, return a generic 500 (no stack on the wire).
 ```
 
@@ -69,3 +70,23 @@ nor `runs` appears on such a response — the `variant` tag, read from the colum
 the three shapes a row takes (Killer/Keisan `cages`, Kakuro `runs`, Skyscrapers `clues`) in one
 `switch` (`typedPayload`), so an unhandled variant is visible as a missing case rather than the
 last arm of a ternary chain (the R1 review).
+
+## Public caching of past dates (October 2026)
+
+A day strictly before today (UTC) is over — its boards were generated at 00:07 UTC that day and
+never change — so a `200` for such a date carries
+`Cache-Control: public, s-maxage=86400, stale-while-revalidate=86400` (`PAST_DAY_CACHE_CONTROL`, in
+[`dailies.service.md`](../../../features/dailies/dailies.service.md)), letting Vercel's CDN serve
+archive replays without a DB hit. **Today's** board (explicit `date` or defaulted) and every
+`400`/`404`/`500` carry no public header: today is only "today" until midnight UTC, and a `404` may be
+a cron miss that a backfill is about to fix. The response holds `solution`, but it is the same for
+every viewer and already served to anyone who asks, so sharing it through a CDN widens nothing.
+
+**Why `force-dynamic` stays.** It governs Next's own render/data cache, not the CDN: every
+request still runs the handler and recomputes "today". The `Cache-Control` header is a separate,
+per-response instruction to Vercel's edge, so it can be set only on responses that are safe to share
+— which `force-dynamic` alone could never express. `/api/leaderboard` and every `/api/me/*` route
+never get it: their bodies vary by session (`isMe`, the caller's own rows).
+
+Covered in `route.test.ts` with the clock pinned: past → public header; today (both spellings) and
+a past-date `404` → none.

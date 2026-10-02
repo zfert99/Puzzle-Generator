@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 // Mocked at the boundary: `@/lib/db/client` (its real module imports `server-only`, which throws
@@ -10,6 +10,7 @@ let month: { days: string[]; first: string | null } = { days: [], first: null };
 const getArchiveMonth = vi.fn(async () => month);
 vi.mock('@/features/dailies/dailies.service', () => ({
   getArchiveMonth: (...args: unknown[]) => getArchiveMonth(...(args as [])),
+  PAST_DAY_CACHE_CONTROL: 'public, s-maxage=86400, stale-while-revalidate=86400',
 }));
 
 import { GET } from './route';
@@ -69,4 +70,25 @@ describe('GET /api/daily/days', () => {
       expect(getArchiveMonth).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('GET /api/daily/days — public caching only for finished months', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-02T12:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('marks a month strictly before the current UTC month publicly cacheable', async () => {
+    const res = await GET(buildRequest('?month=2026-09'));
+    expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=86400, stale-while-revalidate=86400');
+  });
+
+  it('does not publicly cache the current month, explicit or defaulted — it still gains days', async () => {
+    for (const search of ['?month=2026-10', '']) {
+      const res = await GET(buildRequest(search));
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Cache-Control') ?? '').not.toContain('public');
+    }
+  });
 });
