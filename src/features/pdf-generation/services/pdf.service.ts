@@ -6,7 +6,7 @@ import type { CalcPuzzle, CalcOperator } from '@/features/engine/calc/calc-types
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
 import type { SkyscrapersPuzzle } from '@/features/engine/skyscrapers/skyscrapers-types';
-import { clueAt, skyscrapersTracks, GUTTER_SIDES } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { buildDisplayCells, clueAt } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { buildClues, kakuroTracks, whiteMaskOf } from '@/features/engine/kakuro/kakuro-layout';
 
 /**
@@ -420,7 +420,10 @@ export function drawSkyscrapersGrid(
   showSolution: boolean,
 ): void {
   const size = puzzle.gridSize;
-  const tracks = skyscrapersTracks(size);
+  // The engine's display picture — the same one the board draws — so paper and screen cannot
+  // disagree on where a clue sits (log L2: the helpers live in the engine for this consumer).
+  const cells = buildDisplayCells(size);
+  const tracks = cells.length;
   const cell = gridDrawSize / tracks;
   // The play area starts one cell in on each axis.
   const playX = startX + cell;
@@ -438,15 +441,13 @@ export function drawSkyscrapersGrid(
   // Clue digits: half the solved-digit size, one tone lighter, centred on their row/column in
   // the gutter cell (which keeps them ~0.3 cell clear of the frame).
   doc.fillColor(SKYSCRAPERS_CLUE_FILL).fontSize(cell * 0.3);
-  for (const side of GUTTER_SIDES) {
-    for (let i = 0; i < size; i++) {
-      const clue = clueAt(puzzle.clues, side, i);
-      if (clue === 0) continue;
-      const col = side === 'left' ? 0 : side === 'right' ? tracks - 1 : i + 1;
-      const row = side === 'top' ? 0 : side === 'bottom' ? tracks - 1 : i + 1;
-      drawCenteredDigit(doc, String(clue), startX + col * cell, startY + row * cell, cell);
-    }
-  }
+  cells.forEach((row, r) =>
+    row.forEach((display, c) => {
+      if (display.kind !== 'gutter') return;
+      const clue = clueAt(puzzle.clues, display.side, display.index);
+      if (clue !== 0) drawCenteredDigit(doc, String(clue), startX + c * cell, startY + r * cell, cell);
+    })
+  );
 
   const digits = showSolution ? puzzle.solution : puzzle.grid;
   doc.fillColor('black').fontSize(cell * 0.6);
@@ -488,7 +489,10 @@ export async function generateSkyscrapersPDF(puzzles: SkyscrapersPuzzle[]): Prom
 
     const drawPage = (p: SkyscrapersPuzzle, i: number, answer: boolean) => {
       doc.addPage();
-      const title = `Skyscrapers #${i + 1} (${p.gridSize}×${p.gridSize}, ${p.difficulty})${answer ? ' — Answer' : ''}`;
+      // No grade appears that the classifier did not give (D7): an 'unrated' fixture prints as
+      // hand-made rather than carrying an engine label onto paper.
+      const grade = p.difficulty === 'unrated' ? 'hand-made' : p.difficulty;
+      const title = `Skyscrapers #${i + 1} (${p.gridSize}×${p.gridSize}, ${grade})${answer ? ' — Answer' : ''}`;
       doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
       doc.moveDown(1);
       addPageNavigation(doc, answer ? answersOutline : puzzlesOutline, i, title, answer);

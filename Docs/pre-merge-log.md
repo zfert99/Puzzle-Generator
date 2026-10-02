@@ -107,12 +107,18 @@ tests for each; mirrored docs + the samples index. **~230 LOC of source.**
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean |
 | `npx tsc --noEmit` · `npm run build` | clean · clean |
-| `npx vitest run` | **86 files / 829 tests green** (9 new); no entry from the Known flaky tests table fired |
+| `npx vitest run` | **86 files / 832 tests green** (12 new); no entry from the Known flaky tests table fired |
 | Benchmarks | n/a — no solver code |
 
 ### Findings
 
-- None in review. One rule changed from the spec: with one ungraded fixture per size, the honest
+- **`/code-review high` (owner-run, on the branch): 5 findings, all fixed in-PR.** The renderer
+  re-derived the gutter geometry instead of iterating the engine's `buildDisplayCells` (the helper
+  L2 put there for exactly this consumer — now L9); the one-puzzle rule was enforced in three
+  places (the schema's per-level `max(1)` dropped); the route's happy path is parametrised over
+  5/6/7 and a content-stream test counts the drawn digits; the printed title says *hand-made* for
+  an `'unrated'` fixture; the five-type toggle rows are five-column grids.
+- One rule changed from the spec: with one ungraded fixture per size, the honest
   print contract is **one puzzle per request** (any level), not Kakuro V3's one-per-level — the
   route refuses more with the reason and the form offers no counts. Two lines E5 deletes.
 - The renderer needed no display-coordinate code of its own: it reads clues through `clueAt`
@@ -146,7 +152,16 @@ plan's V3 spec line is amended in the step-log, not rewritten.
 
 - `/security-review`: **not run** — the route branch is Zod-validated input → a static fixture →
   a PDF; no auth, data or ownership surface.
-- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+- `/code-review`: **run by the owner** (`/code-review high`, in-session) — 5 findings, all fixed
+  before merge (above).
+
+### Lesson
+
+- **Asserting on a PDF's content needs compression off and PDFKit's real operators.** A page
+  rendered with `compress: false` exposes the content stream; PDFKit writes each single-glyph
+  `text()` as `[<hh> 0] TJ` (hex glyph code, embedded-font subset), not `(…) Tj` — the first
+  draft of the content test matched nothing and would have passed vacuously on `toBe(0)` had the
+  expected count been 0.
 
 ## 2026-10-02 — Skyscrapers V2: playable at `/play?variant=skyscrapers` on the baked fixtures
 

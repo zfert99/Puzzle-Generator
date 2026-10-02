@@ -173,8 +173,8 @@ describe('Sad Paths', () => {
 
   // ── Skyscrapers (V3): one baked, ungraded fixture per size ─────────────────
 
-  test('Skyscrapers: one puzzle at 6×6 returns a PDF named Skyscrapers.pdf', async () => {
-    const res = await POST(buildRequest({ variant: 'skyscrapers', gridSize: 6, easy: 1 }));
+  test.each([5, 6, 7])('Skyscrapers: one puzzle at %i×%i returns a 3-page PDF named Skyscrapers.pdf', async (size) => {
+    const res = await POST(buildRequest({ variant: 'skyscrapers', gridSize: size, easy: 1 }));
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="Skyscrapers.pdf"');
     const text = Buffer.from(await res.arrayBuffer()).toString('latin1');

@@ -464,7 +464,18 @@ one answer page); PDF service tests cover the renderer; route tests cover the sc
 - *Learnings:* a renderer that reads clues through the same engine helper the board uses
   (`clueAt`) needed no display-coordinate code of its own — L2's reason, confirmed on the
   second consumer.
-- *Blockers:* none. **Gate pending:** the owner's look at the sample booklet.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 5 findings, all fixed
+  before merge):* (1) the renderer re-derived the gutter geometry with its own side→row/column
+  ternaries — it now iterates the engine's `buildDisplayCells`, the helper L2 put there for this
+  consumer. (2) The one-puzzle rule was enforced three times (schema `max(1)`, route total,
+  selector) — the schema's per-level cap is gone; the route owns the wording, the selector the
+  invariant. (3) The route's happy path is now parametrised over 5/6/7, and a content-stream test
+  (compression off, counting PDFKit's `[<hh> 0] TJ` shows) asserts every present clue is drawn and
+  the heights only on the answer page. (4) The printed title says **hand-made** for an `'unrated'`
+  fixture instead of leaking the engine label (D7). (5) The five-type toggle rows (print form and
+  play menu) are five-column grids — a wrapping flex row stranded the fifth label on its own line.
+- *Blockers:* none. **Gate pending:** the owner's look at the sample booklet (regenerated after
+  the review — the title wording changed).
 
 ### E1 — Visibility table + exact solver + uniqueness ⏳
 

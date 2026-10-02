@@ -40,10 +40,10 @@ const kakuroRequestSchema = z.object({
  * Skyscrapers request shape (plan slice V3). Sizes are Skyscrapers' own (D4: 5 / 6 / 7); counts
  * are non-negative integers. Until the generator lands (E5) there is one hand-made, ungraded
  * fixture per size, so the branch below accepts exactly one puzzle per request — whatever level
- * the count names — and says why otherwise. The `max(1)` per level is the V3 cap to delete when
- * `generateSkyscrapersBatch` exists (the Kakuro V3 pattern).
+ * the count names — and says why otherwise; that total check (with the selector's own guard
+ * behind it) is the V3 cap to delete when `generateSkyscrapersBatch` exists.
  */
-const skyscrapersCount = z.number().int().min(0, 'Skyscrapers counts must be non-negative integers').max(1, 'One hand-made Skyscrapers per size until the generator lands — ask for one puzzle').default(0);
+const skyscrapersCount = z.number().int().min(0, 'Skyscrapers counts must be non-negative integers').default(0);
 const skyscrapersRequestSchema = z.object({
   variant: z.literal('skyscrapers'),
   gridSize: z.union([z.literal(5), z.literal(6), z.literal(7)], { error: 'Skyscrapers grid size must be 5, 6, or 7' }).default(6),

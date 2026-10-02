@@ -135,7 +135,9 @@ gets its own renderer. `drawSkyscrapersGrid(doc, puzzle, startX, startY, gridDra
 showSolution)` draws the engine's **(N+2)×(N+2) display grid**: the N×N play area one cell in on
 each axis, with the clue digits floating in a one-cell gutter on all four sides. The picture
 follows the print conventions measured in the gap-findings (G9: Krazydad and the championship
-booklets) and matches the interactive board, because both read the clues through `clueAt`:
+booklets) and matches the interactive board, because both iterate the engine's
+`buildDisplayCells` and read the clues through `clueAt` — the renderer has no gutter geometry of
+its own (the V3 review's reuse finding; log L2):
 
 ```text
 light rules between the play cells; a heavy frame around the play area (5× the rule)
@@ -147,7 +149,8 @@ answer page only → the solution digit centred in every play cell
 The gutter takes two of the tracks, so the booklet's `gridDrawSize` is 420 to keep the play area
 close to a Sudoku's. `generateSkyscrapersPDF` builds the booklet like the other three (title
 "Skyscrapers", a Towers subtitle, one page per puzzle, then one answer page each, same bookmarks
-and puzzle↔answer links). Until the generator lands (E5) the booklet renders the baked fixtures —
+and puzzle↔answer links). An `'unrated'` fixture prints as **hand-made** in the page title — no
+grade appears on paper that the classifier did not give (D7). Until the generator lands (E5) the booklet renders the baked fixtures —
 one per size, `'unrated'` — and `preview-skyscrapers.ts` writes `Docs/samples/skyscrapers-sample.pdf`
 from them.
 
