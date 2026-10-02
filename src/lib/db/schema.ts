@@ -32,6 +32,13 @@ import type { CalcOperator } from '@/features/engine/calc/calc-types';
 /** A 9x9 grid stored as JSON — rows of numbers, 0 for an empty cell. */
 export type Grid = number[][];
 
+/**
+ * The puzzle types a daily row can hold — the one place the union is written. `daily-row.ts`
+ * re-exports it as `Variant` (it imports from here; the reverse would be a cycle), so the
+ * registry and the column can never disagree (a review finding on R1: the union was typed twice).
+ */
+export type DailyVariant = 'classic' | 'killer' | 'calc' | 'kakuro';
+
 /** A Killer cage as stored in `daily_puzzles.cages` — mirrors the engine's `Cage` shape. */
 export interface StoredKillerCage {
   id: number;
@@ -88,7 +95,7 @@ export const dailyPuzzles = pgTable(
      * Puzzle TYPE, stored so readers no longer infer it from the `difficulty` key (the key's type
      * encoding is being retired). Backfilled from historical keys by migration `0004`.
      */
-    variant: text('variant').$type<'classic' | 'killer' | 'calc' | 'kakuro'>().notNull(),
+    variant: text('variant').$type<DailyVariant>().notNull(),
     /** Unsolved puzzle sent to the client. */
     grid: jsonb('grid').$type<Grid>().notNull(),
     /** Solved grid — SERVER-ONLY. Never returned for an unsolved daily (anti-cheat). */

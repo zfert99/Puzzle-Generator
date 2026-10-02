@@ -84,9 +84,18 @@ Minis (miniConfigurations):
   enumerate every ordered pick of 3 of the N types into the easy/medium/hard seats,
     easy/medium at the seated type's smallest mini size, hard at each size the type ships,
   keep only assignments where EVERY slot passes isEligible,
-  pick one uniformly at random.
+  group by seating; pick a seating uniformly, then a hard size uniformly within it.
   (Restricted to the Sudoku family this is the old PERMS_3 x {4, 6} set — 6 configurations —
    and the roller test asserts it.)
+
+Two draws rather than one uniform pick over configurations (a review finding on R1): a
+configuration is a seating × a hard size, so a type with two mini sizes would be twice as likely
+in the hard seat as a one-size type. Measured over 2 000 seeds the hard seat now goes classic
+24% / killer 33% / keisan 20% / kakuro 23% — Kakuro even with the rest; Killer's lead is the
+older skew (it cannot sit in the medium seat at 4×4, so its valid seatings lean easy/hard), and
+the roller test bounds every type's share to 15–35%. The `Variant` union itself lives with the
+column (`schema.ts` `DailyVariant`) and is re-exported here, so the registry and the column can
+never list different types.
 
 Return the 6 planned slots (key, section, variant, gridSize, difficulty).
 ```

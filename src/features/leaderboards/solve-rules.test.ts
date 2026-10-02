@@ -70,6 +70,17 @@ describe('maxPlausibleMistakes', () => {
       Array.from({ length: size }, (_, c) => (r * size + c < blanks ? 0 : 1)),
     );
 
+  it('does not count Kakuro black cells — a 0 in the solution too — as cells to fill (R1 review)', () => {
+    // A 9×9 "Kakuro": 50 white cells (0 in the puzzle, a digit in the solution) and 31 black
+    // (0 in both). Without the solution it looks like a caged 9×9 (648); with it, 50 × 8.
+    const puzzle = board(9, 81);
+    const solution = Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => (r * 9 + c < 50 ? 5 : 0)));
+    expect(maxPlausibleMistakes(puzzle, solution)).toBe(400);
+    expect(maxPlausibleMistakes(puzzle)).toBe(648);
+    // A Sudoku-family board is unchanged by the solution: no cell is 0 in both grids.
+    expect(maxPlausibleMistakes(board(9, 40), board(9, 0))).toBe(320);
+  });
+
   it('counts every empty cell against every digit that is not its answer', () => {
     expect(maxPlausibleMistakes(board(9, 40))).toBe(320); // classic 9×9, 41 givens
     expect(maxPlausibleMistakes(board(6, 30))).toBe(150); // 6×6 mini, above the floor

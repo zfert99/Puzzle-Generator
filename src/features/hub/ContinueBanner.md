@@ -17,11 +17,14 @@ owning surface's menu, where the same Continue button resumes play. Keeping the 
 on the surface avoids threading a "resume now" signal through the URL (and the Suspense/render
 caveats that `useSearchParams` would add), at the cost of one extra click from the hub.
 
-## Killer-aware label
+## The label names the type (R1 review)
 
-A saved free-play Killer game reads "Killer · medium" instead of the misleading
-"9×9 · medium" (`SavedGame.variant`); a parked Killer daily reads "Daily · killer" — or
-"Practice · killer" when it is not today's board, see below.
+A saved board reads **"Hard 6×6 · Kakuro"** / **"Medium · Killer"** — the same difficulty · size ·
+type composition the daily picker uses (`slotLabel`, from the saved board's own `variant` and
+`gridSize`), prefixed "Daily ·" or "Practice ·" for a daily-shaped board. The first version named
+only Killer and labelled every other type by size alone ("6×6 · hard"), which four types made
+ambiguous — a parked Kakuro mini read like a Sudoku. An unregistered variant (none today) falls
+back to the bare key label, visible rather than invented.
 
 ## "Daily" vs "Practice" — `mode` alone cannot tell them apart
 

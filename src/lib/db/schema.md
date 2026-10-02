@@ -25,7 +25,8 @@ duplicating.
 id          uuid, generated
 date        the UTC calendar day this puzzle belongs to
 difficulty  the daily-board KEY (idempotency handle + API/leaderboard identity)
-variant     puzzle TYPE: classic | killer | calc (stored, not inferred from the key)
+variant     puzzle TYPE: DailyVariant = classic | killer | calc | kakuro (stored, not inferred
+            from the key; the union is defined HERE and re-exported by daily-row.ts as Variant)
 grid        the unsolved puzzle (JSON) sent to clients
 solution    the solved grid (JSON) — SERVER-ONLY, never sent for an unsolved daily
 clue_count  denormalized count of givens (cage count for Killer/Keisan)

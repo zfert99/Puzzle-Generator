@@ -126,7 +126,7 @@ export async function recordSolve(
   // column can hold. `clampToColumn` alone kept int4 safe while still storing counts no board can
   // generate (a probe banked 100 000 on a 4×4, which the public leaderboard then served). Clamped,
   // never rejected: a cosmetic stat must not fail a real solve — see `maxPlausibleMistakes`.
-  const boundedMistakes = Math.min(clampToColumn(mistakes), maxPlausibleMistakes(puzzle.grid));
+  const boundedMistakes = Math.min(clampToColumn(mistakes), maxPlausibleMistakes(puzzle.grid, puzzle.solution));
 
   // `completed = false` in the WHERE is what actually enforces one-ranked-attempt — the read
   // above is only a cheap early rejection. Those are two separate round-trips with no

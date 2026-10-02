@@ -68,6 +68,10 @@ settings this is belt-and-braces: the real failure mode is slowness, not throwin
 SIZE.** Size is the bigger difficulty lever: an early implementation iterated variant-outer over
 `[4, 6]` and so replaced a failed 6×6 `mini-hard` with a **4×4** — the same leaderboard key handed a
 far easier board (a 5 s plausibility floor against 12 s). It now tries the rolled size first.
+The candidate sizes come from `SIZES` (every size the section ships across the registered types,
+rolled size first) rather than the literals `[9]` / `[4, 6]` the first version carried beside the
+new per-type table — a review finding on R1: a type with a different standard or mini size joins
+the pool by registering, not by editing this function.
 
 There is deliberately **no** "prefer a type this section doesn't have yet" rule. The plan originally
 called for one, but it cannot fire: `rollDailyAssignment` gives each section a *permutation* of the
