@@ -46,3 +46,8 @@ guard, and nothing outside Kakuro can be handed a 7 by accident.
 Skyscrapers' planned sizes are 5 / 6 / 7 (plan D4), so `SelectableSize` and the option list gained
 5. As with 7, it is offered only when a caller lists it — nothing outside Skyscrapers can be
 handed a 5.
+
+## Selected-option text token (October 2026)
+
+The selected size button's text is `text-on-butterscotch`, not `text-ink`: `--ink` turns cream in the dark theme, about 1.5:1 against the butterscotch fill; butterscotch is
+mid-light in both themes, so the text on it stays dark ink in both (`globals.css`).

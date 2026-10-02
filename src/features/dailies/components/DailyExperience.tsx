@@ -404,12 +404,17 @@ export default function DailyExperience() {
                     onClick={() => setDifficulty(s.key)}
                     className={`px-3 py-2 rounded-lg text-sm transition-all ${
                       difficulty === s.key
-                        ? 'bg-butterscotch text-ink border-2 border-ink'
+                        ? 'bg-butterscotch text-on-butterscotch border-2 border-ink'
                         : 'bg-paper border-2 border-ink hover:bg-paper-2'
                     }`}
                   >
                     {slotLabel(s)}
-                    {completedToday[s.key] && <span className="ml-1 text-green-400">✓</span>}
+                    {completedToday[s.key] && (
+                      <>
+                        <span className="ml-1 text-mint-text" aria-hidden="true">✓</span>
+                        <span className="sr-only"> (solved)</span>
+                      </>
+                    )}
                   </button>
                 ))}
               </div>
@@ -420,7 +425,7 @@ export default function DailyExperience() {
 
           {completedToday[difficulty] ? (
             <div className="text-center">
-              <p className="text-mint font-semibold mb-1">
+              <p className="text-mint-text font-semibold mb-1">
                 ✓ Solved in {formatTime(Math.round(completedToday[difficulty].timeMs / 1000))}
                 {completedToday[difficulty].rank ? ` · ranked #${completedToday[difficulty].rank}` : ''}
               </p>
@@ -510,10 +515,10 @@ export default function DailyExperience() {
           {/* Ranked-flow result — derived from session + submit (no synchronous setState). */}
           <div className="min-h-[1.5rem] text-sm">
             {isExpiredDaily ? (
-              <span className="text-butterscotch-dark">This daily has expired — play today’s for a rank.</span>
+              <span className="text-warn-text">This daily has expired — play today’s for a rank.</span>
             ) : !session ? (
               <span className="text-ink-soft">
-                <Link href="/signin" className="text-grape hover:underline">
+                <Link href="/signin" className="text-grape underline">
                   Sign in
                 </Link>{' '}
                 to be ranked on the leaderboard.
@@ -523,7 +528,7 @@ export default function DailyExperience() {
                 {submit.rank ? `🏆 Ranked #${submit.rank} today` : 'Time recorded!'}
               </span>
             ) : submit.status === 'error' ? (
-              <span className="text-butterscotch-dark">{submit.message}</span>
+              <span className="text-warn-text">{submit.message}</span>
             ) : (
               <span className="text-ink-soft">Submitting your time…</span>
             )}

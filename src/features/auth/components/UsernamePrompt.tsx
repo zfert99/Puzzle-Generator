@@ -37,21 +37,24 @@ export function UsernamePrompt() {
   };
 
   return (
-    <div className="glass-panel p-4 max-w-md w-full mx-auto mb-4 border border-indigo-500/30">
+    <div className="glass-panel p-4 max-w-md w-full mx-auto mb-4 border border-grape/30">
       <p className="text-sm font-medium mb-2 text-center">Pick a username for the leaderboard</p>
-      <form onSubmit={save} className="flex gap-2">
+      <form onSubmit={save} className="flex gap-2" aria-describedby={error ? 'username-prompt-error' : undefined}>
+        <label htmlFor="username-prompt" className="sr-only">Username</label>
         <input
+          id="username-prompt"
           type="text"
+          autoComplete="off"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="e.g. sudoku_ace"
-          className="flex-1 px-3 py-2 rounded-lg bg-paper border border-ink-soft text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 px-3 py-2 rounded-lg bg-paper border border-ink-soft text-sm focus:outline-none focus:ring-2 focus:ring-grape"
         />
         <button type="submit" disabled={busy} className="btn-primary px-4">
           {busy ? '…' : 'Save'}
         </button>
       </form>
-      {error && <p className="text-cherry text-xs mt-2 text-center">{error}</p>}
+      {error && <p id="username-prompt-error" role="alert" className="text-cherry text-xs mt-2 text-center">{error}</p>}
     </div>
   );
 }

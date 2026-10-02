@@ -31,7 +31,9 @@ export function Sticker({
     <span
       aria-hidden
       style={{ transform: `rotate(${rotate}deg)`, borderRadius: '16px 6px 16px 6px' }}
-      className={`inline-block select-none border-2 border-ink px-2 py-0.5 text-xs text-ink shadow-[2px_2px_0_0_var(--ink)] ${BG[color]} ${className}`}
+      // `text-on-sticker`, not `text-ink`: the fill is the same in both themes, so the ink on it
+      // must be too — the theme-flipping ink read cream-on-lime at 1.25:1 in the dark theme.
+      className={`inline-block select-none border-2 border-ink px-2 py-0.5 text-xs text-on-sticker shadow-[2px_2px_0_0_var(--ink)] ${BG[color]} ${className}`}
     >
       <span style={{ fontFamily: 'var(--font-marker, cursive)' }}>{children}</span>
     </span>

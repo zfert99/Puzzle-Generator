@@ -235,7 +235,7 @@ export default function PlayExperience() {
               aria-pressed={variant === v}
               onClick={() => handleVariantChange(v)}
               className={`px-2 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
-                variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+                variant === v ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper hover:bg-paper-2'
               }`}
             >
               {VARIANT_LABEL[v]}
@@ -262,7 +262,7 @@ export default function PlayExperience() {
                   aria-pressed={difficulty === d}
                   onClick={() => setDifficulty(d)}
                   className={`px-3 py-2 rounded-lg text-sm capitalize transition-all ${
-                    difficulty === d ? 'bg-butterscotch text-ink border-2 border-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
+                    difficulty === d ? 'bg-butterscotch text-on-butterscotch border-2 border-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
                   } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                 >
                   {d}
@@ -301,7 +301,7 @@ export default function PlayExperience() {
               aria-checked={mystery}
               onClick={() => setMystery((m) => !m)}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border-2 border-ink transition-all ${
-                mystery ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+                mystery ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper hover:bg-paper-2'
               }`}
             >
               <span className="text-sm font-medium">🔮 Mystery mode</span>

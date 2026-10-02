@@ -28,7 +28,8 @@ signed in:
     isPending              -> "Loading passkeys…"
     error                  -> "Couldn't load your passkeys."
     empty                  -> "No passkeys yet. Add one above."
-    list                   -> name + added-date, each with a Remove button
+    list                   -> name + added-date (en-GB, e.g. "2 Oct 2026"), each with a Remove
+                              button labelled "Remove <name>"
   Remove                   -> passkey.deletePasskey({ id })
 ```
 
@@ -48,3 +49,13 @@ jsdom, so the better-auth client is the external boundary (AGENTS.md Section 4).
 the component's own behaviour: session gating, empty/list rendering, add/remove calls with
 the right arguments, and error surfacing — via accessibility-first queries (`getByRole`,
 `getByLabelText`).
+
+## Small a11y/consistency fixes (October 2026)
+
+- **Remove buttons carry `aria-label="Remove <name>"`.** Every row's button used to read just
+  "Remove", so a screen-reader user tabbing through the list could not tell which passkey each
+  one removed.
+- **The added-date is formatted `en-GB` with a short month** (`2 Oct 2026`). A bare
+  `toLocaleDateString()` rendered whatever the runtime locale chose — an ambiguous `10/2/2026`
+  in a US browser — and the rest of the site already writes dates day-first.
+- **Focus ring on grape** (was butterscotch), matching every other input after the token sweep.

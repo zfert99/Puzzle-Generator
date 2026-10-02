@@ -18,3 +18,10 @@ duplicate representatives, wasting crawl/index budget. The page is kept **crawla
 links because Googlebot never fetches it to see the tag. It's also excluded from
 `app/sitemap.ts` (a sitemap should list only pages you want indexed). See
 `Docs/research/sitemap-architecture-multi-zone.md` (Fork 2).
+
+**`id="main"` (October 2026):** the page's `<main>` carries `id="main"`, the target of the root
+layout's "Skip to content" link (WCAG 2.4.1). Every route's `<main>` needs it.
+
+**Heading "Sign in" (October 2026):** the `<h1>` used to repeat the brand ("Puzzle Lab"), which
+told a screen-reader user nothing about the page; it now names the task. No `description` is
+added — the page is `noindex` (below), so there is no search snippet to write.

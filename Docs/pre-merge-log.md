@@ -92,6 +92,22 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Site-wide pass, slice 3 of 4: design tokens, a11y chrome, `motion` removed
+
+Branch `feat/design-tokens-a11y-chrome` on `78a05c1` (slice 2 merged as #141). Files:
+`globals.css` and its tokens, `template.tsx`/`SolvedStamp` to CSS (the `motion` dependency is gone), `layout.tsx`
+(skip link, OG/viewport metadata), every page (`id="main"`, descriptions, h1 copy), `error.tsx`/
+`not-found.tsx`, auth components, header/mobile menu, `LeaderboardView`, pickers, `Sticker`,
+`settings.ts`, `e2e/a11y.spec.ts` (body overflow, both themes, two more routes), dead `ThemeToggle`
+and `public/*.svg` removed — the A1–A11, C1, C6, C7, M1, M2 items of the pass's record. The board
+files that slice 4 owns (`PlayExperience`, `DailyExperience`, `Numpad`, `GameHeader`,
+`ContinueBanner`) carry **only** their token replacements here, so the dark-mode axe run is green
+on this cut; slice 4 brings their behaviour changes. Gate: lint · tsc · `npx vitest run` **97 files
+/ 974 tests** · markdownlint, all green; CI runs the production build + e2e. **Visual change — the
+owner checks it in their own browser** (dark mode especially). Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-02 — Site-wide pass, slice 2 of 4: server/API (PII, atomic limiters, budgets)
 
 Branch `fix/api-leaderboard-pii-rate-limit-budgets` on `6ac8020` (slice 1 merged as #140). Files:

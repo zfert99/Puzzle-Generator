@@ -33,6 +33,16 @@ clear 4.5:1 against both light-theme backgrounds with margin (4.99:1 / 5.53:1) �
 dark-theme cherry (`#F06B65`, 6.04:1 against dark `--paper`) already passed and is
 untouched.
 
+**Why the "on-fill" ink tokens exist (October 2026):** `--ink` flips to cream in the dark
+theme, but `--butterscotch` stays a mid-light fill in both — so `text-ink` on
+`bg-butterscotch` (every primary button and selected pill) measured **1.5:1** in dark mode.
+`--on-butterscotch` (`#2B1B12` in both themes) is the ink for anything sitting on butterscotch,
+and `--on-sticker` the same for the never-flipping sticker fills (cream on lime was 1.25:1).
+Two text-grade tones joined them: `--mint-text` and `--warn-text`, because the fill-grade
+`--mint` (2.3:1) and `--butterscotch-dark` (2.6:1) fail WCAG 1.4.3 as small text on paper.
+`color-scheme` is declared per theme so native controls and scrollbars follow the toggle.
+The first dark-mode axe run in `e2e/a11y.spec.ts` is what caught all of these.
+
 The **sticker tokens** (`--sticker-pink/lime/sky`) are also defined but **quarantined —
 decoration only** (the 5.5 chaos layer: stickers, tape, pins, marginalia), never text/
 buttons/functional UI, and they do **not** flip by theme. The chaos layer also adds
@@ -56,7 +66,11 @@ the class names are kept so existing markup cascades without per-file edits:
 - `.btn-primary` (butterscotch) / `.btn-secondary` (grape) / `.btn-ghost` — all share the
   **pressable** mechanic (border + offset shadow that collapses on `:active`); ghost is
   fill-less.
-- `.input-field` → paper fill, 2px ink border, butterscotch focus ring.
+- `.input-field` → paper fill, 2px ink border, **grape** focus ring (butterscotch measured
+  1.95:1 against paper, under the 3:1 a focus indicator needs — WCAG 1.4.11; October 2026).
+- `.skip-link` → the "Skip to content" link the root layout renders first in `<body>`
+  (WCAG 2.4.1): off-screen via `translateY(-200%)` until `:focus-visible`, then a chunky
+  butterscotch pill over the header. Every page's `<main>` carries `id="main"` for it.
 
 `body` is now paper/ink with the Manrope sans; `h1`/`h2` default to the Fredoka display face.
 
@@ -80,9 +94,26 @@ It also carries the 5.3b cell micro-interactions: `.selected` pops (`cell-pop`) 
 selection lands, and `.error` shakes once (`cell-shake`, cell-local — never a viewport
 shake) atop its persistent tint. Both are disabled under `prefers-reduced-motion`.
 
-## 4. Keyframes
+## 6. Keyframes
 
-Only `rank-reveal` remains (the "Ranked #N" text pop). The old solved-celebration keyframes
-(`pop-in`/`bounce-soft`/`celebrate`) were removed in 5.3a — the solved moment is now the
-Motion [SolvedStamp](../features/juice/SolvedStamp.md) + confetti. `rank-reveal` is
-disabled under `prefers-reduced-motion`.
+- `rank-reveal` — the "Ranked #N" text pop.
+- `page-enter` — the route transition (`.page-enter` on `template.tsx`'s wrapper): opacity
+  0→1 + 8 px slide, 150 ms. CSS rather than the `motion` library since October 2026, because
+  the library version server-rendered `opacity:0` and held every page invisible until
+  hydration — see [template.md](template.md).
+- `stamp-pop` / `stamp-flash` — the solved badge's scale 0 → 1.15 → 1 squash and the single
+  opacity screen-flash, formerly Motion animations in
+  [SolvedStamp](../features/juice/SolvedStamp.md). The last consumer of `motion`, so the
+  dependency is gone.
+
+All are switched off under `[data-motion="reduce"]`.
+
+## 7. Reduced motion has a CSS fallback (October 2026)
+
+**Why:** every motion rule above keys off `data-motion`, which only the pre-paint script and
+`applySettings` set — and the script's single `try` also wraps its `localStorage` read, so a
+browser that blocks site data never applied the OS preference at all: the backdrop drift,
+marquee and wobbles kept running for a user who had asked for none. The closing block
+mirrors every `data-motion="reduce"` rule under `@media (prefers-reduced-motion: reduce)`,
+scoped to `:root:not([data-motion="full"])` so an explicit in-app **Full** choice (which now
+sets `data-motion="full"`, see `settings.md`) still wins over the OS.

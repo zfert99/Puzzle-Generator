@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 /**
  * The header's mobile overflow menu (QA F11): Archive and PDF used to be `display:none` below
@@ -18,9 +18,33 @@ import { useRef } from 'react';
  * Inside the panel, each link mirrors the inline nav's breakpoint (Archive appears inline from
  * `sm`, so its menu copy is `sm:hidden`), keeping exactly one visible path to each page at
  * every width.
+ *
+ * Escape and a click outside close it, as a menu is expected to — a native `<details>` does
+ * neither on its own, so an opened menu used to stay open until its summary was clicked again.
  */
 export function MobileNavMenu() {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const details = detailsRef.current;
+    if (!details) return;
+    const close = () => details.removeAttribute('open');
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && details.open) {
+        close();
+        details.querySelector('summary')?.focus();
+      }
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (details.open && e.target instanceof Node && !details.contains(e.target)) close();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, []);
 
   return (
     <details ref={detailsRef} className="relative md:hidden">

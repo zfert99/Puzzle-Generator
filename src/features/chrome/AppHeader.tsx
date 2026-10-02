@@ -11,6 +11,10 @@ import { MobileNavMenu } from './MobileNavMenu';
  *
  * The marginalia uses `--font-marker` (Permanent Marker) which lands with the 5.5 chaos
  * layer; until then it falls back to a system cursive, so the slot is reserved now.
+ *
+ * The nav wraps. At 320 px (the WCAG 1.4.10 reflow width) its five items plus the gear and
+ * "Sign in" ran to ~335 px on one line and the global `overflow-x: hidden` clipped "Sign in"
+ * off the right edge — unreachable, since the page itself could not scroll to it.
  */
 export function AppHeader() {
   return (
@@ -21,19 +25,22 @@ export function AppHeader() {
             🧩 Puzzle Lab
           </Link>
           <span
-            className="text-xs text-paper/70 hidden sm:inline whitespace-nowrap"
+            className="text-xs text-paper/90 hidden sm:inline whitespace-nowrap"
             style={{ fontFamily: 'var(--font-marker, ui-rounded, cursive)' }}
           >
             est. today, mostly stable
           </span>
         </div>
 
-        <nav className="flex items-center gap-4 text-sm">
-          <Link href="/daily" className="text-paper/90 hover:underline">Daily</Link>
-          <Link href="/leaderboard" className="text-paper/90 hover:underline">Leaderboard</Link>
-          <Link href="/play" className="text-paper/90 hover:underline">Play</Link>
-          <Link href="/archive" className="text-paper/90 hover:underline hidden sm:inline">Archive</Link>
-          <Link href="/generate" className="text-paper/90 hover:underline hidden md:inline">PDF</Link>
+        {/* Each link is padded to a ≥ 24 px tall target (WCAG 2.5.8): the bare text-sm links were
+            20 px, and once the nav wraps at phone widths the rows sit close enough that the
+            spacing exception no longer applies. */}
+        <nav aria-label="Primary" className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
+          <Link href="/daily" className="text-paper/90 hover:underline py-1">Daily</Link>
+          <Link href="/leaderboard" className="text-paper/90 hover:underline py-1">Leaderboard</Link>
+          <Link href="/play" className="text-paper/90 hover:underline py-1">Play</Link>
+          <Link href="/archive" className="text-paper/90 hover:underline hidden sm:inline py-1">Archive</Link>
+          <Link href="/generate" className="text-paper/90 hover:underline hidden md:inline py-1">PDF</Link>
           {/* Overflow for the links hidden above (QA F11) — see MobileNavMenu. */}
           <MobileNavMenu />
           <SettingsMenu />

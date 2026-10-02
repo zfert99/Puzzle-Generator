@@ -3,7 +3,10 @@ import DailyExperience from '@/features/dailies/components/DailyExperience';
 import type { Metadata } from 'next';
 
 // Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
-export const metadata: Metadata = { title: 'Daily puzzles' };
+export const metadata: Metadata = {
+  title: 'Daily puzzles',
+  description: "Today's shared puzzles — one per type, difficulty rolled daily. Sign in to be ranked on the leaderboard.",
+};
 
 /**
  * /daily — the shared daily-puzzle route.
@@ -18,9 +21,9 @@ export const metadata: Metadata = { title: 'Daily puzzles' };
  */
 export default function DailyPage() {
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
+    <main id="main" className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Daily Sudoku</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Daily Puzzles</h1>
       </div>
 
       <Suspense fallback={<div className="glass-panel p-8 max-w-md md:max-w-2xl w-full mx-auto h-48" aria-hidden="true" />}>

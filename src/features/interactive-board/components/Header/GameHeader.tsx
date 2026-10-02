@@ -109,7 +109,7 @@ export function GameHeader() {
             aria-pressed={errorHighlight}
             onClick={() => setSetting('errorHighlight', !errorHighlight)}
             className={`px-2 py-1 rounded transition-colors ${
-              errorHighlight ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
+              errorHighlight ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper border-2 border-ink hover:bg-paper-2'
             }`}
             title="Highlight incorrect entries"
           >

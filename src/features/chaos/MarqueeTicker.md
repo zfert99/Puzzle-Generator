@@ -16,3 +16,8 @@ emulated-mobile testing), that width could leak past `overflow: hidden` and infl
 whole PAGE's layout viewport — only on `/daily`, the one route that renders this component.
 `contain: paint` (`globals.css`) is a stronger isolation guarantee than `overflow: hidden`
 alone: nothing inside the box can affect layout/paint outside it, full stop.
+
+**Why `text-on-butterscotch`, not `text-ink` (October 2026):** `--ink` flips to cream in the dark
+theme, where it measured about 1.5:1 against the dark butterscotch fill — unreadable. Butterscotch
+is a mid-light fill in both themes, so text on it uses `--on-butterscotch`, which stays dark ink
+in both (`globals.css`).

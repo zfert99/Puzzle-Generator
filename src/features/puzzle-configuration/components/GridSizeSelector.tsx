@@ -45,7 +45,7 @@ export function GridSizeSelector<S extends SelectableSize = 4 | 6 | 9>({ value, 
             onClick={() => onChange(optionValue as S)}
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
               value === optionValue
-                ? 'bg-butterscotch text-ink border-2 border-ink'
+                ? 'bg-butterscotch text-on-butterscotch border-2 border-ink'
                 : 'bg-paper text-ink-soft hover:bg-paper'
             }`}
           >

@@ -4,7 +4,10 @@ import { isDailyDifficulty } from '@/lib/db/daily-row';
 import type { Metadata } from 'next';
 
 // Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
-export const metadata: Metadata = { title: 'Leaderboard' };
+export const metadata: Metadata = {
+  title: 'Leaderboard',
+  description: "Today's fastest solves on every daily board, plus your own rank and streak.",
+};
 
 /**
  * /leaderboard — today's daily boards. Server Component shell; the interactive table and
@@ -24,7 +27,7 @@ export default async function LeaderboardPage({
   const initialDifficulty = isDailyDifficulty(difficulty) ? difficulty : undefined;
 
   return (
-    <main className="flex-1 flex flex-col items-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
+    <main id="main" className="flex-1 flex flex-col items-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8 mt-4">
         <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Daily Leaderboard</h1>
       </div>

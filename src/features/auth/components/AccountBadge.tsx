@@ -61,19 +61,32 @@ export function AccountBadge() {
 
   if (editing) {
     return (
-      <form onSubmit={saveUsername} className="flex items-center gap-2 text-sm">
+      <form
+        onSubmit={saveUsername}
+        className="flex items-center gap-2 text-sm"
+        // Escape backs out of the inline edit the way Cancel does — there was no keyboard exit.
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setEditing(false);
+            setError('');
+          }
+        }}
+      >
+        <label htmlFor="account-username" className="sr-only">Username</label>
         <input
+          id="account-username"
           autoFocus
+          autoComplete="off"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="username"
-          className="px-2 py-1 rounded-md bg-paper text-ink border border-ink text-sm w-32 focus:outline-none focus:ring-2 focus:ring-butterscotch"
+          className="px-2 py-1 rounded-md bg-paper text-ink border border-ink text-sm w-32 focus:outline-none focus:ring-2 focus:ring-grape"
         />
         <button type="submit" className="text-paper font-semibold hover:underline">Save</button>
         <button type="button" onClick={() => { setEditing(false); setError(''); }} className="text-paper/70 hover:underline">
           Cancel
         </button>
-        {error && <span className="text-xs text-paper font-semibold">{error}</span>}
+        {error && <span role="alert" className="text-xs text-paper font-semibold">{error}</span>}
       </form>
     );
   }
@@ -90,7 +103,7 @@ export function AccountBadge() {
       >
         {user.username ? 'Change username' : 'Set username'}
       </button>
-      <button type="button" onClick={handleSignOut} className="text-paper/70 hover:underline">
+      <button type="button" onClick={handleSignOut} className="text-paper/90 hover:underline">
         Sign out
       </button>
     </div>

@@ -17,3 +17,6 @@ in [PasskeyManager](../../features/auth/components/PasskeyManager.md).
 **Why:** `/account` is auth-gated (Googlebot gets a redirect / thin shell) with no search
 value. It's kept crawlable but `noindex`, and excluded from `app/sitemap.ts`. Same rationale
 as `/signin` — see `Docs/research/sitemap-architecture-multi-zone.md` (Fork 2).
+
+**`id="main"` (October 2026):** the page's `<main>` carries `id="main"`, the target of the root
+layout's "Skip to content" link (WCAG 2.4.1). Every route's `<main>` needs it.

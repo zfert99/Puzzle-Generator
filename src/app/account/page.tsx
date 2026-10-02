@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: 'Account', robots: { index: false, fo
  */
 export default function AccountPage() {
   return (
-    <main className="flex-1 flex flex-col items-center p-8">
+    <main id="main" className="flex-1 flex flex-col items-center p-8">
       <div className="w-full max-w-md">
         <h1 className="text-3xl font-extrabold tracking-tight mb-6 text-ink">Account</h1>
         <div className="glass-panel p-6">

@@ -131,8 +131,8 @@ follow-up 5).
 
 ## Skyscrapers toggle (October 2026, plan slices V3 → E5)
 
-A fifth toggle — the type row is a five-column grid now, because a wrapping flex row stranded the
-fifth label alone on a full-width line (V3 review). Sizes come from the plan's D4 — 5 / 6 / 7,
+A fifth toggle. V3 made the type row a five-column grid, because a wrapping flex row stranded the
+fifth label alone on a full-width line (V3 review) — reverted in October 2026, see below. Sizes come from the plan's D4 — 5 / 6 / 7,
 default 6 — through `GridSizeSelector`. Since E5 the `DifficultyConfigurator` shows **the size's
 own tiers** (`SKYSCRAPERS_TIERS_BY_SIZE`, D12: easy–hard at 5×5, the full ladder at 6×6,
 medium–extreme at 7×7) and `handleGenerate` sends the shared counts **zeroed for the tiers the
@@ -157,3 +157,14 @@ and made the visible "Grid Size" heading appear on `/generate`'s Killer/Keisan b
 The Killer row's `onChange` used to guard `size !== 4` only to narrow the callback's type; since
 `GridSizeSelector` became generic in its `sizes` (Kakuro V2, October 2026) the setter is passed
 directly.
+
+## Type row wraps again; tokens; alert (October 2026)
+
+- **The type row is a centred `flex-wrap` of natural-width pills, not `grid-cols-5`.** At
+  320–430 px five equal columns gave each label about 27–38 px while "Skyscrapers" needs 89, so
+  the labels overlapped on every phone width — and the page's `overflow-x: hidden` hid it from the
+  overflow test. A fifth pill wrapping onto its own line is the lesser evil. Same change as the
+  `/play` picker (see `PlayExperience.md`).
+- **Selected type pills and the Mystery switch use `text-on-butterscotch`**: `--ink` turns cream in the dark theme, about 1.5:1 against the butterscotch fill; butterscotch is
+  mid-light in both themes, so the text on it stays dark ink in both (`globals.css`).
+- **The generation error is `role="alert"`**, so a failed PDF request is announced.

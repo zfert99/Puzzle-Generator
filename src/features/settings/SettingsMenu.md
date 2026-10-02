@@ -21,3 +21,8 @@ rendering mostly off-screen. Switched to the same `fixed inset-0` centered-overl
 full-viewport flex-centered container, click-outside-closes via a bubbled click on the outer
 element (stopped by the inner panel), works identically at any viewport size regardless of
 where the gear button ends up in the header's flex layout.
+
+## Selected-choice text token (October 2026)
+
+An active `Choice` button's text is `text-on-butterscotch`, not `text-ink`: `--ink` turns cream in the dark theme, about 1.5:1 against the butterscotch fill; butterscotch is
+mid-light in both themes, so the text on it stays dark ink in both (`globals.css`).

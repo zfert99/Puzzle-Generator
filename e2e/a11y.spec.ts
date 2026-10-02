@@ -50,9 +50,14 @@ test.describe('responsive: no horizontal overflow', () => {
       for (const width of BREAKPOINTS) {
         await page.setViewportSize({ width, height: 900 });
         await page.waitForTimeout(150); // let reflow settle
+        // Measure the BODY as well as the root. `globals.css` puts `overflow-x: hidden` on both
+        // `html` and `body`, which clamps `documentElement.scrollWidth` to the viewport no matter
+        // what overflows — a 3000 px element appended to <main> at 320 px left it reading 320
+        // while `body.scrollWidth` read 1660. Checked only on the root, this loop could not fail,
+        // and it sat green over a clipped "Sign in" link and an overlapping type picker.
         const overflow = await page.evaluate(() => {
           const el = document.documentElement;
-          return { scrollW: el.scrollWidth, clientW: el.clientWidth };
+          return { scrollW: Math.max(el.scrollWidth, document.body.scrollWidth), clientW: el.clientWidth };
         });
         expect(
           overflow.scrollW,
@@ -180,18 +185,25 @@ test.describe('responsive: overlay bounds stay inside the viewport', () => {
 });
 
 test.describe('a11y: no serious/critical axe violations', () => {
-  for (const path of ['/', '/daily', '/archive', '/play', '/leaderboard', '/signin']) {
-    test(`${path} passes axe (serious+critical)`, async ({ page }) => {
-      await page.goto(path, { waitUntil: 'networkidle' });
-      const results = await new AxeBuilder({ page })
-        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
-        .analyze();
-      const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-      expect(
-        blocking,
-        blocking.map((v) => `${v.id} (${v.impact}): ${v.nodes.length}× — ${v.help}`).join('\n'),
-      ).toEqual([]);
-    });
+  // Both themes. The theme follows `prefers-color-scheme` when nothing is stored (theme.ts), so
+  // emulating the media query is enough to get the dark palette. Light-only coverage let a
+  // 1.5:1 text/background pair on every dark-mode primary button through for months.
+  for (const colorScheme of ['light', 'dark'] as const) {
+    for (const path of ['/', '/daily', '/archive', '/play', '/leaderboard', '/generate', '/signin', '/account']) {
+      test(`${path} passes axe (serious+critical) in ${colorScheme} mode`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme });
+        await page.goto(path, { waitUntil: 'networkidle' });
+        await expect(page.locator('html')).toHaveAttribute('data-theme', colorScheme);
+        const results = await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+          .analyze();
+        const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+        expect(
+          blocking,
+          blocking.map((v) => `${v.id} (${v.impact}): ${v.nodes.length}× — ${v.help}`).join('\n'),
+        ).toEqual([]);
+      });
+    }
   }
 });
 

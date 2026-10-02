@@ -16,9 +16,9 @@ export const metadata: Metadata = { title: 'Sign in', robots: { index: false, fo
  */
 export default function SignInPage() {
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
+    <main id="main" className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Puzzle Lab</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Sign in</h1>
       </div>
 
       <AuthPanel />

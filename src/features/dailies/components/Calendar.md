@@ -80,3 +80,9 @@ The parent fetches tallies a month at a time, so it must know which month is on 
 the *only* event that can change that — picking a day cannot, because only in-month days are
 clickable — so the callback fires from the prev/next handlers rather than an effect watching the
 view state. Without it, one month's markers would sit on another month's grid.
+
+## Selected-day text token (October 2026)
+
+The selected day's text is `text-on-butterscotch`, not `text-ink`: `--ink` flips to cream in the
+dark theme, where it measured about 1.5:1 against the butterscotch fill. Butterscotch is a
+mid-light fill in both themes, so the text on it stays dark ink in both (`globals.css`).
