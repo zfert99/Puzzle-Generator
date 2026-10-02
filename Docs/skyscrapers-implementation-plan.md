@@ -924,6 +924,21 @@ longer hard-dominated; classify still < 20 ms at 7×7.
 - *Learnings:* L19 — a request a size cannot honour is a tier-set decision, not a generator bug;
   measure the floor rate per size before promising a tier there, and let the route degrade
   honestly (serve + label + log) rather than fail while the decision is open.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 9 findings, all fixed
+  before merge):* (1) **the serving policy lived in the route** (AGENTS.md §1: routes are
+  controllers) — now `skyscrapers.ts` / `generateSkyscrapers(level, { gridSize, timeBudgetMs })`
+  → `{ puzzle, stats, fallback }`, the counterpart of `generateKakuro`, where E5's exact-tier loop
+  and R1's daily will call; the route is three lines. (2) The **fallback path had no test** — a
+  7×7 easy request now asserts 200 and a labelled puzzle; a `skyscrapers.test.ts` covers the entry
+  point at every level. (3) The label was re-derived from a tier (duplicating the classifier's
+  0 → 1 and `'unrated'` rules) with a redundant re-classify — `removeClues` returns the
+  classification's `difficulty`. (4) The "final word" uniqueness verify was the identical call the
+  removal had just made (same budget) — dropped, with the reasoning in the `.md`. (5) The
+  hand-rolled Fisher–Yates became `grid-utils.shuffle`, made generic. (6) **A run of squares with
+  no intercalate was bounded only by wall-clock** — `maxRestarts` (100) now caps restarts, and
+  both restart paths share one `restart()`; tested with `restartAfter: 0` at 7×7. (7)
+  `randomLatinSquare` throws if `fillGrid` ever returns `false` instead of handing back holes. (8)
+  JSDoc on the six exported interfaces. (9) The restart sentinel is gone (6).
 - *Blockers:* none. The e2e Skyscrapers spec was updated but **not run** this slice: the only dev
   server on port 3000 belongs to another session and may not serve this branch (Next 16 refuses a
   second `next dev` from one checkout); CI's Playwright job runs it against a production build.

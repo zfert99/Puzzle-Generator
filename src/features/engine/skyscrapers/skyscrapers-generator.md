@@ -22,13 +22,15 @@ the fill only has to be Latin, not lucky.
 `fillGrid` on the boxless config (`skyscrapersGridConfig`): the Sudoku engine's randomised
 backtracking fill with no boxes, which is exactly a random Latin square.
 
-## Repair — `repairToUnique(size, { countLimit, restartAfter, stepCap, msCap, start })`
+## Repair — `repairToUnique(size, { countLimit, restartAfter, maxRestarts, stepCap, msCap, start })`
 
 ```text
 square = start ?? random Latin square;  count = solutions(all clues of square) capped at countLimit
-while count ≠ 1 and under the caps:
-    fruitless ≥ restartAfter → square = fresh random square, count recomputed, restarts += 1
-    trial = square with one random intercalate swap (none possible → treat as a stall)
+while count ≠ 1 and under the caps (swaps < stepCap, restarts < maxRestarts, ms < msCap):
+    fruitless ≥ restartAfter → restart(): a fresh random square, count recomputed, restarts += 1
+    trial = square with one random intercalate swap; none possible → restart() too
+      (a cyclic square of prime order has no intercalate at all — it cannot be climbed, and the
+       restart cap is what bounds a run of such squares when no swap is ever counted)
     next = capped count of trial
     next ≤ count → keep trial (a strict drop resets fruitless; a plateau move counts as fruitless)
     else            → fruitless += 1
@@ -50,15 +52,15 @@ progress happens in its first 40 swaps or not at all. The defaults (`countLimit`
 ```text
 clues = all 4N clues;  tier = classifier's tier of the all-clue puzzle
 targetTier set and tier above it (or unrated) → return unchanged: no removal can bring it down (L17)
-slots = the 4N clue positions, shuffled, then stably partitioned by `order`:
+slots = the 4N clue positions, shuffled (`grid-utils.shuffle`), then stably partitioned by `order`:
     trivialLast  (targets 1–2, default) — 1s and Ns go last: each resolves a cell in one move, so an easy puzzle keeps them
     trivialFirst (targets 3+, default)  — they go first: a hard puzzle sheds the free moves
     random       (no target, default)
 for each slot: blank it;
     not unique (exact solver, limit 2)                 → restore
     targetTier set and ladder tier above it / unrated  → restore   (Tatham's bound)
-no target → tier = classifier's tier of what came out
-→ { clues, kept, tier, ms }
+no target → classify what came out; with a target the last accepted state's classification stands
+→ { clues, kept, tier, difficulty (the classifier's label, 'unrated' iff tier is null), ms }
 ```
 
 Removal only ever moves a puzzle **up** the ladder — fewer clues, more deduction — so the
@@ -77,20 +79,25 @@ for each round while the budget lasts:
     repaired = repairToUnique(size, { …repair, msCap: min(repair.msCap, what is left) })
     not unique → next round
     removed  = removeClues(repaired.solution, { targetTier, order })
-    target set and the square's floor was above it → next round
-    exact verify (isSkyscrapersUnique) — the final word, after the removal's budgeted counts
-    label = TIER_DIFFICULTY[tier]  ('unrated' only if the ladder cannot finish — impossible with a target)
-    → { puzzle (grid all zeros — no givens, D3), stats }
+    target set and the square's floor was above it (maxFloorMisses of them → give up) → next round
+    → { puzzle (grid all zeros — no givens, D3; difficulty = removed.difficulty), stats }
 budget or rounds out → null
 ```
 
 `stats` (`rounds`, repair swaps/restarts/ms, removal kept/ms, total ms) is the production
 counterpart of E3's measurements; the route logs it beside the request and the served label.
 
+**No second uniqueness verify.** The repair stops at an *exact* count of one (limit 20, not
+exhausted) and every accepted removal passed `isSkyscrapersUnique` with the full node budget —
+the identical call a final verify would make — so the uniqueness of what is returned is already
+the exact solver's word (the E4 review's finding; Kakuro verifies again because its removal
+counted with a smaller budget).
+
 **With a target the puzzle may land *below* it** — a medium request can come back easy when the
-removal order never needed a medium step. Serving exactly the requested tier is E5's job
-(`generateSkyscrapers`), as it was Kakuro's: this slice exposes the knobs E5 biases with
-(`targetTier`, `order`, the repair caps) and labels honestly.
+removal order never needed a medium step. Serving exactly the requested tier is E5's job, as it
+was Kakuro's: this slice exposes the knobs E5 biases with (`targetTier`, `order`, the repair
+caps) and labels honestly. The serving *policy* — bounded attempt, then an unbounded fallback —
+lives in `skyscrapers.ts` (`generateSkyscrapers`), not here and not in the route.
 
 ## `tierOf(level)`
 

@@ -38,7 +38,12 @@
   failures everywhere**; 6×6 30–50 ms mean, 7×7 400–800 ms mean for medium–extreme; **7×7 easy
   3.5 s mean with 45/60 served by the fallback** — one 7×7 square in fifty has an easy floor.
   Unbounded medians 6 / 20 / 221 ms; `unrated` 3 / 3 / 11%. `[gap]` the 7×7 easy question is
-  E5's per-size tier set (L19). `[learning]` L19. Owner's `/code-review high` pending.
+  E5's per-size tier set (L19). `[learning]` L19. Owner ran `/code-review high`: **9 findings,
+  all fixed in-PR** (table in the plan under E4) — the one with weight: the serving policy sat in
+  the route; it moved to `skyscrapers.ts` (`generateSkyscrapers`, the `generateKakuro`
+  counterpart) where E5 and R1 will call it. Also: the fallback path gained a test; a restart cap
+  bounds a climb that never swaps; the redundant final verify and the duplicated label mapping
+  went.
 - **2026-10-02 (E3b)** E3 merged ([#134](https://github.com/zfert99/Puzzle-Generator/pull/134));
   **the owner approved the re-tier recommendation** ("I will follow your recommendations").
   **E3b built** on `feature/skyscrapers-e3b-retier`: the per-line arrangement scan is three

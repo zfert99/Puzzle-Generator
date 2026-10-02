@@ -53,6 +53,9 @@ If no conflicts are found, return true.
 
 ## `shuffle(array, rng = Math.random)`
 
+Generic since the Skyscrapers E4 review (`shuffle<T>(array: T[], rng)`): the clue slots it
+shuffles there are `[side, index]` tuples, and the Sudoku callers' `number[]` are unchanged.
+
 **Why:** Sudoku generation requires randomness so we don't generate the exact same puzzle every time. The Fisher-Yates algorithm is the industry standard for an unbiased, O(n) in-place shuffle.
 
 **Injectable `rng`:** defaults to `Math.random` (so every existing caller is unchanged), but accepts

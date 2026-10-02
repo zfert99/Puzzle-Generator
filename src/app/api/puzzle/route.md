@@ -24,17 +24,14 @@ rejection, its fixture/nearest fallback and the `source` field are gone.
 
 When the body has `variant: 'skyscrapers'`, the route validates `difficulty` against
 `SKYSCRAPERS_LADDER` and `gridSize` against `SKYSCRAPERS_SIZES` (5 / 6 / 7 — D4, settled by E3)
-and returns a fresh, unique puzzle from `generateUniqueSkyscrapers` with the clue removal
-**bounded** by the requested tier (`tierOf(difficulty)`): a hard request never serves expert, but
-may serve medium, and the label is the classifier's own (D7). A size may have no square at the
-requested tier at all (E3: an easy 7×7 floor is a one-in-fifty square), so the bounded attempt
-gives up after **12 squares whose fully clued floor sits above the target** (or 40 rounds / 6 s)
-and the request is served **unbounded** instead — labelled honestly and logged with
-`fallback: true`. Serving exactly the requested tier, and which tiers each size offers, is E5's
-job; until then the log line carries `served` and the generator's `stats` (rounds, repair swaps
-and restarts, clues kept, ms) beside the request so the gap stays measured. A generation that
-runs out of budget on both attempts is a 500 with a retry message (measured at 0 in the gate
-run).
+and returns `generateSkyscrapers(difficulty, { gridSize })` (`skyscrapers.ts`): a fresh, unique
+puzzle **no harder than the request** — the removal is bounded by the requested tier, the label is
+the classifier's own (D7) — or, when the size has no square at that tier, an unbounded one flagged
+`fallback`. The policy (bounded 40 rounds / 12 floor misses / ¾ of the budget, then unbounded)
+lives in the engine entry point, not here (AGENTS.md §1: the route is a controller). The log line
+carries `served`, `fallback` and the generator's `stats` (rounds, repair swaps and restarts, clues
+kept, ms) beside the request so the gap E5 closes stays measured. A throw (both attempts out of
+budget — 0 in the gate run) goes to the generic 500 like the other variants.
 
 ## Why this endpoint exists
 

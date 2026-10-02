@@ -23,9 +23,9 @@
  * `skyscrapers-generator.md` for the "why" of each knob and the measured yields.
  */
 
-import { createEmptyGrid, fillGrid } from '../grid-utils';
+import { createEmptyGrid, fillGrid, shuffle } from '../grid-utils';
 import type { GridSize } from '../sudoku';
-import { classifySkyscrapers, TIER_DIFFICULTY, type SkyscrapersTier } from './skyscrapers-logical-solver';
+import { classifySkyscrapers, type SkyscrapersTier } from './skyscrapers-logical-solver';
 import { countSkyscrapersSolutions, isSkyscrapersUnique } from './skyscrapers-solver';
 import {
   GUTTER_SIDES,
@@ -35,6 +35,7 @@ import {
   skyscrapersGridConfig,
   type GutterSide,
   type SkyscraperClues,
+  type SkyscrapersDifficulty,
   type SkyscrapersLevel,
   type SkyscrapersPuzzle,
 } from './skyscrapers-types';
@@ -44,10 +45,14 @@ export function tierOf(level: SkyscrapersLevel): SkyscrapersTier {
   return (SKYSCRAPERS_LADDER.indexOf(level) + 1) as SkyscrapersTier;
 }
 
-/** A random Latin square of the given size — the solution every puzzle starts from. */
+/**
+ * A random Latin square of the given size — the solution every puzzle starts from. A boxless
+ * fill cannot dead-end (a partial Latin square always extends), so a `false` from `fillGrid`
+ * would be an engine fault; it throws rather than hand back a grid with holes.
+ */
 export function randomLatinSquare(size: GridSize, rng: () => number = Math.random): number[][] {
   const grid = createEmptyGrid(size);
-  fillGrid(grid, skyscrapersGridConfig(size), rng);
+  if (!fillGrid(grid, skyscrapersGridConfig(size), rng)) throw new Error(`skyscrapers: fillGrid failed on a boxless ${size}×${size}`);
   return grid;
 }
 
@@ -73,12 +78,15 @@ function intercalateSwap(grid: number[][], rng: () => number, tries = 200): bool
   return false;
 }
 
+/** The repair climb's knobs; the defaults are E3's measured policy. */
 export interface RepairOptions {
   rng?: () => number;
   /** Solutions counted per objective evaluation; more than this scores as "many" (E3: 20). */
   countLimit?: number;
   /** Swaps without a strict improvement before a fresh square is started (E3: 40). */
   restartAfter?: number;
+  /** Fresh squares started before giving up — the cap that holds even when no swap is ever made. */
+  maxRestarts?: number;
   /** Swaps tried in total before giving up. */
   stepCap?: number;
   /** Wall-clock cap. */
@@ -87,6 +95,7 @@ export interface RepairOptions {
   start?: readonly number[][];
 }
 
+/** What the repair climb reached, and what it cost. */
 export interface RepairResult {
   solution: number[][];
   /** 1 when repaired; the last capped solution count otherwise. */
@@ -105,7 +114,7 @@ export interface RepairResult {
  * (L16). Returns the best square reached either way; check `solutions === 1`.
  */
 export function repairToUnique(size: GridSize, options: RepairOptions = {}): RepairResult {
-  const { rng = Math.random, countLimit = 20, restartAfter = 40, stepCap = 5_000, msCap = 10_000, start } = options;
+  const { rng = Math.random, countLimit = 20, restartAfter = 40, maxRestarts = 100, stepCap = 5_000, msCap = 10_000, start } = options;
   const started = performance.now();
   const countOf = (grid: number[][]): number => {
     const result = countSkyscrapersSolutions({ gridSize: size, clues: deriveClues(grid) }, { limit: countLimit });
@@ -116,17 +125,24 @@ export function repairToUnique(size: GridSize, options: RepairOptions = {}): Rep
   let swaps = 0;
   let restarts = 0;
   let fruitless = 0;
-  while (count !== 1 && swaps < stepCap && performance.now() - started < msCap) {
+  // A fresh square: the climb's escape from a plateau, and from a square with nothing to swap.
+  const restart = (): void => {
+    square = randomLatinSquare(size, rng);
+    count = countOf(square);
+    restarts += 1;
+    fruitless = 0;
+  };
+  while (count !== 1 && swaps < stepCap && restarts < maxRestarts && performance.now() - started < msCap) {
     if (fruitless >= restartAfter) {
-      square = randomLatinSquare(size, rng);
-      count = countOf(square);
-      restarts += 1;
-      fruitless = 0;
+      restart();
       continue;
     }
     const trial = square.map((row) => [...row]);
     if (!intercalateSwap(trial, rng)) {
-      fruitless = restartAfter; // nothing to swap: let the next iteration restart
+      // A square with no intercalate at all (the cyclic squares of prime order — which happen to
+      // be all-clue unique at 5 and 7, so this path needs a rarer square) cannot be climbed; it is
+      // left for a fresh one, and the restart cap bounds a run of them even when no swap counts.
+      restart();
       continue;
     }
     swaps += 1;
@@ -145,6 +161,7 @@ export function repairToUnique(size: GridSize, options: RepairOptions = {}): Rep
 /** Which clues go first: 1s and Ns resolve a cell in one move, so easy keeps them and hard sheds them. */
 export type RemovalOrder = 'random' | 'trivialLast' | 'trivialFirst';
 
+/** The clue removal's knobs: the tier it may not exceed, and the order clues are tried in. */
 export interface RemovalOptions {
   rng?: () => number;
   /** Keep a removal only if the ladder still finishes the puzzle at or below this tier (Tatham's bound). */
@@ -153,12 +170,15 @@ export interface RemovalOptions {
   order?: RemovalOrder;
 }
 
+/** What the removal left: the clues, how many, and the classifier's own grade of the result. */
 export interface RemovalResult {
   clues: SkyscraperClues;
   /** Clues still present, of 4N. */
   kept: number;
   /** The classifier's tier for what came out (`null` when the ladder cannot finish it). */
   tier: SkyscrapersTier | null;
+  /** The classifier's label for what came out — `'unrated'` exactly when `tier` is `null`. */
+  difficulty: SkyscrapersDifficulty;
   ms: number;
 }
 
@@ -175,15 +195,14 @@ export function removeClues(solution: readonly number[][], options: RemovalOptio
   const order = options.order ?? (targetTier === undefined ? 'random' : targetTier <= 2 ? 'trivialLast' : 'trivialFirst');
   const clues = deriveClues(solution);
   const shape = { gridSize: size, clues };
-  let tier = classifySkyscrapers(shape).tier;
-  if (targetTier !== undefined && (tier === null || tier > targetTier)) {
-    return { clues, kept: presentClueCount(clues), tier, ms: performance.now() - started };
+  let graded = classifySkyscrapers(shape);
+  if (targetTier !== undefined && (graded.tier === null || graded.tier > targetTier)) {
+    return { clues, kept: presentClueCount(clues), tier: graded.tier, difficulty: graded.difficulty, ms: performance.now() - started };
   }
-  const slots: [GutterSide, number][] = GUTTER_SIDES.flatMap((side) => Array.from({ length: size }, (_, i) => [side, i] as [GutterSide, number]));
-  for (let i = slots.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [slots[i], slots[j]] = [slots[j], slots[i]];
-  }
+  const slots = shuffle(
+    GUTTER_SIDES.flatMap((side) => Array.from({ length: size }, (_, i) => [side, i] as [GutterSide, number])),
+    rng
+  );
   if (order !== 'random') {
     const trivial = ([side, i]: [GutterSide, number]) => clues[side][i] === 1 || clues[side][i] === size;
     // A stable partition keeps the shuffle's order inside each group.
@@ -199,18 +218,21 @@ export function removeClues(solution: readonly number[][], options: RemovalOptio
       continue;
     }
     if (targetTier !== undefined) {
-      const graded = classifySkyscrapers(shape).tier;
-      if (graded === null || graded > targetTier) {
+      const after = classifySkyscrapers(shape);
+      if (after.tier === null || after.tier > targetTier) {
         clues[side][i] = kept;
         continue;
       }
-      tier = graded;
+      graded = after;
     }
   }
-  if (targetTier === undefined) tier = classifySkyscrapers(shape).tier;
-  return { clues, kept: presentClueCount(clues), tier, ms: performance.now() - started };
+  // With a target, `graded` is the classification of the last accepted state — the state being
+  // returned; without one the result is graded once here.
+  if (targetTier === undefined) graded = classifySkyscrapers(shape);
+  return { clues, kept: presentClueCount(clues), tier: graded.tier, difficulty: graded.difficulty, ms: performance.now() - started };
 }
 
+/** One generation's knobs: size, the tier bound, and the budgets each stage shares. */
 export interface GenerateUniqueOptions {
   gridSize: GridSize;
   rng?: () => number;
@@ -239,13 +261,16 @@ export interface GenerationStats {
   totalMs: number;
 }
 
+/** A generated puzzle with the cost of making it. */
 export interface GeneratedSkyscrapers {
   puzzle: SkyscrapersPuzzle;
   stats: GenerationStats;
 }
 
 /**
- * A fresh, unique Skyscrapers: fill → repair → remove → exact verify → label. The label is the
+ * A fresh, unique Skyscrapers: fill → repair → remove → label. Uniqueness is the exact solver's
+ * word already — the repair stops at an exact count of one and every accepted removal passed
+ * `isSkyscrapersUnique` with the full node budget, so no second verify is run. The label is the
  * classifier's for whatever came out (`'unrated'` only if the ladder cannot finish it, which the
  * removal's own checks make impossible when a target is set). Every stage shares `timeBudgetMs`;
  * `null` when the rounds or the budget run out.
@@ -265,11 +290,6 @@ export function generateUniqueSkyscrapers(options: GenerateUniqueOptions): Gener
       if (++floorMisses >= maxFloorMisses) break;
       continue;
     }
-    const shape = { gridSize, clues: removed.clues };
-    // The removal counted with a node budget; the final word is the exact verifier's.
-    if (isSkyscrapersUnique(shape) !== true) continue;
-    const tier = removed.tier ?? classifySkyscrapers(shape).tier;
-    const difficulty = tier === null ? 'unrated' : TIER_DIFFICULTY[(tier === 0 ? 1 : tier) as Exclude<SkyscrapersTier, 0>];
     return {
       puzzle: {
         variant: 'skyscrapers',
@@ -277,7 +297,7 @@ export function generateUniqueSkyscrapers(options: GenerateUniqueOptions): Gener
         grid: repaired.solution.map((row) => row.map(() => 0)),
         solution: repaired.solution,
         clues: removed.clues,
-        difficulty,
+        difficulty: removed.difficulty,
       },
       stats: {
         rounds: round,

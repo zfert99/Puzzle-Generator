@@ -141,7 +141,7 @@ export function isValid(grid: number[][], row: number, col: number, num: number,
  * `killer/` engines already use (`options.rng ?? Math.random`). This is what makes the Sudoku core
  * seedable; previously it hard-called `Math.random` and could not be reproduced in a test.
  */
-export function shuffle(array: number[], rng: () => number = Math.random): number[] {
+export function shuffle<T>(array: T[], rng: () => number = Math.random): T[] {
   // Iterate backwards from the last element to the second element
   for (let i = array.length - 1; i > 0; i--) {
     // Generate a random index j between 0 and i (inclusive)

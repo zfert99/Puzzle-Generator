@@ -64,6 +64,15 @@ describe('repairToUnique', () => {
     expect(repaired.swaps).toBe(0);
     expect(repaired.ms).toBeLessThan(1000);
   });
+
+  it('the restart cap holds even when no swap is ever counted (restartAfter 0 restarts every iteration)', () => {
+    // A random 7×7 is never all-clue unique (0 of 94,962, G4), so three fresh squares cannot end the climb;
+    // with every other cap lifted only maxRestarts can — and it does, with zero swaps counted.
+    const repaired = repairToUnique(7, { rng: mulberry32(2), restartAfter: 0, maxRestarts: 3, stepCap: Infinity, msCap: Infinity });
+    expect(repaired.restarts).toBe(3);
+    expect(repaired.swaps).toBe(0);
+    expect(repaired.solutions).not.toBe(1);
+  });
 });
 
 describe('removeClues', () => {
@@ -88,8 +97,9 @@ describe('removeClues', () => {
     for (let seed = 20; seed < 32; seed++) {
       const { solution } = repairToUnique(5, { rng: mulberry32(seed) });
       const removed = removeClues(solution, { rng: mulberry32(seed + 100), targetTier: 2 });
-      const graded = classifySkyscrapers({ gridSize: 5, clues: removed.clues }).tier;
-      expect(graded).toBe(removed.tier);
+      const graded = classifySkyscrapers({ gridSize: 5, clues: removed.clues });
+      expect(graded.tier).toBe(removed.tier);
+      expect(graded.difficulty).toBe(removed.difficulty);
       if (removed.tier !== null && removed.tier <= 2) {
         belowOrAt += 1;
         expect(isSkyscrapersUnique({ gridSize: 5, clues: removed.clues })).toBe(true);

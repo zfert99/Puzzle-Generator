@@ -98,7 +98,8 @@ Branch `feature/skyscrapers-e4` on `65fbacc`. Diff: `skyscrapers-generator.ts` (
 repair-with-restart → tier-bounded removal → verify → label) with tests and mirrored doc;
 `SKYSCRAPERS_SIZES` in the types module; a Skyscrapers branch in `/api/puzzle` with an unbounded
 fallback; `usePuzzle` without the fixture short-circuit; menu copy; the e2e spec's clue-count
-assertion; docs (plan E4 step-log, log, roadmap, index, status). **~330 LOC of source.**
+assertion; docs (plan E4 step-log, log, roadmap, index, status). After the review: `skyscrapers.ts`
+(the entry point with the serving policy) and a generic `shuffle`. **~370 LOC of source.**
 
 ### Mechanical
 
@@ -107,7 +108,7 @@ assertion; docs (plan E4 step-log, log, roadmap, index, status). **~330 LOC of s
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean |
 | `npx tsc --noEmit` · `npm run build` | clean · clean |
-| `npx vitest run` | **92 files / 897 tests green** (12 new, 2 rewritten); no entry from the Known flaky tests table fired |
+| `npx vitest run` | **93 files / 901 tests green** (16 new, 2 rewritten); no entry from the Known flaky tests table fired |
 | Benchmarks | the slice's gate (100 generations per size and level, 60 at 7×7): **0 failures**; mean 5×5 7–10 ms · 6×6 34–51 ms · 7×7 391–782 ms, **except 7×7 easy 3.5 s** (45/60 via the unbounded fallback — a tier-set question for E5, L19). Unbounded medians 6 / 20 / 221 ms |
 | Playwright | the Skyscrapers spec was updated (any clue count in [N − 1, 4N]) but **not run locally** — the only server on port 3000 belongs to another session and may not serve this branch; CI runs it against a production build |
 
@@ -123,6 +124,14 @@ assertion; docs (plan E4 step-log, log, roadmap, index, status). **~330 LOC of s
   body. The e2e spec pinned the fixture's 15 clues for the same reason.
 - **`maxRounds` 10 was not enough for 6×6 easy** (6/100 failures: a 25% floor rate to the tenth
   power); 40 rounds and the floor-miss cutoff took it to 0/100 with 3 fallbacks.
+- **`/code-review high` (owner-run, on the PR): 9 findings, all fixed in-PR.** The one with
+  weight: the bounded-then-fallback serving policy sat in the route controller (AGENTS.md §1);
+  it is `skyscrapers.ts` / `generateSkyscrapers` now, with a test per level and one for the
+  7×7-easy fallback path. Also: `maxRestarts` bounds a climb that never counts a swap (the
+  cyclic squares of prime order have no intercalate); `removeClues` returns the classifier's
+  label so the generator no longer re-derives it; the final uniqueness verify — the identical
+  call the removal had just made — is gone; `shuffle` is generic; `randomLatinSquare` throws on a
+  failed fill; JSDoc on six interfaces.
 
 ### Invariants checked
 
@@ -134,15 +143,18 @@ assertion; docs (plan E4 step-log, log, roadmap, index, status). **~330 LOC of s
 
 ### Review statements
 
-- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
-  runs `/code-review high` on the PR. `/security-review`: the route's new branch validates the two
-  inputs against closed lists before any work and holds no auth/data access — not required.
+- The owner ran `/code-review high` on the PR (9 findings, fixed above); the agent did not launch
+  it. `/security-review`: the route's new branch validates the two inputs against closed lists
+  before any work and holds no auth/data access — not required.
 
 ### Lessons
 
 - **Read a yield gate against the floor rate per cell, not per size.** "0 failures per size" was
   true and still left one (size, level) cell that fails three times in four; the per-cell table is
   the one to look at.
+- **A "final verify" must use a different budget or a different solver than the step before it,
+  or it verifies nothing.** Name what the second check knows that the first did not before adding
+  it.
 
 ---
 
