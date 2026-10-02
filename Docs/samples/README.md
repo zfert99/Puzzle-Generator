@@ -66,3 +66,22 @@ npx tsx src/features/pdf-generation/preview-kakuro.ts Docs/samples/kakuro-sample
 The rendering comes from `drawKakuroGrid` / `generateKakuroPDF` in
 [pdf.service.ts](../../src/features/pdf-generation/services/pdf.service.ts). You can also generate
 a Kakuro PDF from the browser on `/generate` (the Kakuro toggle — at most one puzzle per level).
+
+## `skyscrapers-sample.pdf`
+
+A sample Skyscrapers (Towers) booklet — the three hand-made fixtures, one per planned size
+(**5×5 / 6×6 / 7×7**, all `unrated` until the classifier lands), followed by the answer pages.
+Each puzzle page shows the framed play area with the clue digits floating in a gutter on all four
+sides — half the size of a solved digit and one tone lighter, no arrows, blank where the clue is
+blank; the answer page adds the heights.
+
+Regenerate (there is no count argument until the Skyscrapers generator lands — the fixtures are
+the only puzzles there are):
+
+```bash
+npx tsx src/features/pdf-generation/preview-skyscrapers.ts Docs/samples/skyscrapers-sample.pdf
+```
+
+The rendering comes from `drawSkyscrapersGrid` / `generateSkyscrapersPDF` in
+[pdf.service.ts](../../src/features/pdf-generation/services/pdf.service.ts). You can also generate
+a Skyscrapers PDF from the browser on `/generate` (the Skyscrapers toggle — one puzzle per request).

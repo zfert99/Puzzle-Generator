@@ -62,3 +62,13 @@ The research's 4×4 counterexample: two different Latin squares that imply the s
 (top 4,2,2,1 · bottom 1,2,2,4 · left 4,2,2,1 · right 1,2,2,4). Kept so E1's counting solver has a
 canonical case that must report **two** solutions — and so the all-clue ambiguity measured in the
 research (35.42% of 4×4 squares) has one concrete witness in the repo.
+
+## `selectSkyscrapersBatch(counts, { gridSize })` (V3)
+
+What `/api/generate` prints until the generator exists — the Kakuro counterpart was
+`selectKakuroBatch`, replaced by `generateKakuroBatch` in E5. There is exactly one fixture per size
+and it carries no grade, so the function answers a request with that fixture **once**, whatever
+level the counts name, and only when the counts total exactly one; any other total, or a size
+with no fixture, throws with the reason (the route turns the total case into a 400 before
+calling). Lives beside the fixtures, not in the route, so the route stays a controller
+(AGENTS.md §1; the Kakuro review-4 finding).

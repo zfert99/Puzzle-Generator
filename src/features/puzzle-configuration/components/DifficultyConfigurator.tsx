@@ -4,7 +4,8 @@ import type { SelectableSize } from './GridSizeSelector';
 const DIFFICULTIES_BY_SIZE: Record<number, string[]> = {
   4: ['easy', 'medium', 'hard'],
   6: ['easy', 'medium', 'hard'],
-  7: ['easy', 'medium', 'hard', 'expert', 'extreme'], // only Kakuro is 7×7, and it carries the full ladder
+  5: ['easy', 'medium', 'hard', 'expert', 'extreme'], // only Skyscrapers is 5×5; its tiers are per size (D6)
+  7: ['easy', 'medium', 'hard', 'expert', 'extreme'], // Kakuro and Skyscrapers are 7×7, both with the full ladder
   9: ['easy', 'medium', 'hard', 'expert', 'extreme'],
 };
 
@@ -16,7 +17,7 @@ interface Props {
   /** Override the available difficulties (e.g. Killer offers only easy/medium/hard). */
   difficulties?: string[];
   /** Variant, so the slow-generation warning names the right techniques + time range. */
-  variant?: 'classic' | 'killer' | 'calc' | 'kakuro';
+  variant?: 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers';
   /** Keisan Mystery / No-Op mode — hiding the operators makes unique boards rarer, so much slower. */
   mystery?: boolean;
 }
@@ -28,7 +29,7 @@ interface Props {
  * so Mystery Extreme can run tens of seconds. Returns `null` when nothing slow is selected.
  */
 function slowGenerationWarning(
-  variant: 'classic' | 'killer' | 'calc' | 'kakuro',
+  variant: 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers',
   counts: Record<string, number>,
   mystery: boolean,
 ): string | null {
@@ -60,6 +61,7 @@ function slowGenerationWarning(
   }
 
   if (variant === 'kakuro') return null; // every Kakuro tier generates in well under a second
+  if (variant === 'skyscrapers') return null; // a baked fixture until E5; nothing is generated
 
   // classic — kept verbatim (extreme-gated); other tiers generate quickly.
   if (hasExtreme) {

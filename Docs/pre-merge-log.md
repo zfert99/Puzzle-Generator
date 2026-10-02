@@ -92,6 +92,62 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers V3: the fixtures printable on `/generate` and in the sample booklet
+
+Branch `feature/skyscrapers-v3` on `744754b`. Diff: `drawSkyscrapersGrid` + `generateSkyscrapersPDF`
+in `pdf.service.ts`, a Zod'd Skyscrapers branch in `/api/generate`, `selectSkyscrapersBatch`
+beside the fixtures, the print form's fifth toggle (no configurator until E5), hook filename,
+configurator variant + size-5 row, `preview-skyscrapers.ts`, `Docs/samples/skyscrapers-sample.pdf`;
+tests for each; mirrored docs + the samples index. **~230 LOC of source.**
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **86 files / 829 tests green** (9 new); no entry from the Known flaky tests table fired |
+| Benchmarks | n/a — no solver code |
+
+### Findings
+
+- None in review. One rule changed from the spec: with one ungraded fixture per size, the honest
+  print contract is **one puzzle per request** (any level), not Kakuro V3's one-per-level — the
+  route refuses more with the reason and the form offers no counts. Two lines E5 deletes.
+- The renderer needed no display-coordinate code of its own: it reads clues through `clueAt`
+  like the board (L2 confirmed on the second consumer).
+
+### Invariants checked
+
+- The route validates with Zod before anything runs (sizes 5 | 6 | 7, counts 0..1, total exactly
+  1); every refusal is a 400 with the reason, asserted by five route cases. Fixture selection is
+  a service function, not route logic (AGENTS.md §1).
+- Puzzle pages print `grid` (empty — no givens), answer pages print `solution`; blank clues draw
+  nothing; the clue digit is half the solved digit (0.3 vs 0.6 of a cell) and lighter — read by
+  eye on the rasterised pages.
+
+### Docs sweep
+
+New: `preview-skyscrapers.md`. Updated: `pdf.service.md` (§4d), `route.md` (§1d), `PuzzleForm.md`,
+`DifficultyConfigurator.md`, `usePuzzleGeneration.md`, `skyscrapers-fixtures.md`,
+`Docs/samples/README.md`; plan (V2 ✅ with the owner's verdict, V3 step-log, slice table, status),
+log, roadmap, Docs index, project-status. Reverse sweep for "one per level" on Skyscrapers: the
+plan's V3 spec line is amended in the step-log, not rewritten.
+
+### Verified vs read
+
+- **Verified:** tests, lint, tsc, build, markdownlint; the 6×6 puzzle and answer pages rasterised
+  with `sips` and checked (single-page renders made with `drawSkyscrapersGrid` directly — QuickLook
+  rasterises only a PDF's first page, the Kakuro V3 note).
+- **Read only:** the booklet as a whole on paper — handed to the owner with the sample.
+
+### Review statements
+
+- `/security-review`: **not run** — the route branch is Zod-validated input → a static fixture →
+  a PDF; no auth, data or ownership surface.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
 ## 2026-10-02 — Skyscrapers V2: playable at `/play?variant=skyscrapers` on the baked fixtures
 
 Branch `feature/skyscrapers-v2` on `60c8c26`. Diff: store (`'skyscrapers'` variant, `edgeClues`,

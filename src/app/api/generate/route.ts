@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generatePuzzleBatch } from '@/features/engine/services/generation.service';
-import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF } from '@/features/pdf-generation/services/pdf.service';
+import { generatePuzzlePDF, generateKillerPDF, generateCalcPDF, generateKakuroPDF, generateSkyscrapersPDF } from '@/features/pdf-generation/services/pdf.service';
 import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
 import { generateKakuroBatch, isKakuroBudgetError } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
+import { SKYSCRAPERS_LADDER, type SkyscrapersLevel } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { selectSkyscrapersBatch } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 
@@ -32,6 +34,24 @@ const kakuroRequestSchema = z.object({
   hard: kakuroCount,
   expert: kakuroCount,
   extreme: kakuroCount,
+});
+
+/**
+ * Skyscrapers request shape (plan slice V3). Sizes are Skyscrapers' own (D4: 5 / 6 / 7); counts
+ * are non-negative integers. Until the generator lands (E5) there is one hand-made, ungraded
+ * fixture per size, so the branch below accepts exactly one puzzle per request — whatever level
+ * the count names — and says why otherwise. The `max(1)` per level is the V3 cap to delete when
+ * `generateSkyscrapersBatch` exists (the Kakuro V3 pattern).
+ */
+const skyscrapersCount = z.number().int().min(0, 'Skyscrapers counts must be non-negative integers').max(1, 'One hand-made Skyscrapers per size until the generator lands — ask for one puzzle').default(0);
+const skyscrapersRequestSchema = z.object({
+  variant: z.literal('skyscrapers'),
+  gridSize: z.union([z.literal(5), z.literal(6), z.literal(7)], { error: 'Skyscrapers grid size must be 5, 6, or 7' }).default(6),
+  easy: skyscrapersCount,
+  medium: skyscrapersCount,
+  hard: skyscrapersCount,
+  expert: skyscrapersCount,
+  extreme: skyscrapersCount,
 });
 
 /** A downloadable-PDF response with the given filename. */
@@ -63,8 +83,9 @@ export const maxDuration = 60;
  *   "extreme": number,   // Number of extreme puzzles to generate
  *   "gridSize": 4 | 6 | 9  // Optional, defaults to 9
  * }
- * With `"variant": "killer" | "calc" | "kakuro"` the same counts select that type's puzzles
- * (Kakuro: `gridSize` 7 | 9, at most one per level — see `kakuroRequestSchema`).
+ * With `"variant": "killer" | "calc" | "kakuro" | "skyscrapers"` the same counts select that
+ * type's puzzles (Kakuro: `gridSize` 6 | 7 | 9; Skyscrapers: `gridSize` 5 | 6 | 7, exactly one
+ * puzzle per request until E5 — see `skyscrapersRequestSchema`).
  */
 export async function POST(req: NextRequest) {
   const startTime = performance.now();
@@ -194,6 +215,30 @@ export async function POST(req: NextRequest) {
         'Successfully generated Kakuro puzzles and PDF',
       );
       return pdfResponse(pdfBuffer, 'Kakuro.pdf');
+    }
+
+    // ---- Skyscrapers branch (5×5 / 6×6 / 7×7 — one baked fixture per size until E5) ----
+    if (body?.variant === 'skyscrapers') {
+      const parsed = skyscrapersRequestSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid Skyscrapers request' }, { status: 400 });
+      }
+      const skySize = parsed.data.gridSize;
+      const counts = Object.fromEntries(SKYSCRAPERS_LADDER.map((level) => [level, parsed.data[level]])) as Record<SkyscrapersLevel, number>;
+      const skyTotal = SKYSCRAPERS_LADDER.reduce((sum, level) => sum + counts[level], 0);
+      if (skyTotal === 0) {
+        return NextResponse.json({ error: 'Please select at least one puzzle to generate' }, { status: 400 });
+      }
+      if (skyTotal > 1) {
+        return NextResponse.json({ error: 'One hand-made Skyscrapers per size until the generator lands — ask for one puzzle' }, { status: 400 });
+      }
+      const puzzles = selectSkyscrapersBatch(counts, { gridSize: skySize });
+      const pdfBuffer = await generateSkyscrapersPDF(puzzles);
+      logger.info(
+        { event: 'generation_success', variant: 'skyscrapers', counts, gridSize: skySize, durationMs: Math.round(performance.now() - startTime) },
+        'Successfully rendered a Skyscrapers fixture to PDF',
+      );
+      return pdfResponse(pdfBuffer, 'Skyscrapers.pdf');
     }
 
     // Extract puzzle counts, defaulting to 0 if not provided

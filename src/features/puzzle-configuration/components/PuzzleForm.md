@@ -129,6 +129,15 @@ follow-up 5).
    - If `loading` is true, disable the button and show a spinning SVG icon along with "Generating...".
    - If `loading` is false, make the button clickable and show "Generate PDF".
 
+## Skyscrapers toggle (October 2026, plan slice V3)
+
+A fifth toggle (the type row now wraps). Sizes come from the plan's D4 — 5 / 6 / 7, default 6 —
+through `GridSizeSelector`. Until the generator lands (E5) there is one hand-made, ungraded
+fixture per size, so the form shows **no `DifficultyConfigurator`** for Skyscrapers (there are no
+counts to configure) and `handleGenerate` sends exactly one puzzle (`easy: 1`, the others 0) —
+the route prints the size's fixture whatever level the count names. E5 gives Skyscrapers the
+configurator back, with its own ladder, the way Kakuro's E5 did.
+
 ## Toggle groups announce selection (September 2026, QA F10)
 
 The puzzle-type toggle is a `role="group"` (labelled "Puzzle type") whose buttons carry

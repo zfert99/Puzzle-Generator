@@ -29,6 +29,13 @@
 
 ## Journal
 
+- **2026-10-02 (V3)** V2 merged ([#130](https://github.com/zfert99/Puzzle-Generator/pull/130))
+  on the owner's visual verdict. **V3 built** on `feature/skyscrapers-v3`: `drawSkyscrapersGrid` +
+  `generateSkyscrapersPDF` on the shared nav helpers (G9's print numbers applied: clue digits
+  half the solved digit, one tone lighter, frame 5× the rule, no arrows); a Zod'd `/api/generate`
+  branch printing exactly one fixture per request (sizes 5/6/7); the print form's fifth toggle
+  with no difficulty counts until E5; `Docs/samples/skyscrapers-sample.pdf`. Owner's look at the
+  booklet pending (the slice's gate).
 - **2026-10-02 (V2)** V1 merged ([#129](https://github.com/zfert99/Puzzle-Generator/pull/129)).
   **V2 built** on `feature/skyscrapers-v2`: playable at `/play?variant=skyscrapers` on the baked
   fixtures — four-sided gutter on the real board, `edgeClues` persisted / `doneClues` undo-able
