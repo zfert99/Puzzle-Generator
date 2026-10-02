@@ -19,8 +19,8 @@
 > [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
 > [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
 > [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) and
-> [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); **R1 (daily rotation at four
-> types) built, in review — the last slice**) · **Branch:** one per slice off
+> [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); R1 (daily rotation at four
+> types) [#125](https://github.com/zfert99/Puzzle-Generator/pull/125) — **every slice done**) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`,
 > `-review-8`, `-r1`) ·
@@ -916,7 +916,7 @@ addressed in [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); recor
 in both sections, existing types' rolls unchanged); floors present for every rolled combo; live
 `db:seed` round-trip.
 
-**Step-log (2026-10-01):**
+**Step-log (2026-10-01 — PR [#125](https://github.com/zfert99/Puzzle-Generator/pull/125)):**
 
 - *Process:* **D4 locked by the owner** ("leave minis at 3, add Kakuro to the rotation"). `Variant`
   gained `'kakuro'` (registry + `schema.ts` `$type`, no migration); `StoredCage` gained

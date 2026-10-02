@@ -28,7 +28,7 @@
 
 ## Journal
 
-- **2026-10-01 (R1)** Review follow-up 8 merged (#124). **R1 built** — Kakuro in the daily:
+- **2026-10-01 (R1)** Review follow-up 8 merged (#124). **R1 built** (#125) — Kakuro in the daily:
   `[decision]` **D4 locked by the owner** (keep 3 mini slots, roll 3 of the 4 types; a mini plays
   at its type's own size — D11) and applied; the day is now **4 standard + 3 minis = 7 boards**;
   runs ride the `cages` column (no migration); Kakuro profile rows are cell-count estimates (G2).
