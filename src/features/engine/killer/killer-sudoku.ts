@@ -185,8 +185,25 @@ export interface KillerGenOptions {
   rng?: () => number;
   /** A solved grid to build on. Default: a fresh random solution via `fillGrid` per attempt. */
   solution?: number[][];
-  /** Grading attempts before giving up (default 800). */
+  /** Grading attempts before giving up (default 20000). */
   maxAttempts?: number;
+  /**
+   * Wall-clock budget for the call, in ms (default: none). Checked once per attempt; when it runs
+   * out the generator throws an error named `KILLER_BUDGET_ERROR` instead of grinding on — an
+   * unbudgeted extreme was measured at 8.6–31 s. Same option name as Kakuro/Skyscrapers.
+   */
+  timeBudgetMs?: number;
+}
+
+/** `error.name` when a Killer generation or batch outlives its `timeBudgetMs` — a budget question, not a fault. */
+export const KILLER_BUDGET_ERROR = 'KillerBudgetError';
+
+export function isKillerBudgetError(error: unknown): error is Error {
+  return error instanceof Error && error.name === KILLER_BUDGET_ERROR;
+}
+
+function killerBudgetError(message: string): Error {
+  return Object.assign(new Error(message), { name: KILLER_BUDGET_ERROR });
 }
 
 /**
@@ -230,7 +247,8 @@ export function generateUniqueKiller(
  * solver is capped at the target tier, so grading a would-be "medium" never pays for
  * expensive higher-tier strategies. Throws if no puzzle grades to the requested difficulty
  * within `maxAttempts` (astronomically unlikely at the tuned settings) — or immediately if
- * the difficulty doesn't exist at the size (expert/extreme are 9×9-only).
+ * the difficulty doesn't exist at the size (expert/extreme are 9×9-only). With `timeBudgetMs`,
+ * throws `KILLER_BUDGET_ERROR` once the budget is spent.
  */
 export function generateKillerSudoku(
   difficulty: KillerDifficulty = 'medium',
@@ -247,6 +265,7 @@ export function generateKillerSudoku(
   // exhaustion astronomically unlikely (hard accepts ~1 in 500) at a bounded worst case (~10 s).
   const maxAttempts = options.maxAttempts ?? 20000;
   const config = getGridConfig(gridSize);
+  const deadline = options.timeBudgetMs === undefined ? Infinity : performance.now() + options.timeBudgetMs;
 
   // One flat loop, cheapest gates first: shape (µs) → logical solve (~0.5 ms) → uniqueness
   // (~10 ms, runs ONCE per accepted puzzle). The order matters: the logical solver makes only
@@ -256,6 +275,9 @@ export function generateKillerSudoku(
   // hard generation ~5× (measured; the old order paid ~10 ms uniqueness on every shape-passing
   // candidate only to reject ~90% of them at the cheap grading step).
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (deadline !== Infinity && performance.now() > deadline) {
+      throw killerBudgetError(`Could not generate a ${difficulty} Killer within ${options.timeBudgetMs} ms (${attempt} attempts)`);
+    }
     let solution: number[][];
     if (options.solution) {
       solution = copyGrid(options.solution);
@@ -302,10 +324,12 @@ export function generateKillerSudoku(
 
 /** Generate a batch of graded Killers — `counts[difficulty]` puzzles of each, easy→hard order.
  * Only difficulties the size offers are honoured: 9×9 = full ladder, 6×6 = easy/medium/hard,
- * 4×4 = easy only (higher tiers don't exist at those sizes — see the per-size configs). */
+ * 4×4 = easy only (higher tiers don't exist at those sizes — see the per-size configs).
+ * `timeBudgetMs` is ONE budget for the whole batch (default: none): each puzzle gets what is
+ * left, and the batch throws `KILLER_BUDGET_ERROR` when it is spent. */
 export function generateKillerBatch(
   counts: Partial<Record<KillerDifficulty, number>>,
-  options: { gridSize?: 4 | 6 | 9 } = {},
+  options: { gridSize?: 4 | 6 | 9; timeBudgetMs?: number } = {},
 ): KillerPuzzle[] {
   const gridSize = options.gridSize ?? 9;
   const LADDERS: Record<4 | 6 | 9, readonly KillerDifficulty[]> = {
@@ -314,10 +338,22 @@ export function generateKillerBatch(
     9: ['easy', 'medium', 'hard', 'expert', 'extreme'],
   };
   const ladder = LADDERS[gridSize];
+  const { timeBudgetMs } = options;
+  const started = performance.now();
   const puzzles: KillerPuzzle[] = [];
   for (const difficulty of ladder) {
     const n = counts[difficulty] ?? 0;
-    for (let i = 0; i < n; i++) puzzles.push(generateKillerSudoku(difficulty, { gridSize }));
+    for (let i = 0; i < n; i++) {
+      if (timeBudgetMs === undefined) {
+        puzzles.push(generateKillerSudoku(difficulty, { gridSize }));
+        continue;
+      }
+      const remaining = timeBudgetMs - (performance.now() - started);
+      if (remaining <= 0) {
+        throw killerBudgetError(`Killer batch ran out of time after ${puzzles.length} puzzles (${timeBudgetMs} ms budget)`);
+      }
+      puzzles.push(generateKillerSudoku(difficulty, { gridSize, timeBudgetMs: remaining }));
+    }
   }
   return puzzles;
 }

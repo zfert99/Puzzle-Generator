@@ -1,4 +1,4 @@
-import { HumanSolver, canHumanSolveExtreme } from './human-solver';
+import { HumanSolver, canHumanSolveExpert, canHumanSolveExtreme } from './human-solver';
 import type { GridConfig, Difficulty, GridSize } from './sudoku';
 import { copyGrid, createEmptyGrid, fillGrid, shuffle, popcount } from './grid-utils';
 
@@ -11,8 +11,9 @@ import { copyGrid, createEmptyGrid, fillGrid, shuffle, popcount } from './grid-u
  * Like {@link fillGrid}, this uses bitmask-based backtracking with an MRV
  * heuristic: used-digit bitmasks per row/column/box make each legality test O(1),
  * and always branching on the most-constrained empty cell first prunes the tree
- * hard — which matters because `applyQuotaDigger` calls this after every candidate
- * clue removal. See AGENTS.md Section 1.
+ * hard — which matters because every digger calls this after every candidate clue
+ * removal (the Expert/Extreme diggers as the gate in front of `HumanSolver`). See
+ * AGENTS.md Section 1.
  */
 export function countSolutions(grid: number[][], config: GridConfig, limit = 2): number {
   const { size, boxWidth, boxHeight, maxNum } = config;
@@ -86,41 +87,112 @@ export function countSolutions(grid: number[][], config: GridConfig, limit = 2):
 }
 
 /**
- * Expert Digger:
- * Tries to remove AS MANY CLUES AS POSSIBLE while guaranteeing the puzzle can still be solved
- * by a human using pure logic (without guessing).
- * It achieves this by utilizing the `HumanSolver`.
+ * `error.name` of the error a classic generator throws when its `timeBudgetMs` runs out — the
+ * Kakuro/Skyscrapers convention (a name-tagged `Error`, recognised by {@link isSudokuBudgetError}),
+ * so a route can tell "the request was too large for its budget" from a real fault.
  */
-export function applyExhaustiveDigger(grid: number[][], config: GridConfig, rng: () => number = Math.random): void {
-  // Create an array of all positions and shuffle it
+export const SUDOKU_BUDGET_ERROR = 'SudokuBudgetError';
+
+export function isSudokuBudgetError(error: unknown): error is Error {
+  return error instanceof Error && error.name === SUDOKU_BUDGET_ERROR;
+}
+
+/**
+ * Throws {@link SUDOKU_BUDGET_ERROR} once the absolute `deadline` (a `performance.now()` value)
+ * has passed. `Infinity` — the default everywhere — never reads the clock, so an unbudgeted
+ * caller pays nothing and behaves exactly as before.
+ */
+function assertWithinDeadline(deadline: number): void {
+  if (deadline !== Infinity && performance.now() > deadline) {
+    throw Object.assign(new Error('Sudoku generation ran out of its time budget'), { name: SUDOKU_BUDGET_ERROR });
+  }
+}
+
+/**
+ * One exhaustive dig pass — the shared core of the Expert and Extreme diggers. Visits every cell
+ * in a shuffled order and keeps a removal only if the puzzle stays solvable by `HumanSolver`
+ * capped at `maxTier`, i.e. solvable by pure logic with no guessing.
+ *
+ * **Uniqueness gate first.** A sound logical solver can never finish a grid with two solutions,
+ * so a removal that breaks uniqueness is always rejected — and almost every rejection is exactly
+ * that. `countSolutions` (limit 2) answers it in ~0.1 ms, whereas a failing `HumanSolver` run
+ * grinds through ALS/AIC to exhaustion before giving up. Checking uniqueness first therefore
+ * rejects the same removals far more cheaply (measured 5–70× on Extreme generation) and accepts
+ * exactly the same ones: neither check consumes `rng`, so for a given seed the output is
+ * byte-identical to running `HumanSolver` alone.
+ *
+ * Exported for the determinism test in `diggers.test.ts`; production callers use the diggers.
+ */
+export function digExhaustively(
+  grid: number[][],
+  config: GridConfig,
+  rng: () => number,
+  maxTier: 'advanced' | 'extreme',
+  deadline: number = Infinity,
+): void {
   const positions = shuffle(Array.from({ length: config.totalCells }, (_, i) => i), rng);
-  
-  // Attempt to "dig" (remove) the number at each position one by one
+
   for (const pos of positions) {
+    assertWithinDeadline(deadline);
     const row = Math.floor(pos / config.size);
     const col = pos % config.size;
-
-    // Backup the value in case removing it breaks the puzzle
     const backup = grid[row][col];
-    if (backup === 0) continue; // Already empty (shouldn't happen here, but safe)
-    
-    // Tentatively remove the clue
+    if (backup === 0) continue;
+
     grid[row][col] = 0;
 
-    // Verify a human can solve the resulting puzzle without guessing.
-    // We use `HumanSolver` instead of `countSolutions` because `countSolutions` uses brute-force backtracking
-    // and would successfully solve puzzles that require guessing. We want to guarantee it's logically solvable.
-    // Additionally, because `HumanSolver` relies purely on logic, if it can solve the puzzle,
-    // the puzzle is inherently guaranteed to have a UNIQUE solution.
-    const solver = new HumanSolver(copyGrid(grid));
-    const res = solver.solve({ maxTier: 'advanced' });
-    
-    // If the HumanSolver gets stuck (requires guessing or unprogrammed strategies),
-    // we put the clue back and move on to the next position.
-    if (!res.solved) {
+    // countSolutions backtracks in place and restores every cell it touches, so no copy is needed.
+    if (countSolutions(grid, config) !== 1) {
+      grid[row][col] = backup;
+      continue;
+    }
+
+    if (!new HumanSolver(copyGrid(grid)).solve({ maxTier }).solved) {
       grid[row][col] = backup;
     }
   }
+}
+
+/**
+ * How many full dig passes the Expert digger makes before keeping its last puzzle anyway. A pass
+ * yields an advanced-requiring puzzle ~10% of the time (measured 20 of 200), so 60 passes leave a
+ * ~0.2% chance of falling back to an unverified (basic-solvable) Expert.
+ */
+const EXPERT_MAX_RETRIES = 60;
+
+/**
+ * Expert Digger:
+ * Removes as many clues as possible while the puzzle stays solvable by pure logic up to the
+ * advanced tier, then **verifies the puzzle actually needs that tier** — mirroring the Extreme
+ * digger. A minimal advanced-solvable puzzle usually turns out to be basic-solvable anyway
+ * (measured 180 of 200), so without the check "Expert" was mostly a Hard with fewer clues. Each
+ * failed pass restores the original solution and re-digs it in a fresh shuffled order.
+ *
+ * @param deadline Absolute `performance.now()` cut-off; past it the digger throws
+ *   {@link SUDOKU_BUDGET_ERROR}. Defaults to no deadline.
+ */
+export function applyExhaustiveDigger(
+  grid: number[][],
+  config: GridConfig,
+  rng: () => number = Math.random,
+  deadline: number = Infinity,
+): void {
+  const solution = copyGrid(grid);
+
+  for (let attempt = 0; attempt < EXPERT_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      for (let r = 0; r < config.size; r++) {
+        for (let c = 0; c < config.size; c++) grid[r][c] = solution[r][c];
+      }
+    }
+
+    digExhaustively(grid, config, rng, 'advanced', deadline);
+
+    if (canHumanSolveExpert(copyGrid(grid))) return;
+  }
+
+  // Retries exhausted: keep the last puzzle. It is still unique and logically solvable — just not
+  // verified to need an advanced strategy (graceful degradation, as in the Extreme digger).
 }
 
 /**
@@ -198,13 +270,23 @@ export function applyQuotaDigger(grid: number[][], difficulty: Difficulty, confi
  * that the resulting puzzle actually REQUIRES extreme strategies. If the puzzle can be
  * solved with only expert-level strategies, the entire process is retried with a fresh
  * solution grid.
+ *
+ * @param deadline Absolute `performance.now()` cut-off; past it the digger throws
+ *   {@link SUDOKU_BUDGET_ERROR}. Defaults to no deadline.
  */
-export function applyExtremeDigger(grid: number[][], solution: number[][], config: GridConfig, rng: () => number = Math.random): void {
+export function applyExtremeDigger(
+  grid: number[][],
+  solution: number[][],
+  config: GridConfig,
+  rng: () => number = Math.random,
+  deadline: number = Infinity,
+): void {
   const MAX_RETRIES = 50;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     // On retry, generate a completely new solution and start fresh
     if (attempt > 0) {
+      assertWithinDeadline(deadline);
       const newSolution = createEmptyGrid(config.size);
       fillGrid(newSolution, config, rng);
       // Copy the new solution into both the grid and solution arrays
@@ -216,24 +298,8 @@ export function applyExtremeDigger(grid: number[][], solution: number[][], confi
       }
     }
 
-    // Step 1: Exhaustively dig holes (same logic as expert digger)
-    const positions = shuffle(Array.from({ length: config.totalCells }, (_, i) => i), rng);
-    for (const pos of positions) {
-      const row = Math.floor(pos / config.size);
-      const col = pos % config.size;
-      const backup = grid[row][col];
-      if (backup === 0) continue;
-
-      grid[row][col] = 0;
-
-      // Verify the puzzle is still solvable by the full solver (including extreme strategies)
-      const solver = new HumanSolver(copyGrid(grid));
-      const res = solver.solve();
-
-      if (!res.solved) {
-        grid[row][col] = backup;
-      }
-    }
+    // Step 1: Exhaustively dig holes, verifying each removal against the full solver.
+    digExhaustively(grid, config, rng, 'extreme', deadline);
 
     // Step 2: Validate that the puzzle actually REQUIRES extreme strategies
     if (canHumanSolveExtreme(copyGrid(grid))) {

@@ -30,7 +30,7 @@ export function applyWWing(solver: HumanSolver): boolean {
               !(solver.sees(cp1, bv2) && solver.sees(cp2, bv1))) continue;
 
           if ((cp1.r === bv1.r && cp1.c === bv1.c) || (cp1.r === bv2.r && cp1.c === bv2.c)) continue;
-          if ((cp2.r === bv1.r && cp1.c === bv1.c) || (cp2.r === bv2.r && cp2.c === bv2.c)) continue;
+          if ((cp2.r === bv1.r && cp2.c === bv1.c) || (cp2.r === bv2.r && cp2.c === bv2.c)) continue;
 
           if (solver.eliminateFromCellsSeeingAll([bv1, bv2], elimCand, [bv1, bv2])) {
             return true;
@@ -280,22 +280,14 @@ export function applyAIC(solver: HumanSolver): boolean {
               if (elim) return true;
             }
           } else if (startLinkType === 'weak' && lastLink === 'weak') {
+            // Discontinuous loop back to the start node: assuming it true forces it false, so it
+            // is false. (A weak-ended chain between two DIFFERENT same-digit cells only proves
+            // they are not both true — no elimination; see extreme.md.)
             if (startParsed.num === endParsed.num &&
                 startCell.r === endCell.r && startCell.c === endCell.c) {
               if (solver.removeCandidate(startCell.r, startCell.c, startParsed.num)) {
                 return true;
               }
-            }
-
-            if (startParsed.num === endParsed.num && solver.sees(startCell, endCell)) {
-              let elim = false;
-              if (solver.removeCandidate(startCell.r, startCell.c, startParsed.num)) {
-                elim = true;
-              }
-              if (solver.removeCandidate(endCell.r, endCell.c, endParsed.num)) {
-                elim = true;
-              }
-              if (elim) return true;
             }
           }
         }

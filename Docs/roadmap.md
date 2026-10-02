@@ -795,6 +795,29 @@ speed races**, **community puzzle sharing**, and a **mobile app**.
 
 The subsections below capture the remaining backlog items.
 
+### Site-wide optimization + QA pass 🚧 Built, awaiting landing (October 2026)
+
+A full-site review — five parallel read-only audits (client rendering, server/API + security,
+board/store, engine, a11y/SEO/chrome) plus a live browser pass over a production build — and the
+remediation that followed, all on `chore/site-wide-optimization-qa`. The self-contained record,
+with measured before/after numbers and the suggested four-PR landing order, is
+[site-wide-optimization-qa-pass.md](site-wide-optimization-qa-pass.md). Headlines: the `motion`
+library removed (every page used to server-render at `opacity:0` until hydration; 37–66 KB gz
+less JS per route), classic extreme generation **5.8× faster** via a uniqueness gate before the
+human solver, the classic **Expert tier actually enforced** (38 of 40 "Expert" puzzles had been
+basic-solvable), a latent unsound AIC branch deleted, undo/redo now persisted (middleware order),
+the Kakuro daily's missing "Not quite!" review, a dark-mode 1.5:1 contrast bug on every primary
+button, the public leaderboard no longer showing email local-parts, atomic rate-limit counters,
+and a generation time budget on every `/api/generate` variant.
+
+**Backlog it leaves behind** (each with its proving benchmark or measurement named in the doc's
+§5): the AIC numeric-graph rewrite, ALS-XZ bitsets, Keisan hidden-pair masks and Killer static
+geometry (engine perf); seeded benchmark pools with median/p90; native `<dialog>` for the five
+hand-rolled modals; G5–G9 of the a11y audit; an `opengraph-image`; a `lower(username)` unique
+index + `me/attempts` pagination; the client-IP-behind-the-hub check for both rate limiters;
+Speed Insights attribution under multi-zone; the two-slot save (the single slot can still be
+overwritten across two tabs, now only while both are visible).
+
 ### Hint agent — MCP server + eval harness over `HumanSolver` ✅ Done (September 2026)
 
 A weekend-scoped build to turn the human solver into an agent tool *and* into the grader for

@@ -58,3 +58,25 @@ of being judged in isolation.
    `benchmark-logs.md` and creates that file's header if it does not exist yet.
 4. Wrap the whole logging step in error handling — a failure to write the log should report itself
    but must never discard the benchmark numbers already printed to the console.
+
+---
+
+## 5. October 2026: what the numbers mean now
+
+Two digger changes moved both rows in the same session (`diggers.md` has the detail):
+
+- **Expert went up, on purpose — ~17 ms → ~95 ms.** The Expert digger now retries until the
+  puzzle genuinely needs an advanced strategy (it used to be basic-solvable ~90% of the time), so a
+  puzzle costs ~10 dig passes instead of one. Each pass got ~2× cheaper from the uniqueness gate.
+- **Extreme went down — ~880 ms → ~150 ms.** The uniqueness gate rejects non-unique digs with
+  `countSolutions` before `HumanSolver` grinds through ALS/AIC on them; a seeded per-pass comparison
+  measured 12× with byte-identical output.
+
+## Known gaps
+
+- **Five Extreme samples, unseeded.** Each run draws fresh `Math.random` puzzles, and Extreme
+  generation is retry-heavy, so its average swings a lot between runs. Recommended (left for a
+  deliberate change so the logged history stays comparable): seed with `mulberry32`, raise the
+  sample, and log the **median and p90** next to the mean.
+- The script times with `Date.now()` (1 ms resolution); `performance.now()` would match the other
+  benchmarks.

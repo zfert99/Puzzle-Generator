@@ -2,6 +2,13 @@
 
 > **Status:** ✅ **P1 + P2 shipped** (July 2026: Speed Insights + Analytics mounted; `Cell` is
 > `React.memo`'d); **P3–P6** deliberately wait on real-user data · **Date:** July 2026 (analysis)
+> **October 2026 pass:** a second, measured client review found and fixed what this audit's
+> "already solid" table had missed — the route template server-rendered the whole page at
+> `opacity:0` behind the `motion` library (now CSS; the dependency is gone), the `Cell` selector
+> defeated P2's memo on most moves, the clock re-rendered the whole play tree every second, and
+> the Kakuro/Skyscrapers solvers *had* entered the client bundle. Findings, numbers and the
+> deferred items are in [site-wide-optimization-qa-pass.md](site-wide-optimization-qa-pass.md)
+> §2.1; the corrected rows below carry a dated note.
 > **Kept live, not archived (September 2026):**
 > [`Cell.tsx`](../src/features/interactive-board/components/Board/Cell.tsx) and
 > [`bot-identity.ts`](../src/features/leaderboards/bot-identity.ts) cite this audit for the memo
@@ -23,8 +30,8 @@ cheapest, most decision-informing ones come first.
 | Research recommendation | Status in code |
 |---|---|
 | Keep pages Server Components; push `'use client'` deep (the #1 win) | ✅ Only `template.tsx` is client in `src/app/`; every `page.tsx` is a thin RSC delegating to a client leaf (AGENTS.md App Router Purity) |
-| Keep solver/generation off the client (Web Worker or server) | ✅ All generation is in Route Handlers (`/api/puzzle`, `/api/generate`) — never in the client bundle. Better than a Worker |
-| Narrow re-render scope on the grid (colocated state, stable keys) | ✅ Per-cell `useShallow` selectors; peers + `cellToCage` precomputed once per game (O(1) highlight, no per-keystroke scan) |
+| Keep solver/generation off the client (Web Worker or server) | ✅ All generation is in Route Handlers (`/api/puzzle`, `/api/generate`). **Corrected October 2026:** the Kakuro/Skyscrapers *solvers* behind the Hint button had crept into every route's bundle (~13 KB gz, via the store's static import of `hint-deducers`) and the Keisan solver via `calcGridConfig`'s home in the generator; both are now lazy-loaded / relocated, so the claim holds again |
+| Narrow re-render scope on the grid (colocated state, stable keys) | ✅ Per-cell `useShallow` selectors; peers + `cellToCage` precomputed once per game (O(1) highlight, no per-keystroke scan). **Corrected October 2026:** the selector also returned the raw selected-cell value, which changed for all N² cells on most moves and defeated P2's memo; it now returns only the pencil mark this cell draws (`candMatch`) |
 | No monolithic full-grid recompute to defer | ✅ Highlight/error state is derived per-cell in each cell's own selector — there's no whole-grid pass needing `startTransition` |
 | `next/image` for raster art | ✅ N/A — there are no raster images (SVG dot pattern + emoji + CSS); nothing to optimize |
 | `next/font` self-hosted + `swap` + adjusted fallback | ✅ `next/font/google` for all five families in the root layout |

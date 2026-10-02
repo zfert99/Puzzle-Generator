@@ -58,3 +58,9 @@ countSolutions(limit, nodeBudget):
     else for each candidate digit: place, recurse, unplace; stop at limit or budget exhaustion
   return exhausted ? -1 : count
 ```
+
+## Shared `popcount`
+
+The bit count over digit-set masks comes from `grid-utils.ts` — the engine's single copy — rather
+than a private duplicate in this file (October 2026 dedupe; see `grid-utils.md`). Same algorithm,
+same `(number) → number` shape, so behaviour and V8 monomorphism are unchanged.

@@ -118,7 +118,7 @@ Latin-square test at 5/7 guards this (if the sentinel ever changes, that test fa
 
 ## 4. The Master Function & Diggers
 
-### `generateSudoku(difficulty, gridSize = 9, rng = Math.random)`
+### `generateSudoku(difficulty, gridSize = 9, rng = Math.random, options = {})`
 
 **Goal:** Act as the "traffic cop" to prepare the puzzle and delegate to the right digging strategy.
 **Steps:**
@@ -127,27 +127,38 @@ Latin-square test at 5/7 guards this (if the sentinel ever changes, that test fa
 2. Create a blank NxN grid filled with 0s.
 3. Call `fillGrid` (passing `rng`) to completely solve it with random numbers.
 4. Save a copy of this full grid as the `solution`.
-5. If `difficulty` is 'extreme' AND `gridSize` is 9, call `applyExtremeDigger()` (passing `rng`).
-6. If `difficulty` is 'expert' AND `gridSize` is 9, call `applyExhaustiveDigger()` (passing `rng`).
-7. Otherwise, call `applyQuotaDigger()` (passing `rng`).
-8. Return the final `{ grid, solution, difficulty, gridSize }` object.
+5. Turn `options.timeBudgetMs` into an absolute deadline (`Infinity` when it is absent).
+6. If `difficulty` is 'extreme' AND `gridSize` is 9, call `applyExtremeDigger()` (passing `rng` and the deadline).
+7. If `difficulty` is 'expert' AND `gridSize` is 9, call `applyExhaustiveDigger()` (passing `rng` and the deadline).
+8. Otherwise, call `applyQuotaDigger()` (passing `rng`).
+9. Return the final `{ grid, solution, difficulty, gridSize }` object.
 
 **`rng` (seedable generation):** defaults to `Math.random`, so callers that don't care are unchanged.
 Threaded through `fillGrid` and every digger so a seeded PRNG makes the *entire* Sudoku pipeline
 reproducible — the `calc/`/`killer/` engines already work this way. It affects only *which* valid
 puzzle is drawn, never correctness or difficulty.
 
-### `applyExhaustiveDigger(grid, config)`
+**`options.timeBudgetMs` (October 2026):** an optional wall-clock budget, the same option name
+Kakuro and Skyscrapers use. Only the Expert and Extreme diggers can run long — their retry loops
+re-dig whole grids — so only they read it; past the deadline they throw an `Error` named
+`SUDOKU_BUDGET_ERROR` (`isSudokuBudgetError`, both re-exported from `diggers.ts`). It is a fourth
+*options* argument rather than a positional one so the call keeps room for more knobs, and it
+defaults to no budget, so every existing caller is unchanged. A route should prefer the batch
+form, `generatePuzzleBatch(request, { timeBudgetMs })` in `services/generation.service.ts`.
+
+### `applyExhaustiveDigger(grid, config, rng, deadline)`
 
 **Goal:** Try to remove as many clues as possible for the Expert difficulty.
 **Steps:**
 
-1. Shuffle a list of all `totalCells` positions on the board.
-2. Loop through every position exactly once:
-   - Save the current number as a backup.
-   - Set the cell to 0 (dig the hole).
-   - Pass the grid to the `HumanSolver` with `{ maxTier: 'advanced' }`. If it can solve the puzzle purely through logical deduction, the hole is valid.
-   - If the human solver cannot solve it, put the `backup` number back.
+1. Snapshot the solution, then repeat up to 60 times:
+   - Run one `digExhaustively` pass capped at the advanced tier: shuffle every position, and for
+     each one dig the hole, reject it at once if `countSolutions` finds the grid non-unique, and
+     otherwise keep it only if `HumanSolver` with `{ maxTier: 'advanced' }` can still solve it.
+   - If `canHumanSolveExpert()` says the result genuinely REQUIRES an advanced strategy, return.
+   - Otherwise restore the solution and re-dig in a new order.
+2. If every attempt fails, keep the last puzzle (graceful degradation). See `diggers.md` for why
+   the "requires" check was added — the old single pass was basic-solvable ~90% of the time.
 
 ### `applyQuotaDigger(grid, difficulty, config)`
 
@@ -173,7 +184,7 @@ no classic digger and fall back to a safe default, since classic puzzles can't e
      - If `countSolutions` does NOT equal 1: put the `backup` number back.
      - Otherwise, the hole is safe. Decrement the counter.
 
-### `applyExtremeDigger(grid, solution, config)`
+### `applyExtremeDigger(grid, solution, config, rng, deadline)`
 
 **Goal:** Generate a puzzle that requires extreme strategies (W-Wing, ALS-XZ, AICs) to solve. Only used for 9x9 grids.
 **Steps:**
@@ -181,7 +192,7 @@ no classic digger and fall back to a safe default, since classic puzzles can't e
 1. Set a maximum retry count (50 attempts).
 2. For each attempt:
    - If this is a retry, generate a completely new solution grid.
-   - Run the same exhaustive digging logic as `applyExhaustiveDigger`.
+   - Run the same `digExhaustively` pass as `applyExhaustiveDigger`, capped at the extreme tier.
    - Validate that the resulting puzzle actually REQUIRES extreme strategies by calling `canHumanSolveExtreme()`.
    - If it does, return immediately (success).
    - If not, retry with a fresh grid.

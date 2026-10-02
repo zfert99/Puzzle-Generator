@@ -10,26 +10,32 @@ This module abstracts puzzle-generation logic away from the API controllers. It 
 Return generateSudoku(difficulty, gridSize)  // a { grid, solution, difficulty, gridSize } object
 ```
 
-## `generatePuzzleBatch(request)`
+## `generatePuzzleBatch(request, options = {})`
 
 **Why:** A user might request 2 Easy puzzles and 1 Hard puzzle in a single API call. Rather than the API route handling the for-loops and array aggregations, this service cleanly takes a `GenerationRequest` object and returns an array of fully constructed `SudokuPuzzle` objects. This fulfills the Controller-Service pattern.
+
+**`options.timeBudgetMs` (October 2026):** one wall-clock budget for the *whole* batch, matching
+`generateKakuroBatch` / `generateKillerBatch` / `generateCalcBatch`. Before each puzzle the batch
+computes what is left; if nothing is, it throws an `Error` named `SUDOKU_BUDGET_ERROR`
+(`isSudokuBudgetError` from `sudoku.ts`), otherwise it hands the remainder to `generateSudoku`,
+whose Expert/Extreme diggers throw the same error if they overrun it mid-dig. The point is that a
+route can answer "request too large for its budget" cleanly instead of being killed by its own
+function timeout half-way through a booklet. With no budget (the default) each puzzle is generated
+exactly as before.
 
 ```text
 Extract the requested counts for easy, medium, hard, expert, and extreme from the request.
 Set missing values to 0.
 Extract the grid size, defaulting to 9.
-Initialize an empty array to hold the generated puzzles.
+Note the start time and initialize an empty array to hold the generated puzzles.
 
-Loop 'easy' times:
-  Generate an 'easy' puzzle of the requested size and add it to the array.
-Loop 'medium' times:
-  Generate a 'medium' puzzle of the requested size and add it to the array.
-Loop 'hard' times:
-  Generate a 'hard' puzzle of the requested size and add it to the array.
-Loop 'expert' times:
-  Generate an 'expert' puzzle of the requested size and add it to the array.
-Loop 'extreme' times:
-  Generate an 'extreme' puzzle of the requested size and add it to the array.
+For each difficulty in ladder order (easy → extreme), as many times as requested:
+  If there is no budget:
+    Generate the puzzle and add it to the array.
+  Otherwise:
+    remaining = budget − time elapsed
+    If remaining ≤ 0, throw SUDOKU_BUDGET_ERROR.
+    Generate the puzzle with timeBudgetMs = remaining and add it to the array.
 
 Return the array of puzzles.
 ```

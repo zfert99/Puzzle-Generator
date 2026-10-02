@@ -138,11 +138,15 @@ export function applyHiddenPair(solver: HumanSolver): boolean {
 }
 
 /**
- * Pointing Pairs / Pointing Triples (Box-Line Reduction):
+ * Pointing Pairs / Pointing Triples (box → line only):
  * If a specific candidate within a 3x3 box only appears in one specific row (or column),
  * then we know the final answer for that box MUST fall somewhere in that line.
- * Because of this, that candidate cannot exist anywhere else along that same row (or column) 
+ * Because of this, that candidate cannot exist anywhere else along that same row (or column)
  * OUTSIDE of the box. We can safely eliminate it.
+ *
+ * Only this direction is implemented. The converse — Claiming / Box-Line Reduction (a line's
+ * candidate confined to one box clears the rest of that box) — is NOT, so puzzles that need it
+ * are graded one tier harder than a human solver with it would rate them. See basic.md.
  */
 export function applyPointingPairs(solver: HumanSolver): boolean {
   let changed = false;

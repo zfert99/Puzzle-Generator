@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { isLatinSquare } from '../grid-utils';
-import { generateCalcSudoku, generateCalcBatch } from './calc-sudoku';
+import { generateCalcSudoku, generateCalcBatch, isCalcBudgetError } from './calc-sudoku';
 import { CalcSolver } from './calc-solver';
 import { CalcLogicalSolver } from './calc-logical-solver';
 import { scoreCalcSolve } from './calc-score';
@@ -228,5 +228,25 @@ describe('generateCalcBatch', () => {
     expect(batch.filter((p) => p.difficulty === 'easy')).toHaveLength(2);
     expect(batch.filter((p) => p.difficulty === 'medium')).toHaveLength(1);
     expect(batch.filter((p) => p.difficulty === 'hard')).toHaveLength(1);
+  });
+});
+
+describe('timeBudgetMs', () => {
+  const thrown = (fn: () => unknown): unknown => {
+    try {
+      fn();
+    } catch (error) {
+      return error;
+    }
+    return undefined;
+  };
+
+  it('throws the typed budget error when a generation outlives its budget', () => {
+    // 9×9 extreme averages ~2.3 s — far past a 1 ms budget.
+    expect(isCalcBudgetError(thrown(() => generateCalcSudoku('extreme', { gridSize: 9, rng: seededRng(5), timeBudgetMs: 1 })))).toBe(true);
+  });
+
+  it('spends one budget across the whole batch', () => {
+    expect(isCalcBudgetError(thrown(() => generateCalcBatch({ easy: 1 }, { gridSize: 4, timeBudgetMs: 0 })))).toBe(true);
   });
 });

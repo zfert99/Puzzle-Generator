@@ -68,6 +68,7 @@ table below, and both are yours to fix by hand.
 | [kakuro-log.md](kakuro-log.md) | Kakuro running log — decisions, research gaps, bugs, learnings, measurements (newest first) | 🚧 Living |
 | [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) | Phase 11 — Skyscrapers (Towers): reuse map, D#/G# decisions, slices V0–V3 → E1–E5 → R1 (visual first, engine underneath) with step-logs | ✅ Complete 2026-10-02 (V0–V3, E1–E5, R1); kept in the root — live source cites its decisions (`D2`…`D12`) and slices by name |
 | [skyscrapers-log.md](skyscrapers-log.md) | Skyscrapers running log — decisions, research gaps, bugs, learnings, measurements (newest first) | 🚧 Living |
+| [site-wide-optimization-qa-pass.md](site-wide-optimization-qa-pass.md) | October 2026 full-site optimization + QA pass — findings by area, measured before/after, what was deferred and why, the suggested PR split | 🚧 Built on `chore/site-wide-optimization-qa`, awaiting landing |
 | [daily-redesign-plan.md](daily-redesign-plan.md) | Daily restructure (type-as-slot) — spec + step-log per step; `dailies.service.ts` and `daily-row.ts` cite it | 🚧 Step 4 polish left |
 | [social-progression-economy-plan.md](social-progression-economy-plan.md) | Phase 9 — crumbs, achievements, streaks, shop, social | 📋 Planned |
 | [strategy-courses-implementation-plan.md](strategy-courses-implementation-plan.md) | Phase 7 — interactive strategy courses | 📋 Planned |

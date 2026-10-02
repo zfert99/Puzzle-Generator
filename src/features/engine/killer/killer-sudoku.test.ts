@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateKillerSudoku, type KillerDifficulty } from './killer-sudoku';
+import { generateKillerBatch, generateKillerSudoku, isKillerBudgetError, type KillerDifficulty } from './killer-sudoku';
 import { combosFor } from './cage-combinations';
 import { scoreKillerSolve } from './killer-score';
 import { KillerSolver } from './killer-solver';
@@ -145,5 +145,29 @@ describe('generateKillerSudoku', () => {
     expect(validateKillerCages(puzzle.cages, puzzle.solution)).toEqual([]);
     expect(new KillerSolver(puzzle.cages, 9).countSolutions(2)).toBe(1);
     expect(new KillerSolver(puzzle.cages, 9).solve()).toEqual(puzzle.solution);
+  });
+});
+
+describe('timeBudgetMs', () => {
+  const thrown = (fn: () => unknown): unknown => {
+    try {
+      fn();
+    } catch (error) {
+      return error;
+    }
+    return undefined;
+  };
+
+  it('throws the typed budget error when a generation outlives its budget', () => {
+    // Extreme accepts ~1 layout in 1 700, i.e. seconds — far past a 1 ms budget.
+    expect(isKillerBudgetError(thrown(() => generateKillerSudoku('extreme', { rng: mulberry32(5), timeBudgetMs: 1 })))).toBe(true);
+  });
+
+  it('spends one budget across the whole batch', () => {
+    expect(isKillerBudgetError(thrown(() => generateKillerBatch({ easy: 1 }, { gridSize: 4, timeBudgetMs: 0 })))).toBe(true);
+  });
+
+  it('does not count an unrelated failure as a budget error', () => {
+    expect(isKillerBudgetError(thrown(() => generateKillerSudoku('expert', { gridSize: 6, timeBudgetMs: 1_000 })))).toBe(false);
   });
 });

@@ -297,12 +297,30 @@ export interface CalcGenPipelineOptions {
    * the normal difficulty tiers.
    */
   noOp?: boolean;
+  /**
+   * Wall-clock budget for the call, in ms (default: none). Checked once per attempt; when it runs
+   * out the generator throws an error named `CALC_BUDGET_ERROR` instead of running the 40k-attempt
+   * cap to the end. Same option name as Kakuro/Skyscrapers.
+   */
+  timeBudgetMs?: number;
+}
+
+/** `error.name` when a Keisan generation or batch outlives its `timeBudgetMs` — a budget question, not a fault. */
+export const CALC_BUDGET_ERROR = 'CalcBudgetError';
+
+export function isCalcBudgetError(error: unknown): error is Error {
+  return error instanceof Error && error.name === CALC_BUDGET_ERROR;
+}
+
+function calcBudgetError(message: string): Error {
+  return Object.assign(new Error(message), { name: CALC_BUDGET_ERROR });
 }
 
 /**
  * Generate a uniquely-solvable, difficulty-graded Keisan puzzle. `grid` is all-zero (the cages are
  * the clue). Throws if no puzzle lands in the requested band within `maxAttempts` — or immediately
- * if the difficulty/size pair is unsupported (v1 is 4×4 and 6×6, easy/medium/hard).
+ * if the difficulty/size pair is unsupported (v1 is 4×4 and 6×6, easy/medium/hard). With
+ * `timeBudgetMs`, throws `CALC_BUDGET_ERROR` once the budget is spent.
  */
 export function generateCalcSudoku(
   difficulty: CalcDifficulty = 'easy',
@@ -320,8 +338,12 @@ export function generateCalcSudoku(
   // never realistically throwing.
   const maxAttempts = options.maxAttempts ?? 40000;
   const latinConfig = calcGridConfig(gridSize as GridSize);
+  const deadline = options.timeBudgetMs === undefined ? Infinity : performance.now() + options.timeBudgetMs;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (deadline !== Infinity && performance.now() > deadline) {
+      throw calcBudgetError(`Could not generate a ${difficulty} Keisan (${gridSize}×${gridSize}) within ${options.timeBudgetMs} ms (${attempt} attempts)`);
+    }
     let solution: number[][];
     if (options.solution) {
       solution = copyGrid(options.solution);
@@ -382,17 +404,33 @@ export function generateCalcSudoku(
   throw new Error(`Could not generate a ${difficulty} Keisan (${gridSize}×${gridSize}) in ${maxAttempts} attempts`);
 }
 
-/** Generate a batch of graded Keisan puzzles — `counts[difficulty]` of each, easy→extreme order. */
+/**
+ * Generate a batch of graded Keisan puzzles — `counts[difficulty]` of each, easy→extreme order.
+ * `timeBudgetMs` is ONE budget for the whole batch (default: none): each puzzle gets what is left,
+ * and the batch throws `CALC_BUDGET_ERROR` when it is spent.
+ */
 export function generateCalcBatch(
   counts: Partial<Record<CalcDifficulty, number>>,
-  options: { gridSize?: 4 | 6 | 9; noOp?: boolean } = {},
+  options: { gridSize?: 4 | 6 | 9; noOp?: boolean; timeBudgetMs?: number } = {},
 ): CalcPuzzle[] {
+  const { timeBudgetMs, ...each } = options;
+  const started = performance.now();
   const puzzles: CalcPuzzle[] = [];
   // `expert`/`extreme` are 9×9-only; callers pass 0 for them at 4×4/6×6 (the UI/route gate it), so the
   // n===0 guard below skips them and generateCalcSudoku is never asked for an unsupported pair.
   for (const difficulty of ['easy', 'medium', 'hard', 'expert', 'extreme'] as const) {
     const n = counts[difficulty] ?? 0;
-    for (let i = 0; i < n; i++) puzzles.push(generateCalcSudoku(difficulty, options));
+    for (let i = 0; i < n; i++) {
+      if (timeBudgetMs === undefined) {
+        puzzles.push(generateCalcSudoku(difficulty, each));
+        continue;
+      }
+      const remaining = timeBudgetMs - (performance.now() - started);
+      if (remaining <= 0) {
+        throw calcBudgetError(`Keisan batch ran out of time after ${puzzles.length} puzzles (${timeBudgetMs} ms budget)`);
+      }
+      puzzles.push(generateCalcSudoku(difficulty, { ...each, timeBudgetMs: remaining }));
+    }
   }
   return puzzles;
 }

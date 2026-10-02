@@ -63,6 +63,22 @@ silently wedges — a "sub only" or "div only" set is unsatisfiable for any cage
 need `add` or `mul`). This helper is the assertion that guards against that. Single-cell givens
 need no operator, so they always pass.
 
+### `calcGridConfig(size)` — the boxless config (moved here, October 2026)
+
+Keisan is a pure Latin square at every size, so this returns `hasBoxes: false` with the row-strip
+box sentinel (`boxWidth = size`, `boxHeight = 1`); the full rationale is in
+[`calc-generator.md`](calc-generator.md), where it used to live.
+
+**Why here:** this module's only import is type-only (from `sudoku`), so client code can take the
+config without the generator and solver. The board store imports it from here; importing it from
+`calc-generator` had put the whole Keisan generation pipeline in the client bundle of every route.
+`calc-generator` re-exports it for its existing callers.
+
+```text
+calcGridConfig(size) -> { size, hasBoxes: false, boxWidth: size, boxHeight: 1,
+                          totalCells: size * size, maxNum: size }
+```
+
 ## `CalcCage`
 
 `{ id, op, target, cells, noOp? }` — cells are FLAT indices (`row * size + col`), the same convention

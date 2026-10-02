@@ -92,6 +92,95 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Site-wide optimization + QA pass (built, not yet landed)
+
+Branch `chore/site-wide-optimization-qa` on `6db9c70`. The full record — findings by area,
+before/after numbers, deferred items, the four-PR landing order — is
+[site-wide-optimization-qa-pass.md](site-wide-optimization-qa-pass.md); this entry is the gate
+run over the whole working tree. **Diff: ~100 files, far over the 400-LOC slice target** — the
+pass was run as one tree so the three remediation agents could work disjoint file sets
+concurrently; it is to be landed as four slices (doc §7), each re-gated on its own branch.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npm run lint` | clean |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **98 files / 982 tests green** (from 94 / 918); no Known-flaky entry fired |
+| `npx playwright test` (production build, `E2E_PORT=3100`) | first run 55 passed / **4 failed — all genuine, all from the NEW dark-mode + extra-route axe cases** (sticker ink 1.25:1 and 2.35:1 in dark; a colour-only inline link on `/account`); fixed, `a11y.spec.ts` then 37/37; final full suite **58 passed, 1 flaky** (`play.spec.ts` timed out once under `fullyParallel` and passed on retry — the Known-flaky contention class, not the diff) |
+| Benchmarks (`benchmark-human-solver.ts`, `benchmark.ts`) | run before/after; 5× Extreme 884 → 153 ms, Expert 17 → 95 ms (intended — Expert is now real); HumanSolver Extreme row inside its noise band |
+| markdownlint | exit 0 on every doc touched (≈60) |
+| Security self-review (server slice: authorize → validate → mutate; fixed-text 400/503 bodies; parameterized SQL; public caching only on anonymous past-date 200s) | no findings |
+
+### Findings
+
+- **Three gates were green over real defects.** The overflow loop could not fail
+  (`overflow-x: hidden` clamps the root's `scrollWidth`); axe ran light-only so a 1.5:1 pair on
+  every dark primary button never registered; and nothing exercised "Expert" necessity, so 95 %
+  of Expert puzzles were basic-solvable. Each now has a test that was shown to fail first.
+- **Undo did not persist** (middleware order) — reproduced in the live browser before the fix,
+  and proven by a hydration test after.
+- **A full-but-wrong Kakuro daily had no exit** — `isFull` could never be true with black cells
+  at 0. Shared `useBoardReview` + `ReviewDialog`; the archive gains the review it never had.
+- **The public leaderboard showed email local-parts** for anyone without a username.
+- The engine's uniqueness gate is **byte-identical per seed** (asserted), 5–12× on extreme.
+- **Mobile (owner's ask):** the in-game header stacked the mistakes counter at 360–390 px and
+  the nav links were 20 px tap targets — both fixed; every board and route fits at 320/360/390.
+- **Difficulty separation (owner's ask):** new `difficulty-separation.ts` report — every ladder
+  monotone at every size; Keisan 9×9's score overlap is by design (givens / guess-step axes,
+  measured disjoint); classic 9×9 medium is half naked-singles-only (recommendation recorded,
+  not applied — it redefines the daily's `medium`).
+
+### Invariants checked
+
+- Retired daily keys stay readable (the slots query moved to the service with the same shape;
+  the legacy-shaped `<select>` path untouched). A slot key is not an identity (labels still
+  compose from the board's own variant/size).
+- `ON CONFLICT DO NOTHING` paths untouched; the solve write's atomic conditional UPDATE untouched.
+- No public cache header on `/api/leaderboard` or any `me/*` route (tested).
+- Seeded Expert output **changed** (Expert enforced) — `hint-agent/eval-states.ts` consumers noted.
+
+### Docs sweep
+
+Mirrored `.md` for every touched `.ts`/`.tsx` (36 client + engine/server sets); reverse sweep:
+`README.md` strategy list ("Box-Line Reduction" → pointing pairs), `auth-schema.md` (the
+username → name coalesce), `AppHeader.md` (`ThemeToggle`), `performance-audit.md` and
+`mobile-a11y-audit.md` (dated corrections to their "already solid" tables — the claims they
+made had become false), `globals.md`, roadmap backlog entry, `Docs/README.md` index,
+`project-status.md` pointer. Not touched: `Docs/archive/*`.
+
+### Verified vs read
+
+Verified live: every route at desktop + 320 px before/after; the 4×4 game flow (mistakes,
+range, undo-persist gap, hint, reload-continue); per-route gzipped JS via Resource Timing
+(`/play` 224 → 187 KB, `/daily` 243 → 177, `/leaderboard` 195 → 158); the e2e and unit suites.
+Read, not driven: a live screen reader (still owed from G8); the production `x-forwarded-for`
+shape behind the hub (needs one log line — doc §5).
+
+### Review statements
+
+`/pre-merge` was run by the agent (this entry). The hosted `/code-review` has **not** been run —
+it is user-triggered and billed; the owner decides whether to trigger it per slice.
+`/security-review` is owed on the server slice (auth/data-access change) when it is cut.
+
+### Lessons
+
+- **Append something enormous before trusting a "no overflow" assertion** — a clamp on the
+  measured element makes the gate vacuous. *(10-02)*
+- **Run axe in every theme shipped** — one run in the second theme found three contrast pairs
+  the light-only suite had passed for months. *(10-02)*
+- **A fill that does not flip needs an ink that does not flip** — `--on-<fill>` tokens, never
+  the theme-flipping `--ink`, on butterscotch and the stickers. *(10-02)*
+- **Middleware order is a behaviour; write its reason beside it** — `temporal(persist())` vs
+  `persist(temporal())` decided whether undo persisted and whether hydration threw. *(10-02)*
+- **Any selector value shared by every cell defeats per-cell memo** — reduce it to what *this*
+  cell draws. *(10-02)*
+- **Enumerate "unknown", "none" and "failed" as their own branches** — unknown variants fell
+  through to Classic; a failed slots fetch offered a board that might not exist. *(10-02)*
+
+---
+
 ## 2026-10-02 — Skyscrapers G8: the accessibility-tree pass over the four-sided gutter
 
 Branch `feature/skyscrapers-g8-a11y` on `eaef117`. Diff: `skyscrapers-board.ts` (clue names),

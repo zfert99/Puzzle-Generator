@@ -68,3 +68,23 @@ heuristic**; migrating to it is the primary lever for bringing these tiers back
 under threshold. (For context, the Phase 1 roadmap target of "AIC-heavy boards
 < 2 s" is comfortably met — 35 ms is well inside 2 s.) The point of this benchmark
 is to keep those numbers honest, not to hide them behind a non-representative pool.
+
+## October 2026: the Advanced row stepped up — the pool changed, not the solver
+
+The Advanced pool is `generateSudoku('expert')`. Until October 2026 the Expert digger never
+checked that its puzzles *needed* an advanced strategy, and ~90% of them were basic-solvable, so
+this row mostly timed basic solves. The digger now verifies necessity (`diggers.md`), and the row
+moved from **~0.19 ms to ~0.61 ms** in the same session. Re-timing the advanced tier on an
+old-style (single-pass, unverified) pool gave **0.18 ms**, so the solver itself did not slow
+down: the row now measures what its name says. Compare future runs against the post-change rows
+only.
+
+## Known gaps
+
+- **Unseeded pools.** Every pool is drawn with `Math.random`, so two runs time different puzzles.
+  The Extreme row in particular is a 10-puzzle lottery — it has swung across a ~4–26 ms band with
+  no code change. Recommended (not done yet, so the logged history stays comparable until it is
+  done deliberately): seed each pool with `mulberry32` from a fixed seed, grow the Extreme pool to
+  ~50 puzzles, and log the **median and p90** per tier alongside the mean.
+- The **Expected Results** numbers above predate the bitmask candidate store and the October 2026
+  pool change; `benchmark-logs.md` is the source of truth for current values.

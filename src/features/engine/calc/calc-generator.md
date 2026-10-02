@@ -12,6 +12,13 @@ config with `hasBoxes: false` and the row-strip box sentinel (`boxWidth = size`,
 Latin square with no box constraint. (See `sudoku.md` for the sentinel; the box mask degenerates to
 the row mask, so `fillGrid` needs no Keisan-specific code.)
 
+**Defined in `calc-types.ts` since October 2026, re-exported here.** The board store needs this
+config to play a Keisan, and importing it from this file dragged the generator and the
+`CalcSolver` behind it into the client bundle of every route. It now lives in the
+dependency-free types module (see [`calc-types.md`](calc-types.md)); this file re-exports it so
+existing engine and PDF callers are unchanged. New client code should import it from
+`calc-types`.
+
 ## `generateCalcCageShapes` — region growing without the no-repeat stop
 
 Killer's cage generator stops growing a cage when every neighbour's digit is already used (the cage

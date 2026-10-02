@@ -57,8 +57,8 @@ filledCount        : private counter — incremented by placeNumber(), enables O
 Candidates are stored as one integer per cell (bit `n-1` set means digit `n` is
 still possible). Strategies never touch the raw mask; they go through these four
 accessors, which keep the bit-twiddling in one place and let the representation
-stay an implementation detail. The `popcount` (Brian Kernighan's algorithm) behind
-`candidateCount` is why "how many candidates does this cell have?" is O(set bits)
+stay an implementation detail. The `popcount` (Brian Kernighan's algorithm, imported from
+`grid-utils.ts` — the engine's single copy) behind `candidateCount` is why "how many candidates does this cell have?" is O(set bits)
 instead of the O(grid size) it was under the old `Set<number>[][]`.
 
 ```text
@@ -406,7 +406,7 @@ For their pseudocode, please see [`extreme.md`](file:///Users/morp/Documents/Git
 
 ### canHumanSolveExpert(grid) → boolean
 
-Used by the puzzle generator to verify a puzzle qualifies as "Expert" difficulty — solvable by logic alone, and requiring at least one advanced strategy (X-Wing, Swordfish, Y-Wing, or XYZ-Wing).
+Used by `applyExhaustiveDigger` (see `diggers.md`) to verify a puzzle qualifies as "Expert" difficulty — solvable by logic alone, and requiring at least one advanced strategy (X-Wing, Swordfish, Y-Wing, or XYZ-Wing).
 
 ```text
 solver = new HumanSolver(grid)
