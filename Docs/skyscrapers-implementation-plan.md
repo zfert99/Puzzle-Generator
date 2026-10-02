@@ -402,6 +402,16 @@ visual check handed to the owner.
   the test, not by reading. (2) A verdict that is derived from `grid` and never stored costs
   nothing to keep correct across undo, hints and rehydration; the only Skyscrapers state the
   store owns is the player's marks.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 7 findings; 6 fixed,
+  1 left to the owner):* (1) **a mouse click on a clue stole focus** and every digit typed
+  after it was swallowed by the gutter handler — the click now hands focus straight back to the
+  selected play cell (tested). (2) `toggleClueDone` did not range-check the index, so an index
+  past a side's end wrapped into the next side's flags — side and index checked before packing
+  (tested). (3) The `C` jump fired on Ctrl/Cmd+C — bare `C` only (tested). (4) `edgeClues` was
+  stored by reference to the fixture singleton — copied on start like every other puzzle field
+  (tested). (5) The no-op `.clueSatisfied` class and an identity status map removed.
+  (6) Gap cases for the prefix rule added to the engine tests. (7) The diff is ~650 LOC of
+  source against the ~400 target — acknowledged, Kakuro V2 precedent; the owner's call.
 - *Blockers:* none. **Gate pending:** the owner's visual verdict (both themes, 5/6/7, 360 px).
 - *Owed:* NVDA/VoiceOver pass over the gutter (G8) — by R1 at the latest.
 

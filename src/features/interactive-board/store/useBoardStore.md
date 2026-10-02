@@ -254,7 +254,12 @@ Two fields carry it:
   (top, bottom, left, right; 4N entries, `[]` for every other variant). A real move (D9, Tatham's
   model): persisted, and included in the **temporal** partialize so undo takes a mark back the
   way it takes a digit back. `toggleClueDone(side, index)` flips one; it is a no-op without
-  `edgeClues` or outside `playing`.
+  `edgeClues` or outside `playing`, and it range-checks the side and the index **before**
+  packing them — `clueFlatIndex` is `side × N + index`, so an index past the side's end would
+  otherwise wrap into the next side's flags (review finding on V2).
+
+`edgeClues` is **copied** on `startNewGame`, like every other puzzle field: until E5 `usePuzzle`
+hands over the module-level fixture itself, and the store must never share arrays with it.
 
 Everything else Skyscrapers needs already existed: the Latin lockout (`placed >= size`) is
 correct here, pencil stripping along row/column peers is correct, the solved check is a

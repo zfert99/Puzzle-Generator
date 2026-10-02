@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, type MouseEvent } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { clueFlatIndex, type GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { useBoardStore } from '../../store/useBoardStore';
@@ -41,11 +41,27 @@ export const SkyscraperClueCell = memo(function SkyscraperClueCell({ side, index
   );
   const toggleClueDone = useBoardStore((s) => s.toggleClueDone);
 
+  /**
+   * A mouse click marks the clue and hands focus straight back to the selected play cell (the
+   * grid's one Tab stop), so the next digit typed still lands on the board. Without this the
+   * click would leave focus on the clue — a `tabIndex -1` element is focusable by click — and
+   * the board's gutter handler would swallow every key until the player clicked a cell again
+   * (review finding on V2). Keyboard users enter the gutter deliberately with `C`, which is the
+   * only path that keeps focus here.
+   */
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    toggleClueDone(side, index);
+    const grid = event.currentTarget.closest<HTMLElement>('[role="grid"]');
+    grid?.querySelector<HTMLElement>('[data-index][tabindex="0"]')?.focus();
+  };
+
   const classes = [styles.cell, styles.gutterCell];
+  // Drawn error > done > normal (`towers.c`). A satisfied clue is deliberately NOT tinted:
+  // no surveyed player does it and a wrong line can still satisfy a clue (G10); the name
+  // carries the state for assistive technology.
   if (clue > 0) {
     if (status === 'violated') classes.push(styles.clueViolated);
     else if (done) classes.push(styles.clueDone);
-    else if (status === 'satisfied') classes.push(styles.clueSatisfied);
   }
 
   return (
@@ -58,7 +74,7 @@ export const SkyscraperClueCell = memo(function SkyscraperClueCell({ side, index
       data-status={clue > 0 ? status : undefined}
       tabIndex={-1}
       className={classes.join(' ')}
-      onClick={clue > 0 ? () => toggleClueDone(side, index) : undefined}
+      onClick={clue > 0 ? handleClick : undefined}
     >
       {clue > 0 ? clue : null}
     </div>

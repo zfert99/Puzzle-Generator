@@ -20,8 +20,8 @@ The verdict follows Tatham's `check_errors` (gap-findings G10): only the cells f
 edge up to the first empty one are judged, and a clue turns red only when those cells already
 break it. So a line the player is still working on never flashes red, and a wrong line can
 still read as satisfied only once it is complete — which is why a satisfied clue is **not**
-tinted by default (no surveyed player does it; the `.clueSatisfied` hook is for an opt-in
-setting).
+tinted (no surveyed player does it); the accessible name carries "satisfied" for assistive
+technology.
 
 ## Done marks
 
@@ -30,16 +30,23 @@ persisted). Drawn **error > done > normal** as in `towers.c`: a clue wrongly mar
 shows its violation. The cell is `tabIndex -1` (outside the roving tab order); the board's `C`
 key brings focus here and arrow keys walk the gutter.
 
+**A click hands focus straight back to the selected play cell.** A `tabIndex -1` element is
+focusable by click, and focus resting on a clue puts the board into gutter mode, where every key
+is swallowed — so without the hand-back a mouse user who marked a clue and then typed a digit
+would see nothing happen (review finding on V2). Keyboard users enter the gutter deliberately
+with `C`, which is the only path that keeps focus here.
+
 ```text
 selector: { clue, status } = skyscraperClueState(edgeClues, grid, side, index)
           done = doneClues[clueFlatIndex(side, index, size)]
           (no edgeClues yet — a rehydrating tick — → blank, never throw)
-class:    gutterCell; then clueViolated if violated, else clueDone if done,
-          else clueSatisfied if satisfied (a no-op colour by default)
+class:    gutterCell; then clueViolated if violated, else clueDone if done
+          (a satisfied clue is not tinted — the name carries the state)
 name:     describeSkyscraperClue(side, index, clue, status, done)
           e.g. "Clue 3, looking down from the top of column 2, open"
 data:     data-clue="side-index" on a present clue (the board's navigation hook),
           data-status for tests
 content:  the digit, or nothing for a blank
-click:    toggleClueDone(side, index) on a present clue
+click:    toggleClueDone(side, index) on a present clue, then focus the play cell that
+          holds the grid's Tab stop
 ```

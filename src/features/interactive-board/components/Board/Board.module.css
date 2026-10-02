@@ -323,7 +323,6 @@
   background: transparent;
   --clue-fg: var(--ink-soft);
   --clue-done: color-mix(in srgb, var(--ink) 30%, transparent);
-  --clue-satisfied: var(--mint);
 }
 
 .frameTop { border-top: 3px solid var(--grid-line-strong); }
@@ -353,8 +352,7 @@
 
 /* Clue states (plan decision D9), drawn error > done > normal as in towers.c: a provable
    violation is the error colour; a clue the player marked done greys out; a satisfied clue is
-   NOT tinted by default (no surveyed player does it, and a wrong line can still satisfy a clue)
-   — the `.clueSatisfied` hook exists for an opt-in setting and is a no-op until then. */
+   NOT tinted (no surveyed player does it, and a wrong line can still satisfy a clue). */
 .clueViolated {
   color: var(--cell-error-fg);
 }
@@ -363,8 +361,4 @@
   color: var(--clue-done);
   text-decoration: line-through;
   text-decoration-thickness: 2px;
-}
-
-.clueSatisfied {
-  color: var(--clue-fg);
 }

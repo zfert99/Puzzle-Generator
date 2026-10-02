@@ -205,6 +205,12 @@ describe('clueStatus', () => {
     expect(clueStatus([2, 0, 0, 0], 3)).toBe('open'); // 3 and 4 may still show
     expect(clueStatus([3, 1, 0, 0], 2)).toBe('open'); // 4 will show, making two
   });
+
+  it('judges only the filled prefix — a value placed beyond a gap is not consulted', () => {
+    expect(clueStatus([0, 4, 0, 0], 1)).toBe('open'); // the 4 sits past an empty cell
+    expect(clueStatus([2, 0, 4, 0], 2)).toBe('open');
+    expect(clueStatus([0, 1, 2, 3], 4)).toBe('open');
+  });
 });
 
 describe('clueFlatIndex', () => {

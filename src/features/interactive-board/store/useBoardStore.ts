@@ -12,7 +12,7 @@ import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
 import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
 import { explainKakuroHint, type KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
 import type { SkyscraperClues, SkyscrapersPuzzle, GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
-import { clueFlatIndex, skyscrapersGridConfig } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { GUTTER_SIDES, clueFlatIndex, skyscrapersGridConfig } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { computePeers, toggleBit } from '../board-utils';
 import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
@@ -290,7 +290,12 @@ export const useBoardStore = create<BoardState>()(
         const cages = toBoardCages(puzzle, variant);
         const runs = variant === 'kakuro' ? (puzzle as KakuroPuzzle).runs : [];
         const blocked = buildBlocked(runs, size);
-        const edgeClues = variant === 'skyscrapers' ? (puzzle as SkyscrapersPuzzle).clues : null;
+        // Copied, like every other puzzle field: `usePuzzle` hands over the module-level fixture
+        // itself until E5, and the store must never share arrays with it.
+        const sourceClues = variant === 'skyscrapers' ? (puzzle as SkyscrapersPuzzle).clues : null;
+        const edgeClues = sourceClues
+          ? { top: [...sourceClues.top], bottom: [...sourceClues.bottom], left: [...sourceClues.left], right: [...sourceClues.right] }
+          : null;
         set({
           gridSize: size,
           config,
@@ -492,8 +497,11 @@ export const useBoardStore = create<BoardState>()(
       toggleClueDone: (side, index) => {
         const { status, edgeClues, doneClues, config } = get();
         if (status !== 'playing' || !edgeClues) return;
+        // Range-check the side AND the index before packing: `clueFlatIndex` is `side × N + index`,
+        // so an index ≥ N would wrap into the next side's flags instead of failing.
+        if (!GUTTER_SIDES.includes(side) || !Number.isInteger(index) || index < 0 || index >= config.size) return;
         const flat = clueFlatIndex(side, index, config.size);
-        if (flat < 0 || flat >= doneClues.length) return;
+        if (flat >= doneClues.length) return;
         const next = [...doneClues];
         next[flat] = !next[flat];
         set({ doneClues: next });

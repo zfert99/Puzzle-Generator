@@ -15,12 +15,6 @@ const LOOKING: Record<GutterSide, string> = {
   right: 'left from the right of row',
 };
 
-const STATUS_WORD: Record<ClueStatus, string> = {
-  open: 'open',
-  satisfied: 'satisfied',
-  violated: 'violated',
-};
-
 /**
  * The accessible name of a clue cell. It spells the direction the clue reads in (plan decision
  * D9) because a screen-reader user cannot see which edge the cell sits on, then its state —
@@ -37,7 +31,7 @@ export function describeSkyscraperClue(
 ): string {
   const where = `looking ${LOOKING[side]} ${index + 1}`;
   if (clue <= 0) return `Clue cell, ${where}, blank`;
-  const state = done ? 'marked done' : STATUS_WORD[status];
+  const state = done ? 'marked done' : status;
   return `Clue ${clue}, ${where}, ${state}`;
 }
 

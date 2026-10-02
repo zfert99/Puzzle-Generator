@@ -291,12 +291,21 @@ describe('Board — Skyscrapers', () => {
     const user = userEvent.setup();
     render(<Board />);
 
+    // Select a play cell, click a clue: it marks done and focus comes straight back to the play
+    // cell, so the next digit still lands on the board (no focus steal).
+    await user.click(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i }));
     const first = screen.getByRole('gridcell', { name: 'Clue 4, looking down from the top of column 1, open' });
     await user.click(first);
     expect(screen.getByRole('gridcell', { name: 'Clue 4, looking down from the top of column 1, marked done' })).toBeInTheDocument();
+    expect(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i })).toHaveFocus();
+    await user.keyboard('2');
+    expect(screen.getByRole('gridcell', { name: /value 2, row 1, column 2/i })).toBeInTheDocument();
+    await user.keyboard('2'); // toggle it back off for the rest of the test
 
     // Keyboard: select a play cell, C jumps to the first clue, ArrowRight to the second, Enter marks it.
     await user.click(screen.getByRole('gridcell', { name: /empty, row 1, column 1/i }));
+    await user.keyboard('{Control>}c{/Control}'); // a modified C is copy, not the gutter jump
+    expect(screen.getByRole('gridcell', { name: /empty, row 1, column 1/i })).toHaveFocus();
     await user.keyboard('c');
     expect(screen.getByRole('gridcell', { name: /looking down from the top of column 1, marked done/ })).toHaveFocus();
     await user.keyboard('{ArrowRight}');

@@ -127,7 +127,8 @@ export function Board() {
       if (!isSkyscrapers) return false;
       const active = document.activeElement as HTMLElement | null;
       const onClue = active?.dataset.clue != null && gridRef.current?.contains(active);
-      if (e.key === 'c' || e.key === 'C') {
+      // Bare `C` only — Ctrl/Cmd+C must stay copy (the undo shortcut makes the same distinction).
+      if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         if (onClue) {
           const back = gridRef.current?.querySelector<HTMLElement>('[data-index][tabindex="0"]');

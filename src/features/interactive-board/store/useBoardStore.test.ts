@@ -410,8 +410,20 @@ describe('Skyscrapers', () => {
     useBoardStore.temporal.getState().redo();
     expect(useBoardStore.getState().doneClues[0]).toBe(true);
 
+    // An index past the side's end must not wrap into the next side's flags.
+    store.toggleClueDone('top', 5);
+    expect(useBoardStore.getState().doneClues[5]).toBe(false);
     store.toggleClueDone('right', 9);
     expect(useBoardStore.getState().doneClues).toHaveLength(16);
+    expect(useBoardStore.getState().doneClues.filter(Boolean)).toHaveLength(1);
+  });
+
+  it('keeps its own copy of the clues, not the puzzle\'s arrays', () => {
+    const source = skyscrapers();
+    useBoardStore.getState().startNewGame(source);
+    expect(useBoardStore.getState().edgeClues).toEqual(source.clues);
+    expect(useBoardStore.getState().edgeClues).not.toBe(source.clues);
+    expect(useBoardStore.getState().edgeClues?.top).not.toBe(source.clues.top);
   });
 
   it('does nothing on a non-Skyscrapers game', () => {

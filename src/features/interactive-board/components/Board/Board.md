@@ -207,7 +207,8 @@ N+2 cells (the ARIA grid stays rectangular — V0's review finding) and the grid
 sits *outside* the play area, so a border around the whole board would frame the clues too.
 
 **Clue navigation (D9).** The gutter is outside the roving tab order (clue cells are
-`tabIndex -1`), so a keyboard player reaches it with **`C`**: focus lands on the first clue,
+`tabIndex -1`), so a keyboard player reaches it with a bare **`C`** (a modified C — Ctrl/Cmd+C — stays copy, the
+same distinction the undo shortcut makes): focus lands on the first clue,
 arrow keys walk the clues in DOM order (top, bottom, left, right), **Enter/Space** toggles
 "marked done", and **`C`** or **Escape** returns to the selected play cell. `handleClueKeys`
 runs before the ordinary key handler and swallows every other key while a clue has focus, so a

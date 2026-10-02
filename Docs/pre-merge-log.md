@@ -110,12 +110,20 @@ one registration.
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean (one unused test import caught and removed before this entry) |
 | `npx tsc --noEmit` · `npm run build` | clean · clean (a stale `.next/types` entry for the deleted route had to be removed for `tsc` — the build regenerates it) |
-| `npx vitest run` | **86 files / 818 tests green** (12 new); no entry from the Known flaky tests table fired |
+| `npx vitest run` | **86 files / 820 tests green** (14 new); no entry from the Known flaky tests table fired |
 | Playwright | the new Skyscrapers play spec **green** against the running dev server (`E2E_PORT=3000`, chromium); the full suite was not re-run |
 | Benchmarks | n/a — no solver code |
 
 ### Findings
 
+- **`/code-review high` (owner-run, on the branch): 7 findings, 6 fixed in-PR, 1 the owner's
+  call.** The one with teeth: a mouse click on a clue cell left focus there, and the gutter
+  handler then swallowed every digit typed — the click now hands focus straight back to the
+  selected play cell (tested). Also: `toggleClueDone` range-checks side and index before packing
+  (an index past a side's end wrapped into the next side's flags); bare `C` only (Ctrl/Cmd+C is
+  copy); `edgeClues` copied on start instead of aliasing the fixture singleton; the no-op
+  `.clueSatisfied` class and an identity status map removed; gap cases for the prefix rule
+  tested. The seventh — ~650 LOC of source against the ~400 target — is acknowledged below.
 - **A digit typed while a clue cell had focus landed on the selected play cell** — the first
   draft routed every key through the board handler. Found by the keyboard test, not by reading;
   fixed by a clue handler that runs first and swallows unmatched keys while the gutter is focused.
@@ -155,10 +163,14 @@ history and the roadmap's dated status line, both correct as history.
 ### Review statements
 
 - `/security-review`: **not run** — no auth, data or route logic (client board + fixtures).
-- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+- `/code-review`: **run by the owner** (`/code-review high`, in-session) — 7 findings, 6 fixed
+  before merge (above); the slice-size finding is the owner's call.
 
 ### Lesson
 
+- **A `tabIndex -1` control is still focusable by mouse.** "Keyboard-only" focus is a design
+  intent, not a browser guarantee; a click handler on such a control must say where focus goes
+  next, or the widget's key handler will act on a focus state nobody chose.
 - **A keyboard model with two focus regions needs two handlers, and the inner one goes first.**
   One handler that "also" checks where focus is will leak keys into the outer region on the
   first case nobody thought of; a dedicated handler that returns `true` when it owns the key
