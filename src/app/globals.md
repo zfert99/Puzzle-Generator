@@ -40,6 +40,9 @@ theme, but `--butterscotch` stays a mid-light fill in both — so `text-ink` on
 and `--on-sticker` the same for the never-flipping sticker fills (cream on lime was 1.25:1).
 Two text-grade tones joined them: `--mint-text` and `--warn-text`, because the fill-grade
 `--mint` (2.3:1) and `--butterscotch-dark` (2.6:1) fail WCAG 1.4.3 as small text on paper.
+The light `--mint-text` first shipped as `#1B7A5B`, which measured 4.31:1 on the *panel*
+paper (`--paper-2`, the darker of the two) once the post-landing look checked it in the
+browser; `#15684E` clears both papers (6.1:1 / 5.5:1).
 `color-scheme` is declared per theme so native controls and scrollbars follow the toggle.
 The first dark-mode axe run in `e2e/a11y.spec.ts` is what caught all of these.
 
