@@ -74,9 +74,17 @@ beginner's move in every published ladder, not a hard technique. So the scan is 
 **survivor count** before the step: `lineScan` (≤ `LINE_SCAN_MAX` = 3) at tier 1,
 `lineEnumeration` (≤ `LINE_ENUMERATION_MAX` = 12) at tier 2, `lineFilter` (beyond) at tier 3.
 The ladder asks for the weakest band first, and each band fires on its first productive line.
-The scan itself is computed once per candidate state and cached (`lineScans`, keyed on a
-`version` counter bumped by every candidate change), because the three bands read the same
-result. After the re-tier the 6×6 all-clue floor is **25% easy / 61% medium / 2% hard** (the
+The bands are one ordered table (`LINE_BANDS`): each band's lower bound is the previous band's
+upper bound plus one, so a survivor count always falls in exactly one band. The scan itself is
+kept **per clued line** and recomputed only for lines marked dirty: every candidate write goes
+through one method (`setCandidates`) that dirties the cell's row and column scans, so a restrict
+rescans at most two of the 2N lines and the cache cannot go stale by a write that forgot to
+invalidate it (the E3b review's two efficiency/altitude findings — after the change, classify
+is faster than before the re-tier: 0.24 / 5.1 / 4.5 ms on the fixtures). Unclued lines are not
+in the scan at all (the Latin rules own them), so the scan array has one shape; a finished line
+reports one arrangement and nothing to remove without a scan. Each scan stores the candidate
+bits no surviving arrangement uses (`removable`), which is both the "is it productive" test and
+the elimination the band applies. After the re-tier the 6×6 all-clue floor is **25% easy / 61% medium / 2% hard** (the
 rest expert/extreme), and every tier is reachable by removal; the two cuts are E5's to refit.
 
 ### Why forcing chains test three candidates, not two
@@ -150,8 +158,8 @@ tier = hardestTier (0 → 1: a puzzle with nothing to deduce is still "easy")
 
 Fixtures (pinned in tests): 5×5 **easy** (tier 1 — three small line scans; it graded hard under
 the flat tier), 6×6 **extreme** (tier 5 — four forcing chains), 7×7 **extreme** (tier 5 — two
-chains); classify 0.6 / 9.2 / 8.0 ms warm against the plan's 20 ms gate (the extra scan bands
-cost ~2 ms at 6×6 and 7×7). The line and house cell lists are built once in
+chains); classify 0.24 / 5.1 / 4.5 ms warm against the plan's 20 ms gate (per-line dirty scans
+made the re-tiered solver faster than the flat one, 0.4 / 6.7 / 6.3). The line and house cell lists are built once in
 the constructor (the E2 review's efficiency finding): the solve loop allocates none of them. The unit test only guards against a pathological
 regression (< 1 s): a wall-clock assertion under the suite's parallel load measures the load.
 

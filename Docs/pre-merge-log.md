@@ -107,8 +107,8 @@ roadmap / index / status, the sample booklet. **~90 LOC of source.**
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean |
 | `npx tsc --noEmit` · `npm run build` | clean · clean |
-| `npx vitest run` | **91 files / 882 tests green** (1 new, 5 rewritten); no entry from the Known flaky tests table fired |
-| Benchmarks | classify on the fixtures **0.6 / 9.2 / 8.0 ms** (5 / 6 / 7; was 0.4 / 6.7 / 6.3 — the extra bands cost ~2 ms) against the 20 ms gate. **Acceptance (E3's scripts re-run):** 6×6 all-clue floor T1 74 · T2 183 · T3 6 · T4 7 · T5 28 of 300 (was 1 / 1 / 273); tier-bounded yields 6×6 28 / 85 / 58 / 15 / 53%, 5×5 90 / 55 / 8 / 8 / 20%, 7×7 0 / 28 / 58 / 8 / 68% |
+| `npx vitest run` | **91 files / 883 tests green** (2 new, 5 rewritten); no entry from the Known flaky tests table fired |
+| Benchmarks | classify on the fixtures **0.24 / 5.1 / 4.5 ms** (5 / 6 / 7) after the review's per-line scans — faster than the flat ladder's 0.4 / 6.7 / 6.3; the first cache (whole-grid rescan) had read 0.6 / 9.2 / 8.0 — against the 20 ms gate. **Acceptance (E3's scripts re-run):** 6×6 all-clue floor T1 74 · T2 183 · T3 6 · T4 7 · T5 28 of 300 (was 1 / 1 / 273); tier-bounded yields 6×6 28 / 85 / 58 / 15 / 53%, 5×5 90 / 55 / 8 / 8 / 20%, 7×7 0 / 28 / 58 / 8 / 68% |
 
 ### Findings
 
@@ -123,6 +123,13 @@ roadmap / index / status, the sample booklet. **~90 LOC of source.**
 - **The re-tier moved the scarcity rather than removing it** (L18): hard is now the rare 5×5 tier
   (8%) and easy 7×7 does not exist (0 / 40). Both recorded as per-size tier-set inputs for E5, not
   patched here.
+- **`/code-review high` (owner-run, on the PR): 9 findings, all fixed in-PR.** The one with
+  weight: the first scan cache rescanned every clued line on every candidate change (+37%
+  classify). Per-line dirty flags set by a single candidate write path (`setCandidates`; the
+  forcing-chain trial adopts candidates through it) made the re-tiered solver *faster* than the
+  flat one. Also: unclued lines out of the scan (one array shape, AGENTS.md §5); an ordered
+  `LINE_BANDS` table instead of hand-derived bounds; boundary tests at 3 / 4 / 12 arrangements;
+  stored removable masks; the one-arrangement hint's grammar; JSDoc on both cuts; parentheses.
 
 ### Invariants checked
 
@@ -135,11 +142,14 @@ roadmap / index / status, the sample booklet. **~90 LOC of source.**
 
 ### Review statements
 
-- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
-  runs `/code-review high` on the PR. `/security-review` not required.
+- The owner ran `/code-review high` on the PR (9 findings, fixed above); the agent did not launch
+  it. `/security-review` not required.
 
 ### Lessons
 
+- **A cache keyed on a global version is a cache that rescans everything.** Key it on what a
+  write actually touches (here: the two lines through a cell) and route every write through the
+  one method that marks it — the same change fixed the speed and the invalidation-by-convention.
 - **When a weaker technique is added below an existing one, re-check every test that disables
   techniques to isolate a rule** — the new rung fires first and turns those tests into tests of
   the new rung.

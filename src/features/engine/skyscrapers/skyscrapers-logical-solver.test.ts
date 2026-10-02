@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SKYSCRAPERS_FIXTURES, SKYSCRAPERS_FIXTURE_5X5, SKYSCRAPERS_FIXTURE_6X6, SKYSCRAPERS_FIXTURE_7X7 } from './skyscrapers-fixtures';
 import {
+  LINE_BANDS,
   SkyscrapersLogicalSolver,
   TECHNIQUE_TIER,
   classifySkyscrapers,
@@ -193,7 +194,7 @@ describe('SkyscrapersLogicalSolver', () => {
     const step = solver.step(1, new Set(['clue1', 'positionBound', 'nearlyFilledClue', 'nakedSingle', 'hiddenSingle']));
     expect(step?.technique).toBe('lineScan');
     expect(step?.tier).toBe(1);
-    expect(step?.explanation).toMatch(/only one arrangement fits/);
+    expect(step?.explanation).toMatch(/only one arrangement fits the clues, and it does not allow/);
     // The same scan on an empty 4×4 row under a single clue of 2 keeps 11 arrangements: tier 2.
     const two = blank(4);
     two.left[0] = 2;
@@ -206,6 +207,33 @@ describe('SkyscrapersLogicalSolver', () => {
     const long = new SkyscrapersLogicalSolver({ gridSize: 5, clues: many }).step(3, new Set(['positionBound', 'clue2Pattern', 'reachability']));
     expect(long?.technique).toBe('lineFilter');
     expect(long?.tier).toBe(3);
+  });
+
+  it('cuts the bands at exactly 3 | 4 and 12 arrangements (the LINE_BANDS boundaries)', () => {
+    const quiet = new Set<SkyscrapersTechnique>(['clue1', 'positionBound', 'nearlyFilledClue', 'nakedSingle', 'hiddenSingle', 'clue2Pattern', 'reachability']);
+    // An empty 4×4 row under clues 1 (left) and 3 (right) keeps exactly 3 arrangements → lineScan.
+    const three = blank(4);
+    three.left[0] = 1;
+    three.right[0] = 3;
+    const atThree = new SkyscrapersLogicalSolver({ gridSize: 4, clues: three }).step(3, quiet);
+    expect(atThree).toMatchObject({ technique: 'lineScan', tier: 1 });
+    expect(atThree?.explanation).toMatch(/only 3 arrangements fit/);
+    // A 5×5 row under clues 2 (left) and 3 (right) with its first cell 2 keeps exactly 4 → lineEnumeration.
+    const four = blank(5);
+    four.left[0] = 2;
+    four.right[0] = 3;
+    const fourGrid = [[2, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]];
+    const atFour = new SkyscrapersLogicalSolver({ gridSize: 5, clues: four }, fourGrid).step(3, quiet);
+    expect(atFour).toMatchObject({ technique: 'lineEnumeration', tier: 2 });
+    expect(atFour?.explanation).toMatch(/only 4 arrangements fit/);
+    // A 5×5 row under a single clue of 3 with its first cell 2 keeps exactly 12 → still lineEnumeration.
+    const twelve = blank(5);
+    twelve.left[0] = 3;
+    const twelveGrid = [[2, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]];
+    const atTwelve = new SkyscrapersLogicalSolver({ gridSize: 5, clues: twelve }, twelveGrid).step(3, quiet);
+    expect(atTwelve).toMatchObject({ technique: 'lineEnumeration', tier: 2 });
+    expect(atTwelve?.explanation).toMatch(/only 12 arrangements fit/);
+    expect(LINE_BANDS.map((b) => b.maxSurvivors)).toEqual([3, 12, Infinity]);
   });
 
   it('separates the tiers on the fixtures: the sparse 5×5 is finished by tier 1 (small scans), the 6×6 and 7×7 need forcing chains', () => {

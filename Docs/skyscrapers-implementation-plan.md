@@ -815,7 +815,8 @@ longer hard-dominated; classify still < 20 ms at 7×7.
   T5 28 · unrated 2 of 300** (was T1 1 · T2 1 · T3 273). **Tier-bounded yield T1–T5:** 5×5
   **90 / 55 / 8 / 8 / 20%** (was 3 / 8 / 100 / 10 / 38); 6×6 **28 / 85 / 58 / 15 / 53%** (was
   0 / 0 / 85 / 10 / 73); 7×7 **0 / 28 / 58 / 8 / 68%**. Per accepted at 6×6: 235 / 67 / 115 / 381 /
-  119 ms (T1–T5). Classify on the fixtures 0.6 / 9.2 / 8.0 ms (the extra bands cost ~2 ms).
+  119 ms (T1–T5). Classify on the fixtures 0.24 / 5.1 / 4.5 ms after the review's per-line
+  scans (0.6 / 9.2 / 8.0 with a whole-grid rescan; 0.4 / 6.7 / 6.3 before the re-tier).
   Scores 13.2 / 139.3 / 100.6.
 - *What the numbers say:* every tier is now reachable at 5×5 and 6×6 and the floor is no longer
   hard-dominated — the gate passes. Two things moved that E4/E5 must know: **hard is now the
@@ -827,6 +828,20 @@ longer hard-dominated; classify still < 20 ms at 7×7.
   easy / medium / hard with hard rare; 7×7: medium–extreme, no easy — to confirm in E5).
 - *Divergence from the spec:* none beyond the plan's own E3 recommendation; the cuts (3 / 12)
   are the findings' proposal, unfit — E5 refits against the scorer.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 9 findings, all fixed
+  before merge):* (1) **the scan cache rescanned every clued line on every candidate change**
+  (+37% classify) — now one scan per clued line with a dirty flag, and a candidate write dirties
+  only its row and column; classify went from 9.2 to **5.1 ms** at 6×6, faster than the flat
+  ladder. (2) **Invalidation held by convention** (`cands` was written directly in the constructor
+  and the forcing-chain trial) — every write now goes through `setCandidates`, the trial through
+  `adoptCandidates`. (3) Unclued lines left the scan (`filterLines` holds clued lines only), so the
+  scan array has one shape (AGENTS.md §5) and no null branch. (4) The three bands are one ordered
+  `LINE_BANDS` table; a band's lower bound is derived from its predecessor. (5) Boundary tests at
+  exactly 3, 4 and 12 arrangements (no hand-buildable 13 was found with ≤ 2 placed cells; the 35
+  case covers the top band). (6) The one-arrangement hint reads "and it does not allow", not "none
+  of them". (7) The scan stores the removable bits once; the band applies them instead of
+  recomputing. (8) JSDoc on both cut constants. (9) Parentheses on the mixed condition; `both` is
+  a boolean.
 - *Blockers:* none. E4 can start.
 
 ### E4 — Clue-removal generator ⏳

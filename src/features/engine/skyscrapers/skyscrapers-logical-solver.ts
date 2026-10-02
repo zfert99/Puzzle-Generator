@@ -71,16 +71,28 @@ export const TECHNIQUE_TIER: Record<SkyscrapersTechnique, SkyscrapersTier> = {
 };
 
 /**
- * The per-line arrangement scan is one mechanism graded three ways by **how many arrangements
- * it had to consider** (E3 findings §3c): up to `LINE_SCAN_MAX` surviving arrangements is the
- * beginner's clue-reading ("only two arrangements of this row fit its clues" — `lineScan`, tier
- * 1); up to `LINE_ENUMERATION_MAX` is a real one-line enumeration (`lineEnumeration`, tier 2);
- * anything longer is the catch-all (`lineFilter`, tier 3). A flat tier for the scan made 91% of
- * all-clue 6×6 squares "hard" and left easy and medium ungenerable; these cuts put the all-clue
- * floor at roughly 5 / 57 / 24% easy / medium / hard at 6×6. E5 may refit the two numbers.
+ * Up to this many surviving arrangements, the per-line scan is the beginner's clue-reading
+ * ("only two arrangements of this row fit its clues") — `lineScan`, tier 1. E3 findings §3c.
  */
 export const LINE_SCAN_MAX = 3;
+
+/**
+ * Up to this many surviving arrangements, the scan is a real one-line enumeration —
+ * `lineEnumeration`, tier 2; beyond it the catch-all `lineFilter`, tier 3. E5 may refit both cuts.
+ */
 export const LINE_ENUMERATION_MAX = 12;
+
+/**
+ * The per-line arrangement scan is one mechanism graded by **how many arrangements it had to
+ * consider** (E3 findings §3c): a flat tier for it made 91% of all-clue 6×6 squares "hard" and
+ * left easy and medium ungenerable. The bands are ordered; each one's lower bound is the
+ * previous one's upper bound plus one, so a survivor count always falls in exactly one band.
+ */
+export const LINE_BANDS: readonly { technique: 'lineScan' | 'lineEnumeration' | 'lineFilter'; maxSurvivors: number }[] = [
+  { technique: 'lineScan', maxSurvivors: LINE_SCAN_MAX },
+  { technique: 'lineEnumeration', maxSurvivors: LINE_ENUMERATION_MAX },
+  { technique: 'lineFilter', maxSurvivors: Infinity },
+];
 
 /** The tier → published difficulty map. Provisional until E5 calibrates it against measurements. */
 export const TIER_DIFFICULTY: Record<Exclude<SkyscrapersTier, 0>, Exclude<SkyscrapersDifficulty, 'unrated'>> = {
@@ -144,12 +156,18 @@ interface House {
 
 /** One clued line's arrangement scan against the current candidates (see `lineScans`). */
 interface LineScan {
-  /** Arrangements of the line still consistent with the candidates. */
+  /** Arrangements of the line still consistent with the candidates (1 for a finished line). */
   survivors: number;
-  /** Per position, the OR of the surviving heights. */
-  positions: Int32Array;
-  /** Whether restricting to `positions` would remove any candidate. */
+  /** Per position, the candidate bits no surviving arrangement uses — what the scan would remove. */
+  removable: Int32Array;
+  /** Whether any `removable` bit is set. */
   productive: boolean;
+}
+
+/** A row or column with both of its clues — the line scan's view. */
+interface FilterLine extends House {
+  left: number;
+  right: number;
 }
 
 /**
@@ -169,13 +187,15 @@ export class SkyscrapersLogicalSolver {
   private readonly steps: SkyscrapersStep[] = [];
   /** Every clued line: side, index, clue, and its cells from the clue inward. */
   private readonly cluedLines: { side: GutterSide; index: number; clue: number; cells: number[] }[] = [];
-  /** Every row (read from the left) and column (from the top) with both of its clues — line filtering's view. */
-  private readonly filterLines: { cells: number[]; left: number; right: number; label: string }[] = [];
+  /** Every **clued** row (read from the left) and column (from the top) — the line scan's view. Unclued lines belong to the Latin rules alone. */
+  private readonly filterLines: FilterLine[] = [];
   /** Every row and column — the Latin techniques' view. Built once; the solve loop allocates nothing here. */
   private readonly houses: House[] = [];
-  /** Bumped on every candidate change; the line-scan cache is valid while it matches. */
-  private version = 0;
-  private lineScanCache: { version: number; scans: (LineScan | null)[] } | null = null;
+  /** The two `filterLines` indices a cell belongs to (−1 = that line is unclued), so a candidate change dirties only its own lines. */
+  private readonly cellFilterLines: Int32Array;
+  /** One scan per filter line, recomputed only while its `dirty` flag is set. */
+  private readonly scans: LineScan[] = [];
+  private readonly dirty: Uint8Array;
 
   constructor(shape: SkyscrapersShape, grid?: readonly number[][]) {
     this.shape = shape;
@@ -185,6 +205,7 @@ export class SkyscrapersLogicalSolver {
     const all = (1 << size) - 1;
     this.grid = Array.from({ length: size }, (_, r) => Array.from({ length: size }, (_, c) => grid?.[r]?.[c] ?? 0));
     this.cands = new Int32Array(size * size).fill(all);
+    this.cellFilterLines = new Int32Array(size * size * 2).fill(-1);
     for (const side of GUTTER_SIDES) {
       for (let i = 0; i < size; i++) {
         const clue = clueAt(clues, side, i);
@@ -195,9 +216,19 @@ export class SkyscrapersLogicalSolver {
       const row = { cells: lineCells(size, 'left', i), label: `row ${i + 1}` };
       const column = { cells: lineCells(size, 'top', i), label: `column ${i + 1}` };
       this.houses.push(row, column);
-      this.filterLines.push({ ...row, left: clueAt(clues, 'left', i), right: clueAt(clues, 'right', i) });
-      this.filterLines.push({ ...column, left: clueAt(clues, 'top', i), right: clueAt(clues, 'bottom', i) });
+      const rowClues = { left: clueAt(clues, 'left', i), right: clueAt(clues, 'right', i) };
+      const columnClues = { left: clueAt(clues, 'top', i), right: clueAt(clues, 'bottom', i) };
+      if (rowClues.left !== 0 || rowClues.right !== 0) {
+        for (const cell of row.cells) this.cellFilterLines[cell * 2] = this.filterLines.length;
+        this.filterLines.push({ ...row, ...rowClues });
+      }
+      if (columnClues.left !== 0 || columnClues.right !== 0) {
+        for (const cell of column.cells) this.cellFilterLines[cell * 2 + 1] = this.filterLines.length;
+        this.filterLines.push({ ...column, ...columnClues });
+      }
     }
+    this.dirty = new Uint8Array(this.filterLines.length).fill(1);
+    for (let k = 0; k < this.filterLines.length; k++) this.scans.push({ survivors: 1, removable: new Int32Array(size), productive: false });
     // A placed height is a singleton, and leaves its row and column (the Latin rule). A height
     // that repeats in a row or column is a contradiction from the start (a player's grid can hold
     // one) — `stripFromPeers` only touches empty cells, so the repeat is checked explicitly.
@@ -211,7 +242,7 @@ export class SkyscrapersLogicalSolver {
         if (h > size || rowSeen[r] & bit || colSeen[c] & bit) this.contradiction = true;
         rowSeen[r] |= bit;
         colSeen[c] |= bit;
-        this.cands[r * size + c] = bit;
+        this.setCandidates(r * size + c, bit);
         this.stripFromPeers(r * size + c, bit);
       }
     }
@@ -263,13 +294,30 @@ export class SkyscrapersLogicalSolver {
     }
   }
 
+  /**
+   * The one write path for a cell's candidates: every change dirties the cell's two clued lines
+   * so their scans are recomputed on the next read, and nothing else. No other code assigns
+   * `cands`, which is what makes the scan cache sound by construction rather than by convention.
+   */
+  private setCandidates(cell: number, mask: number): void {
+    this.cands[cell] = mask;
+    const rowLine = this.cellFilterLines[cell * 2];
+    const columnLine = this.cellFilterLines[cell * 2 + 1];
+    if (rowLine !== -1) this.dirty[rowLine] = 1;
+    if (columnLine !== -1) this.dirty[columnLine] = 1;
+  }
+
+  /** Start from another solver's candidates (the forcing-chain trial): every line is rescanned. */
+  private adoptCandidates(cands: Int32Array): void {
+    for (let cell = 0; cell < cands.length; cell++) this.setCandidates(cell, cands[cell]);
+  }
+
   /** AND `mask` into a cell's candidates; returns the bits removed (0 = nothing). */
   private restrict(cell: number, mask: number): number {
     const before = this.cands[cell];
     const after = before & mask;
     if (after === before) return 0;
-    this.cands[cell] = after;
-    this.version += 1;
+    this.setCandidates(cell, after);
     if (after === 0) this.contradiction = true;
     return before & ~after;
   }
@@ -278,8 +326,7 @@ export class SkyscrapersLogicalSolver {
     const [r, c] = this.rc(cell);
     if ((this.cands[cell] & (1 << (digit - 1))) === 0) this.contradiction = true;
     this.grid[r][c] = digit;
-    this.cands[cell] = 1 << (digit - 1);
-    this.version += 1;
+    this.setCandidates(cell, 1 << (digit - 1));
     this.stripFromPeers(cell, 1 << (digit - 1));
   }
 
@@ -521,23 +568,28 @@ export class SkyscrapersLogicalSolver {
 
   /**
    * The per-line arrangement scan behind `lineScan` / `lineEnumeration` / `lineFilter`: for
-   * every clued, unfinished line, the arrangements still consistent with the candidates, how
-   * many there are, and whether their union would remove anything. Computed once per candidate
-   * state (the cache is keyed on `version`), because the three bands read the same scan and the
-   * ladder asks for the weakest band first.
+   * every clued line, the arrangements still consistent with the candidates, how many there
+   * are, and the candidate bits none of them uses. Only lines marked dirty by a candidate change
+   * are rescanned — a restrict touches one row and one column, so the other 2N − 2 scans stand —
+   * and the three bands read the same result because the ladder asks for the weakest band first.
+   * A finished line reports one arrangement and nothing to remove without a scan.
    */
-  private lineScans(): (LineScan | null)[] {
-    if (this.lineScanCache && this.lineScanCache.version === this.version) return this.lineScanCache.scans;
+  private lineScans(): LineScan[] {
     const N = this.size;
     const table = permutationTable(N);
-    const scans: (LineScan | null)[] = [];
-    for (const line of this.filterLines) {
-      if (line.left === 0 && line.right === 0 || line.cells.every((cell) => this.valueOf(cell) !== 0)) {
-        scans.push(null); // nothing a clue says (the Latin rules own it), or nothing left to place
+    for (let index = 0; index < this.filterLines.length; index++) {
+      if (!this.dirty[index]) continue;
+      this.dirty[index] = 0;
+      const line = this.filterLines[index];
+      const scan = this.scans[index];
+      scan.removable.fill(0);
+      if (line.cells.every((cell) => this.valueOf(cell) !== 0)) {
+        scan.survivors = 1;
+        scan.productive = false;
         continue;
       }
       const bucket = table.buckets[bucketIndex(N, line.left, line.right)];
-      const positions = new Int32Array(N);
+      const positions = scan.removable; // the OR of surviving heights per position, complemented below
       let survivors = 0;
       for (let k = 0; k < bucket.length; k++) {
         const base = bucket[k] * N;
@@ -553,14 +605,16 @@ export class SkyscrapersLogicalSolver {
         for (let i = 0; i < N; i++) positions[i] |= 1 << (table.heights[base + i] - 1);
       }
       let productive = false;
-      for (let i = 0; i < N && !productive; i++) {
+      for (let i = 0; i < N; i++) {
         const cell = line.cells[i];
-        if (this.valueOf(cell) === 0 && (this.cands[cell] & ~positions[i]) !== 0) productive = true;
+        const removable = this.valueOf(cell) === 0 ? this.cands[cell] & ~positions[i] : 0;
+        scan.removable[i] = removable;
+        if (removable !== 0) productive = true;
       }
-      scans.push({ survivors, positions, productive });
+      scan.survivors = survivors;
+      scan.productive = productive;
     }
-    this.lineScanCache = { version: this.version, scans };
-    return scans;
+    return this.scans;
   }
 
   /**
@@ -573,12 +627,13 @@ export class SkyscrapersLogicalSolver {
    * inflate the puzzle's difficulty (Tatham's rule). A line with no surviving arrangement is a
    * contradiction whatever the band.
    */
-  private applyLineBand(technique: 'lineScan' | 'lineEnumeration' | 'lineFilter', minSurvivors: number, maxSurvivors: number): SkyscrapersStep | null {
+  private applyLineBand(band: number): SkyscrapersStep | null {
     const N = this.size;
+    const { technique, maxSurvivors } = LINE_BANDS[band];
+    const minSurvivors = band === 0 ? 1 : LINE_BANDS[band - 1].maxSurvivors + 1;
     const scans = this.lineScans();
     for (let index = 0; index < scans.length; index++) {
       const scan = scans[index];
-      if (!scan) continue;
       if (scan.survivors === 0) {
         this.contradiction = true;
         return null;
@@ -587,15 +642,17 @@ export class SkyscrapersLogicalSolver {
       const line = this.filterLines[index];
       const eliminated: { cell: number; mask: number }[] = [];
       for (let i = 0; i < N; i++) {
+        const removable = scan.removable[i];
+        if (removable === 0) continue;
         const cell = line.cells[i];
-        if (this.valueOf(cell) !== 0) continue;
-        const removed = this.restrict(cell, scan.positions[i]);
+        const removed = this.restrict(cell, ~removable);
         if (removed) eliminated.push({ cell, mask: removed });
       }
-      const both = line.left && line.right;
+      const both = line.left !== 0 && line.right !== 0;
       const clueText = [line.left ? `${line.left}` : null, line.right ? `${line.right}` : null].filter(Boolean).join(' and ');
-      const fit = scan.survivors === 1 ? 'only one arrangement fits' : `only ${scan.survivors} arrangements fit`;
-      return this.eliminateStep(technique, eliminated, `${line.label} (clue${both ? 's' : ''} ${clueText}): ${fit} the clue${both ? 's' : ''}, and none of them allows ${eliminated.map((e) => `${maskToDigits(e.mask).join('/')} at ${this.cellText(e.cell)}`).join(', ')}`);
+      const fit = scan.survivors === 1 ? 'only one arrangement fits the clue' : `only ${scan.survivors} arrangements fit the clue`;
+      const deny = scan.survivors === 1 ? 'it does not allow' : 'none of them allows';
+      return this.eliminateStep(technique, eliminated, `${line.label} (clue${both ? 's' : ''} ${clueText}): ${fit}${both ? 's' : ''}, and ${deny} ${eliminated.map((e) => `${maskToDigits(e.mask).join('/')} at ${this.cellText(e.cell)}`).join(', ')}`);
     }
     return null;
   }
@@ -730,7 +787,7 @@ export class SkyscrapersLogicalSolver {
     for (const cell of order) {
       for (const digit of maskToDigits(this.cands[cell])) {
         const trial = new SkyscrapersLogicalSolver(this.shape, this.grid);
-        trial.cands.set(this.cands);
+        trial.adoptCandidates(this.cands);
         trial.place(cell, digit);
         let steps = 0;
         while (!trial.contradiction && !trial.isSolved() && steps < 200) {
@@ -766,11 +823,11 @@ export class SkyscrapersLogicalSolver {
       ['nearlyFilledClue', () => this.applyNearlyFilledClue()],
       ['nakedSingle', () => (target === -1 ? this.applyNakedSingle() : this.placeIfSingle(target))],
       ['hiddenSingle', () => (target === -1 ? this.applyHiddenSingle() : this.hiddenSingleAt(target))],
-      ['lineScan', () => this.applyLineBand('lineScan', 1, LINE_SCAN_MAX)],
+      ['lineScan', () => this.applyLineBand(0)],
       ['clue2Pattern', () => this.applyClue2Pattern(target)],
       ['reachability', () => this.applyReachability()],
-      ['lineEnumeration', () => this.applyLineBand('lineEnumeration', LINE_SCAN_MAX + 1, LINE_ENUMERATION_MAX)],
-      ['lineFilter', () => this.applyLineBand('lineFilter', LINE_ENUMERATION_MAX + 1, Infinity)],
+      ['lineEnumeration', () => this.applyLineBand(1)],
+      ['lineFilter', () => this.applyLineBand(2)],
       ['nakedSubset', () => this.applyNakedSubset()],
       ['hiddenSubset', () => this.applyHiddenSubset()],
       ['xWing', () => this.applyXWing()],

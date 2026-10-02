@@ -283,8 +283,8 @@ board at most (D4's footnote), not a daily mini.
 > 7×7 does not exist** (0/40 — a 7-cell line under a clue pair rarely keeps ≤ 3 arrangements).
 > Both are properties of the sizes, not defects of the ladder; the mini ships easy / medium / hard
 > with hard rare, and the large likely medium–extreme — E5 confirms with its own distribution.
-> The 5×5 fixture relabelled hard → easy; classify costs ~2 ms more at 6×6 and 7×7 (0.6 / 9.2 /
-> 8.0 ms). Hard 6×6 dropped from 85% to 58% and extreme from 73% to 53%: the puzzles did not
+> The 5×5 fixture relabelled hard → easy; classify on the fixtures 0.24 / 5.1 / 4.5 ms once the
+> scans were kept per line (faster than the flat ladder's 0.4 / 6.7 / 6.3). Hard 6×6 dropped from 85% to 58% and extreme from 73% to 53%: the puzzles did not
 > change, their grades did, which is the point.
 
 ## 4. Gates (plan E3)
