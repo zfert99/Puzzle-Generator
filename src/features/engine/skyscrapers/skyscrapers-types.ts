@@ -21,6 +21,13 @@ export type SkyscrapersDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'ext
 export const SKYSCRAPERS_LADDER = ['easy', 'medium', 'hard', 'expert', 'extreme'] as const satisfies readonly SkyscrapersDifficulty[];
 export type SkyscrapersLevel = (typeof SKYSCRAPERS_LADDER)[number];
 
+/**
+ * The sizes Skyscrapers ships (D4, settled by E3's measurement): mini 5×5, standard 6×6, large
+ * 7×7. 9×9 failed both of E3's gates and 4×4 has no expert tier — neither is served.
+ */
+export const SKYSCRAPERS_SIZES = [5, 6, 7] as const satisfies readonly GridSize[];
+export type SkyscrapersSize = (typeof SKYSCRAPERS_SIZES)[number];
+
 /** Which strip of the clue gutter a display cell belongs to. */
 export type GutterSide = 'top' | 'bottom' | 'left' | 'right';
 

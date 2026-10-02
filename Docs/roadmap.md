@@ -668,7 +668,10 @@ revisited under the same rule later.
 > for 7×7; expert/extreme populated at 6×6; **but easy/medium 6×6 cannot be generated under the
 > E2 tiering** — 91% of all-clue squares already graded hard, so the line scan was re-tiered by
 > size, **E3b**: easy/medium 6×6 now 28% / 85% of tier-bounded output, every tier reachable at
-> 5/6 — `research/skyscrapers-feasibility-findings.md` and its addendum). Full plan:
+> 5/6 — `research/skyscrapers-feasibility-findings.md` and its addendum; merged 2026-10-02) and
+> **E4** (the generator: fill → repair-with-restart → tier-bounded clue removal; "New puzzle" is
+> fresh and unique at 5/6/7 behind `/api/puzzle`, 0 failures in the gate run, 6×6 in 30–50 ms;
+> the 7×7 easy question goes to E5's per-size tier sets). Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;

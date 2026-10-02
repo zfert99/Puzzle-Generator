@@ -147,8 +147,8 @@ fifth label alone on a full-width line (Skyscrapers V3 review). Sizes come from 
 offers **5 / 6 / 7** — the plan's D4, planned at the research recommendation and still measured
 by E3 — and the deep link seeds the planned standard, 6×6. `topTiersLockedFor` exempts it, like
 Kakuro: its tiers are calibrated within a size (D6), so the full ladder is shown at every size.
-Until the generator lands (E4/E5) the menu says so: one hand-made fixture per size is served
-(`usePuzzle` short-circuits, no network) and the board's grade is **the classifier's** (E2 — the
-fixtures grade hard / extreme / extreme), not the picker's — the difficulty picker is for the
-layout's sake. No hub card yet (D8: the card goes live at E5, so `main` never
+Since E4 every Skyscrapers is generated fresh through the route; the picker's tier **bounds the
+clue removal** (a hard request never serves expert) and the board shows the classifier's grade
+for what came out, which may sit *below* the pick until E5 lands puzzles exactly on the requested
+tier and sets each size's tier list — the menu note says so. No hub card yet (D8: the card goes live at E5, so `main` never
 advertises a one-puzzle type); the deep link is the surface.

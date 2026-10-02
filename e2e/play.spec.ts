@@ -191,8 +191,8 @@ test.describe('Interactive play', () => {
   test('plays a Skyscrapers: four-sided clue gutter, 1..N numpad at the 6×6, clue marked done, board starts empty', async ({ page }) => {
     await page.goto('/play?variant=skyscrapers');
 
-    // The deep link preselects Skyscrapers at its planned 6×6 standard (D4); the full ladder is
-    // offered at every size (the fixture served until E5 is 'unrated' regardless).
+    // The deep link preselects Skyscrapers at its 6×6 standard (D4); the full ladder is offered
+    // at every size (the puzzle is generated fresh since E4, its label the classifier's).
     await expect(page.getByRole('button', { name: /^skyscrapers$/i })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: '6×6', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeEnabled();
@@ -203,11 +203,13 @@ test.describe('Interactive play', () => {
     await expect(page.getByRole('dialog', { name: 'How to play Skyscrapers' })).toBeVisible();
     await page.getByRole('button', { name: 'Got it' }).click();
 
-    // 6×6 interior + a gutter on all four sides = 8×8 cells; 36 play cells start empty; the baked
-    // 6×6 fixture keeps 15 of its 24 clues.
+    // 6×6 interior + a gutter on all four sides = 8×8 cells; 36 play cells start empty; a fresh
+    // 6×6 keeps between N − 1 and 4N clues (E3: median 11 of 24).
     await expect(grid.getByRole('gridcell')).toHaveCount(64);
     await expect(grid.getByRole('gridcell', { name: /^Empty/ })).toHaveCount(36);
-    await expect(grid.getByRole('gridcell', { name: /^Clue \d/ })).toHaveCount(15);
+    const clueCount = await grid.getByRole('gridcell', { name: /^Clue \d/ }).count();
+    expect(clueCount).toBeGreaterThanOrEqual(5);
+    expect(clueCount).toBeLessThanOrEqual(24);
     await expect(grid.getByRole('gridcell', { name: /^Value/ })).toHaveCount(0);
 
     // Digits are 1..N: the numpad offers 6 and no 7.

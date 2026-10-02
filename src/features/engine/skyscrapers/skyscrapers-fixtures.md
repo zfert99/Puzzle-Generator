@@ -1,6 +1,8 @@
 # Skyscrapers Fixtures (`skyscrapers-fixtures.ts`)
 
-Hand-baked Skyscrapers puzzles for the slices before a generator exists (plan V1 → E4): the
+Hand-baked Skyscrapers puzzles for the slices before the generator existed (plan V1 → E3b; since
+E4 the board generates fresh puzzles and these are test data plus what `/api/generate` prints
+until E5): the
 workbench route draws them, the board (V2) and PDF (V3) serve them, and the exact solver (E1)
 proves them unique. Plan:
 [skyscrapers-implementation-plan.md](../../../../Docs/skyscrapers-implementation-plan.md).

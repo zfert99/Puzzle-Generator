@@ -1,6 +1,7 @@
 /**
- * Hand-baked Skyscrapers puzzles: static, known-good boards the workbench serves and the engine
- * slices are tested against, until a generator exists (plan slices V1 → E4).
+ * Hand-baked Skyscrapers puzzles: static, known-good boards the board served from V2 to E3b and
+ * the engine slices are tested against. Since E4 the board generates fresh puzzles; these are
+ * test data and what `/api/generate` prints until E5.
  *
  * A fixture is authored as its **solved Latin square** in text — one string per row, one digit
  * per cell — plus a **clue mask** per side saying which of the 4N clues are kept (`x`) and which

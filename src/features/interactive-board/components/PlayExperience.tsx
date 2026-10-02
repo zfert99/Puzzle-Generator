@@ -98,8 +98,8 @@ export default function PlayExperience() {
   // Kakuro is generated server-side since E4 and graded by the logical solver (easy…hard by
   // technique tier, expert/extreme by forcing-chain length); the label is the solver's.
   const isKakuro = variant === 'kakuro';
-  // Skyscrapers serves a hand-baked fixture per size until its generator lands (plan E4/E5) —
-  // the difficulty picker is shown for the layout's sake; the board's grade is the classifier's (E2).
+  // Skyscrapers generates fresh puzzles since E4; the picker's tier bounds the clue removal and the
+  // board shows the classifier's grade for what came out (exactly-the-requested-tier is E5).
   const isSkyscrapers = variant === 'skyscrapers';
   const wantsResume = searchParams.get('resume') === '1';
 
@@ -263,7 +263,7 @@ export default function PlayExperience() {
             </p>
           ) : isSkyscrapers ? (
             <p className="text-xs text-ink-soft text-center mt-2">
-              Skyscrapers is being built: one hand-made puzzle per size for now, graded by the solver — the generator comes next.
+              Skyscrapers is being built: every puzzle is fresh and unique, graded by the solver — the grade may land below the one you picked until the tiers are calibrated.
             </p>
           ) : (
             miniGrid && (

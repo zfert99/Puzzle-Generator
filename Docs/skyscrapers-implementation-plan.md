@@ -199,8 +199,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 4 | E1 — Visibility table + exact solver + uniqueness ✅ | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
 | 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer ✅ | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
 | 6 | E3 — Yield measurement spike ✅ | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
-| 6b | E3b — Line-scan re-tier 🚧 | The 5×5 fixture reads **easy**; easy/medium 6×6 exist (all-clue floor 25% / 61%); every tier reachable by removal at 5/6/7 |
-| 7 | E4 — Clue-removal generator | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
+| 6b | E3b — Line-scan re-tier ✅ | The 5×5 fixture reads **easy**; easy/medium 6×6 exist (all-clue floor 25% / 61%); every tier reachable by removal at 5/6/7 |
+| 7 | E4 — Clue-removal generator 🚧 | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
 | 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
 | 9 | R1 — Daily rotation (5 types) | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
 
@@ -778,7 +778,7 @@ ladder, two-line interactions, or givens as a lever) before E4 rather than tunin
   blocks. Merged 2026-10-02 ([#134](https://github.com/zfert99/Puzzle-Generator/pull/134)); the
   owner approved the recommendation the same day → E3b.
 
-### E3b — Line-scan re-tier (the owner's call on E3 §3c) 🚧
+### E3b — Line-scan re-tier (the owner's call on E3 §3c) ✅
 
 The one change E3 asked for before E4: grade the per-line arrangement scan by how many
 arrangements it had to consider, not flat at tier 3.
@@ -842,9 +842,9 @@ longer hard-dominated; classify still < 20 ms at 7×7.
   of them". (7) The scan stores the removable bits once; the band applies them instead of
   recomputing. (8) JSDoc on both cut constants. (9) Parentheses on the mixed condition; `both` is
   a boolean.
-- *Blockers:* none. E4 can start.
+- *Blockers:* none. Merged 2026-10-02 ([#135](https://github.com/zfert99/Puzzle-Generator/pull/135)).
 
-### E4 — Clue-removal generator ⏳
+### E4 — Clue-removal generator 🚧
 
 - `skyscrapers-generator.ts`: `generateUniqueSkyscrapers(N, opts)` = **fill** (`fillGrid` on the
   boxless config, then shuffle rows/columns/symbols) → **derive all 4N clues** → **repair to
@@ -862,6 +862,86 @@ longer hard-dominated; classify still < 20 ms at 7×7.
 
 **Gate:** yield ≥ what E3 measured; 6×6 accepted puzzle < 200 ms avg, 7×7 < 1 s; 0 failures in
 100 per size.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-e4`):**
+
+- *Process:* `skyscrapers-generator.ts` — `randomLatinSquare` (`fillGrid` on the boxless config),
+  `repairToUnique(size, { countLimit 20, restartAfter 40, stepCap, msCap, start })` (intercalate
+  swaps kept when the capped count does not rise, plateau moves included, **restart from a fresh
+  square after 40 fruitless swaps** — E3's policy), `removeClues(solution, { targetTier, order })`
+  (random order, stably partitioned `trivialLast` for targets 1–2 / `trivialFirst` for 3+; each
+  blank kept only if unique and, with a target, at ≤ the target tier; the all-clue floor is
+  checked first so a square above the target costs one classify), `generateUniqueSkyscrapers({
+  gridSize, targetTier, maxRounds, maxFloorMisses, timeBudgetMs, repair, order })` → `{ puzzle,
+  stats }` with the exact verifier's final word and the classifier's label; `tierOf(level)`.
+  `SKYSCRAPERS_SIZES` (5/6/7) in the types module. **Visible on the board:** `/api/puzzle` has a
+  Skyscrapers branch — bounded removal at the requested tier (40 rounds / 12 floor misses / 6 s),
+  then an **unbounded fallback** (2 s) when a size has no square at that tier, logged with
+  `served`, `fallback` and the generator's `stats`; `usePuzzle`'s fixture short-circuit is gone,
+  so "New puzzle" is fresh at 5/6/7 and the menu note says the grade may land below the pick.
+  Fixtures are test data and the print booklet's content until E5. Tests (12 new, 2 rewritten):
+  `tierOf`; seeded Latin squares; repair reaches uniqueness at every size, repairs the research's
+  non-unique 4×4 pair, stops at the cap; removal keeps uniqueness with every kept clue
+  load-bearing, never exceeds a target and reports the floor untouched when the square is above
+  it; generation is valid (no givens), unique, classifier-labelled, seed-reproducible, bounded by
+  the target, `null` on a spent budget, and gives up after `maxFloorMisses` (7×7 easy); the route
+  serves 6×6 at ≤ the request and rejects 9×9 / unknown levels; the hook fetches like every other
+  variant; the e2e spec accepts any clue count in [N − 1, 4N].
+- *Measured (the route's policy, dev machine):*
+
+| size | request | fails | fallbacks | ms med / mean / max | served |
+|---|---|---|---|---|---|
+| 5×5 | easy | 0/100 | 0 | 8 / 10 / 42 | easy 100 |
+| 5×5 | medium | 0/100 | 0 | 7 / 7 / 27 | medium 61 · easy 39 |
+| 5×5 | hard | 0/100 | 0 | 8 / 9 / 36 | hard 6 · medium 71 · easy 23 |
+| 5×5 | expert | 0/100 | 0 | 7 / 8 / 21 | expert 10 · hard 7 · medium 56 · easy 27 |
+| 5×5 | extreme | 0/100 | 0 | 7 / 9 / 70 | extreme 35 · expert 3 · hard 5 · medium 27 · easy 30 |
+| 6×6 | easy | 0/100 | 3 | 39 / 51 / 210 | easy 97 · (fallback) extreme 2 · expert 1 |
+| 6×6 | medium | 0/100 | 0 | 29 / 34 / 89 | medium 93 · easy 7 |
+| 6×6 | hard | 0/100 | 0 | 30 / 35 / 99 | hard 46 · medium 52 · easy 2 |
+| 6×6 | expert | 0/100 | 0 | 28 / 34 / 116 | expert 11 · hard 37 · medium 51 · easy 1 |
+| 6×6 | extreme | 0/100 | 0 | 35 / 50 / 318 | extreme 64 · expert 4 · hard 17 · medium 15 |
+| 7×7 | easy | 0/60 | **45** | **3,098 / 3,506 / 7,913** | easy 15 · (fallback) extreme 29 · hard 8 · unrated 7 · expert 1 |
+| 7×7 | medium | 0/60 | 0 | 450 / 655 / 2,423 | medium 60 |
+| 7×7 | hard | 0/60 | 0 | 324 / 402 / 1,756 | hard 58 · medium 2 |
+| 7×7 | expert | 0/60 | 0 | 359 / 391 / 1,615 | expert 12 · hard 43 · medium 5 |
+| 7×7 | extreme | 0/60 | 0 | 366 / 449 / 1,287 | extreme 52 · expert 2 · hard 4 · medium 2 |
+
+  Unbounded: 6 / 20 / 221 ms median at 5/6/7, 0 failures, `unrated` 3 / 3 / 11%. `kept` medians
+  7 / 11 / 14 of 4N, as E3 measured.
+
+- *Gate:* **0 failures at every size and request ✅**; **6×6 < 200 ms ✅** (30–50 ms mean);
+  **7×7 < 1 s ✅ for medium–extreme** (400–800 ms mean) and **❌ for easy** (3.5 s mean, 45/60
+  served by the unbounded fallback) — one square in fifty has an easy floor at 7×7 (E3), so the
+  bounded attempt spends its 12 floor misses first. Not a generator defect: it is the per-size
+  tier-set decision E3 raised and **E5 owns** (offer easy at 7×7 or lock it, as the mini sizes
+  lock expert/extreme elsewhere). Yields match E3's tier-bounded numbers.
+- *Divergence from the spec:* (1) the spec's "fill, then shuffle rows/columns/symbols" is
+  unnecessary — `fillGrid` is already a uniformly random backtracking fill. (2) "Re-add on
+  overshoot" is the restore step of the bounded removal (a removal that would exceed the target is
+  undone at once), not a separate phase. (3) The route's unbounded fallback is new: without it a
+  7×7 easy request would 500 three times in four. It is E4's honest stopgap, logged as such.
+- *Learnings:* L19 — a request a size cannot honour is a tier-set decision, not a generator bug;
+  measure the floor rate per size before promising a tier there, and let the route degrade
+  honestly (serve + label + log) rather than fail while the decision is open.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 9 findings, all fixed
+  before merge):* (1) **the serving policy lived in the route** (AGENTS.md §1: routes are
+  controllers) — now `skyscrapers.ts` / `generateSkyscrapers(level, { gridSize, timeBudgetMs })`
+  → `{ puzzle, stats, fallback }`, the counterpart of `generateKakuro`, where E5's exact-tier loop
+  and R1's daily will call; the route is three lines. (2) The **fallback path had no test** — a
+  7×7 easy request now asserts 200 and a labelled puzzle; a `skyscrapers.test.ts` covers the entry
+  point at every level. (3) The label was re-derived from a tier (duplicating the classifier's
+  0 → 1 and `'unrated'` rules) with a redundant re-classify — `removeClues` returns the
+  classification's `difficulty`. (4) The "final word" uniqueness verify was the identical call the
+  removal had just made (same budget) — dropped, with the reasoning in the `.md`. (5) The
+  hand-rolled Fisher–Yates became `grid-utils.shuffle`, made generic. (6) **A run of squares with
+  no intercalate was bounded only by wall-clock** — `maxRestarts` (100) now caps restarts, and
+  both restart paths share one `restart()`; tested with `restartAfter: 0` at 7×7. (7)
+  `randomLatinSquare` throws if `fillGrid` ever returns `false` instead of handing back holes. (8)
+  JSDoc on the six exported interfaces. (9) The restart sentinel is gone (6).
+- *Blockers:* none. The e2e Skyscrapers spec was updated but **not run** this slice: the only dev
+  server on port 3000 belongs to another session and may not serve this branch (Next 16 refuses a
+  second `next dev` from one checkout); CI's Playwright job runs it against a production build.
 
 ### E5 — Difficulty configs + `generateSkyscrapers(difficulty, { gridSize })` + benchmark ⏳
 

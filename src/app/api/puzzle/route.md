@@ -20,6 +20,19 @@ label is still the classifier's own, so the log line carries `served` beside the
 500 like the other variants (measured at 0 in 1,500 puzzles across the sizes). E4's bounded
 rejection, its fixture/nearest fallback and the `source` field are gone.
 
+## Skyscrapers branch (plan slice E4 → E5)
+
+When the body has `variant: 'skyscrapers'`, the route validates `difficulty` against
+`SKYSCRAPERS_LADDER` and `gridSize` against `SKYSCRAPERS_SIZES` (5 / 6 / 7 — D4, settled by E3)
+and returns `generateSkyscrapers(difficulty, { gridSize })` (`skyscrapers.ts`): a fresh, unique
+puzzle **no harder than the request** — the removal is bounded by the requested tier, the label is
+the classifier's own (D7) — or, when the size has no square at that tier, an unbounded one flagged
+`fallback`. The policy (bounded 40 rounds / 12 floor misses / ¾ of the budget, then unbounded)
+lives in the engine entry point, not here (AGENTS.md §1: the route is a controller). The log line
+carries `served`, `fallback` and the generator's `stats` (rounds, repair swaps and restarts, clues
+kept, ms) beside the request so the gap E5 closes stays measured. A throw (both attempts out of
+budget — 0 in the gate run) goes to the generic 500 like the other variants.
+
 ## Why this endpoint exists
 
 The interactive board needs a fresh puzzle on demand. Generating it **server-side**

@@ -5,6 +5,8 @@ import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import { generateKakuro, KAKURO_SIZES, type KakuroSize } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
+import { generateSkyscrapers } from '@/features/engine/skyscrapers/skyscrapers';
+import { SKYSCRAPERS_LADDER, SKYSCRAPERS_SIZES, type SkyscrapersLevel, type SkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -114,6 +116,27 @@ export async function POST(req: NextRequest) {
         'Generated interactive Kakuro puzzle',
       );
       return NextResponse.json(puzzle, { status: 200 });
+    }
+
+    // ---- Skyscrapers branch (5×5 / 6×6 / 7×7 — plan slice E4) ----
+    if (variant === 'skyscrapers') {
+      if (!(SKYSCRAPERS_LADDER as readonly string[]).includes(difficulty)) {
+        return NextResponse.json({ error: 'Skyscrapers difficulty must be easy, medium, hard, expert, or extreme' }, { status: 400 });
+      }
+      if (!(SKYSCRAPERS_SIZES as readonly number[]).includes(gridSize)) {
+        return NextResponse.json({ error: 'Skyscrapers grid size must be 5, 6, or 7' }, { status: 400 });
+      }
+      // E4: fresh and unique, no harder than the request — the puzzle may land *below* it, and
+      // a size with no square at that tier is served unbounded (`fallback`); the label is the
+      // classifier's own (D7). The policy lives in `skyscrapers.ts`; `served` and `fallback` are
+      // logged beside the request so the gap E5 closes stays measured. A throw (both attempts out
+      // of budget — 0 in the gate run) goes to the generic 500 like the other variants.
+      const served = generateSkyscrapers(difficulty as SkyscrapersLevel, { gridSize: gridSize as SkyscrapersSize });
+      logger.info(
+        { event: 'puzzle_success', variant: 'skyscrapers', difficulty, served: served.puzzle.difficulty, fallback: served.fallback, gridSize, ...served.stats, durationMs: Math.round(performance.now() - startTime) },
+        'Generated interactive Skyscrapers puzzle',
+      );
+      return NextResponse.json(served.puzzle, { status: 200 });
     }
 
     // ==========================================

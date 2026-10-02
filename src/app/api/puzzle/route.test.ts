@@ -60,6 +60,33 @@ describe('POST /api/puzzle — Kakuro (E4)', () => {
   });
 });
 
+describe('POST /api/puzzle — Skyscrapers (E4)', () => {
+  it('returns a fresh, unique Skyscrapers at the requested size with four-sided clues and a solver-assigned label', async () => {
+    const res = await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'hard', gridSize: 6 }));
+    expect(res.status).toBe(200);
+    const puzzle = await res.json();
+    expect(puzzle.variant).toBe('skyscrapers');
+    expect(puzzle.gridSize).toBe(6);
+    expect(puzzle.clues.top).toHaveLength(6);
+    expect(puzzle.grid.flat().every((v: number) => v === 0)).toBe(true);
+    // E4 bounds the removal by the request; the served label may sit at or below it (E5 lands exactly).
+    expect(['easy', 'medium', 'hard']).toContain(puzzle.difficulty);
+  }, 30_000);
+
+  it('serves a request the size can rarely honour (7×7 easy) through the unbounded fallback instead of failing', async () => {
+    const res = await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'easy', gridSize: 7 }));
+    expect(res.status).toBe(200);
+    const puzzle = await res.json();
+    expect(puzzle.gridSize).toBe(7);
+    expect(['easy', 'medium', 'hard', 'expert', 'extreme', 'unrated']).toContain(puzzle.difficulty);
+  }, 30_000);
+
+  it('rejects a size Skyscrapers does not ship and an unknown difficulty', async () => {
+    expect((await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'easy', gridSize: 9 }))).status).toBe(400);
+    expect((await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'nasty', gridSize: 6 }))).status).toBe(400);
+  });
+});
+
 describe('POST /api/puzzle — sad paths', () => {
   it('rejects a missing difficulty', async () => {
     const res = await POST(buildRequest({}));

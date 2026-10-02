@@ -5,7 +5,6 @@ import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
 import type { SkyscrapersPuzzle } from '@/features/engine/skyscrapers/skyscrapers-types';
-import { SKYSCRAPERS_FIXTURES } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
 
 type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle | SkyscrapersPuzzle;
 
@@ -26,12 +25,9 @@ interface PuzzleRequest {
  * mount effect), so no puzzle is ever generated during SSR — sidestepping the
  * `Math.random()` server/client mismatch class of bugs (AGENTS.md Section 1).
  *
- * Kakuro goes through the same route since E4 (`generateKakuro` behind `/api/puzzle`); the
- * fixtures it used to serve client-side are test data and the route's fallback now.
- *
- * Skyscrapers (plan slice V2) is served from its baked fixtures client-side — static data, no
- * network, no hydration concern — until E5 puts `generateSkyscrapers` behind the route; the
- * fixture matching the requested size is returned, the first one if none matches.
+ * Kakuro goes through the same route since its E4 (`generateKakuro` behind `/api/puzzle`), and
+ * Skyscrapers since its E4 (`generateUniqueSkyscrapers`); the fixtures both served client-side
+ * from V2 until then are test data now.
  */
 export function usePuzzle() {
   const [puzzle, setPuzzle] = useState<AnyPuzzle | null>(null);
@@ -40,11 +36,6 @@ export function usePuzzle() {
 
   const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
-    if (variant === 'skyscrapers') {
-      const fixture = SKYSCRAPERS_FIXTURES.find((p) => p.gridSize === gridSize) ?? SKYSCRAPERS_FIXTURES[0];
-      setPuzzle(fixture);
-      return fixture;
-    }
     setLoading(true);
     try {
       const res = await fetch(apiPath('/api/puzzle'), {
