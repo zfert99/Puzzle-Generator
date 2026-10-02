@@ -28,10 +28,17 @@ session storage.
 **Why:** better-auth's router calls `storage.consume` when present for an atomic
 check-and-increment; without it, it falls back to a non-atomic `get`-then-`set` path that
 its own source code warns is "best-effort... concurrent requests can each pass the check
-before either write lands." Implementing `consume` — via Redis `INCR` (atomic) followed by
-`EXPIRE` only on the first hit (`count === 1`), so the window's TTL is set once and never
-extended by later requests — gets the strict path automatically. `get`/`set` still exist to
-satisfy the type but are effectively dead code once `consume` is present.
+before either write lands." Implementing `consume` gets the strict path automatically.
+`get`/`set` still exist to satisfy the type but are effectively dead code once `consume` is
+present.
+
+`consume` delegates to `consumeRedisFixedWindow` in [`rate-limit.ts`](../../lib/rate-limit.md) —
+one atomic `MULTI` of `INCR` → `EXPIRE key window NX` → `TTL`. **Why one transaction (October
+2026):** it used to be `INCR` and then, on the first hit only, a separate `EXPIRE` round trip. If
+that second call failed the key had no TTL, later hits never retried it, and the IP was locked out
+of sign-in **forever**. `NX` makes the `EXPIRE` safe to send on every hit (never extends a live
+window, heals an orphaned key), and `TTL` makes `retryAfter` the real wait rather than the full
+window.
 
 ## Why `consume` fails open on a Redis error
 
@@ -50,9 +57,8 @@ get(key):    redis.get(key)                    # legacy fallback; unused while c
 set(key, value): redis.set(key, value)          # legacy fallback; unused while consume exists
 consume(key, {window, max}):
   try:
-    count = redis.incr(key)                    # atomic; creates at 1 if absent
-    if count === 1: redis.expire(key, window)  # TTL set ONCE, on creation only
-    return {allowed: count <= max, retryAfter: null | window}
+    [count, _, ttl] = MULTI INCR key; EXPIRE key window NX; TTL key EXEC   # one atomic round trip
+    return {allowed: count <= max, retryAfter: null | (ttl > 0 ? ttl : window)}
   catch (redis error):
     log it; return {allowed: true, retryAfter: null}   # fail OPEN
 ```
@@ -69,6 +75,12 @@ retired first-party "Vercel KV" product) instead injects them as `KV_REST_API_UR
 that may use different naming conventions") — replicated by hand here rather than calling
 `fromEnv()` directly so an unconfigured environment (local dev with neither set) stays
 silent instead of `fromEnv()`'s built-in `console.warn` on every server start.
+
+## Tests
+
+`rate-limit-storage.test.ts` mocks `@upstash/redis` and `server-only` (the boundaries) and proves:
+unconfigured → `undefined`; `INCR` and `EXPIRE … NX` are queued in the same transaction;
+`retryAfter` is the real TTL; a Redis error fails open.
 
 ## Why this lives outside `auth.ts`
 

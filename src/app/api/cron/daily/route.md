@@ -66,3 +66,13 @@ R1; 6 at launch), of which at most one standard slot can be a 9×9
 extreme (the ~5.5 s Killer-extreme being the worst case) alongside millisecond-scale minis. 60 s
 keeps a wide margin over the realistic worst case while trimming a function budget that no longer
 reflected the work.
+
+## Tests
+
+`route.test.ts` mocks only the boundaries (DB client, `dailies.service`, logger) and runs the secret
+check for real: an unset `CRON_SECRET` fails closed with `401` even for a header-less or
+`Bearer undefined` request; a wrong secret of the **same** length and wrong-**length** values
+(shorter, longer, bare `Bearer`, the secret without the `Bearer` prefix, empty) are each `401` and
+never reach the service — the length cases are the ones a naive `timingSafeEqual` would throw on; the
+correct secret calls `generateDailyPuzzles` exactly once with today's UTC date; and a service failure
+is a generic `500` with no message or stack on the wire.

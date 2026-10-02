@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { getDailyPuzzle } from '@/features/dailies/dailies.service';
+import { getDailyPuzzle, PAST_DAY_CACHE_CONTROL } from '@/features/dailies/dailies.service';
 import { isDailyDifficulty, isIsoDate, restoreSkyscraperClues, toUtcDateString } from '@/lib/db/daily-row';
 import type { DailyVariant, StoredCage, StoredSkyscraperClue } from '@/lib/db/schema';
 import { logger } from '@/lib/logger';
@@ -104,7 +104,9 @@ export async function GET(req: NextRequest) {
         clueCount: puzzle.clueCount,
         ...caged,
       },
-      { status: 200 },
+      // An archive day (strictly before today, UTC) is immutable — let the CDN hold it. Today's
+      // board, and every 404/400/500, carries no public cache header.
+      { status: 200, headers: isoDate < todayIso ? { 'Cache-Control': PAST_DAY_CACHE_CONTROL } : undefined },
     );
   } catch (error: unknown) {
     const err = error as Error;

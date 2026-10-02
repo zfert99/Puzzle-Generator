@@ -1,6 +1,7 @@
 import 'server-only';
 import { Redis } from '@upstash/redis';
 import { logger } from '@/lib/logger';
+import { consumeRedisFixedWindow } from '@/lib/rate-limit';
 
 interface StoredRateLimit {
   key: string;
@@ -20,7 +21,9 @@ function createUpstashRateLimitStorage(redisUrl: string, redisToken: string) {
     set: async (key: string, value: StoredRateLimit) => {
       await redis.set(key, value);
     },
-    // Atomic INCR + first-write EXPIRE, fail-open on any Redis error.
+    // One atomic MULTI (INCR + EXPIRE NX + TTL) via the shared helper, fail-open on any Redis error.
+    // The old INCR-then-EXPIRE was two round trips: a failure between them left a TTL-less key that
+    // throttled that IP forever. See rate-limit-storage.md.
     //
     // `onRequestRateLimit` runs ahead of EVERY request to /api/auth/* (sign-in, session
     // checks, everything), with no surrounding try/catch in better-auth's router — an
@@ -31,11 +34,7 @@ function createUpstashRateLimitStorage(redisUrl: string, redisToken: string) {
     // being down blocks the rest of the app too.
     consume: async (key: string, rule: { window: number; max: number }) => {
       try {
-        const count = await redis.incr(key);
-        if (count === 1) await redis.expire(key, rule.window);
-        return count <= rule.max
-          ? { allowed: true, retryAfter: null }
-          : { allowed: false, retryAfter: rule.window };
+        return await consumeRedisFixedWindow(redis, key, rule.max, rule.window);
       } catch (err) {
         logger.error({ err, key }, 'Upstash rate-limit check failed; failing open');
         return { allowed: true, retryAfter: null };

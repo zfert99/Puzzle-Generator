@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { getArchiveMonth } from '@/features/dailies/dailies.service';
+import { getArchiveMonth, PAST_DAY_CACHE_CONTROL } from '@/features/dailies/dailies.service';
 import { isIsoMonth, toUtcDateString } from '@/lib/db/daily-row';
 import { logger } from '@/lib/logger';
 
@@ -24,14 +24,21 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const monthParam = req.nextUrl.searchParams.get('month');
-    const month = monthParam ?? toUtcDateString(new Date()).slice(0, 7);
+    const currentMonth = toUtcDateString(new Date()).slice(0, 7);
+    const month = monthParam ?? currentMonth;
     if (!isIsoMonth(month)) {
       return NextResponse.json({ error: 'Invalid month: expected YYYY-MM' }, { status: 400 });
     }
 
     const { days, first } = await getArchiveMonth(db, month);
 
-    return NextResponse.json({ month, first, days }, { status: 200 });
+    // A month that has fully ended (strictly before this UTC month) gains no more days, and `first`
+    // only moves if history is deleted — so it may sit in the CDN. The current month still grows
+    // daily and stays uncached. (`YYYY-MM` strings compare chronologically.)
+    return NextResponse.json(
+      { month, first, days },
+      { status: 200, headers: month < currentMonth ? { 'Cache-Control': PAST_DAY_CACHE_CONTROL } : undefined },
+    );
   } catch (error: unknown) {
     const err = error as Error;
     logger.error(

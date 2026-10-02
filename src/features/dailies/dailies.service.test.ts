@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Database } from '@/lib/db/connection';
-import { generateDailyPuzzles, getDailyPuzzle } from './dailies.service';
+import { generateDailyPuzzles, getDailyPuzzle, getDailySlotRows } from './dailies.service';
 import {
   rollDailyAssignment,
   SIZES,
@@ -354,5 +354,25 @@ describe('getDailyPuzzle', () => {
 
     const result = await getDailyPuzzle(db, '2026-07-11', 'expert');
     expect(result).toBeNull();
+  });
+});
+
+describe('getDailySlotRows', () => {
+  it('selects only key, variant and a computed size — never the grid or solution jsonb', async () => {
+    const rows = [{ key: 'hard', variant: 'killer', gridSize: 9 }];
+    let selection: Record<string, unknown> = {};
+    const where = vi.fn(async () => rows);
+    const db = {
+      select: (s: Record<string, unknown>) => {
+        selection = s;
+        return { from: () => ({ where }) };
+      },
+    } as unknown as Database;
+
+    const result = await getDailySlotRows(db, '2026-10-01');
+
+    expect(result).toBe(rows);
+    expect(Object.keys(selection).sort()).toEqual(['gridSize', 'key', 'variant']);
+    expect(where).toHaveBeenCalledTimes(1); // date-scoped, not a whole-table read
   });
 });

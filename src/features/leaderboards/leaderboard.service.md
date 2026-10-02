@@ -11,16 +11,26 @@ rank is still derived from their session id by the route (never a client-supplie
 
 ## `getLeaderboard(db, puzzleId, viewerId=null, limit=20)`
 
-**Why join `user`:** Entries need a display name, so it joins the better-auth `user` table.
-The name is `coalesce(username, name)` — the chosen public handle, falling back to the account
-name if none is set. Ascending by time; rank is the row position.
+**Why join `user`:** Entries need a display name, so it joins the better-auth `user` table — but
+reads **only `user.username`**, the handle the player chose. Ascending by time; rank is the row
+position.
+
+**Why the fallback is `'Player'`, never `user.name` (October 2026).** The board used to show
+`coalesce(username, name)`. That leaked PII onto a world-readable endpoint: email sign-up fills
+`name` with the email's local-part, Google accounts carry the person's full legal name, and choosing
+a handle (`UsernamePrompt`) is optional — so every player who skipped the prompt was published by
+real name or email prefix. A row with no handle is now labelled `ANONYMOUS_DISPLAY_NAME`
+(`'Player'`), and `user.name` is not even selected, so it cannot leak by a later refactor of the
+mapping. The one handle-less account that *should* have a name, Puzzle Bot, is labelled from the
+`BOT_NAME` constant (its seed row sets `name`, not `username`), keyed on `BOT_USER_ID`.
 
 ```text
-SELECT user_id, user.name, time_ms, mistakes
+SELECT user_id, user.username, time_ms, mistakes
   FROM solve_attempts JOIN user
   WHERE puzzle_id = puzzleId AND completed
   ORDER BY time_ms ASC LIMIT limit
 -> rank  = index + 1
+-> name  = username ?? (user_id === BOT_USER_ID ? BOT_NAME : 'Player')
 -> isBot = user_id === BOT_USER_ID
 -> isMe  = viewerId !== null && user_id === viewerId
 -> DROP user_id; it does not appear in the returned entry

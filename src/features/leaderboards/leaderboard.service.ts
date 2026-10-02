@@ -3,7 +3,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts } from '@/lib/db/schema';
 import { user } from '@/lib/db/auth-schema';
-import { BOT_USER_ID } from './bot-identity';
+import { BOT_NAME, BOT_USER_ID } from './bot-identity';
 
 /**
  * Leaderboard reads for a single daily puzzle. Ordering is served by the
@@ -52,8 +52,10 @@ export async function getLeaderboard(
   const rows = await db
     .select({
       userId: solveAttempts.userId,
-      // Prefer the chosen public handle; fall back to the account name if unset.
-      name: sql<string>`coalesce(${user.username}, ${user.name})`,
+      // ONLY the chosen public handle. `user.name` is deliberately never selected: sign-up fills it
+      // with the email local-part and Google accounts carry a full legal name, and choosing a
+      // handle is optional — so falling back to it published PII on a world-readable board.
+      username: user.username,
       timeMs: solveAttempts.timeMs,
       mistakes: solveAttempts.mistakes,
     })
@@ -65,14 +67,27 @@ export async function getLeaderboard(
 
   // `userId` is destructured out here and never reaches the returned object — that omission is the
   // point of this function's shape, so keep it explicit rather than spreading `...r`.
-  return rows.map(({ userId, name, timeMs, mistakes }, i) => ({
+  return rows.map(({ userId, username, timeMs, mistakes }, i) => ({
     rank: i + 1,
-    name,
+    name: displayName(userId, username),
     timeMs,
     mistakes,
     isBot: userId === BOT_USER_ID,
     isMe: viewerId !== null && userId === viewerId,
   }));
+}
+
+/** What a row without a chosen handle is shown as — neutral, and identical for everyone. */
+export const ANONYMOUS_DISPLAY_NAME = 'Player';
+
+/**
+ * The public label for a board row: the user's chosen `username`, else a neutral placeholder.
+ * The bot is the one account seeded with a display `name` and no handle, so it is labelled from
+ * the `BOT_NAME` constant rather than from its row — keeping `user.name` out of the query entirely.
+ */
+function displayName(userId: string, username: string | null): string {
+  if (username) return username;
+  return userId === BOT_USER_ID ? BOT_NAME : ANONYMOUS_DISPLAY_NAME;
 }
 
 export interface UserRank {

@@ -1,12 +1,15 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 // Boundaries only (AGENTS.md §4): the DB client (never touched — the service is mocked) and the
 // dailies service, which is where a stored row comes from.
 vi.mock('@/lib/db/client', () => ({ db: {} }));
 const getDailyPuzzle = vi.fn();
-vi.mock('@/features/dailies/dailies.service', () => ({ getDailyPuzzle: (...args: unknown[]) => getDailyPuzzle(...args) }));
+vi.mock('@/features/dailies/dailies.service', () => ({
+  getDailyPuzzle: (...args: unknown[]) => getDailyPuzzle(...args),
+  PAST_DAY_CACHE_CONTROL: 'public, s-maxage=86400, stale-while-revalidate=86400',
+}));
 vi.mock('@/lib/logger', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 
 import { GET } from './route';
@@ -68,5 +71,41 @@ describe('GET /api/daily — payload shape per variant', () => {
   it('404s when the day has no such board', async () => {
     getDailyPuzzle.mockResolvedValue(null);
     expect((await GET(buildRequest())).status).toBe(404);
+  });
+});
+
+/**
+ * A finished day's board never changes, so the archive read may sit in the CDN. Today's board must
+ * not (it is "today" only until midnight UTC), and neither may an error.
+ */
+describe('GET /api/daily — public caching only for past dates', () => {
+  beforeEach(() => {
+    getDailyPuzzle.mockReset();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-02T12:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('marks a strictly-past date publicly cacheable', async () => {
+    getDailyPuzzle.mockResolvedValue(row('classic', null));
+    const res = await GET(buildRequest('?difficulty=hard&date=2026-10-01'));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Cache-Control')).toBe('public, s-maxage=86400, stale-while-revalidate=86400');
+  });
+
+  it("does not publicly cache today's board, whether the date is explicit or defaulted", async () => {
+    getDailyPuzzle.mockResolvedValue(row('classic', null));
+    for (const search of ['?difficulty=hard', '?difficulty=hard&date=2026-10-02']) {
+      const res = await GET(buildRequest(search));
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Cache-Control') ?? '').not.toContain('public');
+    }
+  });
+
+  it('does not publicly cache a 404 for a past date', async () => {
+    getDailyPuzzle.mockResolvedValue(null);
+    const res = await GET(buildRequest('?difficulty=hard&date=2026-09-01'));
+    expect(res.status).toBe(404);
+    expect(res.headers.get('Cache-Control') ?? '').not.toContain('public');
   });
 });

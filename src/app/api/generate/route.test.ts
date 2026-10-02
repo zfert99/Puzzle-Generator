@@ -6,8 +6,21 @@
  * pipeline (validation, puzzle generation, PDF rendering) without needing a
  * running server environment.
  */
+import { vi, type Mock } from 'vitest';
 import { POST } from '@/app/api/generate/route';
 import { NextRequest } from 'next/server';
+import { KILLER_BUDGET_ERROR, type generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
+
+// The one module-level stand-in in this file, and a pass-through by default: every Killer test below
+// still drives the REAL generator. A budget overrun cannot be produced deterministically from a
+// request (the 45 s budget is the route's own constant, and a genuinely-too-large request is just a
+// minute-long test), so the 503 case swaps in a one-shot throw at the engine's batch entry point.
+const killerBatchSpy = vi.hoisted(() => ({ fn: undefined as unknown as Mock<typeof generateKillerBatch> }));
+vi.mock('@/features/engine/killer/killer-sudoku', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/engine/killer/killer-sudoku')>();
+  killerBatchSpy.fn = vi.fn(actual.generateKillerBatch);
+  return { ...actual, generateKillerBatch: (...args: Parameters<typeof actual.generateKillerBatch>) => killerBatchSpy.fn(...args) };
+});
 
 /**
  * Helper to construct a mock NextRequest containing a JSON payload.
@@ -224,10 +237,64 @@ describe('Sad Paths', () => {
     expect(res.status).toBe(400);
   });
 
+  test('Unknown variant: a fixed 400, never a silently-substituted classic PDF', async () => {
+    for (const variant of ['sudokuu', 'nonogram', null, 7]) {
+      const res = await POST(buildRequest({ variant, easy: 1 }));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Unknown puzzle variant: must be classic, killer, calc, kakuro, or skyscrapers');
+    }
+  });
+
+  test("Explicit 'classic' variant is the classic branch", async () => {
+    const res = await POST(buildRequest({ variant: 'classic', easy: 1, gridSize: 4 }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="Sudoku_Puzzles.pdf"');
+  }, 30_000);
+
   test('Missing body entirely returns an error (not a crash)', async () => {
     const res = await POST(buildEmptyRequest());
     // Should return a 400 (Bad Request) or 500 (Internal Server Error)
     // Most importantly, the route must handle it gracefully and NOT crash the Node.js process
     expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+});
+
+// ─── Batch budget ─────────────────────────────────────────────────────────────
+// Every variant shares one wall-clock budget per batch and one answer when it runs out: a 503 with a
+// Retry-After that says how far it got — never a 504 at maxDuration with the PDF half-built.
+
+describe('Batch budget', () => {
+  test('Killer: a batch that runs out of its budget is a 503 with Retry-After and progress, not a 500', async () => {
+    killerBatchSpy.fn.mockImplementationOnce(() => {
+      throw Object.assign(new Error('Killer batch ran out of time after 2 puzzles (45000 ms budget)'), { name: KILLER_BUDGET_ERROR });
+    });
+
+    const res = await POST(buildRequest({ variant: 'killer', easy: 3, medium: 2 }));
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get('Retry-After')).toBe('5');
+    const body = await res.json();
+    expect(body.error).toBe('That Killer request is too large to finish in time (2 of 5 generated). Please ask for fewer puzzles per PDF.');
+    expect(body.error).not.toMatch(/45000|ms budget/);
+  });
+
+  test('Killer: the route hands the engine a finite batch budget inside maxDuration', async () => {
+    killerBatchSpy.fn.mockClear();
+
+    const res = await POST(buildRequest({ variant: 'killer', gridSize: 6, easy: 1 }));
+
+    expect(res.status).toBe(200);
+    const [, options] = killerBatchSpy.fn.mock.calls[0];
+    expect(options?.timeBudgetMs).toBeGreaterThan(0);
+    expect(options?.timeBudgetMs).toBeLessThan(60_000);
+  }, 30_000);
+
+  test('Killer: a non-budget engine error is still the generic 500', async () => {
+    killerBatchSpy.fn.mockImplementationOnce(() => { throw new Error('boom at /srv/engine.ts:1'); });
+
+    const res = await POST(buildRequest({ variant: 'killer', easy: 1 }));
+
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(await res.json())).not.toMatch(/boom|\.ts:/);
   });
 });

@@ -11,7 +11,8 @@ these app routes need their own limiter.
 - **Fixed-window counter**, keyed per IP per route (`generate:<ip>`, `puzzle:<ip>`).
 - **Shared store when configured:** backed by the same Upstash Redis credentials as the auth
   rate-limit storage (`UPSTASH_REDIS_REST_*` or Vercel's `KV_REST_API_*`), so the count is shared
-  across Vercel's separately-scaled serverless instances via atomic `INCR` + first-write `EXPIRE`.
+  across Vercel's separately-scaled serverless instances. Each hit is **one atomic `MULTI`/`EXEC`**:
+  `INCR` → `EXPIRE key window NX` → `TTL` (see "Why one transaction" below).
 - **In-memory fallback** when Upstash isn't configured (local dev): a per-instance `Map`. Weaker
   (each cold-started instance keeps its own counters) but correct for dev and strictly better than no
   limit. The map is size-capped (`MAX_MEMORY_KEYS`) and drops expired buckets when full, so a flood of
@@ -26,8 +27,37 @@ these app routes need their own limiter.
 | Export | Purpose |
 |---|---|
 | `rateLimit(key, rule)` | The wired entrypoint the routes call. Redis → in-memory → test no-op. Returns `{ allowed, retryAfter }`. |
+| `consumeRedisFixedWindow(client, key, max, windowSec)` | The shared-store core: one atomic `INCR` + `EXPIRE … NX` + `TTL` transaction. Also used by the better-auth storage ([`rate-limit-storage.ts`](../features/auth/rate-limit-storage.md)), so both limiters share one implementation. Throws on a Redis error — each caller owns its fail-open `catch`. |
 | `consumeFixedWindow(store, key, nowMs, rule)` | The **pure** counter core — no Redis/env/clock. This is what the in-memory path and the unit tests use, so the algorithm is testable without mocking infrastructure. |
 | `clientIp(req)` | Best-effort IP from `x-forwarded-for` / `x-real-ip` (the headers Vercel sets). Takes the **first** entry; see "Is the key forgeable?" below for why that is safe here. Falls back to `'unknown'` — a single shared bucket, so a missing IP is throttled, not exempt. |
+
+## Why one transaction (October 2026)
+
+The shared-store path used to be `INCR`, then — only when the count came back `1` — a second
+round trip for `EXPIRE`. Two failure modes followed:
+
+- **A counter that never expired.** If the `EXPIRE` call failed (a network blip, a timeout, an
+  instance frozen between the two awaits), the key was left with no TTL. Every later hit saw
+  `count > 1`, so `EXPIRE` was never retried: that IP was throttled **forever**. Fail-open did not
+  help — the `INCR` had already succeeded.
+- **A wrong `Retry-After`.** A blocked caller was always told to wait the full window, even one
+  second before it reset.
+
+Now each hit is a single Upstash `multi()` (a `MULTI`/`EXEC` transaction over one HTTP request):
+
+```text
+MULTI
+  INCR   key                 -> count
+  EXPIRE key windowSec NX    -> TTL set only if the key has none (never extends a live window)
+  TTL    key                 -> seconds left in this window
+EXEC
+allowed    = count <= max
+retryAfter = ttl > 0 ? ttl : windowSec     # -1/-2 only in a race with a delete
+```
+
+`NX` is what makes sending `EXPIRE` on *every* hit safe: it is a no-op once a TTL exists, so the
+fixed window is not stretched by traffic, and it **heals** any TTL-less key the old code orphaned.
+`expire(key, s, 'NX')` and `multi()` are both typed in the installed `@upstash/redis` 1.38.
 
 ## Rules in use
 
@@ -73,5 +103,11 @@ the header to prefer. Until then, changing it would be churn against a measured-
 
 That package would do this too, but it's a new dependency for a counter we can express in a few lines
 on the `@upstash/redis` client already in the tree — AGENTS.md §6 cautions against adding packages
-that aren't necessary (and against hallucinated/slopsquatted names). The `INCR`/`EXPIRE` pattern here
-mirrors the existing `rate-limit-storage.ts`.
+that aren't necessary (and against hallucinated/slopsquatted names). The same
+`consumeRedisFixedWindow` transaction backs `rate-limit-storage.ts`.
+
+## Tests
+
+`rate-limit.test.ts` covers the pure in-memory core and `consumeRedisFixedWindow` against a stubbed
+client (the infrastructure boundary): `INCR` and `EXPIRE … NX` are queued in the **same** transaction,
+`retryAfter` is the real TTL, and a Redis error propagates to the caller's fail-open handler.

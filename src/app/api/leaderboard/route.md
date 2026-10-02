@@ -47,3 +47,12 @@ This one has no future check, so nothing stood between a well-formed non-date an
 
 Rejection is 400, and a *real* date with no puzzles is still a 404 — "not a date" and "no board
 that day" are different answers and must not collapse into one.
+
+## Never publicly cached
+
+Unlike `/api/daily`, `/api/daily/slots` and `/api/daily/days`, a **past**-date board is *not* given a
+public `Cache-Control` header, even though its rows stop changing once the day ends. Each row's
+`isMe` is resolved from the viewer's session, so the body differs per viewer — a CDN copy would show
+one visitor's highlighted row to everyone. Display names come from `getLeaderboard`, which shows only
+a chosen `username` (else `'Player'`), never the account `name` — see
+[`leaderboard.service.md`](../../../features/leaderboards/leaderboard.service.md).

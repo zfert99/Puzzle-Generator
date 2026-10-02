@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Database } from '@/lib/db/connection';
-import { getLeaderboard, getUserRanksForPuzzles } from './leaderboard.service';
-import { BOT_USER_ID } from './bot-identity';
+import { ANONYMOUS_DISPLAY_NAME, getLeaderboard, getUserRanksForPuzzles } from './leaderboard.service';
+import { BOT_NAME, BOT_USER_ID } from './bot-identity';
 
 /**
  * Covers the batched rank helper (the N+1 fix for /api/me/today). We mock the DB at the boundary —
@@ -61,19 +61,24 @@ describe('getUserRanksForPuzzles', () => {
  * A DB stub for the board query: `select(...).from().innerJoin().where().orderBy().limit()`.
  * Rows are returned in the order given, standing in for `ORDER BY time_ms ASC`.
  */
-function boardStub(rows: { userId: string; name: string; timeMs: number; mistakes: number }[]) {
+function boardStub(rows: { userId: string; username: string | null; timeMs: number; mistakes: number }[]) {
+  const captured: { selection: Record<string, unknown> | undefined } = { selection: undefined };
   const limit = async () => rows;
   const orderBy = () => ({ limit });
   const where = () => ({ orderBy });
   const innerJoin = () => ({ where });
   const from = () => ({ innerJoin });
-  return { select: () => ({ from }) } as unknown as Database;
+  const select = (selection: Record<string, unknown>) => {
+    captured.selection = selection;
+    return { from };
+  };
+  return Object.assign({ select } as unknown as Database, { captured });
 }
 
 const ROWS = [
-  { userId: BOT_USER_ID, name: 'Puzzle Bot', timeMs: 60_000, mistakes: 0 },
-  { userId: 'user-A', name: 'ada', timeMs: 63_000, mistakes: 2 },
-  { userId: 'user-B', name: 'grace', timeMs: 90_000, mistakes: 1 },
+  { userId: BOT_USER_ID, username: null, timeMs: 60_000, mistakes: 0 },
+  { userId: 'user-A', username: 'ada', timeMs: 63_000, mistakes: 2 },
+  { userId: 'user-B', username: 'grace', timeMs: 90_000, mistakes: 1 },
 ];
 
 describe('getLeaderboard', () => {
@@ -121,5 +126,25 @@ describe('getLeaderboard', () => {
   it('defaults to signed-out when no viewer is passed, rather than matching a stray value', async () => {
     const entries = await getLeaderboard(boardStub(ROWS), 'puzzle-1');
     expect(entries.some((e) => e.isMe)).toBe(false);
+  });
+
+  /**
+   * The account `name` is the email local-part for password sign-ups and a full legal name for
+   * Google accounts, and choosing a handle is optional — so it must never reach this public board.
+   */
+  it('never selects the account name; a row with no handle is shown as a neutral placeholder', async () => {
+    const db = boardStub([
+      { userId: 'user-C', username: null, timeMs: 70_000, mistakes: 0 },
+      { userId: 'user-A', username: 'ada', timeMs: 80_000, mistakes: 0 },
+    ]);
+    const entries = await getLeaderboard(db, 'puzzle-1');
+
+    expect(Object.keys((db as unknown as { captured: { selection: object } }).captured.selection)).not.toContain('name');
+    expect(entries.map((e) => e.name)).toEqual([ANONYMOUS_DISPLAY_NAME, 'ada']);
+  });
+
+  it('labels the handle-less bot from its constant, not from its account row', async () => {
+    const entries = await getLeaderboard(boardStub(ROWS), 'puzzle-1');
+    expect(entries[0].name).toBe(BOT_NAME);
   });
 });

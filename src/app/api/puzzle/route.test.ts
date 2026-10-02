@@ -109,6 +109,21 @@ describe('POST /api/puzzle — sad paths', () => {
     expect(body.error).toMatch(/9x9/i);
   });
 
+  it('rejects an unknown variant with a fixed 400 instead of serving a classic puzzle', async () => {
+    for (const variant of ['sudokuu', 'nonogram', null, 7]) {
+      const res = await POST(buildRequest({ variant, difficulty: 'easy' }));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toBe('Unknown puzzle variant: must be classic, killer, calc, kakuro, or skyscrapers');
+      expect(body).not.toHaveProperty('grid');
+    }
+  });
+
+  it("still serves classic for an explicit 'classic' variant", async () => {
+    const res = await POST(buildRequest({ variant: 'classic', difficulty: 'easy', gridSize: 4 }));
+    expect(res.status).toBe(200);
+  }, 30_000);
+
   it('handles a malformed body without crashing', async () => {
     const res = await POST(buildBrokenRequest());
     expect(res.status).toBe(400);

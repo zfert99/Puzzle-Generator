@@ -62,7 +62,12 @@ server-side-generation route (review finding **H1**).
 **Goal:** read what puzzle the client wants.
 
 1. Await the request; parse its JSON body. If parsing throws, return `400`.
-2. Extract `difficulty` and `gridSize` (defaulting `gridSize` to `9`).
+2. Extract `difficulty`, `gridSize` (defaulting to `9`) and `variant` (defaulting to `'classic'`).
+3. After the Killer / Keisan / Kakuro / Skyscrapers branches, a `variant` that is not `'classic'` is
+   a **`400`** with a fixed message — `'Unknown puzzle variant: must be classic, killer, calc,
+   kakuro, or skyscrapers'`, never echoing the input. It used to fall through to the classic path,
+   so a typo'd or newer client got a classic Sudoku with a `200` instead of an error (October 2026).
+   Covered in `route.test.ts`, alongside an explicit `'classic'` still being served.
 
 ## 2. Validation
 

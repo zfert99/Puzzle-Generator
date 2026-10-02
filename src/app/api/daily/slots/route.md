@@ -14,15 +14,36 @@ served from the stored rows.
 
 ```text
 Validate `date` (a REAL YYYY-MM-DD date via `isIsoDate`; not in the future) -> 400 otherwise.
-Select every daily_puzzles row for that date: key, variant, grid.
+rows = getDailySlotRows(isoDate)   # dailies.service: key, variant, gridSize = jsonb_array_length(grid)
 Shape each into { key, variant, difficulty, gridSize, section }:
   difficulty = the rung the key refers to (difficultyForKey — handles active AND retired keys)
-  gridSize   = derived from the stored grid's length (no grid_size column needed)
+  gridSize   = the stored grid's row count, computed in Postgres (no grid_size column needed)
   section    = sectionForKey(key, gridSize): a rung key -> standard, mini-* -> mini,
                a retired key -> by size (< 9 is a mini)
 Sort: standard slots in ladder order, then minis easy -> hard.
-Return 200 { date, slots }.
+Return 200 { date, slots }, with Cache-Control: PAST_DAY_CACHE_CONTROL only when
+  isoDate < today (UTC) AND slots is non-empty.
 ```
+
+## Why the query lives in the service, and never reads `grid` (October 2026)
+
+**Why:** the route used to run its own Drizzle `select` (AGENTS.md §1 says routes are controllers;
+every sibling daily read already lived in `dailies.service.ts`) and selected the whole `grid` jsonb
+per row only to read `.length`. That shipped every cell of every board — up to 81 × 11 per call —
+from Postgres on each picker load, to compute one integer. `getDailySlotRows` now asks Postgres for
+`jsonb_array_length(grid)` instead (a parameter-free `sql` fragment over a column reference, so no
+injection surface). The response shape is unchanged; a route test asserts the query selects only
+`key`, `variant` and the computed `gridSize`.
+
+## Public caching of past dates (October 2026)
+
+A finished day's board list never changes, so a past date's `200` carries
+`Cache-Control: public, s-maxage=86400, stale-while-revalidate=86400` (`PAST_DAY_CACHE_CONTROL`) and
+is served from Vercel's CDN. Two exceptions: **today** (it is only today until midnight UTC) and a
+past day with **no** slots — that is a cron miss (2026-07-24 is a real one), and caching the empty
+list for a day would hide a `workflow_dispatch` backfill. `force-dynamic` stays: it controls Next's
+own cache, not the CDN header, and the handler still recomputes "today" on every request. Covered in
+`route.test.ts` with the clock pinned.
 
 ## Why the date must be a real date, not just a well-formed one
 
@@ -37,7 +58,7 @@ which is exactly why the fix belongs in the shared guard rather than in each rou
 **No `grid` and no `solution`.** This is picker metadata only — the playable board (and the
 solution the interactive board needs locally) comes from `GET /api/daily`, which is the single place
 that anti-cheat posture is reasoned about. Keeping this endpoint solution-free means it can stay
-public and uncached-but-cheap without widening the surface that serves answers.
+public and cheap without widening the surface that serves answers.
 
 **Why `section` comes from the key first and the grid size only for retired keys.** For active
 boards the key is the truth — a bare rung is a standard slot *whatever its size*, which matters since

@@ -24,7 +24,10 @@ CPU-heavy route (review finding **H1**).
 1. Wait for an incoming network request.
 2. Open up the hidden "body" of the request (the data payload sent by the user) and read it as JSON.
 3. Extract the following from the JSON payload:
-   - `variant`: `'classic'` (default) or `'killer'`.
+   - `variant`: absent / `'classic'`, `'killer'`, `'calc'`, `'kakuro'` or `'skyscrapers'`. **Anything
+     else is a `400`** with a fixed message (`UNKNOWN_VARIANT_ERROR`, never echoing the input). It
+     used to fall through to the classic branch, so a typo'd or newer client was silently handed a
+     classic Sudoku PDF with a `200` instead of an error it could act on (October 2026).
    - `easy`, `medium`, `hard`, `expert`, `extreme`: How many puzzles of each difficulty. Default to `0`.
    - `gridSize`: The grid size (4, 6, or 9). Defaults to `9`.
 
@@ -39,10 +42,15 @@ CPU-heavy route (review finding **H1**).
    `gridSize`, `expert`, `extreme` don't apply).
 2. Validate they're non-negative integers, the total is ≥ 1, and ≤ the 50 cap (same guards as
    classic; the server is the authoritative boundary).
-3. `generateKillerBatch({ easy, medium, hard })` → graded Killer puzzles; `generateKillerPDF` →
-   the booklet; return it as a download named `Killer_Sudoku.pdf`.
+3. `generateKillerBatch(counts, { gridSize, timeBudgetMs: BATCH_BUDGET_MS })` → graded Killer
+   puzzles; `generateKillerPDF` → the booklet; return it as a download named `Killer_Sudoku.pdf`.
+   A `KillerBudgetError` becomes the shared **503** (see "1e. One batch budget").
 
-The classic path (sections 2–5) is unchanged and runs when `variant` is absent/`'classic'`.
+The Keisan branch (`variant: 'calc'`) has the same shape: `generateCalcBatch` under
+`BATCH_BUDGET_MS`, a `CalcBudgetError` → the shared 503, otherwise `Keisan.pdf`.
+
+The classic path (sections 2–5) runs only when `variant` is absent or `'classic'`; any other value
+is refused before it (see section 1).
 
 ## 1c. Kakuro branch (plan slices V3 → E5)
 
@@ -60,7 +68,7 @@ and at exactly the requested tier (E5).
 3. `generateKakuroBatch(counts, { gridSize })` (in `kakuro.ts` — the Kakuro counterpart of
    `generateKillerBatch`, so the route stays a controller per AGENTS.md §1) →
    `generateKakuroPDF(puzzles)` → the booklet as `Kakuro.pdf`. The batch runs under **one 45 s
-   budget** shared fairly by every puzzle in it (inside the 60 s `maxDuration` with the render
+   budget** (`BATCH_BUDGET_MS`, see 1e) shared fairly by every puzzle in it (inside the 60 s `maxDuration` with the render
    to spare); a request that cannot finish is answered with a **503** that says how many of how
    many were generated and asks for fewer puzzles per PDF (`isKakuroBudgetError` — a request
    too large for this machine's budget, logged as `generation_budget` at warn, not a failure)
@@ -85,14 +93,50 @@ the requested tiers (E5), the Kakuro contract.
    extreme → `400` (the shared cap every generated variant applies — extreme Skyscrapers is cheap,
    but one policy beats two); a count on a level **the size does not offer** (`SKYSCRAPERS_TIERS_BY_SIZE`, D12 — the 5×5 mini tops out at hard, the 7×7
    large starts at medium) → `400` naming the offered list, never a silently substituted puzzle.
-3. `generateSkyscrapersBatch(counts, { gridSize })` under one 45 s budget (inside `maxDuration = 60`
-   with the PDF render to spare); its budget error is answered with a `503` + `Retry-After` that
+3. `generateSkyscrapersBatch(counts, { gridSize })` under one 45 s budget (`BATCH_BUDGET_MS`, see 1e;
+   inside `maxDuration = 60` with the PDF render to spare); its budget error is answered with a
+   `503` + `Retry-After` that
    says how many puzzles were done — a request too large for the budget, not a fault — then
    `generateSkyscrapersPDF` → `Skyscrapers.pdf`. The log line carries the counts and the size like
    the other branches.
 
 The V3 one-puzzle cap and `selectSkyscrapersBatch` are gone; the fixtures are test data (and the
 sample booklet's content, via `preview-skyscrapers.ts`).
+
+## 1e. One batch budget, one 503 contract — every variant (October 2026)
+
+**Goal:** no request may run into the 60 s `maxDuration` and 504 with the PDF half-built.
+
+`BATCH_BUDGET_MS` (45 s — the 60 s function limit minus room for the PDF render) is passed as
+`timeBudgetMs` to all five batch entry points: `generatePuzzleBatch` (classic), `generateKillerBatch`,
+`generateCalcBatch`, `generateKakuroBatch` and `generateSkyscrapersBatch`. Each hands every puzzle
+what is left of that one budget and throws a name-tagged error once it is spent
+(`isSudokuBudgetError` / `isKillerBudgetError` / `isCalcBudgetError` / `isKakuroBudgetError` /
+`isSkyscrapersBudgetError`). The route answers any of them through one helper,
+`budgetExceededResponse`:
+
+```text
+log warn { event: 'generation_budget', variant, counts, gridSize, durationMs }
+-> 503 { error: "That <Type> request is too large to finish in time (<done> of <total> generated).
+                 Please ask for fewer puzzles per PDF." }, Retry-After: 5
+```
+
+`<done>` is parsed from the engine's own `… after N [of M] puzzles …` message, `<total>` is the
+route's own count; the budget size never reaches the wire. Any *other* thrown error still goes to
+the generic 500.
+
+**Why the route passes the budget explicitly.** Kakuro and Skyscrapers already defaulted to 45 s
+inside their batch functions; the Killer, Keisan and classic batches default to **no** budget,
+because their other callers (the daily cron, the benchmarks) must not be cut short. Before this,
+only Kakuro and Skyscrapers had the contract — a slow Killer/Keisan/classic Extreme batch could
+still reach the function timeout. The per-variant `MAX_EXTREME` cap remains the first line of
+defence; the budget is the backstop for the tail it does not cover.
+
+`route.test.ts` → "Batch budget" covers it on the Killer branch: a budget error is the 503 above
+(with the real `done of total`), the engine is handed a finite budget under 60 s, and a non-budget
+throw is still the generic 500. That suite swaps a one-shot throw in at `generateKillerBatch` via a
+pass-through `vi.mock` — every other Killer test still runs the real generator — because an overrun
+cannot be produced deterministically from a request.
 
 ## 2. Input Validation
 
@@ -118,8 +162,12 @@ sample booklet's content, via `preview-skyscrapers.ts`).
 2. Cast `gridSize` to the `GridSize` type.
 3. **For each difficulty level** (Easy, Medium, Hard, Expert, Extreme):
    - Create a loop that runs the requested count of times.
-   - Tell our Sudoku Engine to generate a puzzle of that difficulty at the specified `gridSize`.
+   - Tell our Sudoku Engine to generate a puzzle of that difficulty at the specified `gridSize`,
+     handing it what is left of the batch budget (`generatePuzzleBatch(…, { timeBudgetMs:
+     BATCH_BUDGET_MS })`).
    - Add it to the `puzzles` list.
+   - If the budget runs out, the engine throws a `SudokuBudgetError` and the route returns the
+     shared 503 (section 1e) instead of continuing.
 4. *Result: We now have a single list containing all the raw, playable Sudoku objects.*
 
 ---

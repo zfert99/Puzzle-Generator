@@ -64,6 +64,44 @@ export function consumeFixedWindow(
   return { allowed: false, retryAfter: Math.max(1, Math.ceil((entry.resetAt - nowMs) / 1000)) };
 }
 
+/**
+ * The slice of the `@upstash/redis` client the shared-store path needs — a `multi()` transaction.
+ * Typed structurally so the unit tests can hand in a stub at the infrastructure boundary.
+ */
+export interface RateLimitRedis {
+  multi(): {
+    incr(key: string): RateLimitTransaction;
+    expire(key: string, seconds: number, option: 'NX'): RateLimitTransaction;
+    ttl(key: string): RateLimitTransaction;
+    exec<T extends unknown[]>(): Promise<T>;
+  };
+}
+type RateLimitTransaction = ReturnType<RateLimitRedis['multi']>;
+
+/**
+ * One fixed-window hit against Redis, as **a single atomic MULTI/EXEC round trip**:
+ * `INCR key` → `EXPIRE key windowSec NX` → `TTL key`.
+ *
+ * Why one transaction rather than `INCR` then a conditional `EXPIRE`: as two round trips, a failure
+ * (or a crashed instance) between them left the counter with **no TTL** — it never reset, so that
+ * IP/key was throttled forever. `EXPIRE … NX` sets the TTL only when the key has none, so issuing it
+ * on every hit is idempotent (the window is never extended), and it also heals any orphaned
+ * TTL-less key left by the old code. `TTL` gives the real seconds remaining, so `retryAfter` is the
+ * true wait instead of always reporting the full window. Shared by `rateLimit` below and the
+ * better-auth storage in `rate-limit-storage.ts`; callers own their own fail-open `catch`.
+ */
+export async function consumeRedisFixedWindow(
+  client: RateLimitRedis,
+  key: string,
+  max: number,
+  windowSec: number,
+): Promise<RateLimitResult> {
+  const [count, , ttl] = await client.multi().incr(key).expire(key, windowSec, 'NX').ttl(key).exec<[number, number, number]>();
+  if (count <= max) return { allowed: true, retryAfter: null };
+  // TTL is -1/-2 only in a race with a concurrent delete; fall back to the full window then.
+  return { allowed: false, retryAfter: ttl > 0 ? ttl : windowSec };
+}
+
 // Same env-var fallback the auth rate-limit storage uses — Vercel's Upstash integration injects
 // credentials under the `KV_REST_API_*` names rather than `UPSTASH_REDIS_REST_*`.
 const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
@@ -83,11 +121,7 @@ export async function rateLimit(key: string, rule: RateLimitRule): Promise<RateL
 
   if (redis) {
     try {
-      const count = await redis.incr(key);
-      if (count === 1) await redis.expire(key, rule.windowSec);
-      return count <= rule.max
-        ? { allowed: true, retryAfter: null }
-        : { allowed: false, retryAfter: rule.windowSec };
+      return await consumeRedisFixedWindow(redis, key, rule.max, rule.windowSec);
     } catch (err) {
       logger.error({ err, key }, 'Rate-limit check failed; failing open');
       return { allowed: true, retryAfter: null };
