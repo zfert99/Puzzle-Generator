@@ -11,15 +11,19 @@ import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
 import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
 import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
 import { explainKakuroHint, type KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
+import type { SkyscraperClues, SkyscrapersPuzzle, GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { GUTTER_SIDES, clueFlatIndex, skyscrapersGridConfig } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { computePeers, toggleBit } from '../board-utils';
 import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
 /**
- * Classic Sudoku, Killer, Keisan (display name; slug `calc`), or Kakuro — the board renders and
- * plays all four. Kakuro is the odd one out: no houses, no givens, black cells, digits 1–9 at
- * every size, and peers that are run-mates rather than row/column/box.
+ * Classic Sudoku, Killer, Keisan (display name; slug `calc`), Kakuro, or Skyscrapers — the board
+ * renders and plays all five. Kakuro is the odd one out: no houses, no givens, black cells,
+ * digits 1–9 at every size, and peers that are run-mates rather than row/column/box.
+ * Skyscrapers is a boxless Latin square (row/column peers, digits 1..N, no givens) whose only
+ * extra is a strip of edge clues on all four sides — `edgeClues` — and a per-clue "done" mark.
  */
-export type PuzzleVariant = 'classic' | 'killer' | 'calc' | 'kakuro';
+export type PuzzleVariant = 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers';
 
 /**
  * A cage normalized for the board — cells plus a pre-formatted corner label (Killer's sum `"12"`,
@@ -47,7 +51,8 @@ export type BoardPuzzle =
   | (Omit<SudokuPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
   | (Omit<KillerPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
   | (Omit<CalcPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
-  | (Omit<KakuroPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
+  | (Omit<KakuroPuzzle, 'difficulty'> & { difficulty: BoardDifficulty })
+  | (Omit<SkyscrapersPuzzle, 'difficulty'> & { difficulty: BoardDifficulty });
 
 export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
 
@@ -113,6 +118,19 @@ export interface BoardState {
    */
   clues: (BoardClue | null)[];
 
+  /**
+   * Skyscrapers only (`null` otherwise): the four edge-clue arrays, 0 = blank (plan decision D2).
+   * Persisted — it IS the puzzle, like `runs` for Kakuro. A clue's open / satisfied / violated
+   * state is never stored: each clue cell derives it from `grid` in its own selector.
+   */
+  edgeClues: SkyscraperClues | null;
+  /**
+   * Skyscrapers: the player's manual "marked done" flags, one per clue in `clueFlatIndex` order
+   * (4N entries; `[]` otherwise). A real move — persisted and undo-able (D9, Tatham's model) —
+   * so it rides the temporal partialize alongside `grid` and `candidates`.
+   */
+  doneClues: boolean[];
+
   // UI / session state (deliberately NOT tracked by undo/redo)
   difficulty: BoardDifficulty;
   selectedCell: { r: number; c: number } | null;
@@ -146,6 +164,8 @@ export interface BoardState {
   clearCell: () => void;
   hint: () => void;
   togglePencilMode: () => void;
+  /** Skyscrapers: flip a clue's "marked done" grey (a move: undo-able, persisted). */
+  toggleClueDone: (side: GutterSide, index: number) => void;
   revealErrors: () => void;
   tick: () => void;
   pause: () => void;
@@ -234,6 +254,8 @@ export const useBoardStore = create<BoardState>()(
       blocked: [],
       cellToRuns: [],
       clues: [],
+      edgeClues: null,
+      doneClues: [],
 
       difficulty: 'easy' as Difficulty,
       selectedCell: null,
@@ -255,11 +277,25 @@ export const useBoardStore = create<BoardState>()(
         // Keisan is Latin-square-only, so it uses a BOXLESS config even at 4/6 — that makes peers
         // row/col-only (the box sentinel degenerates to the row) and turns off Cell.tsx's box
         // borders (K0's `hasBoxes` gate).
+        // Skyscrapers is boxless at EVERY size too (a 6×6 has no 2×3 boxes): row/column peers
+        // and no box borders, with digits 1..N.
         const config =
-          variant === 'calc' ? calcGridConfig(size) : variant === 'kakuro' ? kakuroGridConfig(size) : getGridConfig(size);
+          variant === 'calc'
+            ? calcGridConfig(size)
+            : variant === 'kakuro'
+              ? kakuroGridConfig(size)
+              : variant === 'skyscrapers'
+                ? skyscrapersGridConfig(size)
+                : getGridConfig(size);
         const cages = toBoardCages(puzzle, variant);
         const runs = variant === 'kakuro' ? (puzzle as KakuroPuzzle).runs : [];
         const blocked = buildBlocked(runs, size);
+        // Copied, like every other puzzle field: `usePuzzle` hands over the module-level fixture
+        // itself until E5, and the store must never share arrays with it.
+        const sourceClues = variant === 'skyscrapers' ? (puzzle as SkyscrapersPuzzle).clues : null;
+        const edgeClues = sourceClues
+          ? { top: [...sourceClues.top], bottom: [...sourceClues.bottom], left: [...sourceClues.left], right: [...sourceClues.right] }
+          : null;
         set({
           gridSize: size,
           config,
@@ -278,6 +314,8 @@ export const useBoardStore = create<BoardState>()(
           blocked,
           cellToRuns: buildCellToRuns(runs, size),
           clues: buildClues(runs, size),
+          edgeClues,
+          doneClues: edgeClues ? new Array<boolean>(4 * size).fill(false) : [],
           difficulty: puzzle.difficulty,
           selectedCell: null,
           pencilMode: false,
@@ -455,6 +493,20 @@ export const useBoardStore = create<BoardState>()(
       },
 
       togglePencilMode: () => set(state => ({ pencilMode: !state.pencilMode })),
+
+      toggleClueDone: (side, index) => {
+        const { status, edgeClues, doneClues, config } = get();
+        if (status !== 'playing' || !edgeClues) return;
+        // Range-check the side AND the index before packing: `clueFlatIndex` is `side × N + index`,
+        // so an index ≥ N would wrap into the next side's flags instead of failing.
+        if (!GUTTER_SIDES.includes(side) || !Number.isInteger(index) || index < 0 || index >= config.size) return;
+        const flat = clueFlatIndex(side, index, config.size);
+        if (flat >= doneClues.length) return;
+        const next = [...doneClues];
+        next[flat] = !next[flat];
+        set({ doneClues: next });
+      },
+
       revealErrors: () => set({ errorsRevealed: true }),
 
       tick: () => set(state => (state.status === 'playing' ? { elapsedTime: state.elapsedTime + 1 } : {})),
@@ -466,13 +518,15 @@ export const useBoardStore = create<BoardState>()(
         // Actions are dropped by JSON serialization and re-supplied by the creator;
         // derived fields are recomputed in `merge` below rather than stored.
         name: 'sudoku-board',
-        // v5 (Kakuro V2): `runs` joined the persisted shape and `variant` gained `'kakuro'`; a v4
-        // game has no `runs`, so a saved Kakuro would rehydrate with every cell white and no
-        // clues. v4 (Keisan K5): `cages` changed from Killer's `{id, sum, cells}` to the
+        // v6 (Skyscrapers V2): `edgeClues` and `doneClues` joined the persisted shape and
+        // `variant` gained `'skyscrapers'`; a v5 game has neither, so a saved Skyscrapers would
+        // rehydrate with an empty gutter. v5 (Kakuro V2): `runs` joined the persisted shape and
+        // `variant` gained `'kakuro'`; a v4 game has no `runs`, so a saved Kakuro would rehydrate
+        // with every cell white and no clues. v4 (Keisan K5): `cages` changed from Killer's `{id, sum, cells}` to the
         // normalized `BoardCage` `{id, cells, label}`, and `variant` gained `'calc'`. Saved games
         // are ephemeral — discard rather than migrate (the `migrate` below resets to the config
         // screen). v3 (K0) added `hasBoxes` to `config`; v2 added `mode`.
-        version: 5,
+        version: 6,
         // A saved game is ephemeral, so old persisted shapes aren't worth migrating — but a
         // version mismatch with NO migrate makes zustand log a console.error (surfaced as the
         // Next.js error overlay). Discard cleanly instead: drop the stale game and land the
@@ -488,6 +542,8 @@ export const useBoardStore = create<BoardState>()(
           variant: state.variant,
           cages: state.cages,
           runs: state.runs,
+          edgeClues: state.edgeClues,
+          doneClues: state.doneClues,
           difficulty: state.difficulty,
           selectedCell: state.selectedCell,
           pencilMode: state.pencilMode,
@@ -521,8 +577,9 @@ export const useBoardStore = create<BoardState>()(
       }
     ),
     {
-      // Only puzzle progress is time-travelled; ephemeral UI/session state is excluded.
-      partialize: (state) => ({ grid: state.grid, candidates: state.candidates }),
+      // Only puzzle progress is time-travelled; ephemeral UI/session state is excluded. A
+      // Skyscrapers "marked done" clue is progress too (D9) — undo takes it back like a digit.
+      partialize: (state) => ({ grid: state.grid, candidates: state.candidates, doneClues: state.doneClues }),
       limit: 100,
       equality: (a, b) => JSON.stringify(a) === JSON.stringify(b),
     }

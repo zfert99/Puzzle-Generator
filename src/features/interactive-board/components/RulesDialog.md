@@ -47,3 +47,11 @@ lower-left = across — the convention the board draws), a worked example of a f
 run (3 → 1+2, 17 → 8+9), and the interior-size naming convention (a "7×7" is its playable
 area; the clue strip is not counted — plan decision D2). "Cross Sums" is named as the generic
 alias (D1).
+
+## Skyscrapers body (October 2026, V2)
+
+A fifth body for `variant === 'skyscrapers'`: the Latin-square rule (heights 1..N, no boxes),
+what an edge clue means (how many buildings are visible looking in, taller hides shorter),
+that blank edges are normal, the two one-move clues (1 → the tallest is adjacent, N → the heights
+climb), and the clue UX from decision D9 — a clue turns red only once the filled cells already
+break it, and a click (or `C` then Enter) greys a clue out. Title: "How to play Skyscrapers".

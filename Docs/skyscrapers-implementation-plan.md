@@ -2,7 +2,8 @@
 
 > **Status:** 🚧 In progress (plan written 2026-10-01; build started 2026-10-01 — V0
 > [#128](https://github.com/zfert99/Puzzle-Generator/pull/128) merged 2026-10-02 on the owner's
-> visual verdict; V1 built 2026-10-02). · **Branch:** one per slice off
+> visual verdict; V1 [#129](https://github.com/zfert99/Puzzle-Generator/pull/129) merged
+> 2026-10-02; V2 built 2026-10-02). · **Branch:** one per slice off
 > `main` (`feature/skyscrapers`, then `-v1`, `-v2`, … as Kakuro did; never stacked — V1's step-log
 > in the Kakuro plan says why) · **Roadmap:** Phase 11 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings · measurements):**
@@ -190,8 +191,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | Order | Slice | What becomes visible |
 |---|---|---|
 | 0 | V0 — Looks-only static board ✅ | Empty 5×5 / 6×6 / 7×7 boards with a four-sided clue gutter at `/skyscrapers` — no digits, no input |
-| 1 | V1 — Types + baked fixtures 🚧 | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
-| 2 | V2 — Board on the baked puzzle | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
+| 1 | V1 — Types + baked fixtures ✅ | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
+| 2 | V2 — Board on the baked puzzle 🚧 | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
 | 3 | V3 — PDF on the baked puzzle | A printable Skyscrapers page in the booklet |
 | 4 | E1 — Visibility table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
 | 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
@@ -255,7 +256,7 @@ the recommended sizes; 9×9 + gutter = 11 tracks would be, and is why 9×9 is th
   `visibleCount`; `gutterLabel` gains the clue digit; the route gains real clue digits from the
   fixtures.
 
-### V1 — Types + baked fixtures 🚧
+### V1 — Types + baked fixtures ✅
 
 - `skyscrapers-types.ts`: `SkyscrapersPuzzle { variant: 'skyscrapers'; gridSize; grid; solution;
   clues: SkyscraperClues; difficulty }`, `SkyscraperClues { top: number[]; bottom: number[]; left:
@@ -322,7 +323,7 @@ digits for all three fixtures.
 - *Blockers:* none. **Owed to E1:** the repo proves nothing unique yet — only the throwaway
   counter did; E1 adds that test over the three fixtures and the 4×4 pair.
 
-### V2 — Board on the baked puzzle ⏳
+### V2 — Board on the baked puzzle 🚧
 
 - **Real discriminant first** (K5): `PuzzleVariant` / `BoardPuzzle` / `usePuzzle` unions gain
   `'skyscrapers'`; `startNewGame` switches on `variant`. While no generator exists, `usePuzzle`
@@ -365,6 +366,54 @@ digits for all three fixtures.
 
 **Gate:** the fixtures are playable end-to-end in the browser (both themes, 5/6/7), E2E green,
 visual check handed to the owner.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-v2`):**
+
+- *Process:* `'skyscrapers'` joined `PuzzleVariant` / `BoardPuzzle` / `usePuzzle`'s unions with
+  the real discriminant (`puzzle.variant`); `startNewGame` picks `skyscrapersGridConfig`
+  (boxless at every size, `maxNum = N`), keeps the puzzle's **`edgeClues`** (persisted — it is
+  the puzzle, like Kakuro's `runs`; nothing derived in `merge`) and seeds **`doneClues`** (4N
+  flags in `clueFlatIndex` order; a real move — in the temporal partialize, so undo takes a
+  mark back). New action `toggleClueDone`. Persist version 6. `Board` draws the four-sided
+  gutter (top row, leading/trailing clue cell per row, bottom row; empty read-only corners so the
+  ARIA grid stays rectangular, `aria-rowcount`/`colcount` set) and implements the **`C` key**:
+  into the gutter, arrows along the clues, Enter/Space marks done, Escape/`C` back; every other
+  key is swallowed while a clue has focus. The board's own border is off for the variant and the
+  edge play cells draw the frame (`Cell.tsx`). New `SkyscraperClueCell` subscribes to its own
+  line only (`skyscraperClueState` → `clueStatus`, the **prefix rule**, D9) and draws error >
+  done > normal; `describeSkyscraperClue` names direction + state. The engine gained
+  `clueStatus` and `clueFlatIndex`. `PlayExperience`: fifth toggle (wrapping row), `SIZES`
+  5/6/7, deep link seeds 6×6, full ladder shown, a "being built — hand-made, ungraded" note;
+  `GridSizeSelector` gained 5×5; `usePuzzle` serves the fixture for the size with no network;
+  `RulesDialog` body. **The `/skyscrapers` workbench route and `SkyscrapersBoard` are deleted**
+  — `/play?variant=skyscrapers` is the surface (hub card still waits for E5, D8). Tests: engine
+  (clueStatus, clueFlatIndex), board helpers, store (config/peers/lockout/toggle+undo),
+  hydration (edgeClues + doneClues come back), hook (fixture, no fetch), Board (gutter geometry,
+  frame, prefix-rule verdicts, click + keyboard done marks, 1..N and edge clamp), and an E2E
+  play spec run green against the dev server. Mirrored docs for every touched file; two new.
+- *Divergences from the spec, and why:* (1) the spec's "satisfied → opt-in muted state" ships
+  as a CSS hook that is a no-op colour until a setting exists (G10: no player auto-tints; the
+  class is there so the setting is one line). (2) "line completion/violation in a narrow selector
+  per line" became per-**clue-cell** selectors — the same O(N) per line, and it is the clue
+  cell, not the play cell, that renders the verdict. (3) `useSavedGame` needed no change (it only
+  reads `variant`); the a11y spec was not extended (owed with G8's AT pass).
+- *Learnings:* (1) the gutter's keyboard model needs its own handler *ahead of* the board's,
+  or a digit typed while a clue is focused lands on the selected play cell — found while writing
+  the test, not by reading. (2) A verdict that is derived from `grid` and never stored costs
+  nothing to keep correct across undo, hints and rehydration; the only Skyscrapers state the
+  store owns is the player's marks.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 7 findings; 6 fixed,
+  1 left to the owner):* (1) **a mouse click on a clue stole focus** and every digit typed
+  after it was swallowed by the gutter handler — the click now hands focus straight back to the
+  selected play cell (tested). (2) `toggleClueDone` did not range-check the index, so an index
+  past a side's end wrapped into the next side's flags — side and index checked before packing
+  (tested). (3) The `C` jump fired on Ctrl/Cmd+C — bare `C` only (tested). (4) `edgeClues` was
+  stored by reference to the fixture singleton — copied on start like every other puzzle field
+  (tested). (5) The no-op `.clueSatisfied` class and an identity status map removed.
+  (6) Gap cases for the prefix rule added to the engine tests. (7) The diff is ~650 LOC of
+  source against the ~400 target — acknowledged, Kakuro V2 precedent; the owner's call.
+- *Blockers:* none. **Gate pending:** the owner's visual verdict (both themes, 5/6/7, 360 px).
+- *Owed:* NVDA/VoiceOver pass over the gutter (G8) — by R1 at the latest.
 
 ### V3 — PDF on the baked puzzle ⏳
 

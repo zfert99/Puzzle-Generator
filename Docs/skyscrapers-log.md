@@ -29,6 +29,16 @@
 
 ## Journal
 
+- **2026-10-02 (V2)** V1 merged ([#129](https://github.com/zfert99/Puzzle-Generator/pull/129)).
+  **V2 built** on `feature/skyscrapers-v2`: playable at `/play?variant=skyscrapers` on the baked
+  fixtures — four-sided gutter on the real board, `edgeClues` persisted / `doneClues` undo-able
+  (D9's manual mark), clue verdicts by the **prefix rule** in per-clue selectors, `C`-key gutter
+  navigation, fifth menu toggle with 5/6/7, rules body; the V0/V1 workbench deleted. `[decision]`
+  D9 applied as specified (satisfied tint off by default, a no-op class as the opt-in hook).
+  Owner's visual verdict pending (the slice's gate); `[gap]` G8's screen-reader pass still owed.
+  Owner ran `/code-review high`: **7 findings, 6 fixed in-PR** (table in the plan under V2; the
+  slice-size overrun is the owner's call) — the one with teeth: a mouse click on a clue stole
+  focus and swallowed every digit typed after it. `[learning]` L8.
 - **2026-10-02 (V1)** V0 merged ([#128](https://github.com/zfert99/Puzzle-Generator/pull/128)) on
   the owner's visual verdict. **V1 built** on `feature/skyscrapers-v1`: the puzzle shapes, config,
   `visibleCount` / `deriveClues` / validator, three baked fixtures (5×5 5/20 clues, 6×6 15/24,
@@ -120,6 +130,7 @@
 |---|---|---|
 | L1 | **Reuse a Latin technique only after checking the house property it rests on — and write the answer down.** Kakuro needed a `required` guard because a run need not contain every digit; Skyscrapers rows and columns are full permutations, so hidden singles / pairs / fish are sound unchanged. E2 asserts this in a test so the question is answered on record rather than re-asked per technique | Plan authoring, 2026-10-01 (Kakuro L12 applied in reverse) |
 | L2 | **Put display-coordinate helpers in the engine's types module from day one when two consumers are already in the plan.** Kakuro's clue picture lived in board code until the PDF became a second consumer and had to move (its V3 step-log); Skyscrapers' gutter indexing has the board *and* the PDF as known consumers before V0 | Kakuro V3 step-log, applied 2026-10-01 |
+| L8 | **A focusable control inside a widget with its own key handler must decide where focus goes after a click.** `tabIndex -1` makes an element reachable by keyboard only in theory — a mouse click focuses it too — so a click on a gutter clue silently switched the board into gutter mode and swallowed the next digits. Any control that is "keyboard-only" by design needs its click handler to hand focus back explicitly | V2 review, 2026-10-02 |
 | L7 | **Count solutions by line, not by cell.** Three throwaway counters were written for the V1 fixtures: a cell-by-cell backtracker with prefix checks never finished one 7×7 count; a row-permutation DFS with top-clue pruning stalled once clues were sparse; the research's design — per-line permutation buckets filtered against cell masks, propagated to a fixpoint, then MRV — counted any 7×7 in 1–3 ms. E1 builds the third, and only the third | V1, 2026-10-02 |
 | L6 | **Repair the square, never retry it — from the first fixture, not from E3.** The Kakuro lesson (L7/L15 there) arrived at V1 here: random 7×7 Latin squares are never unique with all clues (0 / 94,962), while intercalate swaps accepted on a capped solution count reach uniqueness in tens of steps. Any "generate and reject" step in E4 is a design error, not a tuning problem | V1, 2026-10-02 |
 | L5 | **Hiding a cell from the accessibility tree changes the shape of its grid.** `aria-hidden` on an empty corner cell is not neutral: the first and last rows then expose N cells against N+2 in the middle, and a screen reader reports a malformed grid with column numbers that jump between rows. Keep every cell of a `role="grid"` in the tree (empty, read-only) and state the geometry with `aria-rowcount` / `aria-colcount` / `aria-rowindex` / `aria-colindex` | V0 review, 2026-10-02 |

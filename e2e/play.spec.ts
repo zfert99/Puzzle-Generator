@@ -187,4 +187,39 @@ test.describe('Interactive play', () => {
     await expect(page.getByRole('status')).toContainText(/Hint — /);
     await expect(page.getByText(/How we got there/)).toBeVisible();
   });
+
+  test('plays a Skyscrapers: four-sided clue gutter, 1..N numpad at the 6×6, clue marked done, board starts empty', async ({ page }) => {
+    await page.goto('/play?variant=skyscrapers');
+
+    // The deep link preselects Skyscrapers at its planned 6×6 standard (D4); the full ladder is
+    // offered at every size (the fixture served until E5 is 'unrated' regardless).
+    await expect(page.getByRole('button', { name: /^skyscrapers$/i })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: '6×6', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeEnabled();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+
+    const grid = page.getByRole('grid', { name: /skyscrapers board/i });
+    await expect(grid).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'How to play Skyscrapers' })).toBeVisible();
+    await page.getByRole('button', { name: 'Got it' }).click();
+
+    // 6×6 interior + a gutter on all four sides = 8×8 cells; 36 play cells start empty; the baked
+    // 6×6 fixture keeps 15 of its 24 clues.
+    await expect(grid.getByRole('gridcell')).toHaveCount(64);
+    await expect(grid.getByRole('gridcell', { name: /^Empty/ })).toHaveCount(36);
+    await expect(grid.getByRole('gridcell', { name: /^Clue \d/ })).toHaveCount(15);
+    await expect(grid.getByRole('gridcell', { name: /^Value/ })).toHaveCount(0);
+
+    // Digits are 1..N: the numpad offers 6 and no 7.
+    await expect(page.getByRole('button', { name: '6', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: '7', exact: true })).toHaveCount(0);
+
+    // A clue marks done on click; a play cell takes a digit.
+    const clue = grid.getByRole('gridcell', { name: /^Clue \d.*, open$/ }).first();
+    await clue.click();
+    await expect(grid.getByRole('gridcell', { name: /marked done$/ })).toHaveCount(1);
+    await grid.getByRole('gridcell', { name: /^Empty/ }).first().click();
+    await page.keyboard.press('3');
+    await expect(grid.getByRole('gridcell', { name: /value 3/i })).toHaveCount(1);
+  });
 });

@@ -151,6 +151,52 @@ export function presentClueCount(clues: SkyscraperClues): number {
   return present;
 }
 
+/** What a clue cell shows about its line as the player fills it in (plan decision D9). */
+export type ClueStatus = 'open' | 'satisfied' | 'violated';
+
+/**
+ * The state of one clue against its line as it stands, judged only on the **filled prefix** —
+ * the cells from the clue's edge up to the first empty one (Tatham's `check_errors` rule,
+ * gap-findings G10). A verdict here is provable from what is on the board, so it never
+ * flashes red on a line the player is still working on:
+ *
+ * - `violated` when the prefix already shows more towers than the clue; when the tallest tower
+ *   (N) is in the prefix with fewer visible than the clue (nothing behind N can ever be seen);
+ *   when the prefix shows exactly the clue's count but N is still to come (it will be seen);
+ *   or when the cells left cannot make up the shortfall.
+ * - `satisfied` when the line is complete and the count matches.
+ * - `open` otherwise. A blank clue (0) is always `open`.
+ */
+export function clueStatus(line: readonly number[], clue: number): ClueStatus {
+  if (clue <= 0) return 'open';
+  const size = line.length;
+  let tallest = 0;
+  let seen = 0;
+  let filled = 0;
+  for (const height of line) {
+    if (height === 0) break;
+    filled += 1;
+    if (height > tallest) {
+      tallest = height;
+      seen += 1;
+    }
+  }
+  if (filled === size) return seen === clue ? 'satisfied' : 'violated';
+  if (seen > clue) return 'violated';
+  if (tallest === size && seen < clue) return 'violated';
+  if (seen === clue && tallest !== size) return 'violated';
+  if (seen + (size - filled) < clue) return 'violated';
+  return 'open';
+}
+
+/**
+ * The flat position of a clue in a 4N-long per-puzzle array — `top` first, then `bottom`,
+ * `left`, `right`, each in index order. The board keeps its "marked done" flags this way.
+ */
+export function clueFlatIndex(side: GutterSide, index: number, size: number): number {
+  return GUTTER_SIDES.indexOf(side) * size + index;
+}
+
 /** Every one of the 4N clues a solved square implies — the generator's starting point (E4). */
 export function deriveClues(solution: readonly (readonly number[])[]): SkyscraperClues {
   const size = solution.length;

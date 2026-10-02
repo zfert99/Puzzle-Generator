@@ -84,3 +84,12 @@ answered in O(1) from the store's `cellToRuns` (`shareRun`), not row/column/box 
 not a scan of the selection's peer list, which the first version did inside every cell's
 selector (a review finding; the `cellToCage` comment above explains why that matters). The pencil
 grid is `maxNum` slots (9 for Kakuro, `size` otherwise) so a 7×7 can show every digit.
+
+## Skyscrapers: frame on the edge cells, row/column peers (October 2026, plan slice V2)
+
+For `variant === 'skyscrapers'` a play cell is an ordinary boxless cell (no thick box borders,
+peers by shared row or column — `hasBoxes` is false at every size), plus the **play-area frame**:
+the cells in the first/last row and column add `frameTop` / `frameBottom` / `frameLeft` /
+`frameRight`, because the board's own border is off for this variant (the clue gutter sits
+outside the play area). `colIndex` is `c + 2`, as for Kakuro — one gutter column precedes the
+interior. The edge clues themselves are `SkyscraperClueCell`s, not `Cell`s.

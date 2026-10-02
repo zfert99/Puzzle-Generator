@@ -238,3 +238,32 @@ the hint takes the selected cell if it is forced *and* agrees, else the first fo
 agrees, and only falls through to the plain reveal when none does or the board is contradictory
 (the first version abandoned the whole list on the first mismatch — a review finding). E2's
 logical solver will replace this with technique-named hints.
+
+### Why `edgeClues` and `doneClues` (Skyscrapers, October 2026, plan slice V2)
+
+Skyscrapers is the fifth variant: a **boxless Latin square** (digits 1..N, row/column peers, no
+givens — `skyscrapersGridConfig`) whose only extra is a strip of edge clues on all four sides.
+Two fields carry it:
+
+- **`edgeClues`** — the puzzle's four clue arrays (`top/bottom/left/right`, 0 = blank, plan
+  decision D2). **Persisted**, because it *is* the puzzle, exactly as `runs` is for Kakuro.
+  Nothing is derived from it in `merge`: a clue's open / satisfied / violated state is read
+  from `grid` by each clue cell's own selector (`skyscraperClueState`), never stored — storing it
+  would be a second source of truth for what the grid already says.
+- **`doneClues`** — the player's "marked done" greys, one flag per clue in `clueFlatIndex` order
+  (top, bottom, left, right; 4N entries, `[]` for every other variant). A real move (D9, Tatham's
+  model): persisted, and included in the **temporal** partialize so undo takes a mark back the
+  way it takes a digit back. `toggleClueDone(side, index)` flips one; it is a no-op without
+  `edgeClues` or outside `playing`, and it range-checks the side and the index **before**
+  packing them — `clueFlatIndex` is `side × N + index`, so an index past the side's end would
+  otherwise wrap into the next side's flags (review finding on V2).
+
+`edgeClues` is **copied** on `startNewGame`, like every other puzzle field: until E5 `usePuzzle`
+hands over the module-level fixture itself, and the store must never share arrays with it.
+
+Everything else Skyscrapers needs already existed: the Latin lockout (`placed >= size`) is
+correct here, pencil stripping along row/column peers is correct, the solved check is a
+cell-for-cell match, and the hint is a plain reveal until E1 puts a solver behind it.
+
+Persist version bumped to **6** (a v5 game has no `edgeClues`/`doneClues` and would rehydrate
+with an empty gutter — discarded, like every earlier bump).

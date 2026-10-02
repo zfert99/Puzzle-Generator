@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { KAKURO_FIXTURE_7X7_CHAINS } from '@/features/engine/kakuro/kakuro-fixtures';
 import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
+import { SKYSCRAPERS_FIXTURE_5X5 } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
 import { useBoardStore } from './useBoardStore';
 
 /**
@@ -32,6 +33,8 @@ function wipeStore() {
     blocked: [],
     cellToRuns: [],
     clues: [],
+    edgeClues: null,
+    doneClues: [],
   });
 }
 
@@ -81,5 +84,26 @@ describe('rehydrating a saved game rebuilds every derived field', () => {
     expect(s.cellToCage).toHaveLength(16);
     expect(s.cellToCage.every((id) => id >= 0)).toBe(true);
     expect(s.peers).toHaveLength(16);
+  });
+});
+
+describe('rehydrating a saved Skyscrapers game', () => {
+  it('brings back the edge clues, the done marks and row/column peers', async () => {
+    useBoardStore.getState().startNewGame(SKYSCRAPERS_FIXTURE_5X5);
+    useBoardStore.getState().toggleClueDone('top', 2);
+    const saved = snapshotAndWipe();
+    expect(JSON.parse(saved).state.edgeClues).toEqual(SKYSCRAPERS_FIXTURE_5X5.clues); // persisted — it IS the puzzle
+    expect(JSON.parse(saved).state.doneClues[2]).toBe(true);
+    expect(useBoardStore.getState().edgeClues).toBeNull();
+
+    await useBoardStore.persist.rehydrate();
+
+    const s = useBoardStore.getState();
+    expect(s.variant).toBe('skyscrapers');
+    expect(s.edgeClues).toEqual(SKYSCRAPERS_FIXTURE_5X5.clues);
+    expect(s.doneClues[2]).toBe(true);
+    expect(s.peers).toHaveLength(25);
+    expect([...s.peers[0]].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 10, 15, 20]);
+    expect(s.blocked).toEqual([]);
   });
 });

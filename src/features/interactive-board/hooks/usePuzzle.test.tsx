@@ -2,6 +2,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { usePuzzle } from './usePuzzle';
+import { SKYSCRAPERS_FIXTURE_6X6 } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
 
 const fakePuzzle = {
   grid: [[0]],
@@ -78,5 +79,23 @@ describe('usePuzzle', () => {
     // The label is the route's (the classifier's), not the request's.
     expect(puzzle).toMatchObject({ variant: 'kakuro', gridSize: 6, difficulty: 'hard' });
     expect(result.current.error).toBe('');
+  });
+});
+
+describe('usePuzzle — Skyscrapers (plan slice V2)', () => {
+  it('serves the baked fixture for the requested size without touching the network', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => usePuzzle());
+    let returned: unknown;
+    await act(async () => {
+      returned = await result.current.fetchPuzzle({ difficulty: 'easy', gridSize: 6, variant: 'skyscrapers' });
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(returned).toBe(SKYSCRAPERS_FIXTURE_6X6);
+    expect(result.current.puzzle).toBe(SKYSCRAPERS_FIXTURE_6X6);
+    expect(result.current.loading).toBe(false);
   });
 });

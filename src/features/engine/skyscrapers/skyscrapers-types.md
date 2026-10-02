@@ -74,6 +74,31 @@ blank-clue difficulty lever (research §3) read the same way by the workbench, t
 tests, and later E3/E4 instrumentation and E5 bands, so no two consumers can count it
 differently.
 
+## `clueStatus(line, clue)` and `clueFlatIndex(side, index, size)`
+
+`clueStatus` is the board's verdict on one clue, judged on the **filled prefix** only — the cells
+from the clue's edge up to the first empty one (Tatham's `check_errors`, gap-findings G10,
+decision D9). It is `violated` when the prefix already shows more towers than the clue; when the
+tallest tower is in the prefix with fewer visible than the clue (nothing behind N is ever seen);
+when the count has reached the clue but N is still to come (it will be seen); or when the cells
+left cannot make up the shortfall. It is `satisfied` only when the line is complete and the count
+matches, and `open` otherwise — a blank clue is always open. Provable, never predictive: a line
+the player is still working on never turns red.
+
+```text
+walk the line from the clue end, stopping at the first empty cell:
+    filled += 1; if height > tallest: tallest = height, seen += 1
+complete        → satisfied if seen == clue else violated
+seen > clue     → violated
+tallest == N and seen < clue → violated
+seen == clue and tallest != N → violated
+seen + (N - filled) < clue    → violated
+otherwise       → open
+```
+
+`clueFlatIndex` packs the four sides into one 4N-long array (top, bottom, left, right, each in
+index order) — the board's "marked done" flags live in that order.
+
 ## `deriveClues(solution)`
 
 All 4N clues a solved square implies — `visibleCount(lineFor(solution, side, i))` for every side
