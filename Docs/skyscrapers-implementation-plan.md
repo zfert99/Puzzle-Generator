@@ -1018,8 +1018,20 @@ tier and size; T4 and T5 **populated** at the standard size.
 - *Learnings:* L20 — when the quantity you target is a step function of the search state, a
   rejection loop over fresh starts is the honest optimiser; measure the per-round hit rate before
   building a walk that has nothing to climb.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 7 findings, all fixed
+  before merge):* (1) **the client-rendered menu and form imported the tier table from the entry
+  point**, which carries the generator and both solvers into the client bundle — the table and its
+  guard live in `skyscrapers-types.ts` now (re-exported), with `isSkyscrapersSize` replacing the
+  picker's cast and all-tiers fallback (5). (2) The batch told a not-offered error from a budget
+  miss by message substring — it is a typed error (`SKYSCRAPERS_LEVEL_NOT_OFFERED_ERROR`) now. (3)
+  E4's generation `stats` were gone from the route's log — `generateSkyscrapersDetailed` returns
+  them and the route spreads them. (4) The 7×7 easy lock and the nearest-tier clamp had no test —
+  the e2e Skyscrapers spec switches to 7×7, asserts easy disabled and medium pressed, then back.
+  (6) The shared `MAX_EXTREME` cap applies to the Skyscrapers batch too (tested). (7) The batch's
+  fair-share retry path is tested through a `generateOne` seam (a stand-in that misses one share;
+  one that throws not-offered is never retried).
 - *Blockers:* none. The e2e hub/play specs were updated but **not run locally** (the port-3000
-  server belongs to another session); CI runs them. Owner's `/code-review high` pending.
+  server belongs to another session); CI runs them.
 
 ### R1 — Daily rotation (5 types) ⏳
 

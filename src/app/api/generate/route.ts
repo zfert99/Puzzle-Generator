@@ -6,8 +6,8 @@ import { generateKillerBatch } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcBatch } from '@/features/engine/calc/calc-sudoku';
 import { generateKakuroBatch, isKakuroBudgetError } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
-import { SKYSCRAPERS_LADDER, type SkyscrapersLevel } from '@/features/engine/skyscrapers/skyscrapers-types';
-import { generateSkyscrapersBatch, isSkyscrapersBudgetError, isSkyscrapersLevelOffered, SKYSCRAPERS_TIERS_BY_SIZE } from '@/features/engine/skyscrapers/skyscrapers';
+import { SKYSCRAPERS_LADDER, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersLevelOffered, type SkyscrapersLevel } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { generateSkyscrapersBatch, isSkyscrapersBudgetError } from '@/features/engine/skyscrapers/skyscrapers';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
 
@@ -230,6 +230,9 @@ export async function POST(req: NextRequest) {
       }
       if (skyTotal > MAX_PUZZLES) {
         return NextResponse.json({ error: `Too many puzzles requested. Maximum is ${MAX_PUZZLES} per request.` }, { status: 400 });
+      }
+      if (counts.extreme > MAX_EXTREME) {
+        return NextResponse.json({ error: `At most ${MAX_EXTREME} extreme Skyscrapers puzzles per PDF request` }, { status: 400 });
       }
       const notOffered = SKYSCRAPERS_LADDER.find((level) => counts[level] > 0 && !isSkyscrapersLevelOffered(skySize, level));
       if (notOffered) {

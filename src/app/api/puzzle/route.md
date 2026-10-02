@@ -29,9 +29,10 @@ medium–extreme; a level the size does not offer is a `400` naming the offered 
 substituted puzzle), then returns `generateSkyscrapers(difficulty, { gridSize })` — fresh, unique,
 and at **exactly** the requested tier (E5: the classifier in the generator's objective). The label
 is still the classifier's own, so the log line carries `served` beside the requested `difficulty`
-as a standing check that they agree. A generation failure throws into the generic 500 like the
-other variants (0 in the gate run). E4's bounded-then-fallback policy and the `fallback` log field
-are gone.
+as a standing check that they agree, plus the generator's `stats` (rounds drawn, repair swaps and
+restarts, clues kept, ms — `generateSkyscrapersDetailed`) so a production regression shows as more
+than `durationMs`. A generation failure throws into the generic 500 like the other variants (0 in
+the gate run). E4's bounded-then-fallback policy and the `fallback` log field are gone.
 
 ## Why this endpoint exists
 

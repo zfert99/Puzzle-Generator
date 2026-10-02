@@ -5,8 +5,8 @@ import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import { generateKakuro, KAKURO_SIZES, type KakuroSize } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
-import { generateSkyscrapers, isSkyscrapersLevelOffered, SKYSCRAPERS_TIERS_BY_SIZE } from '@/features/engine/skyscrapers/skyscrapers';
-import { SKYSCRAPERS_LADDER, SKYSCRAPERS_SIZES, type SkyscrapersLevel, type SkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { generateSkyscrapersDetailed } from '@/features/engine/skyscrapers/skyscrapers';
+import { SKYSCRAPERS_LADDER, SKYSCRAPERS_SIZES, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersLevelOffered, type SkyscrapersLevel, type SkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -138,9 +138,9 @@ export async function POST(req: NextRequest) {
       // objective); the label is still the classifier's own, so `served` is logged beside the
       // request as a standing check that they agree. A throw (out of budget — 0 in the gate run)
       // goes to the generic 500 like the other variants.
-      const puzzle = generateSkyscrapers(skyLevel, { gridSize: skySize });
+      const { puzzle, stats } = generateSkyscrapersDetailed(skyLevel, { gridSize: skySize });
       logger.info(
-        { event: 'puzzle_success', variant: 'skyscrapers', difficulty, served: puzzle.difficulty, gridSize, durationMs: Math.round(performance.now() - startTime) },
+        { event: 'puzzle_success', variant: 'skyscrapers', difficulty, served: puzzle.difficulty, gridSize, ...stats, durationMs: Math.round(performance.now() - startTime) },
         'Generated interactive Skyscrapers puzzle',
       );
       return NextResponse.json(puzzle, { status: 200 });

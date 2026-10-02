@@ -149,7 +149,9 @@ offers **5 / 6 / 7** — the plan's D4, planned at the research recommendation a
 by E3 — and the deep link seeds the standard, 6×6. `tiersFor` reads its per-size tier sets, unlike
 Kakuro: its tiers are calibrated within a size (D6), so the full ladder is shown at every size.
 Since E5 every Skyscrapers is generated fresh at **exactly** the picked tier, and each size offers
-the tiers it can produce: the picker reads `SKYSCRAPERS_TIERS_BY_SIZE` through `tiersFor(variant,
+the tiers it can produce: the picker reads `SKYSCRAPERS_TIERS_BY_SIZE` (from the types module — the
+entry point would drag the generator into the client bundle; a foreign size narrows through
+`isSkyscrapersSize` to the smallest size's list, never to the full ladder) through `tiersFor(variant,
 size)` — the one rule every lock decision uses, generalised from the old "expert/extreme are
 9×9-only" boolean because Skyscrapers can lock the *bottom* of the ladder (no easy at 7×7) as well
 as the top (no expert/extreme at 5×5). Switching type or size clamps the pick to the nearest tier

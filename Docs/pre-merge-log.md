@@ -108,7 +108,7 @@ source.**
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean (one unused import removed) |
 | `npx tsc --noEmit` · `npm run build` | clean · clean |
-| `npx vitest run` | **93 files / 904 tests green** (10 new, 7 rewritten); no entry from the Known flaky tests table fired |
+| `npx vitest run` | **93 files / 906 tests green** (12 new, 7 rewritten); no entry from the Known flaky tests table fired |
 | Benchmarks | `benchmark-skyscrapers.ts` 10 per cell: 6×6 easy / medium / hard **57 / 32 / 40 ms** (gate 200), expert 201, extreme 52; 7×7 459 / 297 / 704 / 311 (medium–extreme); 5×5 11 / 9 / 43. **Fuzz: 1,500 generated puzzles, 0 unsound, 0 non-unique, 0 label mismatches** |
 | Playwright | hub and play specs updated (Skyscrapers card; generated clue counts) but **not run locally** — the port-3000 server belongs to another session; CI runs them against a production build |
 
@@ -125,6 +125,13 @@ source.**
   does not offer (asserted in the form test).
 - The plan's "bands disjoint per size" gate has no object: tiers are ordinal technique levels (as
   Kakuro's E5 found). Recorded as not applicable rather than quietly ticked.
+- **`/code-review high` (owner-run, on the PR): 7 findings, all fixed in-PR.** The one with
+  weight: the client-rendered menu and form imported `SKYSCRAPERS_TIERS_BY_SIZE` from
+  `skyscrapers.ts`, which carries the generator and both solvers — the table lives in the types
+  module now. Also: a typed not-offered error instead of a message substring; E4's generation
+  stats back in the route log (`generateSkyscrapersDetailed`); the 7×7 easy lock and clamp
+  asserted in the e2e spec; the picker's cast-and-fallback replaced by `isSkyscrapersSize`; the
+  shared `MAX_EXTREME` cap applied; the batch's retry path tested through a `generateOne` seam.
 
 ### Invariants checked
 
@@ -137,12 +144,15 @@ source.**
 
 ### Review statements
 
-- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
-  runs `/code-review high` on the PR. `/security-review`: the routes validate closed lists before
-  any work and hold no auth/data access — not required.
+- The owner ran `/code-review high` on the PR (7 findings, fixed above); the agent did not launch
+  it. `/security-review`: the routes validate closed lists before any work and hold no auth/data
+  access — not required.
 
 ### Lessons
 
+- **A value the client reads must live in a module the client can afford.** Check what a
+  client-side import drags along before exporting a constant from an engine entry point; the
+  types module is where shared tables belong.
 - **A lock on a ladder is a list, not a boolean.** The first type that locks the *bottom* tier
   breaks every "top tiers locked?" flag at once; carry the offered list from the engine to the
   picker, the form and the routes.

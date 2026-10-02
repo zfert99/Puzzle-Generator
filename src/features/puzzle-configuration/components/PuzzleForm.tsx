@@ -5,7 +5,7 @@ import { usePuzzleGeneration } from '../hooks/usePuzzleGeneration';
 import { GridSizeSelector } from './GridSizeSelector';
 import { DifficultyConfigurator } from './DifficultyConfigurator';
 import { KAKURO_LADDER } from '@/features/engine/kakuro/kakuro-types';
-import { SKYSCRAPERS_TIERS_BY_SIZE } from '@/features/engine/skyscrapers/skyscrapers';
+import { SKYSCRAPERS_TIERS_BY_SIZE } from '@/features/engine/skyscrapers/skyscrapers-types';
 
 const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const CALC_DIFFICULTIES = ['easy', 'medium', 'hard']; // 9×9 adds 'expert' (see the calc size branch)

@@ -194,8 +194,11 @@ describe('Sad Paths', () => {
     expect((await POST(buildRequest({ variant: 'skyscrapers', gridSize: 5, extreme: 1 }))).status).toBe(400);
   });
 
-  test('Skyscrapers: more than the per-request maximum is refused', async () => {
+  test('Skyscrapers: more than the per-request maximum, or more than the shared extreme cap, is refused', async () => {
     expect((await POST(buildRequest({ variant: 'skyscrapers', gridSize: 6, easy: 51 }))).status).toBe(400);
+    const extremes = await POST(buildRequest({ variant: 'skyscrapers', gridSize: 6, extreme: 6 }));
+    expect(extremes.status).toBe(400);
+    expect((await extremes.json()).error).toMatch(/At most 5 extreme Skyscrapers/);
   });
 
   test('Skyscrapers: a size outside 5/6/7 is rejected', async () => {

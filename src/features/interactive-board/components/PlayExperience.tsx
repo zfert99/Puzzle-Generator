@@ -3,8 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GridSizeSelector, type SelectableSize } from '@/features/puzzle-configuration/components/GridSizeSelector';
-import { SKYSCRAPERS_TIERS_BY_SIZE } from '@/features/engine/skyscrapers/skyscrapers';
-import type { SkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { SKYSCRAPERS_SIZES, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
 import { useSavedGame, formatElapsed } from '../store/useSavedGame';
@@ -74,7 +73,9 @@ function parseVariant(value: string | null): PlayVariant {
  * out at hard, the 7×7 large starts at medium — the sizes offer what they can produce).
  */
 function tiersFor(variant: PlayVariant, size: SelectableSize): readonly Difficulty[] {
-  if (variant === 'skyscrapers') return SKYSCRAPERS_TIERS_BY_SIZE[size as SkyscrapersSize] ?? ALL_DIFFICULTIES;
+  // A size Skyscrapers never offers cannot reach here (the size clamp runs first); the smallest
+  // size's list is the conservative answer if it ever did, not the full ladder.
+  if (variant === 'skyscrapers') return SKYSCRAPERS_TIERS_BY_SIZE[isSkyscrapersSize(size) ? size : SKYSCRAPERS_SIZES[0]];
   if (variant === 'kakuro' || size === 9) return ALL_DIFFICULTIES;
   return ALL_DIFFICULTIES.slice(0, 3);
 }

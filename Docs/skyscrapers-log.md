@@ -39,8 +39,11 @@
   shows the size's tiers; **the hub card is live** (`new!` moved off Kakuro). `[measure]`
   `benchmark-skyscrapers.ts`: 6×6 easy / medium / hard 57 / 32 / 40 ms, expert 201, extreme 52;
   7×7 459 / 297 / 704 / 311 ms (medium–extreme); 5×5 11 / 9 / 43 ms. **Soundness fuzz: 1,500
-  generated puzzles, 0 unsound, 0 non-unique, 0 label mismatches.** `[learning]` L20. Owner's
-  `/code-review high` pending; R1 (the daily) is the last slice.
+  generated puzzles, 0 unsound, 0 non-unique, 0 label mismatches.** `[learning]` L20. Owner ran
+  `/code-review high`: **7 findings, all fixed in-PR** (table in the plan under E5) — the one with
+  weight: the pickers imported the tier table from the entry point, dragging the generator into
+  the client bundle (the E2 review's lesson again: the table moved to the types module). R1 (the
+  daily) is the last slice.
 - **2026-10-02 (E4)** E3b merged ([#135](https://github.com/zfert99/Puzzle-Generator/pull/135)).
   **E4 built** on `feature/skyscrapers-e4`: `skyscrapers-generator.ts` — fill → repair-with-restart
   (intercalate swaps, cap 20, restart after 40 fruitless) → tier-bounded clue removal → exact

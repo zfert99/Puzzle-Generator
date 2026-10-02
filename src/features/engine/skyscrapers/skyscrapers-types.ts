@@ -28,6 +28,30 @@ export type SkyscrapersLevel = (typeof SKYSCRAPERS_LADDER)[number];
 export const SKYSCRAPERS_SIZES = [5, 6, 7] as const satisfies readonly GridSize[];
 export type SkyscrapersSize = (typeof SKYSCRAPERS_SIZES)[number];
 
+/** Type guard for the served sizes — the pickers narrow a generic size with it instead of casting. */
+export function isSkyscrapersSize(value: unknown): value is SkyscrapersSize {
+  return (SKYSCRAPERS_SIZES as readonly unknown[]).includes(value);
+}
+
+/**
+ * The tiers each size offers (D12, settled by E3/E4's measurements). The 5×5 mini ships
+ * easy / medium / hard — hard is the rare one there (8% of squares) but reachable in tens of
+ * milliseconds; expert and extreme are locked as on every other mini. The 6×6 standard offers
+ * the full ladder. The 7×7 large starts at medium: an easy 7×7 floor is one square in fifty
+ * (3.5 s per puzzle, E4), not a tier to promise. Lives here, beside the sizes, because the play
+ * menu and the print form read it in the client bundle — the generator must not ride along.
+ */
+export const SKYSCRAPERS_TIERS_BY_SIZE: Record<SkyscrapersSize, readonly SkyscrapersLevel[]> = {
+  5: ['easy', 'medium', 'hard'],
+  6: ['easy', 'medium', 'hard', 'expert', 'extreme'],
+  7: ['medium', 'hard', 'expert', 'extreme'],
+};
+
+/** Whether a size offers a level — the one check the routes, the pickers and the generator share. */
+export function isSkyscrapersLevelOffered(gridSize: SkyscrapersSize, level: SkyscrapersLevel): boolean {
+  return SKYSCRAPERS_TIERS_BY_SIZE[gridSize].includes(level);
+}
+
 /** Which strip of the clue gutter a display cell belongs to. */
 export type GutterSide = 'top' | 'bottom' | 'left' | 'right';
 

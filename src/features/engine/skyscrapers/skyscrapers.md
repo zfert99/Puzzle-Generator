@@ -11,9 +11,16 @@ A fresh, unique Skyscrapers at the requested size **and at exactly the requested
 by the classifier — the label is re-derived from the finished puzzle, never taken from the request
 (D7). Each size offers the tiers it can produce (`SKYSCRAPERS_TIERS_BY_SIZE`, D12): easy / medium /
 hard at the 5×5 mini, the full ladder at the 6×6 standard, medium / hard / expert / extreme at the
-7×7 large. A level a size does not offer **throws** (the routes refuse it first, with the offered
-list); so does a budget that runs out without a puzzle — measured at 0 failures in the benchmark
-and the gate run, so a throw is a fault, not a path the routes expect.
+7×7 large. The table itself lives in `skyscrapers-types.ts` (re-exported here) because the play
+menu and the print form read it in the **client bundle**, and importing it from this module would
+carry the generator and both solvers along (the E5 review's finding — the same class of cost the
+E2 review removed). A level a size does not offer **throws a typed error**
+(`SKYSCRAPERS_LEVEL_NOT_OFFERED_ERROR`, `isSkyscrapersLevelNotOfferedError` — the routes refuse it
+first, with the offered list); a budget that runs out without a puzzle throws a plain error —
+measured at 0 failures in the benchmark and the gate run, so that throw is a fault, not a path the
+routes expect. `generateSkyscrapersDetailed` returns the puzzle **with the generator's `stats`**
+(rounds drawn, repair swaps and restarts, clues kept, ms) so `/api/puzzle` can log the cost of
+every served puzzle, as E4 did; `generateSkyscrapers` is the puzzle alone.
 
 ## How: the classifier in the objective, by rejection
 
@@ -52,14 +59,18 @@ a step function of which clues are blank, so rejection over squares is the hones
 | 6×6 | all five | every tier reachable, every cell under a second |
 | 7×7 | medium, hard, expert, extreme | an easy floor is one square in fifty (3.5 s per puzzle in E4, three in four served by a fallback) — not a tier to promise |
 
-## The batch — `generateSkyscrapersBatch(counts, { gridSize, timeBudgetMs = 45 000 })`
+## The batch — `generateSkyscrapersBatch(counts, { gridSize, timeBudgetMs = 45 000, minShareMs, generateOne })`
 
 The Kakuro contract: one budget for the whole batch (inside the route's 60 s `maxDuration` with
 the PDF render to spare); each puzzle is handed a fair share of what is left (up to four times the
-average, at least 5 s) so one slow generation is retried rather than allowed to starve the rest;
-the batch's own clock running out is the only out-of-time error (`SKYSCRAPERS_BUDGET_ERROR`,
-`isSkyscrapersBudgetError`), which the route turns into a 503. A level the size does not offer
-rethrows as a plain error — the caller's mistake, not a budget question.
+average, at least `minShareMs` = 5 s) so one slow generation is retried rather than allowed to
+starve the rest; the batch's own clock running out is the only out-of-time error
+(`SKYSCRAPERS_BUDGET_ERROR`, `isSkyscrapersBudgetError`), which the route turns into a 503. A level
+the size does not offer is recognised by its **typed** error and rethrown — the caller's mistake,
+not a budget question (the first draft matched the message text, which a reworded throw would
+have turned into a retry loop). `generateOne` is a seam for tests (the dailies service has the
+same): a stand-in that misses one share proves the retry, one that throws the not-offered error
+proves it is never retried.
 
 ## Measured (E5, 2026-10-02, dev machine — `benchmark-skyscrapers.ts`, 10 per cell)
 
