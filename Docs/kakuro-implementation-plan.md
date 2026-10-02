@@ -19,11 +19,11 @@
 > [#121](https://github.com/zfert99/Puzzle-Generator/pull/121); E5
 > [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
 > [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) and
-> [#124](https://github.com/zfert99/Puzzle-Generator/pull/124) — every puzzle fresh at exactly
-> the requested tier, hub card live, fixtures test data only; R1 (daily) next) · **Branch:** one per slice off
+> [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); **R1 (daily rotation at four
+> types) built, in review — the last slice**) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`,
-> `-review-8`) ·
+> `-review-8`, `-r1`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -174,7 +174,7 @@ means Kakuro needs its own.
 | D1 | Display **Kakuro**, subtitle **Cross Sums**; engine/slug `kakuro`; "Cross Sums" wired as a **one-constant fallback title** (Japan mark is live; US dead, EU refused) | Locked (G1 resolved; re-verify TSDR/eSearch before paid marketing) |
 | D2 | **Interior N×N storage + explicit runs list**; clue cells render in a one-cell gutter (top + left) plus inside interior black cells. `grid.length === N` stays true everywhere (`DailySize`, profile lookup, board config) | Locked by owner 2026-09-30; applied in V1 |
 | D3 | Black cells are `0` in both `grid` and `solution`; **blocked = "in no run"**, derived from `runs` at game start (like `cellToCage`). No `-1` sentinel leaks into `Grid` consumers | Locked by owner 2026-09-30; applied in V1 |
-| D4 | Daily at 4 types: **keep 3 mini slots and roll 3 of the 4 types** each day; a mini slot holding a type is played at **that type's mini size** (D11), so the "easy/medium = 4×4, hard = random(4/6)" rule is retired for types with a single mini size | Open — owner (slot count); size part follows D11 |
+| D4 | Daily at 4 types: **keep 3 mini slots and roll 3 of the 4 types** each day; a mini slot holding a type is played at **that type's mini size** (D11), so the "easy/medium = 4×4, hard = random(4/6)" rule is retired for types with a single mini size | **Locked by owner 2026-10-01** (3 mini slots, 3 of 4 types); applied in R1 |
 | D5 | ~~T5 = bounded depth-1 recursion (Keisan transplant)~~ → **Every published tier is logic-only. T1–T3 by the technique ladder; T4 = whips of bounded length; T5 = longer whips / g-whips.** Surface sums (1-cuts) are an accelerator inside T4+, not a rung. Bounded T&E survives only as an optional, labelled *experimental* tier outside the daily | **Superseded 2026-09-11 by G5** — D5′ (log) applied in E2b and confirmed by owner 2026-10-01 |
 | D6 | **Three sizes, chosen for Kakuro, not inherited from Sudoku:** mini = **6×6** (E3: carries the full ladder incl. expert/extreme with chains, repairs to unique in 3–10 ms; 7×7 stays on `/play` as a second size), standard = **9×9**, large = **13×13 on paper — deferred** (E3: the repair objective is too slow there; needs its own measured approach before it ships anywhere). **No 4×4.** | E3 measured 2026-10-01 — mini and large settled by measurement; confirmed by owner 2026-10-01 |
 | D11 | **Sizes are per puzzle type.** Each type ships three: the smallest size that is genuinely interesting for *that* puzzle, its standard size, and a large size. Minis in menus and the daily are "the type's smallest size", not a fixed 4×4/6×6. Kakuro is the first type built this way; revisiting Classic/Killer/Keisan under the same rule is deferred (4×4 is trivial for most of them) | Locked by owner 2026-09-11 (principle); Kakuro sizes per D6 |
@@ -884,7 +884,7 @@ addressed in [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); recor
 | 5 | The easier band pays a second capped solve; the full solve's top-tier step share was proposed as a free signal | **Measured, not adopted** — same seeded bases: medians a wash, worst cases 20–50% longer at every cell; the capped solve stays (table in `kakuro-generator.md`) |
 | 6 | Redundant `as KakuroTier` cast | **Fixed** |
 
-### R1 — Daily rotation (4 types) ⏳
+### R1 — Daily rotation (4 types) ✅
 
 - `Variant` → `'classic' | 'killer' | 'calc' | 'kakuro'` in `daily-row.ts` and the `schema.ts`
   `$type` (**no migration** — `text` column). `StoredCage` union gains the run shape.
@@ -915,6 +915,35 @@ addressed in [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); recor
 **Gate:** roller property test (every day valid under `isEligible`, keys distinct, Kakuro reachable
 in both sections, existing types' rolls unchanged); floors present for every rolled combo; live
 `db:seed` round-trip.
+
+**Step-log (2026-10-01):**
+
+- *Process:* **D4 locked by the owner** ("leave minis at 3, add Kakuro to the rotation"). `Variant`
+  gained `'kakuro'` (registry + `schema.ts` `$type`, no migration); `StoredCage` gained
+  `StoredKakuroRun` — a Kakuro's runs ride the `cages` column (D2/D3's reason for shaping a run like
+  a cage), with the run count as `clue_count`; `/api/daily` hands them back as `runs`. **Sizes are
+  per type** (D11): `SIZES[variant] = { mini, standard }` — the Sudoku family `{ [4, 6], 9 }`,
+  Kakuro `{ [6], 9 }` — drives `isEligible` and the roller; `PROFILE` gained eight Kakuro rows
+  derived from cell count (G2), flagged as estimates. `rollDailyAssignment` draws one rung per
+  type (4 of 5) and seats 3 of the N types into the minis via `miniConfigurations` (a general
+  "ordered pick of 3 × hard size from the seated type's list" that replaces `PERMS_3`); restricted
+  to the Sudoku family it reproduces the old six configurations exactly, and the test asserts it.
+  `dailies.service` dispatches `generateKakuro`; `slot-display` labels Kakuro; `useDaily` carries
+  the Kakuro payload; the cron comment says 7. Tests: roller at 7 slots (4 distinct rungs, all
+  types; 3 distinct mini types; Kakuro only ever 6×6 in a mini; Kakuro reached in both sections
+  over 300 seeds — in ~75% of minis), eligibility per type, the Kakuro row mapping, the service's
+  counts and fallbacks at 7.
+- *Measured:* a seeded dry run of five days with the real engines: 7 slots each, every profile
+  present, 0.3–10.6 s per day (the slow case a 9×9 easy Kakuro walking down from a hard base) —
+  inside the cron's 60 s.
+- *Divergence:* the gate's "live `db:seed` round-trip" was **not run from the workstation**: the
+  local `DATABASE_URL` points at the Neon instance that is very likely production, and a Kakuro
+  row written before the serving code deploys would be served by the old route as a classic board
+  of zeros. The round-trip happens on the first cron after deploy; the dry run above exercised
+  roll → engines → row → profile without the database.
+- *Learnings:* L25 (seed into the environment that will serve it — a dev workstation pointed at a
+  shared database must not write rows the deployed code cannot read).
+- *Blockers:* none. **Phase 10 is complete.**
 
 ### Deferred / follow-ons (not v1)
 

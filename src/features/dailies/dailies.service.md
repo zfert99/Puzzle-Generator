@@ -15,9 +15,13 @@ object mocks the boundary without touching the network.
 
 ## `generateDailyPuzzles(db, isoDate, { rng?, generate? })`
 
-**Why:** One call rolls and generates today's whole set (**the type-as-slot roll** — 3 standard +
-3 mini; see `daily-row.md`) and stores it, which is exactly what a scheduled job needs. Seed and
-cron both go through here so they can never drift apart.
+**Why:** One call rolls and generates today's whole set (**the type-as-slot roll** — one standard
+per type + 3 mini, 7 boards at four types; see `daily-row.md`) and stores it, which is exactly
+what a scheduled job needs. Seed and cron both go through here so they can never drift apart.
+`generatePuzzleFor` dispatches on the slot's rolled variant: classic, Killer, Keisan, and since
+R1 Kakuro (`generateKakuro` at the slot's tier and size — 6×6 or 9×9). A seeded dry run of five
+days with the real engines came in at 0.3–10.6 s per day; the slow case was a 9×9 easy Kakuro
+walking down from a hard base, inside the cron's budget.
 
 ```text
 Ensure "Puzzle Bot"'s user row exists (upserted; features/leaderboards/bot.ts).
@@ -38,7 +42,7 @@ Return { isoDate, requested, inserted, skipped: false }.
 
 **The roll is random**, so the unique index can no longer recognise a re-run: a second call draws
 *different* rungs, which don't collide and are therefore inserted **alongside** the existing ones —
-silently turning a 6-board day into 8+, with two boards of one type and a wrong archive denominator.
+silently turning a 7-board day into 9+, with two boards of one type and a wrong archive denominator.
 This is not theoretical: 2026-07-31 holds 33 rows because the first post-restructure run added its 3
 new `mini-*` keys to a day that already had the old 30.
 

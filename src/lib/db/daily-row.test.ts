@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { generateSudoku } from '@/features/engine/sudoku';
 import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
+import { generateKakuro } from '@/features/engine/kakuro/kakuro';
 import type { Grid } from './schema';
 import {
   countClues,
@@ -20,6 +21,7 @@ import {
   STANDARD_RUNGS,
   type DailySize,
   type Variant,
+  miniConfigurations,
 } from './daily-row';
 
 /** Deterministic PRNG so the (randomized) roller is testable. */
@@ -133,44 +135,82 @@ describe('isEligible / getProfile coverage (Risk #1)', () => {
       for (const difficulty of STANDARD_RUNGS) expect(isEligible(variant, 9, difficulty)).toBe(true);
     }
   });
+
+  it('keeps sizes per type (D11): Kakuro has no 4×4 at all, only its 6×6 mini', () => {
+    expect(isEligible('kakuro', 4, 'easy')).toBe(false);
+    expect(isEligible('kakuro', 6, 'easy')).toBe(true);
+    expect(isEligible('kakuro', 6, 'hard')).toBe(true);
+    expect(isEligible('kakuro', 6, 'expert')).toBe(false);
+  });
 });
 
 describe('rollDailyAssignment', () => {
-  it('rolls 3 standard (distinct rungs, all 3 types) + 3 minis, all eligible', () => {
+  it('rolls 4 standard (distinct rungs, all 4 types) + 3 minis (3 of the 4 types), all eligible', () => {
     const slots = rollDailyAssignment(mulberry32(1));
-    expect(slots).toHaveLength(6);
+    expect(slots).toHaveLength(7);
 
     const standard = slots.filter((s) => s.section === 'standard');
     const minis = slots.filter((s) => s.section === 'mini');
-    expect(standard).toHaveLength(3);
+    expect(standard).toHaveLength(4);
     expect(minis).toHaveLength(3);
 
-    // Standard: 3 distinct rungs, keyed by rung, 9×9, one per type.
-    expect(new Set(standard.map((s) => s.key)).size).toBe(3);
+    // Standard: 4 distinct rungs of the 5, keyed by rung, at each type's standard size, one per type.
+    expect(new Set(standard.map((s) => s.key)).size).toBe(4);
     expect(standard.every((s) => s.gridSize === 9 && s.key === s.difficulty)).toBe(true);
     expect(new Set(standard.map((s) => s.variant))).toEqual(new Set(VARIANTS));
 
-    // Minis: the three tier slots, keyed mini-<tier>.
+    // Minis: the three tier slots, keyed mini-<tier>, three DIFFERENT types (one sits out — D4).
     expect(minis.map((s) => s.key).sort()).toEqual(['mini-easy', 'mini-hard', 'mini-medium']);
+    expect(new Set(minis.map((s) => s.variant)).size).toBe(3);
 
-    // Every slot is a real, generatable board, and all 6 keys are distinct.
+    // Every slot is a real, generatable board, and all 7 keys are distinct.
     expect(slots.every((s) => isEligible(s.variant, s.gridSize, s.difficulty))).toBe(true);
-    expect(new Set(slots.map((s) => s.key)).size).toBe(6);
+    expect(new Set(slots.map((s) => s.key)).size).toBe(7);
   });
 
-  it('holds its invariants across many seeds (incl. the Killer mini constraint)', () => {
+  it('holds its invariants across many seeds, and reaches Kakuro in both sections', () => {
+    let kakuroStandard = 0;
+    let kakuroMini = 0;
     for (let seed = 0; seed < 300; seed++) {
       const slots = rollDailyAssignment(mulberry32(seed));
-      expect(slots).toHaveLength(6);
-      // Distinct standard rungs; all three types present in the standard set.
+      expect(slots).toHaveLength(7);
       const standard = slots.filter((s) => s.section === 'standard');
-      expect(new Set(standard.map((s) => s.difficulty)).size).toBe(3);
+      expect(new Set(standard.map((s) => s.difficulty)).size).toBe(4);
       expect(new Set(standard.map((s) => s.variant))).toEqual(new Set(VARIANTS));
-      // Every slot eligible — so a Killer mini can only ever be easy-4×4 or a 6×6 board.
+      const minis = slots.filter((s) => s.section === 'mini');
+      expect(new Set(minis.map((s) => s.variant)).size).toBe(3);
       for (const s of slots) {
         expect(isEligible(s.variant, s.gridSize, s.difficulty), JSON.stringify(s)).toBe(true);
+        // A Killer mini can only ever be easy-4×4 or a 6×6 board; a Kakuro mini is always its 6×6.
         if (s.variant === 'killer' && s.gridSize === 4) expect(s.difficulty).toBe('easy');
+        if (s.variant === 'kakuro' && s.section === 'mini') expect(s.gridSize).toBe(6);
+        if (s.variant === 'kakuro' && s.section === 'standard') kakuroStandard++;
+        if (s.variant === 'kakuro' && s.section === 'mini') kakuroMini++;
       }
+    }
+    // Every type is in every standard set; Kakuro sits out the minis about a quarter of the time.
+    expect(kakuroStandard).toBe(300);
+    expect(kakuroMini).toBeGreaterThan(150);
+    expect(kakuroMini).toBeLessThan(300);
+  });
+
+  it('restricted to the Sudoku family, the mini configurations are exactly the pre-D4 set', () => {
+    // 6 seatings of 3 types × hard slot ∈ {4, 6} = 12, minus the 6 that put Killer on a 4×4
+    // medium or hard — the old `PERMS_3 × [4, 6]` enumeration under `isEligible`; easy/medium
+    // always 4×4. (Killer in the easy seat: 2 seatings × 2 hard sizes = 4; Killer in the hard seat
+    // at 6×6: 2 seatings = 2; Killer in the medium seat or a 4×4 hard seat: never.)
+    const configs = miniConfigurations(['classic', 'killer', 'calc']);
+    expect(configs).toHaveLength(6);
+    for (const config of configs) {
+      expect(config.map((a) => a.difficulty)).toEqual(['easy', 'medium', 'hard']);
+      expect(config[0].gridSize).toBe(4);
+      expect(config[1].gridSize).toBe(4);
+      expect([4, 6]).toContain(config[2].gridSize);
+      expect(config.every((a) => isEligible(a.variant, a.gridSize, a.difficulty))).toBe(true);
+    }
+    // With Kakuro seated, its boards are 6×6 wherever it sits.
+    for (const config of miniConfigurations(VARIANTS)) {
+      for (const a of config) if (a.variant === 'kakuro') expect(a.gridSize).toBe(6);
     }
   });
 
@@ -295,6 +335,18 @@ describe('toDailyPuzzleRow', () => {
     expect(row.cages?.[0]).toHaveProperty('target');
     expect(row.clueCount).toBe(puzzle.cages.length);
     expect(row.grid.flat().every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe('toDailyPuzzleRow (Kakuro, R1)', () => {
+  it('stores a Kakuro\'s runs in the cages column with the run count as the display stat', () => {
+    const puzzle = generateKakuro('easy', { gridSize: 6 });
+    const row = toDailyPuzzleRow(puzzle, '2026-10-01', 'mini-easy');
+    expect(row.variant).toBe('kakuro');
+    expect(row.cages).toBe(puzzle.runs);
+    expect(row.clueCount).toBe(puzzle.runs.length);
+    expect(row.grid).toBe(puzzle.grid);
+    expect(row.solution).toBe(puzzle.solution);
   });
 });
 
