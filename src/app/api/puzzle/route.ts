@@ -5,6 +5,8 @@ import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import { generateKakuro, KAKURO_SIZES, type KakuroSize } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
+import { generateUniqueSkyscrapers, tierOf as skyscrapersTierOf } from '@/features/engine/skyscrapers/skyscrapers-generator';
+import { SKYSCRAPERS_LADDER, SKYSCRAPERS_SIZES, type SkyscrapersLevel } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -114,6 +116,34 @@ export async function POST(req: NextRequest) {
         'Generated interactive Kakuro puzzle',
       );
       return NextResponse.json(puzzle, { status: 200 });
+    }
+
+    // ---- Skyscrapers branch (5×5 / 6×6 / 7×7 — plan slice E4) ----
+    if (variant === 'skyscrapers') {
+      if (!(SKYSCRAPERS_LADDER as readonly string[]).includes(difficulty)) {
+        return NextResponse.json({ error: 'Skyscrapers difficulty must be easy, medium, hard, expert, or extreme' }, { status: 400 });
+      }
+      if (!(SKYSCRAPERS_SIZES as readonly number[]).includes(gridSize)) {
+        return NextResponse.json({ error: 'Skyscrapers grid size must be 5, 6, or 7' }, { status: 400 });
+      }
+      // E4: fresh and unique, with clue removal bounded by the requested tier — the puzzle may
+      // land *below* it and the label is the classifier's own (D7). A size may have no square at
+      // the requested tier at all (E3: no 7×7 has an easy floor), so a dozen floors above the
+      // target give up early and the request is served **unbounded** instead, labelled honestly
+      // and logged as a fallback. Landing exactly on the request, and which tiers a size offers,
+      // is E5's job; `served` is logged beside the request so the gap stays measured.
+      const targetTier = skyscrapersTierOf(difficulty as SkyscrapersLevel);
+      const bounded = generateUniqueSkyscrapers({ gridSize, targetTier, maxRounds: 40, maxFloorMisses: 12, timeBudgetMs: 6_000 });
+      const generated = bounded ?? generateUniqueSkyscrapers({ gridSize, timeBudgetMs: 2_000 });
+      if (!generated) {
+        logger.error({ event: 'puzzle_failure', variant: 'skyscrapers', difficulty, gridSize, durationMs: Math.round(performance.now() - startTime) }, 'Skyscrapers generation ran out of budget');
+        return NextResponse.json({ error: 'Could not generate a Skyscrapers puzzle in time — please try again' }, { status: 500 });
+      }
+      logger.info(
+        { event: 'puzzle_success', variant: 'skyscrapers', difficulty, served: generated.puzzle.difficulty, fallback: bounded === null, gridSize, ...generated.stats, durationMs: Math.round(performance.now() - startTime) },
+        'Generated interactive Skyscrapers puzzle',
+      );
+      return NextResponse.json(generated.puzzle, { status: 200 });
     }
 
     // ==========================================

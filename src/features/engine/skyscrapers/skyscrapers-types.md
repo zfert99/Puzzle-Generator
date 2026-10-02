@@ -13,7 +13,9 @@ Two rules and nothing else: every row and column holds each height 1..N once (a 
 each present edge clue equals the number of towers **visible** from that edge, a taller tower
 hiding every shorter one behind it. `SkyscrapersDifficulty` is the five published tiers plus
 `'unrated'` — a puzzle the classifier has not graded. The label comes from the classifier or not
-at all (D7); `SKYSCRAPERS_LADDER` is the five tiers as a value, in order, the one list every
+at all (D7); `SKYSCRAPERS_SIZES` (5 / 6 / 7 — D4, settled by E3's measurement: 9×9 failed both
+gates, 4×4 has no expert tier) is the one list of served sizes the route and the pickers read;
+`SKYSCRAPERS_LADDER` is the five tiers as a value, in order, the one list every
 form, route and fixture iterates.
 
 ## Why the grid is the interior only (D2)

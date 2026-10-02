@@ -20,6 +20,22 @@ label is still the classifier's own, so the log line carries `served` beside the
 500 like the other variants (measured at 0 in 1,500 puzzles across the sizes). E4's bounded
 rejection, its fixture/nearest fallback and the `source` field are gone.
 
+## Skyscrapers branch (plan slice E4 → E5)
+
+When the body has `variant: 'skyscrapers'`, the route validates `difficulty` against
+`SKYSCRAPERS_LADDER` and `gridSize` against `SKYSCRAPERS_SIZES` (5 / 6 / 7 — D4, settled by E3)
+and returns a fresh, unique puzzle from `generateUniqueSkyscrapers` with the clue removal
+**bounded** by the requested tier (`tierOf(difficulty)`): a hard request never serves expert, but
+may serve medium, and the label is the classifier's own (D7). A size may have no square at the
+requested tier at all (E3: an easy 7×7 floor is a one-in-fifty square), so the bounded attempt
+gives up after **12 squares whose fully clued floor sits above the target** (or 40 rounds / 6 s)
+and the request is served **unbounded** instead — labelled honestly and logged with
+`fallback: true`. Serving exactly the requested tier, and which tiers each size offers, is E5's
+job; until then the log line carries `served` and the generator's `stats` (rounds, repair swaps
+and restarts, clues kept, ms) beside the request so the gap stays measured. A generation that
+runs out of budget on both attempts is a 500 with a retry message (measured at 0 in the gate
+run).
+
 ## Why this endpoint exists
 
 The interactive board needs a fresh puzzle on demand. Generating it **server-side**

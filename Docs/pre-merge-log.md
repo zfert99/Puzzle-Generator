@@ -92,6 +92,60 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers E4: the generator behind "New puzzle"
+
+Branch `feature/skyscrapers-e4` on `65fbacc`. Diff: `skyscrapers-generator.ts` (fill →
+repair-with-restart → tier-bounded removal → verify → label) with tests and mirrored doc;
+`SKYSCRAPERS_SIZES` in the types module; a Skyscrapers branch in `/api/puzzle` with an unbounded
+fallback; `usePuzzle` without the fixture short-circuit; menu copy; the e2e spec's clue-count
+assertion; docs (plan E4 step-log, log, roadmap, index, status). **~330 LOC of source.**
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **92 files / 897 tests green** (12 new, 2 rewritten); no entry from the Known flaky tests table fired |
+| Benchmarks | the slice's gate (100 generations per size and level, 60 at 7×7): **0 failures**; mean 5×5 7–10 ms · 6×6 34–51 ms · 7×7 391–782 ms, **except 7×7 easy 3.5 s** (45/60 via the unbounded fallback — a tier-set question for E5, L19). Unbounded medians 6 / 20 / 221 ms |
+| Playwright | the Skyscrapers spec was updated (any clue count in [N − 1, 4N]) but **not run locally** — the only server on port 3000 belongs to another session and may not serve this branch; CI runs it against a production build |
+
+### Findings
+
+- **The gate's own wording hid a tier-set decision.** "0 failures in 100 per size" passes, but a
+  7×7 *easy* request is honourable one square in fifty; a generator bounded to the request either
+  spends its budget or fails. The route now gives up after 12 squares whose all-clue floor sits
+  above the target and serves an unbounded puzzle with its real label and `fallback: true` in the
+  log — degrade honestly, decide in E5 (L19).
+- **The first hook test asserted the behaviour being removed.** `usePuzzle`'s "serves the fixture
+  without touching the network" went red when the short-circuit left; it now asserts the fetch
+  body. The e2e spec pinned the fixture's 15 clues for the same reason.
+- **`maxRounds` 10 was not enough for 6×6 easy** (6/100 failures: a 25% floor rate to the tenth
+  power); 40 rounds and the floor-miss cutoff took it to 0/100 with 3 fallbacks.
+
+### Invariants checked
+
+- Every generated puzzle is unique by the exact verifier (not the budgeted count), has no givens
+  (D3), validates, and carries the classifier's own label (D7) — asserted per size.
+- With a target, removal never exceeds it (asserted on 6×6 medium × 6 seeds and the route's 6×6
+  hard); every kept clue after unbounded removal is load-bearing (blanking any breaks uniqueness).
+- Same seed → same puzzle, end to end.
+
+### Review statements
+
+- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
+  runs `/code-review high` on the PR. `/security-review`: the route's new branch validates the two
+  inputs against closed lists before any work and holds no auth/data access — not required.
+
+### Lessons
+
+- **Read a yield gate against the floor rate per cell, not per size.** "0 failures per size" was
+  true and still left one (size, level) cell that fails three times in four; the per-cell table is
+  the one to look at.
+
+---
+
 ## 2026-10-02 — Skyscrapers E3b: the line-scan re-tier
 
 Branch `feature/skyscrapers-e3b-retier` on `de2d1a3`. Diff: `skyscrapers-logical-solver.ts` (the

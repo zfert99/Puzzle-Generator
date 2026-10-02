@@ -82,9 +82,9 @@ describe('usePuzzle', () => {
   });
 });
 
-describe('usePuzzle — Skyscrapers (plan slice V2)', () => {
-  it('serves the baked fixture for the requested size without touching the network', async () => {
-    const fetchMock = vi.fn();
+describe('usePuzzle — Skyscrapers (plan slice E4)', () => {
+  it('asks the route for a fresh Skyscrapers like every generated type (the V2 fixture short-circuit is gone)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => SKYSCRAPERS_FIXTURE_6X6 });
     vi.stubGlobal('fetch', fetchMock);
 
     const { result } = renderHook(() => usePuzzle());
@@ -93,9 +93,9 @@ describe('usePuzzle — Skyscrapers (plan slice V2)', () => {
       returned = await result.current.fetchPuzzle({ difficulty: 'easy', gridSize: 6, variant: 'skyscrapers' });
     });
 
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(returned).toBe(SKYSCRAPERS_FIXTURE_6X6);
-    expect(result.current.puzzle).toBe(SKYSCRAPERS_FIXTURE_6X6);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ variant: 'skyscrapers', gridSize: 6, difficulty: 'easy' });
+    expect(returned).toEqual(SKYSCRAPERS_FIXTURE_6X6);
     expect(result.current.loading).toBe(false);
   });
 });
