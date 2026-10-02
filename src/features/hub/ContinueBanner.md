@@ -49,3 +49,14 @@ board "practice" in its own header. `ContinueBanner.test.tsx` pins the distincti
 The saved board's section comes from `sectionForKey(saved.difficulty, saved.gridSize)`, not from
 "smaller than 9×9": a saved `hard` Skyscrapers is a 6×6 **standard** and labels as
 "Hard 6×6 · Skyscrapers".
+
+## Clock leaf and contrast (October 2026)
+
+- **The elapsed time is `<SavedElapsed />`**, not `formatElapsed(saved.elapsedTime)`.
+  `useSavedGame` dropped `elapsedTime` so its callers stop re-rendering once a second; the one
+  leaf that draws the clock subscribes to it instead (see
+  [`SavedElapsed`](../interactive-board/components/SavedElapsed.md)).
+- **The "▶" glyph is `aria-hidden`**, so the link's accessible name starts "Continue your
+  puzzle" rather than "black right-pointing triangle".
+- **`text-on-butterscotch`** replaces `text-ink` on the butterscotch bar: `--ink` flips to cream
+  in the dark theme, about 1.5:1 against butterscotch.

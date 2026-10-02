@@ -23,9 +23,9 @@ Select from the store (shallow):
                   modal's `revealErrors`, see `useBoardStore.md`/`DailyExperience.md`),
   isSameNumber  = this cell holds the same non-zero value as the selected cell
                   (highlights every matching number across the board),
-  selValue      = the selected cell's placed value (0 if none/empty) — passed through so
-                  this cell's own candidate render can highlight the one pencil mark
-                  matching it (the candidate-side echo of isSameNumber, see below).
+  candMatch     = the selected cell's placed value IF this empty cell has it pencilled,
+                  else 0 — the one pencil mark this cell highlights (the candidate-side
+                  echo of isSameNumber, see below).
 
 Choose ONE background by precedence: error > selected > same-number > cage-peer > peer.
 Errors win, so a wrong value reads red even while it is the selected cell; a thin
@@ -61,11 +61,18 @@ a plain row/box peer). The check is O(1) per cell via the store's precomputed `c
 
 `isSameNumber` already highlights every other cell holding the same *placed* value as the
 selection. This cell's own candidate render extends that idea to pencil marks: for each of its
-own candidate digits, if it equals `selValue` (and isn't empty), that one `<span>` gets
+own candidate digits, if it equals `candMatch`, that one `<span>` gets
 `.candidateMatch` (grape, bold) instead of the default muted candidate color — so selecting a
 placed "4" now also calls out every *pencil-marked* 4 across the board, not just other placed
-4s. Computed per-digit at render time (a cheap `mask & (1 << i)` check already happening
-anyway), not a new store field.
+4s. Not a new store field: it is derived inside the selector.
+
+**Why `candMatch`, not the raw `selValue` (October 2026):** the selector used to return the
+selected cell's value itself. That value changes for **all N² cells** whenever the selection moves
+between two different digits or a digit is typed, so `useShallow` saw a change everywhere and
+every cell re-rendered — the `React.memo` on `Cell` was defeated on most moves, against the
+INP rule in the section above. The selector now reduces it to the digit this cell actually
+draws as a match (`v === 0` and the bit is set in its mask) or 0. That changes only for the few
+cells that show or stop showing the highlight.
 
 ## Kakuro: black cells and run-mate peers (October 2026)
 

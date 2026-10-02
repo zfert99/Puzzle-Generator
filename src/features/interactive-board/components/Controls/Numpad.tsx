@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
@@ -13,13 +14,19 @@ import { Calculator } from '../Calculator';
  *
  * `showHint` defaults to true (free play). The daily passes `false` — a competitive,
  * one-attempt ranked puzzle shouldn't hand out answers.
+ *
+ * `memo`'d (one stable boolean prop) for the same reason as `Board`: the Experiences re-render
+ * on every timer tick, and this pad's per-digit lockout scan has no reason to run with them.
  */
-export function Numpad({ showHint = true }: { showHint?: boolean }) {
+export const Numpad = memo(function Numpad({ showHint = true }: { showHint?: boolean }) {
   // The digit range is `maxNum`, not `size`: they agree for Sudoku/Killer/Keisan, but a Kakuro
   // takes 1–9 whatever its size.
   const maxNum = useBoardStore((s) => s.config.maxNum);
   const isKiller = useBoardStore((s) => s.variant === 'killer');
   const pencilMode = useBoardStore((s) => s.pencilMode);
+  // Undo/redo only on a live board — a paused game hides the grid, and a move made behind the
+  // "Paused" placeholder is one the player cannot see.
+  const isPlaying = useBoardStore((s) => s.status === 'playing');
   // Which digits have all `size` instances placed (locked out). Never for Kakuro: with no house
   // constraint there is no global per-digit count, so a digit is always available.
   const completed = useBoardStore(
@@ -34,8 +41,8 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
   const togglePencilMode = useBoardStore((s) => s.togglePencilMode);
   const hint = useBoardStore((s) => s.hint);
 
-  const canUndo = useStore(useBoardStore.temporal, (s) => s.pastStates.length > 0);
-  const canRedo = useStore(useBoardStore.temporal, (s) => s.futureStates.length > 0);
+  const canUndo = useStore(useBoardStore.temporal, (s) => s.pastStates.length > 0) && isPlaying;
+  const canRedo = useStore(useBoardStore.temporal, (s) => s.futureStates.length > 0) && isPlaying;
 
   const undo = () => useBoardStore.temporal.getState().undo();
   const redo = () => useBoardStore.temporal.getState().redo();
@@ -69,6 +76,8 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
         <button
           type="button"
           aria-pressed={pencilMode}
+          aria-label="Pencil marks"
+          title="Pencil marks"
           onClick={() => togglePencilMode()}
           className={`py-2 rounded-lg text-sm transition-colors ${
             pencilMode ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper border-2 border-ink hover:bg-paper-2'
@@ -92,4 +101,4 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
       </div>
     </div>
   );
-}
+});

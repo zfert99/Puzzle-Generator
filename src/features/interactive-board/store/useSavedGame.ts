@@ -15,8 +15,6 @@ export interface SavedGame {
   /** Lets continue labels say "Killer · medium" instead of a misleading "9×9 · medium". */
   variant: PuzzleVariant;
   gridSize: GridSize;
-  /** Seconds elapsed (the client timer; frozen while away, resumes on continue). */
-  elapsedTime: number;
   /** UTC date for a daily; `null` for free play. */
   dailyDate: string | null;
 }
@@ -34,6 +32,12 @@ function useHasMounted(): boolean {
  *
  * Returns `null` until mounted so server and first client render agree (the store rehydrates
  * from localStorage only on the client); callers can treat `null` as "nothing to continue".
+ *
+ * Deliberately WITHOUT the clock. `elapsedTime` was in this slice once, and because every
+ * Experience component calls this hook, each of them re-rendered once a second for the whole
+ * of a game — board, numpad and cage overlay included — to refresh a menu label that was not
+ * on screen. The clock is frozen while away and resumes on continue; render it with the
+ * `SavedElapsed` component, which subscribes to it alone.
  */
 export function useSavedGame(): SavedGame | null {
   const mounted = useHasMounted();
@@ -45,7 +49,6 @@ export function useSavedGame(): SavedGame | null {
         difficulty: s.difficulty,
         variant: s.variant,
         gridSize: s.gridSize,
-        elapsedTime: s.elapsedTime,
         dailyDate: s.dailyDate,
       };
     }),

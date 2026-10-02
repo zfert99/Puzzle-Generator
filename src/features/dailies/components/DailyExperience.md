@@ -31,9 +31,12 @@ also keeps generation off the main thread and out of SSR (AGENTS.md §1).
 Until hydrated: render a neutral placeholder (avoids reading persisted state during SSR).
 
 Phase 'select':
-  Show the daily difficulties and a Play button.
+  Slots fetch: loading -> "Loading…" Play button (disabled)
+               failed  -> "Couldn't load today's boards. Retry" (role=alert)
+               empty   -> "Today's boards aren't available right now — check back shortly."
+               ready   -> sectioned pills (aria-pressed) + Play button
   If a daily-shaped board is parked (saved.mode === 'daily'): a "Continue {difficulty} · M:SS"
-    button → handleContinue (restore difficulty/date from the store, resume() if paused,
+    button (M:SS is the <SavedElapsed> leaf) → handleContinue (restore difficulty/date from the store, resume() if paused,
     phase 'playing'; no re-fetch). Captioned with the day it came from when that is not
     today, so the picker never implies a practice board counts for today.
   On Play: if any game is parked (one slot), open the <ConfirmModal> warning first; on
@@ -42,7 +45,9 @@ Phase 'select':
 
 Phase 'playing':
   Render the shared board surface (header, board/paused, numpad, keyboard hints).
-  Run a 1s timer only while actively playing (frozen on the picker / when away).
+  Run the clock via useGameClock only while actively playing (frozen on the picker, when away,
+    and while the tab is hidden).
+  Board full but wrong (useBoardReview) -> the shared <ReviewDialog>.
   On solved: show a modal with time + mistakes and the ranked result; return to the picker.
 ```
 
@@ -59,7 +64,7 @@ place the key can be checked against the boards today actually rolled, so an unv
 enters state at all. Precedence: a valid `?slot=` wins, else the current key if today rolled it,
 else `slots[0]`.
 
-Seeding it straight into `useState` looked equivalent and was not: the reconciliation sits behind
+Seeding it straight into `useState` looked equivalent and was not: the reconciliation sat behind
 `if (!d?.slots?.length) return;` with a bare `.catch(() => {})`, so a failed or empty slots fetch
 would have left the raw URL value sitting in state. Nothing rendered it — which is why the bug was
 inert and, deliberately, has no e2e test: an assertion there passed against the broken code too.
@@ -102,8 +107,8 @@ competitive daily (they'd hand out answers), while free play keeps them.
 
 > The solved modal is the shared
 > [SolvedDialog](../../interactive-board/components/SolvedDialog.md) (September 2026
-> extraction), which renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky
-> stamp badge + confetti + screen-flash, reduced-motion-safe) in place of the old
+> extraction), which renders the [SolvedStamp](../../juice/SolvedStamp.md) (chunky
+> stamp badge + confetti + screen-flash, reduced-motion-safe; CSS keyframes since October 2026) in place of the old
 > emoji/`celebrate` CSS (5.3a); the ranked-result block rides in as its children. Chaos layer (5.5): the select screen also adds a
 > MarqueeTicker, a corner Sticker ("play me!"), and a Tape strip on the card — chrome
 > decoration only; the board itself stays clean.
@@ -151,13 +156,23 @@ scroll on desktop while the mobile layout is unchanged.
 ## Full-board review (July 2026)
 
 Dailies give no live error feedback, so completion is judged on **fullness**, not correctness.
-When every cell is filled:
+When every editable cell is filled:
 
 - correct → the existing "Daily solved!" (won) modal + ranked submit; otherwise
 - incorrect → a **"Not quite!"** modal reporting how many cells are wrong (`wrongCount`) —
   *not which* — with a "Keep looking" dismiss. The dismissal resets whenever the board drops
   below full (adjust-state-during-render keyed on previous fullness), so each re-fill reports a
   fresh count. `status === 'solved'` suppresses the review modal, so the two never overlap.
+
+**Moved to `useBoardReview` + `ReviewDialog` (October 2026) — and the Kakuro bug it fixes.** The
+fullness check, `wrongCount`, the dismissal/`wasFull` dance and the dialog markup all lived inline
+here. The check asked "is every cell non-zero?", which a Kakuro can never pass: its black cells
+are stored as 0 (and marked as givens). So a full-but-wrong Kakuro daily never opened the review,
+and since that dialog is the only route to `revealErrors` on a daily, the player got no signal at
+all. The shared [`useBoardReview`](../../interactive-board/hooks/useBoardReview.md) counts only
+editable cells, and [`ReviewDialog`](../../interactive-board/components/ReviewDialog.md) carries
+the markup and its focus wiring. The archive replay now uses the same pair. A side effect: this
+component no longer subscribes to `grid`/`solution`, so it stops re-rendering on every keystroke.
 
 ### Opt-in error reveal (July 2026)
 
@@ -174,7 +189,7 @@ passive default: the board otherwise stays hand-holding-free per the rule above,
 Both overlay dialogs — "Daily solved" and the full-board "Not quite!" review — move focus to
 their primary button on open and restore it on close. The solved dialog gets this from inside
 the shared [SolvedDialog](../../interactive-board/components/SolvedDialog.md); the review
-dialog still wires the `useDialogFocus` hook directly (see
+dialog's wiring moved with it into the shared `ReviewDialog` in October 2026 (see
 `interactive-board/hooks/useDialogFocus.md`). For the review dialog the restore is the useful
 half: "Keep looking" returns focus to the exact gridcell the player was on, so they resume
 fixing cells without re-establishing position.
@@ -188,3 +203,31 @@ narrows with the runtime guard `isDailyVariant` and, should an unregistered vari
 this surface (a routing bug), falls back to the bare key label rather than inventing a type.
 (The first version used a type assertion; a review finding replaced it — an assertion would
 have handed `slotLabel` an unregistered variant with nothing to point at.)
+
+## Site-wide QA pass (October 2026)
+
+- **`useGameClock` replaces the inline `setInterval(tick)` effect.** The shared hook also stops
+  the clock while the tab is hidden, so a ranked time no longer counts minutes spent in another
+  tab by a browser-dependent amount (see
+  [`useGameClock`](../../interactive-board/hooks/useGameClock.md)).
+- **`<SavedElapsed />` replaces `formatElapsed(saved.elapsedTime)`** in the Continue button.
+  `useSavedGame` no longer carries `elapsedTime`, so a running clock no longer re-renders this
+  whole component once a second just to update a label that is only on the picker (see
+  [`SavedElapsed`](../../interactive-board/components/SavedElapsed.md)).
+- **`slotsState`: `loading` / `ready` / `empty` / `failed`.** The slots fetch used to swallow a
+  failure (`.catch(() => {})`) and an empty answer, leaving a picker with no boards that still
+  offered "Play Easy" for a board that might not exist. A non-2xx now rejects; each outcome has
+  its own UI, the Play button is disabled while loading, and a failure shows a **Retry** button
+  that bumps `slotsAttempt` — an effect dependency, so retrying re-runs the same effect instead of
+  duplicating the fetch.
+- **Picker semantics (QA F10).** Section headings were `<label>`s that labelled nothing; they are
+  now `<span id>`s naming a `role="group"` via `aria-labelledby`. Pills carry `aria-pressed`, so
+  the selection is announced rather than carried by colour alone. The ✓ on a completed board is
+  `aria-hidden` with an sr-only "(solved)".
+- **The ranked-result line is `role="status"`.** It changes from "Submitting…" to "Ranked #N"
+  after focus has already landed on the dialog, and nothing else would re-read it (WCAG 4.1.3).
+  Error paragraphs are `role="alert"`.
+- **Contrast tokens.** The selected pill uses `text-on-butterscotch` (`--ink` flips to cream in
+  dark mode, about 1.5:1 on butterscotch); the solved line uses `text-mint-text` and the expired /
+  submit-error lines `text-warn-text`, because the fill-grade mint and butterscotch-dark fail
+  WCAG 1.4.3 as small text on paper.

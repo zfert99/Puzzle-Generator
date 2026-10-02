@@ -70,9 +70,13 @@ export function GameHeader() {
   const isDaily = mode === 'daily';
   const showMistakes = isDaily ? status === 'solved' : errorHighlight;
 
+  // `flex-wrap` + `whitespace-nowrap` on the two text groups (October 2026): at phone widths the
+  // three groups did not fit on one line, so instead of wrapping as groups the label broke
+  // across two lines and the mistakes counter stacked its "✗" above its digit. Now the button
+  // row drops to a second line whole, and the label and counter stay single-line.
   return (
-    <div className="w-full max-w-[520px] mx-auto mb-4 flex items-center justify-between gap-4 text-sm">
-      <span className="capitalize font-medium">
+    <div className="w-full max-w-[520px] mx-auto mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:gap-x-4 text-sm">
+      <span className="capitalize font-medium whitespace-nowrap">
         {/* A Kakuro's difficulty is the classifier's label, or the literal 'unrated' — never a
             placeholder dressed as a grade (Kakuro plan D8). */}
         {difficulty} · {size}×{size}
@@ -94,7 +98,7 @@ export function GameHeader() {
         {showMistakes && (
           // Same naming-prohibited fix: real (visually hidden) text instead of an aria-label on
           // a generic span, so no screen reader falls back to reading "✗" as "ballot X".
-          <span className="text-ink-soft tabular-nums" title="Mistakes">
+          <span className="text-ink-soft tabular-nums whitespace-nowrap" title="Mistakes">
             <span aria-hidden="true">✗ </span>
             {mistakes}
             <span className="sr-only"> mistake{mistakes === 1 ? '' : 's'}</span>

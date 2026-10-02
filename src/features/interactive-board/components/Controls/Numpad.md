@@ -13,10 +13,10 @@ Render digit buttons 1..maxNum -> inputDigit(digit).
   (completion lockout) — counts are derived from the grid via a useShallow selector.
   Never for Kakuro: with no house constraint there is no per-digit count.
 Render Erase -> clearCell.
-Render Pencil toggle with aria-pressed = pencilMode -> togglePencilMode.
+Render Pencil toggle (aria-label "Pencil marks", aria-pressed = pencilMode) -> togglePencilMode.
 Render Hint -> hint() (reveal one correct cell).
 Render Undo / Redo -> useBoardStore.temporal.getState().undo()/redo();
-  each is disabled when its stack is empty.
+  each is disabled when its stack is empty OR the game is not 'playing'.
 Render Calculator (Killer only) -> a self-contained trigger+popup, see Calculator.md.
 ```
 
@@ -32,3 +32,15 @@ daily) and `isKiller` (`s.variant === 'killer'`, only true in Killer games). Fou
 (`grid-cols-4`/`grid-cols-5`/`grid-cols-6`) via a nested ternary — Tailwind's class scanner
 needs each complete class name to appear literally in source, so this can't be a computed
 `` `grid-cols-${n}` `` string.
+
+## October 2026: memo, a named pencil button, undo only while playing
+
+- **`Numpad` is `memo`'d** (its one prop is a stable boolean). The Experience components
+  re-render on every timer tick; without `memo` the pad re-ran its per-digit lockout scan with
+  them for no reason. Same reasoning as `Board` (see `Board.md`).
+- **The pencil toggle has `aria-label` / `title` "Pencil marks".** Its only content is the ✏️
+  emoji, which a screen reader reads as "pencil" (or not at all) — not the control's purpose.
+- **Undo/Redo are disabled unless `status === 'playing'`.** A paused game hides the grid behind
+  the "Paused" placeholder, so an undo there changes a board the player cannot see. This matches
+  the keyboard shortcut's gate in `Board`. The selected pencil state uses
+  `text-on-butterscotch` for dark-mode contrast.

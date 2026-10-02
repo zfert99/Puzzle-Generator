@@ -5,8 +5,7 @@ import type { SudokuPuzzle, GridSize, GridConfig, Difficulty } from '@/features/
 import { getGridConfig } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
-import { OPERATOR_SYMBOL } from '@/features/engine/calc/calc-types';
-import { calcGridConfig } from '@/features/engine/calc/calc-generator';
+import { OPERATOR_SYMBOL, calcGridConfig } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
 import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
 import type { KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
@@ -14,8 +13,52 @@ import type { SkyscrapersTechnique } from '@/features/engine/skyscrapers/skyscra
 import type { SkyscraperClues, SkyscrapersPuzzle, GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { GUTTER_SIDES, clueFlatIndex, skyscrapersGridConfig } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { computePeers, toggleBit } from '../board-utils';
-import { deduceHintFor } from '../hint-deducers';
 import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
+
+/**
+ * The solver-driven hint deducers (`hint-deducers.ts`) pull the Kakuro and Skyscrapers exact +
+ * logical solvers into whatever bundle imports this store — which, via `useSavedGame`, is every
+ * route including the hub and `/daily` (where Hint is disabled). A static import had put
+ * ~13 KB gzipped of solver code on the landing page for a feature it never uses, and made the
+ * performance audit's "the solver never enters the client bundle" claim false. The module is
+ * loaded on demand instead: `startNewGame` (and rehydration) kick the load off for the two
+ * variants that need it, so by the time a player can press Hint it has long since arrived; if
+ * one somehow lands first, that hint is a plain reveal and the next one deduces.
+ */
+type HintDeducers = typeof import('../hint-deducers');
+let hintDeducers: HintDeducers | null = null;
+let hintDeducersLoading: Promise<HintDeducers> | null = null;
+
+/** Start loading the deducers (idempotent). Exported so tests can await it before hinting. */
+export function preloadHintDeducers(): Promise<HintDeducers> {
+  if (hintDeducers) return Promise.resolve(hintDeducers);
+  hintDeducersLoading ??= import('../hint-deducers').then(
+    (m) => {
+      hintDeducers = m;
+      return m;
+    },
+    (err: unknown) => {
+      // A failed chunk load (offline, a stale deploy's hash — or, in tests, a worker torn down
+      // mid-import) must not poison every later attempt: forget the promise so the next game
+      // or hint retries, and let the caller decide whether the failure matters.
+      hintDeducersLoading = null;
+      throw err;
+    },
+  );
+  return hintDeducersLoading;
+}
+
+/**
+ * Fire-and-forget load from inside the store. A hint that outruns a load — or a load that fails
+ * outright — just falls back to a plain reveal, so the rejection is deliberately swallowed here
+ * rather than surfacing as an unhandled promise (which, in the test runner, failed the suite
+ * when a worker tore down while a dev-badge test's import was still in flight).
+ */
+function kickHintDeducers(): void {
+  preloadHintDeducers().catch(() => {});
+}
+
+const hasSolverHints = (variant: PuzzleVariant): boolean => variant === 'kakuro' || variant === 'skyscrapers';
 
 /**
  * Classic Sudoku, Killer, Keisan (display name; slug `calc`), Kakuro, or Skyscrapers — the board
@@ -235,10 +278,20 @@ const initialConfig = getGridConfig(9);
  * ONLY `grid` and `candidates`. Excluding the timer, status, and selection keeps
  * the history stack to genuine puzzle moves — a per-second timer tick must never
  * create an undo entry, and an undo must not rewind the clock (research §3.2).
+ *
+ * Middleware order is `persist(temporal(...))` — persist OUTSIDE — and it matters. zundo's
+ * `undo`/`redo` write through the raw `set` the middleware was handed, so with temporal on
+ * the outside that write bypassed persist entirely: an undo changed the board on screen but
+ * localStorage kept the pre-undo grid until the next unrelated `set` (the timer tick, up to a
+ * second later), and a reload inside that window resurrected the undone move. The same order
+ * also made persist's hydration `set` run through temporal's wrapper before the store existed,
+ * which threw inside persist's promise chain — swallowed, but `hasHydrated()` never flipped and
+ * `onFinishHydration` never fired. With persist outermost, undo/redo persist like any other
+ * move and hydration uses the raw set, so it records no history entry and throws nothing.
  */
 export const useBoardStore = create<BoardState>()(
-  temporal(
-    persist(
+  persist(
+    temporal(
       (set, get) => ({
       gridSize: 9,
       config: initialConfig,
@@ -331,6 +384,7 @@ export const useBoardStore = create<BoardState>()(
         // Drop any history from a previous game so the first move can't be undone
         // "before" the puzzle started.
         useBoardStore.temporal.getState().clear();
+        if (hasSolverHints(variant)) kickHintDeducers();
       },
 
       configure: () => set({ status: 'configuring', selectedCell: null }),
@@ -338,8 +392,11 @@ export const useBoardStore = create<BoardState>()(
       selectCell: (r, c) => set({ selectedCell: { r, c } }),
 
       inputDigit: (digit: number) => {
-        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution, mistakes, variant, cages, runs } = get();
+        const { selectedCell, status, givens, grid, candidates, pencilMode, peers, config, solution, mistakes, variant, cages, cellToCage, runs } = get();
         if (status !== 'playing' || !selectedCell) return;
+        // The UI already bounds digits to 1..maxNum (keyboard and numpad); the store guards
+        // too, so no caller can plant a 7 on a 4×4 or shift a candidate bit off the end.
+        if (!Number.isInteger(digit) || digit < 1 || digit > config.maxNum) return;
         const { r, c } = selectedCell;
         if (givens[r][c]) return; // never edit a given clue
 
@@ -382,7 +439,10 @@ export const useBoardStore = create<BoardState>()(
           // as a mistake; this just keeps candidates honest).
           if (variant === 'killer') {
             const cellIdx = r * config.size + c;
-            const cage = cages.find((cg) => cg.cells.includes(cellIdx));
+            // O(1) cage lookup via the precomputed map (the same one the cells' highlight
+            // selectors use) rather than scanning every cage's cell list per keystroke.
+            const cageId = cellToCage[cellIdx] ?? -1;
+            const cage = cageId === -1 ? undefined : cages.find((cg) => cg.id === cageId);
             if (cage) {
               for (const cell of cage.cells) {
                 if (cell === cellIdx) continue;
@@ -430,18 +490,22 @@ export const useBoardStore = create<BoardState>()(
         // A variant with a solver behind it (Kakuro, Skyscrapers — see `hint-deducers.ts`) gets a
         // DEDUCTION, not a reveal, whenever the solver can make one from the board as it stands
         // and the deduced digit agrees with the solution. Nothing usable falls through to the
-        // plain reveal below.
-        const deduced = deduceHintFor(variant, {
-          grid,
-          solution,
-          config,
-          preferredCell: selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c) ? selectedCell.r * config.size + selectedCell.c : null,
-          runs,
-          edgeClues,
-        });
-        if (deduced) {
-          target = deduced.target;
-          note = deduced.note;
+        // plain reveal below. The deducers are lazy-loaded (see `preloadHintDeducers`); a hint
+        // that outruns the load — only possible within milliseconds of a game starting — reveals.
+        if (hasSolverHints(variant)) {
+          if (!hintDeducers) kickHintDeducers();
+          const deduced = hintDeducers?.deduceHintFor(variant, {
+            grid,
+            solution,
+            config,
+            preferredCell: selectedCell && isEditableEmpty(selectedCell.r, selectedCell.c) ? selectedCell.r * config.size + selectedCell.c : null,
+            runs,
+            edgeClues,
+          });
+          if (deduced) {
+            target = deduced.target;
+            note = deduced.note;
+          }
         }
 
         // Otherwise prefer the selected empty cell, else reveal the first empty cell.
@@ -456,7 +520,12 @@ export const useBoardStore = create<BoardState>()(
             }
           }
         }
-        if (!target) return;
+        // A full board with nothing left to reveal: the only way it is not solved is that something
+        // on it is wrong, and silently doing nothing read as a broken button. Say so instead.
+        if (!target) {
+          set({ lastHint: { cell: -1, digit: 0, technique: null, explanation: 'Every cell is filled — at least one is wrong. Check your entries.', leadUp: [] } });
+          return;
+        }
 
         const { r, c } = target;
         const value = solution[r][c];
@@ -498,6 +567,23 @@ export const useBoardStore = create<BoardState>()(
       pause: () => set(state => (state.status === 'playing' ? { status: 'paused' } : {})),
       resume: () => set(state => (state.status === 'paused' ? { status: 'playing' } : {})),
     }),
+      {
+        // Only puzzle progress is time-travelled; ephemeral UI/session state is excluded. A
+        // Skyscrapers "marked done" clue is progress too (D9) — undo takes it back like a digit.
+        partialize: (state) => ({ grid: state.grid, candidates: state.candidates, doneClues: state.doneClues }),
+        limit: 100,
+        // Reference check first, deep check only when a reference moved. Every action that
+        // touches progress replaces the array it changes, and nothing mutates one in place, so
+        // identical references mean "no move" — which is what the timer tick, a selection
+        // change and a pause all look like. Those used to pay two JSON.stringify calls of the
+        // whole grid per second just to learn nothing changed. The deep comparison stays for
+        // the rare action that rebuilds an array with the same contents (a toggle back and
+        // forth), so the history records exactly what it did before.
+        equality: (a, b) =>
+          (a.grid === b.grid && a.candidates === b.candidates && a.doneClues === b.doneClues) ||
+          JSON.stringify(a) === JSON.stringify(b),
+      }
+    ),
       {
         // Persist the in-progress game to localStorage so a refresh resumes it.
         // Actions are dropped by JSON serialization and re-supplied by the creator;
@@ -557,16 +643,11 @@ export const useBoardStore = create<BoardState>()(
             merged.cellToRuns = buildCellToRuns(runs, merged.config.size);
             merged.clues = buildClues(runs, merged.config.size);
           }
+          // A resumed Kakuro/Skyscrapers never passes through `startNewGame`, so its deducers are
+          // kicked off here instead (see `preloadHintDeducers`).
+          if (merged.variant && hasSolverHints(merged.variant)) kickHintDeducers();
           return merged;
         },
       }
-    ),
-    {
-      // Only puzzle progress is time-travelled; ephemeral UI/session state is excluded. A
-      // Skyscrapers "marked done" clue is progress too (D9) — undo takes it back like a digit.
-      partialize: (state) => ({ grid: state.grid, candidates: state.candidates, doneClues: state.doneClues }),
-      limit: 100,
-      equality: (a, b) => JSON.stringify(a) === JSON.stringify(b),
-    }
   )
 );

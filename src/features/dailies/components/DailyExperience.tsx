@@ -5,14 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
-import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
+import { useSavedGame } from '@/features/interactive-board/store/useSavedGame';
+import { SavedElapsed } from '@/features/interactive-board/components/SavedElapsed';
+import { useGameClock } from '@/features/interactive-board/hooks/useGameClock';
+import { useBoardReview } from '@/features/interactive-board/hooks/useBoardReview';
+import { ReviewDialog } from '@/features/interactive-board/components/ReviewDialog';
 import { Board } from '@/features/interactive-board/components/Board/Board';
 import { Numpad } from '@/features/interactive-board/components/Controls/Numpad';
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
 import { SolvedDialog } from '@/features/interactive-board/components/SolvedDialog';
-import { useDialogFocus } from '@/features/interactive-board/hooks/useDialogFocus';
 import { UsernamePrompt } from '@/features/auth/components/UsernamePrompt';
 import { Sticker } from '@/features/chaos/Sticker';
 import { Tape } from '@/features/chaos/Tape';
@@ -91,26 +94,30 @@ export default function DailyExperience() {
     Record<string, { timeMs: number; rank: number | null }>
   >({});
   const [slots, setSlots] = useState<DailySlotInfo[]>([]);
+  /**
+   * How the slots fetch settled. `loading` → `ready` (boards), `empty` (the day has none yet —
+   * the roller has been late before) or `failed` (network / non-2xx). The failure used to be
+   * swallowed, leaving a picker with no boards that still offered "Play Easy" for a board that
+   * might not exist; now each outcome is told, and a failure can be retried.
+   */
+  const [slotsState, setSlotsState] = useState<'loading' | 'ready' | 'empty' | 'failed'>('loading');
+  const [slotsAttempt, setSlotsAttempt] = useState(0);
   const submittedRef = useRef(false);
 
   const { loading, error, fetchDaily } = useDaily();
   // `variant`/`gridSize` describe the board actually loaded. They are read here so the playing
   // header can label the board in front of the player rather than looking its key up in TODAY's
   // slots — see `playingLabel` below.
-  const { status, grid, solution, errorsRevealed, boardVariant, boardGridSize } = useBoardStore(
+  const { status, errorsRevealed, boardVariant, boardGridSize } = useBoardStore(
     useShallow((s) => ({
       status: s.status,
-      grid: s.grid,
-      solution: s.solution,
       errorsRevealed: s.errorsRevealed,
       boardVariant: s.variant,
       boardGridSize: s.gridSize,
     })),
   );
-  const [reviewDismissed, setReviewDismissed] = useState(false);
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const resume = useBoardStore((s) => s.resume);
-  const tick = useBoardStore((s) => s.tick);
   const revealErrors = useBoardStore((s) => s.revealErrors);
 
   const saved = useSavedGame();
@@ -141,42 +148,28 @@ export default function DailyExperience() {
   // but not rankable. Derived here so the solved modal can say so without a setState-in-effect.
   const isExpiredDaily = dailyDate !== '' && dailyDate !== todayIso;
 
-  // Dailies give no live error feedback, so completion is checked on FULLNESS, not correctness:
-  // when every cell is filled, either it's solved (the "you won" modal) or we tell the player
-  // how many cells are wrong (without which). `wrongCount` counts currently-incorrect cells.
-  const isFull = grid.length > 0 && grid.every((row) => row.every((v) => v !== 0));
-  const wrongCount = isFull
-    ? grid.reduce((acc, row, r) => acc + row.reduce((a, v, c) => a + (v !== solution[r][c] ? 1 : 0), 0), 0)
-    : 0;
-  // Let the review modal re-appear each time the board is re-filled: clear the dismissal once
-  // the board is no longer full (adjust-state-during-render, keyed on the previous fullness).
-  const [wasFull, setWasFull] = useState(isFull);
-  if (isFull !== wasFull) {
-    setWasFull(isFull);
-    if (!isFull) setReviewDismissed(false);
-  }
-  const showReview = phase === 'playing' && isFull && status !== 'solved' && !reviewDismissed;
+  // Dailies give no live error feedback, so completion is checked on FULLNESS, not correctness
+  // (`useBoardReview`): when every editable cell is filled, either it's solved (the "you won"
+  // modal) or the review dialog tells the player how many cells are wrong (without which).
+  const { showReview, wrongCount, dismissReview } = useBoardReview(phase === 'playing');
 
-  // F7: the review dialog must take focus when it appears — the active element otherwise
-  // stays on a gridcell behind the backdrop, and typing keeps going into the board. (The
-  // solved dialog gets the same wiring from inside `SolvedDialog`.)
-  const reviewPrimaryRef = useDialogFocus<HTMLButtonElement>(showReview);
-
-  // Timer: one interval, active only while actively playing the daily (not on the picker).
-  useEffect(() => {
-    if (phase !== 'playing' || status !== 'playing') return;
-    const id = setInterval(() => tick(), 1000);
-    return () => clearInterval(id);
-  }, [phase, status, tick]);
+  // Timer: active only while actively playing the daily (not on the picker), and only while the
+  // tab is visible (see `useGameClock`).
+  useGameClock(phase === 'playing' && status === 'playing');
 
   // Today's boards (type-as-slot: the type is rolled per day and stored, so the client must fetch
   // which type each slot holds today). Seeds the selected difficulty to the first real slot.
   useEffect(() => {
     let active = true;
     fetch(apiPath('/api/daily/slots'))
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`slots responded ${r.status}`))))
       .then((d) => {
-        if (!active || !d?.slots?.length) return;
+        if (!active) return;
+        if (!d?.slots?.length) {
+          setSlotsState('empty');
+          return;
+        }
+        setSlotsState('ready');
         setSlots(d.slots);
         const rolled = (key: string | null) => Boolean(key) && d.slots.some((s: DailySlotInfo) => s.key === key);
         // Precedence: an explicit, VALID `?slot=` wins; else keep the current key if today rolled
@@ -184,13 +177,16 @@ export default function DailyExperience() {
         // never survives — it is simply not preferred.
         setDifficulty((cur) => (rolled(wantedSlot) ? (wantedSlot as DailyDifficulty) : rolled(cur) ? cur : d.slots[0].key));
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setSlotsState('failed');
+      });
     return () => {
       active = false;
     };
   // `wantedSlot` is a real dependency: a client-side nav that changes `?slot=` should re-apply
-  // it. Refetching the day's slots alongside is cheap and keeps the two in step.
-  }, [wantedSlot]);
+  // it. Refetching the day's slots alongside is cheap and keeps the two in step. `slotsAttempt`
+  // is the Retry button.
+  }, [wantedSlot, slotsAttempt]);
 
   // Which of today's dailies this user has already completed (one attempt per day).
   useEffect(() => {
@@ -369,7 +365,7 @@ export default function DailyExperience() {
                 onClick={handleContinue}
                 className="btn-primary w-full text-lg flex justify-center items-center"
               >
-                Continue {formatDailyKey(saved.difficulty)} · {formatElapsed(saved.elapsedTime)}
+                Continue {formatDailyKey(saved.difficulty)} · <SavedElapsed />
               </button>
               {/*
                 This button sits under "Today's Daily", but the parked board is only today's when
@@ -395,12 +391,15 @@ export default function DailyExperience() {
             .filter(([section]) => slots.some((s) => s.section === section))
             .map(([section, heading]) => (
             <div key={section} className="mb-4">
-              <label className="block text-sm font-medium text-ink-soft mb-2 text-center">{heading}</label>
-              <div className="flex flex-wrap justify-center gap-2">
+              {/* A span + aria-labelledby, not a <label> (which labelled nothing), and aria-pressed
+                  so the selection is announced rather than carried by colour alone (QA F10). */}
+              <span id={`daily-section-${section}`} className="block text-sm font-medium text-ink-soft mb-2 text-center">{heading}</span>
+              <div role="group" aria-labelledby={`daily-section-${section}`} className="flex flex-wrap justify-center gap-2">
                 {slots.filter((s) => s.section === section).map((s) => (
                   <button
                     key={s.key}
                     type="button"
+                    aria-pressed={difficulty === s.key}
                     onClick={() => setDifficulty(s.key)}
                     className={`px-3 py-2 rounded-lg text-sm transition-all ${
                       difficulty === s.key
@@ -421,9 +420,20 @@ export default function DailyExperience() {
             </div>
           ))}
 
-          {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
+          {error && <p role="alert" className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
-          {completedToday[difficulty] ? (
+          {slotsState === 'failed' ? (
+            <p role="alert" className="text-center text-sm text-ink-soft">
+              Couldn&apos;t load today&apos;s boards.{' '}
+              <button type="button" onClick={() => { setSlotsState('loading'); setSlotsAttempt((n) => n + 1); }} className="text-grape underline">
+                Retry
+              </button>
+            </p>
+          ) : slotsState === 'empty' ? (
+            <p className="text-center text-sm text-ink-soft">
+              Today&apos;s boards aren&apos;t available right now — check back shortly.
+            </p>
+          ) : completedToday[difficulty] ? (
             <div className="text-center">
               <p className="text-mint-text font-semibold mb-1">
                 ✓ Solved in {formatTime(Math.round(completedToday[difficulty].timeMs / 1000))}
@@ -440,10 +450,10 @@ export default function DailyExperience() {
             <button
               type="button"
               onClick={() => handlePlay(difficulty)}
-              disabled={loading}
+              disabled={loading || slotsState === 'loading'}
               className="btn-primary w-full text-lg flex justify-center items-center"
             >
-              {loading ? 'Loading…' : `Play ${selectedLabel}`}
+              {loading || slotsState === 'loading' ? 'Loading…' : `Play ${selectedLabel}`}
             </button>
           )}
         </div>
@@ -512,8 +522,10 @@ export default function DailyExperience() {
             </Link>
           }
         >
-          {/* Ranked-flow result — derived from session + submit (no synchronous setState). */}
-          <div className="min-h-[1.5rem] text-sm">
+          {/* Ranked-flow result — derived from session + submit (no synchronous setState). A
+              status region: it changes from "Submitting…" to "Ranked #N" after focus has landed
+              on the dialog, and nothing re-reads it otherwise (WCAG 4.1.3). */}
+          <div role="status" className="min-h-[1.5rem] text-sm">
             {isExpiredDaily ? (
               <span className="text-warn-text">This daily has expired — play today’s for a rank.</span>
             ) : !session ? (
@@ -536,47 +548,18 @@ export default function DailyExperience() {
         </SolvedDialog>
       )}
 
-      {/* Board full but not correct — tell the player how many cells are wrong (not which), and
-          let them go back to fix them. Dailies have no live error feedback, so this is the
-          moment they learn their count. They can optionally opt into highlighting from here
-          (revealErrors) rather than hunt blind — a one-way reveal for the rest of this attempt. */}
-      {showReview && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Board full"
-        >
-          <div className="rounded-2xl border-[3px] border-ink bg-paper-2 p-8 max-w-sm w-full text-center shadow-chunky">
-            <div className="text-4xl mb-2" aria-hidden="true">🔍</div>
-            <h2 className="font-display text-2xl mb-1">Not quite!</h2>
-            <p className="text-sm text-ink-soft mb-6">
-              The board is full, but{' '}
-              <strong className="text-ink">
-                {wrongCount} cell{wrongCount === 1 ? ' is' : 's are'}
-              </strong>{' '}
-              still incorrect. Find and fix {wrongCount === 1 ? 'it' : 'them'} to solve the daily.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button ref={reviewPrimaryRef} type="button" onClick={() => setReviewDismissed(true)} className="btn-primary">
-                Keep looking
-              </button>
-              {!errorsRevealed && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    revealErrors();
-                    setReviewDismissed(true);
-                  }}
-                  className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
-                >
-                  Show me what&apos;s wrong
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Board full but not correct — the shared review dialog (see `ReviewDialog`): how many
+          cells are wrong (not which), and an opt-in to highlighting for the rest of this attempt. */}
+      <ReviewDialog
+        open={showReview}
+        wrongCount={wrongCount}
+        errorsRevealed={errorsRevealed}
+        onKeepLooking={dismissReview}
+        onReveal={() => {
+          revealErrors();
+          dismissReview();
+        }}
+      />
     </div>
   );
 }

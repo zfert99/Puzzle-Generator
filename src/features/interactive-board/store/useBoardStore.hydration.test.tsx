@@ -107,3 +107,33 @@ describe('rehydrating a saved Skyscrapers game', () => {
     expect(s.blocked).toEqual([]);
   });
 });
+
+describe('undo/redo write through to storage (persist outside temporal)', () => {
+  it('an undo is in localStorage immediately, not on the next tick', () => {
+    useBoardStore.getState().startNewGame(generateKillerSudoku('easy', { gridSize: 4 }));
+    const s = useBoardStore.getState();
+    const target = s.givens.flat().findIndex((given) => !given);
+    const r = Math.floor(target / 4);
+    const c = target % 4;
+    s.selectCell(r, c);
+    s.inputDigit(s.solution[r][c]);
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).state.grid[r][c]).toBe(s.solution[r][c]);
+
+    useBoardStore.temporal.getState().undo();
+
+    // zundo's undo/redo write through the raw `set` the middleware was handed. With temporal
+    // OUTSIDE persist that set bypassed persist, so storage kept the pre-undo grid until the
+    // timer's next tick — and a reload inside that second resurrected the undone move.
+    expect(useBoardStore.getState().grid[r][c]).toBe(0);
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).state.grid[r][c]).toBe(0);
+  });
+
+  it('hydration records no undo history and completes (hasHydrated flips)', async () => {
+    useBoardStore.getState().startNewGame(generateKillerSudoku('easy', { gridSize: 4 }));
+    snapshotAndWipe();
+    useBoardStore.temporal.getState().clear();
+    await useBoardStore.persist.rehydrate();
+    expect(useBoardStore.persist.hasHydrated()).toBe(true);
+    expect(useBoardStore.temporal.getState().pastStates).toHaveLength(0);
+  });
+});
