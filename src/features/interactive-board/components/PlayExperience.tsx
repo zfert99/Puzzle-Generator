@@ -36,14 +36,19 @@ function useHasMounted(): boolean {
  * to the menu — or leaving the page — freezes it, and Continue resumes from where it stopped.
  */
 
-type PlayVariant = 'classic' | 'killer' | 'calc' | 'kakuro';
+type PlayVariant = 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers';
 
-/** The sizes each type offers on this menu. Kakuro's are its own (plan rule D11), not 4/6/9. */
+/**
+ * The sizes each type offers on this menu. Kakuro's and Skyscrapers' are their own (plan rule
+ * D11), not 4/6/9 — Skyscrapers at 5/6/7 is the plan's D4, planned at the research
+ * recommendation and still measured by E3.
+ */
 const SIZES: Record<PlayVariant, readonly SelectableSize[]> = {
   classic: [4, 6, 9],
   killer: [6, 9],
   calc: [4, 6, 9],
   kakuro: [6, 7, 9],
+  skyscrapers: [5, 6, 7],
 };
 
 const VARIANT_LABEL: Record<PlayVariant, string> = {
@@ -51,19 +56,21 @@ const VARIANT_LABEL: Record<PlayVariant, string> = {
   killer: 'Killer',
   calc: 'Keisan',
   kakuro: 'Kakuro',
+  skyscrapers: 'Skyscrapers',
 };
 
 function parseVariant(value: string | null): PlayVariant {
-  return value === 'killer' || value === 'calc' || value === 'kakuro' ? value : 'classic';
+  return value === 'killer' || value === 'calc' || value === 'kakuro' || value === 'skyscrapers' ? value : 'classic';
 }
 
 /**
- * Expert and Extreme are 9×9-only for the Sudoku family; Kakuro ships its full ladder at every
- * size. The one rule every lock decision uses (the picker, and the clamps on switching type or
- * size), so a new size or type changes it in one place.
+ * Expert and Extreme are 9×9-only for the Sudoku family; Kakuro and Skyscrapers ship their full
+ * ladder at every size (Skyscrapers' tiers are calibrated within a size — plan D6; until E5 the
+ * picker is shown but a hand-made fixture is served). The one rule every lock decision uses (the
+ * picker, and the clamps on switching type or size), so a new size or type changes it in one place.
  */
 function topTiersLockedFor(variant: PlayVariant, size: SelectableSize): boolean {
-  return size !== 9 && variant !== 'kakuro';
+  return size !== 9 && variant !== 'kakuro' && variant !== 'skyscrapers';
 }
 
 export default function PlayExperience() {
@@ -72,11 +79,12 @@ export default function PlayExperience() {
   const mounted = useHasMounted();
   // Deep link from a hub card (`/play?variant=killer|calc|kakuro`): preselect the variant as the
   // initial state (not via a setState-in-effect). Keisan (`calc`) comes in 4/6/9; it seeds 6 (the
-  // friendly mid size) rather than the classic default of 9. Kakuro seeds its mini, 6 (D6′).
+  // friendly mid size) rather than the classic default of 9. Kakuro seeds its mini, 6 (D6′);
+  // Skyscrapers seeds its planned standard, 6 (D4).
   const initialVariant = parseVariant(searchParams.get('variant'));
   const [variant, setVariant] = useState<PlayVariant>(initialVariant);
   const [gridSize, setGridSize] = useState<SelectableSize>(
-    initialVariant === 'calc' ? 6 : initialVariant === 'kakuro' ? 6 : 9
+    initialVariant === 'calc' || initialVariant === 'kakuro' || initialVariant === 'skyscrapers' ? 6 : 9
   );
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle — hide operators
@@ -89,6 +97,9 @@ export default function PlayExperience() {
   // Kakuro is generated server-side since E4 and graded by the logical solver (easy…hard by
   // technique tier, expert/extreme by forcing-chain length); the label is the solver's.
   const isKakuro = variant === 'kakuro';
+  // Skyscrapers serves a hand-baked fixture per size until its generator lands (plan E4/E5) —
+  // the difficulty picker is shown for the layout's sake, but the board's grade is 'unrated'.
+  const isSkyscrapers = variant === 'skyscrapers';
   const wantsResume = searchParams.get('resume') === '1';
 
   const { loading, error, fetchPuzzle } = usePuzzle();
@@ -201,8 +212,8 @@ export default function PlayExperience() {
 
         {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
             not carried by background colour alone. */}
-        <div role="group" aria-label="Puzzle type" className="flex gap-2 mb-6">
-          {(['classic', 'killer', 'calc', 'kakuro'] as const).map((v) => (
+        <div role="group" aria-label="Puzzle type" className="flex flex-wrap gap-2 mb-6">
+          {(['classic', 'killer', 'calc', 'kakuro', 'skyscrapers'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -217,7 +228,7 @@ export default function PlayExperience() {
           ))}
         </div>
 
-        {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6/9, Kakuro 7/9. */}
+        {/* One selector, per-variant size list: Killer is 6/9, Keisan (Calcudoku) is 4/6/9, Kakuro 6/7/9, Skyscrapers 5/6/7. */}
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} sizes={SIZES[variant]} />
 
         <div className="mb-6">
@@ -247,6 +258,10 @@ export default function PlayExperience() {
           {isKakuro ? (
             <p className="text-xs text-ink-soft text-center mt-2">
               Kakuro is new: every puzzle is graded by the solver, and every level is logic-only — the header shows the grade it earned.
+            </p>
+          ) : isSkyscrapers ? (
+            <p className="text-xs text-ink-soft text-center mt-2">
+              Skyscrapers is being built: one hand-made puzzle per size for now, ungraded — the generator and the difficulty ladder come next.
             </p>
           ) : (
             miniGrid && (

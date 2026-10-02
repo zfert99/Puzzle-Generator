@@ -5,9 +5,12 @@ import type { KeyboardEvent, CSSProperties } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
 import { Cell, ClueCell } from './Cell';
+import { SkyscraperClueCell } from './SkyscraperClueCell';
 import { CageOverlay } from './CageOverlay';
 import { BoardAnnouncer } from './BoardAnnouncer';
 import { kakuroTracks } from '../../kakuro-board';
+import { skyscrapersTracks } from '@/features/engine/skyscrapers/skyscrapers-types';
+import type { GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
 import styles from './Board.module.css';
 
 /**
@@ -47,6 +50,7 @@ export function Board() {
   const inputDigit = useBoardStore((s) => s.inputDigit);
   const clearCell = useBoardStore((s) => s.clearCell);
   const togglePencilMode = useBoardStore((s) => s.togglePencilMode);
+  const toggleClueDone = useBoardStore((s) => s.toggleClueDone);
 
   // Roving tabindex: keep DOM focus on the selected cell.
   useEffect(() => {
@@ -79,6 +83,7 @@ export function Board() {
   }, []);
 
   const isKakuro = variant === 'kakuro';
+  const isSkyscrapers = variant === 'skyscrapers';
 
   /**
    * Arrow-key movement. Sudoku-family grids clamp at the edge. A Kakuro additionally skips its
@@ -106,8 +111,68 @@ export function Board() {
     [selectedR, selectedC, size, isKakuro, blocked, entryIndex, selectCell]
   );
 
+  /**
+   * Skyscrapers clue navigation (plan decision D9). The gutter is outside the roving tab order,
+   * so a keyboard player reaches it with `C`: focus lands on the first clue, arrow keys walk the
+   * clues in reading order (top, bottom, left, right — DOM order), Enter/Space toggles "done",
+   * and `C` or Escape returns to the selected play cell. While a clue has focus the play-cell
+   * keys are not applied, so a digit cannot land on the board by accident.
+   */
+  const clueNodes = useCallback(
+    () => Array.from(gridRef.current?.querySelectorAll<HTMLElement>('[data-clue]') ?? []),
+    []
+  );
+  const handleClueKeys = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>): boolean => {
+      if (!isSkyscrapers) return false;
+      const active = document.activeElement as HTMLElement | null;
+      const onClue = active?.dataset.clue != null && gridRef.current?.contains(active);
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        if (onClue) {
+          const back = gridRef.current?.querySelector<HTMLElement>('[data-index][tabindex="0"]');
+          back?.focus();
+        } else {
+          clueNodes()[0]?.focus();
+        }
+        return true;
+      }
+      if (!onClue) return false;
+      const nodes = clueNodes();
+      const at = nodes.indexOf(active as HTMLElement);
+      switch (e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          e.preventDefault();
+          nodes[Math.min(at + 1, nodes.length - 1)]?.focus();
+          return true;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          e.preventDefault();
+          nodes[Math.max(at - 1, 0)]?.focus();
+          return true;
+        case 'Enter':
+        case ' ': {
+          e.preventDefault();
+          const [side, index] = (active as HTMLElement).dataset.clue!.split('-');
+          toggleClueDone(side as GutterSide, Number(index));
+          return true;
+        }
+        case 'Escape': {
+          e.preventDefault();
+          const back = gridRef.current?.querySelector<HTMLElement>('[data-index][tabindex="0"]');
+          back?.focus();
+          return true;
+        }
+      }
+      return true; // any other key on a clue cell is swallowed, never applied to the board
+    },
+    [isSkyscrapers, clueNodes, toggleClueDone]
+  );
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
+      if (handleClueKeys(e)) return;
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
@@ -148,19 +213,34 @@ export function Board() {
         }
       }
     },
-    [move, maxNum, inputDigit, clearCell, togglePencilMode]
+    [handleClueKeys, move, maxNum, inputDigit, clearCell, togglePencilMode]
   );
 
   // Kakuro draws one extra track per axis: the clue gutter along the top and left (plan
   // decision D2 — the gutter is a rendering concern, so the store's grid stays `size × size`).
-  const tracks = isKakuro ? kakuroTracks(size) : size;
+  // Skyscrapers draws two: a clue gutter on all four sides, with dead corners.
+  const tracks = isKakuro ? kakuroTracks(size) : isSkyscrapers ? skyscrapersTracks(size) : size;
+  // How many display rows precede interior row 0, and display columns precede interior column 0.
+  const offset = isKakuro || isSkyscrapers ? 1 : 0;
+  const corner = (col: number) => <div role="gridcell" aria-readonly aria-colindex={col} className={styles.gutterCell} />;
+  const gutterRow = (side: GutterSide, rowIndex: number) => (
+    <div role="row" aria-rowindex={rowIndex} className={styles.row}>
+      {corner(1)}
+      {Array.from({ length: size }, (_, c) => (
+        <SkyscraperClueCell key={`${side}-${c}`} side={side} index={c} colIndex={c + 2} />
+      ))}
+      {corner(tracks)}
+    </div>
+  );
 
   return (
     <>
       <div
         ref={gridRef}
         role="grid"
-        aria-label={isKakuro ? 'Kakuro board' : 'Sudoku board'}
+        aria-label={isKakuro ? 'Kakuro board' : isSkyscrapers ? 'Skyscrapers board' : 'Sudoku board'}
+        aria-rowcount={tracks}
+        aria-colcount={tracks}
         className={styles.board}
         data-variant={variant}
         data-size={size}
@@ -180,14 +260,18 @@ export function Board() {
             ))}
           </div>
         )}
+        {isSkyscrapers && gutterRow('top', 1)}
         {Array.from({ length: size }, (_, r) => (
-          <div key={`row-${r}`} role="row" aria-rowindex={isKakuro ? r + 2 : r + 1} className={styles.row}>
+          <div key={`row-${r}`} role="row" aria-rowindex={r + 1 + offset} className={styles.row}>
             {isKakuro && <ClueCell clue={clues[(r + 1) * tracks]} colIndex={1} />}
+            {isSkyscrapers && <SkyscraperClueCell side="left" index={r} colIndex={1} />}
             {Array.from({ length: size }, (_, c) => (
               <Cell key={`${r}-${c}`} r={r} c={c} isEntry={entryIndex === r * size + c} />
             ))}
+            {isSkyscrapers && <SkyscraperClueCell side="right" index={r} colIndex={tracks} />}
           </div>
         ))}
+        {isSkyscrapers && gutterRow('bottom', tracks)}
         {variant !== 'classic' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
       </div>
       <BoardAnnouncer />

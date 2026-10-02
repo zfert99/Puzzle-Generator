@@ -29,6 +29,13 @@
 
 ## Journal
 
+- **2026-10-02 (V2)** V1 merged ([#129](https://github.com/zfert99/Puzzle-Generator/pull/129)).
+  **V2 built** on `feature/skyscrapers-v2`: playable at `/play?variant=skyscrapers` on the baked
+  fixtures — four-sided gutter on the real board, `edgeClues` persisted / `doneClues` undo-able
+  (D9's manual mark), clue verdicts by the **prefix rule** in per-clue selectors, `C`-key gutter
+  navigation, fifth menu toggle with 5/6/7, rules body; the V0/V1 workbench deleted. `[decision]`
+  D9 applied as specified (satisfied tint off by default, a no-op class as the opt-in hook).
+  Owner's visual verdict pending (the slice's gate); `[gap]` G8's screen-reader pass still owed.
 - **2026-10-02 (V1)** V0 merged ([#128](https://github.com/zfert99/Puzzle-Generator/pull/128)) on
   the owner's visual verdict. **V1 built** on `feature/skyscrapers-v1`: the puzzle shapes, config,
   `visibleCount` / `deriveClues` / validator, three baked fixtures (5×5 5/20 clues, 6×6 15/24,

@@ -75,7 +75,7 @@ persisted store, so a resumed game never causes an SSR/client mismatch.
 > which renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge +
 > confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).
 
-## Deep link: `/play?variant=killer|calc|kakuro`
+## Deep link: `/play?variant=killer|calc|kakuro|skyscrapers`
 
 The hub's Killer card links here with a query param (`parseVariant` accepts the four slugs and
 defaults to classic). A mount effect reads it via `useSearchParams` and preselects the variant
@@ -133,3 +133,14 @@ played.
 
 The game view renders `HintNote` under the numpad: the last hint's reason and lead-up, from the
 store's `lastHint`. See `HintNote.md`.
+
+## Skyscrapers toggle (October 2026, plan slice V2)
+
+A fifth toggle (the type row now wraps). Sizes come from the per-variant table: Skyscrapers
+offers **5 / 6 / 7** — the plan's D4, planned at the research recommendation and still measured
+by E3 — and the deep link seeds the planned standard, 6×6. `topTiersLockedFor` exempts it, like
+Kakuro: its tiers are calibrated within a size (D6), so the full ladder is shown at every size.
+Until the generator lands (E4/E5) the menu says so: one hand-made fixture per size is served
+(`usePuzzle` short-circuits, no network) and the board's grade is `'unrated'` — the difficulty
+picker is for the layout's sake. No hub card yet (D8: the card goes live at E5, so `main` never
+advertises a one-puzzle type); the deep link is the surface.

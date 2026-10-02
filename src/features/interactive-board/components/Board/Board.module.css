@@ -307,3 +307,64 @@
   bottom: 10%;
   left: 8%;
 }
+
+/* ---- Skyscrapers (Towers) ---- */
+
+/* The board's `--size` is its TRACK count: interior + 2 (a clue gutter on all four sides). The
+   gutter sits OUTSIDE the play area, so the board's own frame is turned off and the edge play
+   cells draw it instead (`.frameTop` … below, applied by Cell.tsx). A size container so clue
+   digits scale with one cell, as for Kakuro. The width caps keyed on `data-size` still apply
+   (a 6×6 Skyscrapers is 8 tracks in the 6×6 budget), which keeps the gutter from pushing a
+   phone layout wider than the Sudoku board at the same size. */
+.board[data-variant='skyscrapers'] {
+  container-type: inline-size;
+  --cell-size: calc(100cqw / var(--size));
+  border-width: 0;
+  background: transparent;
+  --clue-fg: var(--ink-soft);
+  --clue-done: color-mix(in srgb, var(--ink) 30%, transparent);
+  --clue-satisfied: var(--mint);
+}
+
+.frameTop { border-top: 3px solid var(--grid-line-strong); }
+.frameLeft { border-left: 3px solid var(--grid-line-strong); }
+.frameRight { border-right: 3px solid var(--grid-line-strong); }
+.frameBottom { border-bottom: 3px solid var(--grid-line-strong); }
+
+/* A gutter cell (a clue or a dead corner): no lines or background of its own — the digits float
+   on the page beside the framed play area, the way every publisher prints them. */
+.gutterCell {
+  border: 0;
+  background: transparent;
+  color: var(--clue-fg);
+  font-weight: 700;
+  font-size: calc(var(--cell-size) * 0.42);
+  cursor: default;
+}
+
+.gutterCell[data-clue] {
+  cursor: pointer;
+}
+
+.gutterCell:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--grape);
+  border-radius: 6px;
+}
+
+/* Clue states (plan decision D9), drawn error > done > normal as in towers.c: a provable
+   violation is the error colour; a clue the player marked done greys out; a satisfied clue is
+   NOT tinted by default (no surveyed player does it, and a wrong line can still satisfy a clue)
+   — the `.clueSatisfied` hook exists for an opt-in setting and is a no-op until then. */
+.clueViolated {
+  color: var(--cell-error-fg);
+}
+
+.clueDone {
+  color: var(--clue-done);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.clueSatisfied {
+  color: var(--clue-fg);
+}

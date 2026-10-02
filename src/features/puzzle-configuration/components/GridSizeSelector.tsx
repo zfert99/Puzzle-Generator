@@ -1,16 +1,17 @@
 import React from 'react';
 
 /** Every size any picker can offer; a caller narrows it with `sizes`. */
-export type SelectableSize = 4 | 6 | 7 | 9;
+export type SelectableSize = 4 | 5 | 6 | 7 | 9;
 
 const GRID_SIZE_OPTIONS: readonly { value: SelectableSize; label: string }[] = [
   { value: 4, label: '4×4' },
+  { value: 5, label: '5×5' },
   { value: 6, label: '6×6' },
   { value: 7, label: '7×7' },
   { value: 9, label: '9×9' },
 ];
 
-/** The Sudoku-family default: 7 is Kakuro's, offered only when a caller lists it. */
+/** The Sudoku-family default: 5 and 7 are Skyscrapers' / Kakuro's, offered only when a caller lists them. */
 const DEFAULT_SIZES: readonly SelectableSize[] = [4, 6, 9];
 
 interface Props<S extends SelectableSize> {
@@ -18,7 +19,7 @@ interface Props<S extends SelectableSize> {
   onChange: (size: S) => void;
   /**
    * The sizes to offer, in the order of `GRID_SIZE_OPTIONS` (e.g. Killer has no 4×4; Kakuro is
-   * 7/9). Defaults to the Sudoku-family 4/6/9. Generic in `S` so a caller whose state is a
+   * 6/7/9; Skyscrapers 5/6/7). Defaults to the Sudoku-family 4/6/9. Generic in `S` so a caller whose state is a
    * narrower union (`4 | 6 | 9`) keeps a correctly-typed `onChange`.
    */
   sizes?: readonly S[];

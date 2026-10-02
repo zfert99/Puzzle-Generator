@@ -34,7 +34,7 @@ Returns `{ puzzle, loading, error, fetchPuzzle }`:
 
 ## Variant support
 
-`fetchPuzzle` takes an optional `variant: 'classic' | 'killer' | 'calc' | 'kakuro'` (default
+`fetchPuzzle` takes an optional `variant: 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers'` (default
 classic), forwarded to `/api/puzzle` for the three generated types. A Killer request returns a
 `KillerPuzzle` (with `cages`), Keisan a `CalcPuzzle`; the hook's puzzle type is the union of all
 four and the board's `startNewGame` handles any of them.
@@ -55,3 +55,10 @@ header and the picker agree.
   hydration-mismatch class of bugs.
 - Because this is the board's network boundary, tests drive the **real** hook and
   mock only `fetch` (AGENTS.md Section 4, Mocking Boundaries).
+
+### Skyscrapers is served from its fixtures, client-side (October 2026, V2)
+
+Exactly what Kakuro did from V2 to E3: a `skyscrapers` request returns the baked fixture for the
+requested size (the first fixture if none matches) **before** `fetch`, with no loading state and
+no network. The fixtures are static data, so there is no hydration concern. E5 puts
+`generateSkyscrapers` behind `/api/puzzle` and this branch goes away, as Kakuro's did in E4.

@@ -92,6 +92,78 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers V2: playable at `/play?variant=skyscrapers` on the baked fixtures
+
+Branch `feature/skyscrapers-v2` on `60c8c26`. Diff: store (`'skyscrapers'` variant, `edgeClues`,
+`doneClues`, `toggleClueDone`, persist v6), `Board`/`Cell` (four-sided gutter, play-area frame,
+`C`-key clue navigation), new `SkyscraperClueCell` + `skyscrapers-board.ts`, engine
+`clueStatus`/`clueFlatIndex`, `PlayExperience`/`GridSizeSelector`/`usePuzzle`/`RulesDialog`
+registration, CSS; the V0/V1 workbench route and static board **deleted**; tests across all of
+it plus one E2E spec; mirrored docs. **~650 LOC of source** — over the ~400 target, the same way
+Kakuro V2 was (a variant touches every surface at once); not split because each file's change is
+one registration.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean (one unused test import caught and removed before this entry) |
+| `npx tsc --noEmit` · `npm run build` | clean · clean (a stale `.next/types` entry for the deleted route had to be removed for `tsc` — the build regenerates it) |
+| `npx vitest run` | **86 files / 818 tests green** (12 new); no entry from the Known flaky tests table fired |
+| Playwright | the new Skyscrapers play spec **green** against the running dev server (`E2E_PORT=3000`, chromium); the full suite was not re-run |
+| Benchmarks | n/a — no solver code |
+
+### Findings
+
+- **A digit typed while a clue cell had focus landed on the selected play cell** — the first
+  draft routed every key through the board handler. Found by the keyboard test, not by reading;
+  fixed by a clue handler that runs first and swallows unmatched keys while the gutter is focused.
+- Two zero-match assertions used `getAllByRole` (throws) instead of `queryAllByRole`; a BSD
+  `sed` with a mid-pattern `^` silently did nothing — the Python replace is the one to trust.
+- Design kept from the review of V0: corners are empty read-only gridcells, counts on the grid.
+
+### Invariants checked
+
+- `edgeClues` is **persisted** (it is the puzzle) and nothing is derived from it in `merge`; the
+  clue verdict is read from `grid` in each clue cell's selector — asserted by the hydration test
+  (clues and done marks come back; `blocked` stays `[]`).
+- `doneClues` is in the **temporal** partialize — undo/redo of a mark asserted.
+- The Latin lockout (`placed >= size`) and row/column-only peers at a size that has boxes for
+  Sudoku (6, 4) are asserted; `maxNum = N` (no 7 on a 6×6 numpad) in the E2E spec.
+- Prefix-rule verdicts asserted on the board: a 4 next to a "2" clue is violated at once; a 4
+  elsewhere leaves the column's clue open; a completed correct line is satisfied.
+- Persist version bumped (5 → 6) because the persisted shape changed — the rule every earlier
+  bump followed.
+
+### Docs sweep
+
+New: `SkyscraperClueCell.md`, `skyscrapers-board.md`. Updated: `useBoardStore.md`, `Board.md`,
+`Cell.md`, `PlayExperience.md`, `usePuzzle.md`, `RulesDialog.md`, `GridSizeSelector.md`,
+`skyscrapers-types.md`; plan (V1 ✅, V2 step-log, slice table, status), log, roadmap, Docs index,
+project-status. Deleted docs: `page.md` and `SkyscrapersBoard.md` with their sources. Reverse
+sweep for `SkyscrapersBoard` / `/skyscrapers` route in live docs: only the plan's own V0/V1
+history and the roadmap's dated status line, both correct as history.
+
+### Verified vs read
+
+- **Verified:** tests, lint, tsc, build, markdownlint, the E2E spec against the dev server, and
+  the page in the browser pane (game starts from the deep link, rules dialog, gutter renders).
+- **Read only:** the visual result in both themes, at 5/6/7 and at 360 px — the slice's gate,
+  the **owner's** verdict (handed over with the dev server running).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, data or route logic (client board + fixtures).
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lesson
+
+- **A keyboard model with two focus regions needs two handlers, and the inner one goes first.**
+  One handler that "also" checks where focus is will leak keys into the outer region on the
+  first case nobody thought of; a dedicated handler that returns `true` when it owns the key
+  makes the leak impossible by construction.
+
 ## 2026-10-02 — Skyscrapers V1: types, baked fixtures, clue digits on `/skyscrapers`
 
 Branch `feature/skyscrapers-v1` on `0c10f5f`. Diff: `skyscrapers-types.ts` grows the puzzle

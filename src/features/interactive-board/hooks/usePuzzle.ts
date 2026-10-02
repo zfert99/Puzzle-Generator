@@ -4,13 +4,15 @@ import type { SudokuPuzzle, Difficulty, GridSize } from '@/features/engine/sudok
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
+import type { SkyscrapersPuzzle } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { SKYSCRAPERS_FIXTURES } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
 
-type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle;
+type AnyPuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle | SkyscrapersPuzzle;
 
 interface PuzzleRequest {
   difficulty: Difficulty;
   gridSize?: GridSize;
-  variant?: 'classic' | 'killer' | 'calc' | 'kakuro';
+  variant?: 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers';
   /** Keisan Mystery / No-Op mode — hide the cage operators (calc only). */
   noOp?: boolean;
 }
@@ -26,6 +28,10 @@ interface PuzzleRequest {
  *
  * Kakuro goes through the same route since E4 (`generateKakuro` behind `/api/puzzle`); the
  * fixtures it used to serve client-side are test data and the route's fallback now.
+ *
+ * Skyscrapers (plan slice V2) is served from its baked fixtures client-side — static data, no
+ * network, no hydration concern — until E5 puts `generateSkyscrapers` behind the route; the
+ * fixture matching the requested size is returned, the first one if none matches.
  */
 export function usePuzzle() {
   const [puzzle, setPuzzle] = useState<AnyPuzzle | null>(null);
@@ -34,6 +40,11 @@ export function usePuzzle() {
 
   const fetchPuzzle = useCallback(async ({ difficulty, gridSize = 9, variant = 'classic', noOp }: PuzzleRequest) => {
     setError('');
+    if (variant === 'skyscrapers') {
+      const fixture = SKYSCRAPERS_FIXTURES.find((p) => p.gridSize === gridSize) ?? SKYSCRAPERS_FIXTURES[0];
+      setPuzzle(fixture);
+      return fixture;
+    }
     setLoading(true);
     try {
       const res = await fetch(apiPath('/api/puzzle'), {

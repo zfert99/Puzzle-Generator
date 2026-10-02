@@ -34,6 +34,7 @@ const VARIANT_TITLE: Record<PuzzleVariant, string> = {
   killer: 'How to play Killer',
   calc: 'How to play Keisan',
   kakuro: 'How to play Kakuro',
+  skyscrapers: 'How to play Skyscrapers',
 };
 
 /**
@@ -44,6 +45,28 @@ const VARIANT_TITLE: Record<PuzzleVariant, string> = {
  * whether the current board happens to be a Mystery one.
  */
 function RulesBody({ variant }: { variant: PuzzleVariant }) {
+  if (variant === 'skyscrapers') {
+    return (
+      <>
+        <p className="mb-3">
+          Skyscrapers (also called <strong>Towers</strong>) is a city seen from the side. Fill the
+          grid with building heights from <strong>1 to N</strong> so that every row and every column
+          holds each height exactly once — there are no boxes.
+        </p>
+        <p className="mb-3">
+          A number outside the grid says <strong>how many buildings you can see</strong> looking in
+          from that edge along its row or column: a taller building hides every shorter one behind
+          it. Blank edges are normal — not every line gets a clue.
+        </p>
+        <p className="text-ink-soft text-sm">
+          Example: a clue of <strong>1</strong> means the tallest building is right next to it; a
+          clue of <strong>N</strong> means the heights climb 1, 2, … N from that edge. A clue turns
+          red only once the cells you have filled already break it; click a clue (or press C to reach
+          the clues, Enter to mark) to grey it out when you are done with it.
+        </p>
+      </>
+    );
+  }
   if (variant === 'kakuro') {
     return (
       <>

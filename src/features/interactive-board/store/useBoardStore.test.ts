@@ -4,6 +4,7 @@ import { useBoardStore } from './useBoardStore';
 import { hasBit } from '../board-utils';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import { KAKURO_FIXTURE_7X7_CHAINS, parseKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
+import { parseSkyscrapersFixture } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
 
 // A valid 4x4 solution with two holes at (0,0) and (0,1).
 const SOLUTION = [
@@ -354,5 +355,69 @@ describe('Kakuro', () => {
     const store = useBoardStore.getState();
     for (let i = 0; i < 7; i++) store.hint();
     expect(useBoardStore.getState().status).toBe('solved');
+  });
+});
+
+describe('Skyscrapers', () => {
+  // 4×4 with every clue kept except the right side.
+  const skyscrapers = () =>
+    parseSkyscrapersFixture(['1234', '2143', '3412', '4321'], { top: 'xxxx', bottom: 'xxxx', left: 'xxxx', right: '....' });
+
+  beforeEach(() => {
+    useBoardStore.getState().startNewGame(skyscrapers());
+  });
+
+  it('starts with a boxless 1..N config, no givens, the edge clues, and no clue marked done', () => {
+    const s = useBoardStore.getState();
+    expect(s.variant).toBe('skyscrapers');
+    expect(s.config).toMatchObject({ size: 4, hasBoxes: false, maxNum: 4 });
+    expect(s.grid.flat().every((v) => v === 0)).toBe(true);
+    expect(s.givens.flat().every((g) => g === false)).toBe(true);
+    expect(s.edgeClues).toEqual({ top: [4, 2, 2, 1], bottom: [1, 2, 2, 4], left: [4, 2, 2, 1], right: [0, 0, 0, 0] });
+    expect(s.doneClues).toEqual(new Array(16).fill(false));
+    expect(s.runs).toEqual([]);
+    expect(s.blocked).toEqual([]);
+  });
+
+  it('uses row and column peers only — no box, even at a size that has boxes for Sudoku', () => {
+    const { peers } = useBoardStore.getState();
+    // (0,0) = index 0: its row [1,2,3] and its column [4,8,12]; a 2×2 box would add 5.
+    expect([...peers[0]].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 8, 12]);
+  });
+
+  it('locks a height out once all N instances are placed (Latin square)', () => {
+    const store = useBoardStore.getState();
+    for (let r = 0; r < 4; r++) {
+      store.selectCell(r, (4 - r) % 4); // a diagonal of 1s: (0,0) (1,3) (2,2) (3,1)
+      store.inputDigit(1);
+    }
+    expect(useBoardStore.getState().grid.flat().filter((v) => v === 1)).toHaveLength(4);
+    store.selectCell(0, 1);
+    store.inputDigit(1);
+    expect(useBoardStore.getState().grid[0][1]).toBe(0);
+  });
+
+  it('toggles a clue done as an undo-able move, and ignores a blank clue slot out of range', () => {
+    const store = useBoardStore.getState();
+    store.toggleClueDone('left', 2);
+    expect(useBoardStore.getState().doneClues[2 * 4 + 2]).toBe(true);
+    store.toggleClueDone('left', 2);
+    expect(useBoardStore.getState().doneClues[2 * 4 + 2]).toBe(false);
+
+    store.toggleClueDone('top', 0);
+    useBoardStore.temporal.getState().undo();
+    expect(useBoardStore.getState().doneClues[0]).toBe(false);
+    useBoardStore.temporal.getState().redo();
+    expect(useBoardStore.getState().doneClues[0]).toBe(true);
+
+    store.toggleClueDone('right', 9);
+    expect(useBoardStore.getState().doneClues).toHaveLength(16);
+  });
+
+  it('does nothing on a non-Skyscrapers game', () => {
+    useBoardStore.getState().startNewGame(puzzle());
+    useBoardStore.getState().toggleClueDone('top', 0);
+    expect(useBoardStore.getState().doneClues).toEqual([]);
+    expect(useBoardStore.getState().edgeClues).toBeNull();
   });
 });

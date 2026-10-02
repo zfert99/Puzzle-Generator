@@ -30,12 +30,13 @@ interface CellProps {
 export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, maxNum, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed, isKakuro, isBlocked, clue } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, maxNum, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed, isKakuro, isSkyscrapers, isBlocked, clue } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
       const isSelf = sel != null && sel.r === r && sel.c === c;
       const isKakuro = s.variant === 'kakuro';
+      const isSkyscrapers = s.variant === 'skyscrapers';
       // Kakuro: a black cell renders as a clue cell (see `ClueCell`) and takes no input. Its clue
       // is looked up by DISPLAY index — the on-screen grid has a gutter row/column before the
       // interior, so interior (r, c) is display (r + 1, c + 1) on a `size + 1`-track grid.
@@ -92,6 +93,7 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
         isDaily: s.mode === 'daily',
         errorsRevealed: s.errorsRevealed,
         isKakuro,
+        isSkyscrapers,
         isBlocked,
         clue,
       };
@@ -100,9 +102,9 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
 
   const selectCell = useBoardStore((s) => s.selectCell);
 
-  // Kakuro's display grid has a gutter column before the interior, so interior column c is
-  // the (c + 2)th column a screen reader counts.
-  const colIndex = isKakuro ? c + 2 : c + 1;
+  // Kakuro's and Skyscrapers' display grids have a gutter column before the interior, so
+  // interior column c is the (c + 2)th column a screen reader counts.
+  const colIndex = isKakuro || isSkyscrapers ? c + 2 : c + 1;
 
   if (isBlocked) return <ClueCell clue={clue} colIndex={colIndex} />;
 
@@ -131,6 +133,15 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
   if (isSelected && isError) classes.push(styles.selectedRing); // still show selection on a red cell
   if (thickRight) classes.push(styles.thickRight);
   if (thickBottom) classes.push(styles.thickBottom);
+  // Skyscrapers: the heavy frame belongs to the play area, not the board — the clue gutter sits
+  // outside it (research §6: a bold outline around the N×N with plain digits outside). The
+  // board's own border is turned off for this variant, so the edge cells draw it.
+  if (isSkyscrapers) {
+    if (r === 0) classes.push(styles.frameTop);
+    if (r === size - 1) classes.push(styles.frameBottom);
+    if (c === 0) classes.push(styles.frameLeft);
+    if (c === size - 1) classes.push(styles.frameRight);
+  }
   const className = classes.join(' ');
 
   const candidates = value === 0 ? maskToDigits(mask) : [];

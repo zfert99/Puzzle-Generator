@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isLatinSquare } from '../grid-utils';
 import {
   buildDisplayCells,
   clueAt,
+  clueFlatIndex,
+  clueStatus,
   deriveClues,
   lineFor,
   presentClueCount,
@@ -179,5 +180,38 @@ describe('validateSkyscrapers', () => {
 
   it('reports a size mismatch', () => {
     expect(validateSkyscrapers(puzzleOf(SQUARE, { gridSize: 5 }))).toContain('solution has 4 rows, expected 5');
+  });
+});
+
+describe('clueStatus', () => {
+  it('is open on an empty or unjudgeable line, and for a blank clue', () => {
+    expect(clueStatus([0, 0, 0, 0], 2)).toBe('open');
+    expect(clueStatus([2, 0, 0, 0], 2)).toBe('open');
+    expect(clueStatus([0, 3, 4, 1], 2)).toBe('open'); // nothing filled from the clue end
+    expect(clueStatus([1, 2, 3, 4], 0)).toBe('open');
+  });
+
+  it('is satisfied only when the line is complete and the count matches', () => {
+    expect(clueStatus([1, 2, 3, 4], 4)).toBe('satisfied');
+    expect(clueStatus([2, 1, 4, 3], 2)).toBe('satisfied');
+    expect(clueStatus([1, 2, 3, 4], 3)).toBe('violated');
+  });
+
+  it('flags a violation as soon as the filled prefix proves it', () => {
+    expect(clueStatus([1, 2, 0, 0], 1)).toBe('violated'); // already two visible
+    expect(clueStatus([4, 0, 0, 0], 2)).toBe('violated'); // tallest first, nothing more can show
+    expect(clueStatus([2, 3, 0, 0], 2)).toBe('violated'); // count reached, 4 still to come
+    expect(clueStatus([3, 1, 2, 0], 3)).toBe('violated'); // one cell left cannot add two
+    expect(clueStatus([2, 0, 0, 0], 3)).toBe('open'); // 3 and 4 may still show
+    expect(clueStatus([3, 1, 0, 0], 2)).toBe('open'); // 4 will show, making two
+  });
+});
+
+describe('clueFlatIndex', () => {
+  it('packs the four sides in order', () => {
+    expect(clueFlatIndex('top', 0, 5)).toBe(0);
+    expect(clueFlatIndex('bottom', 4, 5)).toBe(9);
+    expect(clueFlatIndex('left', 2, 5)).toBe(12);
+    expect(clueFlatIndex('right', 0, 5)).toBe(15);
   });
 });

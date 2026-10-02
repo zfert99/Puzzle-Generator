@@ -192,3 +192,32 @@ text is 30% of one cell (`100cqw / --size`) at any size; black cells use a theme
 a block that heads a run gets the `to top right` diagonal gradient, the DOWN sum in the
 upper-right triangle and the ACROSS sum in the lower-left (research G7). Grid lines stay the
 existing per-cell borders, so a Kakuro inherits every other board behaviour unchanged.
+
+## Skyscrapers: four-sided gutter and clue navigation (October 2026, plan slice V2)
+
+A Skyscrapers is drawn with **two** extra tracks per axis — a clue gutter on all four sides —
+so `--size` is `skyscrapersTracks(size) = size + 2`. The gutter is rendered as a top row
+(corner, N `SkyscraperClueCell`s, corner), a leading and trailing clue cell on every interior
+row, and a bottom row; the corners are empty read-only gridcells so every row exposes the same
+N+2 cells (the ARIA grid stays rectangular — V0's review finding) and the grid carries
+`aria-rowcount` / `aria-colcount`. The grid's accessible name is "Skyscrapers board".
+
+**Why the frame is on the cells.** The board's own 3px border is turned off for this variant
+(`Board.module.css`) and the edge play cells draw it (`Cell.tsx`'s `frameTop/…`): the gutter
+sits *outside* the play area, so a border around the whole board would frame the clues too.
+
+**Clue navigation (D9).** The gutter is outside the roving tab order (clue cells are
+`tabIndex -1`), so a keyboard player reaches it with **`C`**: focus lands on the first clue,
+arrow keys walk the clues in DOM order (top, bottom, left, right), **Enter/Space** toggles
+"marked done", and **`C`** or **Escape** returns to the selected play cell. `handleClueKeys`
+runs before the ordinary key handler and swallows every other key while a clue has focus, so a
+digit cannot land on the board by accident. Arrow keys from a play cell clamp at the play area's
+edge — the gutter is never a selection target.
+
+```text
+keydown:
+    if Skyscrapers and the key is C → jump into the gutter (or back out of it); done
+    if a clue cell has focus → arrows move along the clues, Enter/Space toggles done,
+                               Escape goes back; any other key is swallowed; done
+    otherwise the ordinary handler (arrows, digits 1..maxNum, clear, pencil)
+```
