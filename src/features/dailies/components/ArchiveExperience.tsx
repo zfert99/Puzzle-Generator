@@ -12,6 +12,9 @@ import { GameHeader } from '@/features/interactive-board/components/Header/GameH
 import { KeyboardHints } from '@/features/interactive-board/components/KeyboardHints';
 import { ConfirmModal } from '@/features/interactive-board/components/ConfirmModal';
 import { SolvedDialog } from '@/features/interactive-board/components/SolvedDialog';
+import { ReviewDialog } from '@/features/interactive-board/components/ReviewDialog';
+import { useBoardReview } from '@/features/interactive-board/hooks/useBoardReview';
+import { useGameClock } from '@/features/interactive-board/hooks/useGameClock';
 import { LeaderboardView } from '@/features/leaderboards/components/LeaderboardView';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
@@ -207,18 +210,17 @@ export default function ArchiveExperience() {
     : '';
 
   const { loading, error, fetchDaily } = useDaily();
-  const { status } = useBoardStore(useShallow((s) => ({ status: s.status })));
+  const { status, errorsRevealed } = useBoardStore(useShallow((s) => ({ status: s.status, errorsRevealed: s.errorsRevealed })));
 
   const startNewGame = useBoardStore((s) => s.startNewGame);
-  const tick = useBoardStore((s) => s.tick);
+  const revealErrors = useBoardStore((s) => s.revealErrors);
   const saved = useSavedGame();
 
-  // Timer runs only while actively replaying (unranked, but still shown).
-  useEffect(() => {
-    if (view !== 'playing' || status !== 'playing') return;
-    const id = setInterval(() => tick(), 1000);
-    return () => clearInterval(id);
-  }, [view, status, tick]);
+  // Timer runs only while actively replaying (unranked, but still shown) and the tab is visible.
+  useGameClock(view === 'playing' && status === 'playing');
+  // A replay is daily-shaped (no live error feedback), so a full-but-wrong board needs the same
+  // review moment the daily has; without it the only way out was guessing.
+  const { showReview, wrongCount, dismissReview } = useBoardReview(view === 'playing');
 
   const beginPlay = async () => {
     const puzzle = await fetchDaily(difficulty, selectedDate);
@@ -282,6 +284,17 @@ export default function ArchiveExperience() {
 
         <KeyboardHints />
 
+        <ReviewDialog
+          open={showReview}
+          wrongCount={wrongCount}
+          errorsRevealed={errorsRevealed}
+          onKeepLooking={dismissReview}
+          onReveal={() => {
+            revealErrors();
+            dismissReview();
+          }}
+        />
+
         {status === 'solved' && (
           <SolvedDialog
             ariaLabel="Practice solved"
@@ -341,7 +354,7 @@ export default function ArchiveExperience() {
             )}
           </div>
 
-          {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
+          {error && <p role="alert" className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
           {isToday ? (
             /* Today is browsable (its leaderboard is right there) but must not be STARTED here —

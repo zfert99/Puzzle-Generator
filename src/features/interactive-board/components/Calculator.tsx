@@ -88,15 +88,22 @@ export function Calculator() {
     setFreshEntry(true);
   }, [pendingOp, stored, display]);
 
+  // Focus-on-open lives in its own effect, keyed on `open` alone. It used to sit inside the
+  // keyboard effect below, whose dependencies (the memoised handlers) change with every digit
+  // typed — so every keystroke re-ran it and yanked focus back to the Close button, which for a
+  // keyboard user tabbing across the keypad meant being pulled off the key they had reached.
+  useEffect(() => {
+    if (open) closeRef.current?.focus();
+  }, [open]);
+
   // Keyboard entry — every button has a key equivalent, so this can be operated without a
-  // mouse/touch once open. Re-attaches on every render (all these handlers are plain
-  // consts, not useCallback'd, so they get fresh closures each render) rather than once per
-  // `open` toggle — otherwise the listener would keep using the state from whenever it was
-  // first attached instead of the latest display/stored/pendingOp. Cheap for a low-frequency
-  // popup like this; not the board's INP-critical hot path (AGENTS.md §3).
+  // mouse/touch once open. Re-attaches whenever a handler's closure changes (they're
+  // `useCallback`'d on the display/stored/pendingOp state, so that is every keystroke) rather
+  // than once per `open` toggle — otherwise the listener would keep using the state from
+  // whenever it was first attached. Cheap for a low-frequency popup like this; not the board's
+  // INP-critical hot path (AGENTS.md §3).
   useEffect(() => {
     if (!open) return;
-    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();

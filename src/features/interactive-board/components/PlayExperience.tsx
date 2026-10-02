@@ -6,8 +6,10 @@ import { GridSizeSelector, type SelectableSize } from '@/features/puzzle-configu
 import { SKYSCRAPERS_SIZES, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
-import { useSavedGame, formatElapsed } from '../store/useSavedGame';
+import { useSavedGame } from '../store/useSavedGame';
 import { usePuzzle } from '../hooks/usePuzzle';
+import { useGameClock } from '../hooks/useGameClock';
+import { SavedElapsed } from './SavedElapsed';
 import { Board } from './Board/Board';
 import { Numpad } from './Controls/Numpad';
 import { GameHeader } from './Header/GameHeader';
@@ -121,7 +123,6 @@ export default function PlayExperience() {
   const boardVariant = useBoardStore((s) => s.variant);
   const startNewGame = useBoardStore((s) => s.startNewGame);
   const resume = useBoardStore((s) => s.resume);
-  const tick = useBoardStore((s) => s.tick);
 
   const saved = useSavedGame();
 
@@ -139,12 +140,9 @@ export default function PlayExperience() {
   }, [view, wantsResume, resume]);
   const savedIsPlay = saved?.mode === 'play';
 
-  // Timer: active only while actively playing on the board — never on the menu or when paused.
-  useEffect(() => {
-    if (view !== 'playing' || status !== 'playing') return;
-    const id = setInterval(() => tick(), 1000);
-    return () => clearInterval(id);
-  }, [view, status, tick]);
+  // Timer: active only while actively playing on the board — never on the menu, when paused,
+  // or while the tab is hidden (see `useGameClock`).
+  useGameClock(view === 'playing' && status === 'playing');
 
   const miniGrid = gridSize !== 9;
   const offeredTiers = tiersFor(variant, gridSize);
@@ -218,7 +216,7 @@ export default function PlayExperience() {
             >
               Continue{' '}
               {saved.variant === 'classic' ? `${saved.gridSize}×${saved.gridSize}` : VARIANT_LABEL[saved.variant]}{' '}
-              {saved.difficulty} · {formatElapsed(saved.elapsedTime)}
+              {saved.difficulty} · <SavedElapsed />
             </button>
             <p className="text-xs text-ink-soft text-center mt-3">— or start a new game —</p>
           </div>
@@ -226,8 +224,10 @@ export default function PlayExperience() {
 
         {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
             not carried by background colour alone. */}
-        {/* Five equal columns: a wrapping flex row would strand the fifth label on its own full-width line. */}
-        <div role="group" aria-label="Puzzle type" className="grid grid-cols-5 gap-2 mb-6">
+        {/* Natural-width pills that wrap, not five equal columns: at 320–430 px five columns gave
+            each label ~27–38 px while "Skyscrapers" needs 89, so the labels overlapped on every
+            phone width (hidden from the overflow test by the page's `overflow-x: hidden`). */}
+        <div role="group" aria-label="Puzzle type" className="flex flex-wrap justify-center gap-2 mb-6">
           {(['classic', 'killer', 'calc', 'kakuro', 'skyscrapers'] as const).map((v) => (
             <button
               key={v}
@@ -315,7 +315,7 @@ export default function PlayExperience() {
           </div>
         )}
 
-        {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
+        {error && <p role="alert" className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
         <button
           type="button"

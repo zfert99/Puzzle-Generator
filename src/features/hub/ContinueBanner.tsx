@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
+import { useSavedGame } from '@/features/interactive-board/store/useSavedGame';
+import { SavedElapsed } from '@/features/interactive-board/components/SavedElapsed';
 import { difficultyForKey, formatDailyKey, isDailyVariant, sectionForKey, toUtcDateString } from '@/lib/db/daily-row';
 import { slotLabel } from '@/features/dailies/slot-display';
 
@@ -46,9 +47,9 @@ export function ContinueBanner() {
       href={href}
       className="flex items-center justify-between gap-3 rounded-xl border-[3px] border-ink bg-butterscotch px-5 py-3 text-on-butterscotch shadow-chunky pressable mb-4"
     >
-      <span className="font-semibold">▶ Continue your puzzle</span>
+      <span className="font-semibold"><span aria-hidden="true">▶ </span>Continue your puzzle</span>
       <span className="text-sm capitalize">
-        {what} · {formatElapsed(saved.elapsedTime)}
+        {what} · <SavedElapsed />
       </span>
     </Link>
   );

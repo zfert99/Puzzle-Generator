@@ -51,9 +51,23 @@ would either need to re-run on every render (to avoid a stale closure holding on
 `display`/`stored`/`pendingOp` existed when the calculator was first opened) or silently use
 stale state. Wrapping each handler in `useCallback` with its actual dependencies gives them a
 stable identity that only changes when the state they close over does, so the effect's
-dependency array is both correct (no stale closures) and doesn't thrash on every keystroke.
+dependency array is both correct (no stale closures) and only changes when the state does —
+which, for `display`, is every digit typed, so the listener does re-attach per keystroke.
 Not the board's INP-critical hot path (AGENTS.md §3) — this is a low-frequency popup — but the
 correct fix costs nothing extra here.
+
+## Focus-on-open is its own `[open]` effect (October 2026)
+
+**Why:** the "focus the Close button on open" call used to sit inside the keyboard effect above.
+That effect re-runs whenever a handler's closure changes, which is every digit typed, so every
+keystroke also re-ran the focus call and yanked focus back to Close. A keyboard user tabbing
+across the keypad was pulled off the key they had reached each time they typed. Focus-on-open
+now lives in a separate effect keyed on `open` alone, so it runs once when the popup opens.
+
+```text
+effect [open]:          if open -> focus the Close button
+effect [open, handlers]: if open -> attach the window keydown listener (digits, ops, Escape)
+```
 
 ## Future ideas (not built — deliberately deferred, per user request)
 

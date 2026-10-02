@@ -1,7 +1,8 @@
 # useBoardStore: Plain English Pseudocode
 
-The interactive board's single source of truth — a Zustand store wrapped in the
-`zundo` temporal middleware for undo/redo.
+The interactive board's single source of truth — a Zustand store composed as
+`persist(temporal(...))`: zundo's temporal middleware (undo/redo) inside Zustand's `persist`
+(localStorage). The order matters — see [Middleware order](#middleware-order-persist-outside-october-2026).
 
 ## Why Zustand + zundo
 
@@ -12,6 +13,18 @@ The interactive board's single source of truth — a Zustand store wrapped in th
   `grid` and `candidates` — never the timer, status, or selection. That way a
   per-second timer tick creates no history entry, and an undo reverts a move without
   rewinding the clock (research §3.2).
+  (Since Skyscrapers, `doneClues` is tracked too — a marked clue is progress.)
+
+### History equality: reference first (October 2026)
+
+zundo calls `equality(past, current)` on **every** `set` to decide whether to record a history
+entry. It used to be two `JSON.stringify` calls of the whole partialized state, so the timer
+tick, a selection change and a pause each serialized the grid twice a second just to learn that
+nothing changed. Every action that touches progress *replaces* the array it changes and nothing
+mutates one in place, so identical references for `grid`, `candidates` and `doneClues` mean
+"no move" and short-circuit. The deep comparison remains as the fallback for the rare action
+that rebuilds an array with the same contents (a toggle on and back off), so the history records
+exactly what it recorded before.
 
 ## State
 
@@ -105,9 +118,38 @@ initial config, which has `hasBoxes`, takes over). It was `2` when `mode` was ad
 Each bump discards any pre-bump persisted game on update (a clean reset rather than a
 half-migrated board). Actions are dropped by JSON
 serialization and re-supplied by the store creator. `persist` sits
-*inside* `temporal`, so undo/redo still works and `useBoardStore.temporal` is intact.
+*outside* `temporal` (October 2026 — see below); `useBoardStore.temporal` is still exposed.
 Because the persisted state only exists on the client, `PlayExperience` gates its
 first render on a mounted check to avoid an SSR/hydration mismatch.
+
+### Middleware order: persist outside (October 2026)
+
+**Why:** the store used to be `temporal(persist(...))`. zundo's `undo`/`redo` write through the
+raw `set` the temporal middleware was handed — with temporal outermost, that `set` sat *outside*
+persist, so the write bypassed it. An undo changed the board on screen while localStorage kept
+the pre-undo grid until the next unrelated `set` (usually the timer tick, up to a second later);
+a reload inside that window brought the undone move back. The same order also routed persist's
+hydration `set` through temporal's wrapper before the store existed, which threw inside persist's
+promise chain. The error was swallowed, but `hasHydrated()` never became true and
+`onFinishHydration` never fired.
+
+With `persist(temporal(...))`, undo/redo are ordinary persisted writes, and hydration uses the
+raw set — it records no history entry and throws nothing. `useBoardStore.hydration.test.tsx`
+pins both halves: an undo is in localStorage immediately, and a rehydrate flips `hasHydrated()`
+with an empty history. The temporal options (`partialize`, `limit: 100`, `equality`) now
+sit on the inner call and the persist options on the outer one.
+
+```text
+create(
+  persist(                         # outer: localStorage, version, merge (derived fields)
+    temporal(                      # inner: undo history of grid / candidates / doneClues
+      (set, get) => actions,
+      { partialize, limit: 100, equality: reference-first },
+    ),
+    { name: 'sudoku-board', version, partialize, merge },
+  ),
+)
+```
 
 ### Derived fields are rebuilt in `merge`, not after (October 2026)
 
@@ -153,11 +195,15 @@ selectCell(r, c): set the selection.
 
 inputDigit(digit):
   ignore unless playing with a selected, non-given cell.
+  ignore unless digit is an integer in 1..config.maxNum (October 2026 — the UI already bounds
+    it, but the store guards too, so no caller can plant a 7 on a 4×4 or shift a candidate
+    bit past the mask).
   IF pencil mode AND the cell is empty: toggle that candidate bit.
   ELSE (pen): if the cell already holds this digit, clear it; otherwise place it —
     UNLESS all `size` instances of that digit are already on the board (lockout:
     matches the grayed-out numpad button; never applies to Kakuro) — clear its pencil marks, and strip the
-    digit from every peer's candidates. A placement that doesn't match the solution
+    digit from every peer's candidates (Killer: also from its cage-mates, found in O(1) via
+    `cellToCage` rather than scanning every cage per keystroke). A placement that doesn't match the solution
     increments `mistakes`. Then, if the grid equals the solution, status = solved
     (which locks the board — the play actions all require status === 'playing'),
     AND the undo/redo history is cleared so a completed grid is truly view-only:
@@ -171,8 +217,11 @@ clearCell(): empty the selected non-given cell (value + candidates).
 hint():
   reveal one correct cell — the selected empty cell if there is one, else the first
   empty cell. Place its value from the solution (stripping peers' candidates, same as
-  a normal placement) and re-check for completion. (A strategy-aware "why" hint is a
-  Phase 5 concern; this reveal-a-cell hint keeps the heavy solver out of the client.)
+  a normal placement) and re-check for completion. Kakuro/Skyscrapers try a solver deduction
+  first (below; the deducers are lazy-loaded).
+  No empty cell left (the board is full but wrong): set lastHint to a cell-less note —
+  "Every cell is filled — at least one is wrong. Check your entries." — rather than doing
+  nothing, which read as a broken button (October 2026).
 
 togglePencilMode / toggleRealTimeErrors: flip the respective flag.
 revealErrors(): errorsRevealed = true (one-way; reset only by startNewGame).
@@ -288,3 +337,41 @@ Skyscrapers' forced deduction — moved to `hint-deducers.ts`: `hint` builds a n
 (grid, solution, config, the preferred cell, runs, edge clues), asks `deduceHintFor(variant, …)`,
 and uses its `{ target, note }` or falls back to the reveal. The agree-with-the-solution rule (L9)
 is written once there instead of per variant.
+
+### The deducers are lazy-loaded (October 2026)
+
+**Why:** `hint-deducers.ts` pulls the Kakuro and Skyscrapers exact and logical solvers into any
+bundle that imports it. A static import from this store put them — about 13 KB gzipped — on
+**every** route, because `useSavedGame` imports the store and the hub and `/daily` (where Hint is
+disabled) both use that hook. It also made the performance audit's claim that "the solver never
+enters the client bundle" false.
+
+The module is now loaded on demand through `preloadHintDeducers()` — idempotent, caching the
+module and the in-flight promise, and exported so tests can await it before hinting.
+`startNewGame` starts the load for the two variants that need it, and so does the persist `merge`
+for a resumed Kakuro/Skyscrapers (a resumed game never passes through `startNewGame`). By the time
+a player can press Hint the module has arrived; a hint that outruns it — only possible within
+milliseconds of a game starting — is a plain reveal, and the next hint deduces.
+
+```text
+hasSolverHints(variant) = variant is kakuro or skyscrapers
+startNewGame / merge:  if hasSolverHints -> preloadHintDeducers() (fire and forget)
+hint():                if hasSolverHints:
+                         deducers loaded?  -> deduceHintFor(...) as before
+                         not yet           -> start the load; this hint falls back to a reveal
+```
+
+### `calcGridConfig` comes from `calc-types` (October 2026)
+
+The Keisan boxless config is imported from `engine/calc/calc-types`, not `calc-generator`.
+Importing it from the generator dragged the Keisan generator and solver into the client bundle
+of every route that touches this store, for a five-line config function (see
+[`calc-types.md`](../../engine/calc/calc-types.md)).
+
+**Why the store's own loads swallow a rejection (`kickHintDeducers`):** `startNewGame`, `hint`
+and rehydration fire the load and move on; a failed chunk (offline, a stale deploy's hash — or,
+in the test runner, a worker torn down while a dev-badge test's import was still in flight)
+would otherwise surface as an unhandled promise rejection, which failed a green suite once. The
+rejection resets the cached promise so the next game or hint retries, and the hint that ran
+without the module is a plain reveal. `preloadHintDeducers` itself still rejects, so a test that
+awaits it sees a real failure.

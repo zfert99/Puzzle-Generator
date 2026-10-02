@@ -1,8 +1,11 @@
 # Site-wide Optimization + QA Pass (October 2026)
 
-> **Status:** 🚧 **Built, gate-passed, not yet landed** — every change below sits uncommitted on
-> branch `chore/site-wide-optimization-qa` (cut from `main` at `6db9c70`). Nothing has been
-> committed, pushed or merged; the suggested PR split is in §7. · **Date:** 2026-10-02
+> **Status:** ✅ **Landed 2026-10-02** as four slices in the order §7 proposed — engine
+> [#140](https://github.com/zfert99/Puzzle-Generator/pull/140), server/API
+> [#141](https://github.com/zfert99/Puzzle-Generator/pull/141), design tokens + a11y chrome
+> [#142](https://github.com/zfert99/Puzzle-Generator/pull/142), board/store (the fourth PR). Each
+> was cut from `main` after the previous merged, gated, and squash-merged on green CI. Built on
+> `chore/site-wide-optimization-qa` from `6db9c70` · **Date:** 2026-10-02
 > **What this is:** the self-contained record of one full-site review (five parallel read-only
 > audits + a live browser pass over a production build) and the remediation that followed. It
 > front-loads everything a cold reader needs: what was reviewed, what was found, what was fixed

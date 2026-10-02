@@ -12,7 +12,7 @@ Show Pause while playing (-> pause) or Resume while paused (-> resume).
 
 Everything (including `difficulty`) is read from the store rather than props, so the
 header renders correctly after a persisted refresh. The interval that advances the
-timer lives in `PlayExperience`.
+timer lives in the shared `useGameClock` hook, called by each Experience component.
 
 ## Error feedback rules (July 2026)
 
@@ -60,3 +60,17 @@ A Kakuro's `difficulty` is the classifier's label (E2a) or the literal `'unrated
 shows it as-is — "hard · 7×7", or "unrated · 7×7" for a puzzle the ladder cannot finish. The
 earlier special-casing (a review finding: the placeholder "Medium" shown as a grade) is gone
 because the placeholder is gone.
+
+## Errors toggle text token (October 2026)
+
+When on, the Errors toggle's text is `text-on-butterscotch` instead of `text-ink`: `--ink` turns
+cream in the dark theme, about 1.5:1 against the butterscotch fill. Butterscotch is mid-light in
+both themes, so the text on it stays dark ink in both.
+
+## Phone widths (October 2026)
+
+**Why `flex-wrap` and `whitespace-nowrap`:** at 360–390 px the three groups (label, clock +
+mistakes, the three buttons) did not fit on one line, and without wrapping as groups the label
+broke across two lines and the mistakes counter stacked its "✗" above its digit. The row now
+wraps as groups — the button trio drops to a second line whole — and the label and counter are
+single-line. Seen on the production build in the site-wide pass's mobile check.

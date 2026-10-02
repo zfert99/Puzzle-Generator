@@ -92,6 +92,22 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Site-wide pass, slice 4 of 4: board + store (review, clock, undo persistence)
+
+Branch `fix/board-store-review-clock-undo` on `a4bf567` (slice 3 merged as #142). Files:
+`src/features/interactive-board/**`, `DailyExperience`, `ArchiveExperience`, `ContinueBanner` —
+the B1–B8 and C2–C5 items of the pass's record. Gate: lint · tsc · `npx vitest run` **98 files /
+982 tests** · markdownlint. **One finding on this cut:** the first full run passed every test but
+exited 1 on an *unhandled rejection* — the store's fire-and-forget `import('../hint-deducers')`
+resolved after a dev-badge test's worker had torn down (`EnvironmentTeardownError`). The store's
+own loads now swallow the rejection and reset the cached promise (`kickHintDeducers`); the
+exported `preloadHintDeducers` still rejects for a test that awaits it. Three re-runs of the
+board suite plus the full suite are clean. Lesson, as a rule: **a fire-and-forget dynamic import
+needs a `.catch`**, or the one time it loses a race it fails an otherwise green suite. Hosted
+`/code-review` not run.
+
+---
+
 ## 2026-10-02 — Site-wide pass, slice 3 of 4: design tokens, a11y chrome, `motion` removed
 
 Branch `feat/design-tokens-a11y-chrome` on `78a05c1` (slice 2 merged as #141). Files:

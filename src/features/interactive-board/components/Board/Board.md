@@ -136,6 +136,7 @@ entryIndex = no selection yet ? index of first non-given cell : -1
 Each Cell gets isEntry = (its index == entryIndex).
 
 On keydown:
+  Cmd/Ctrl/Alt held -> return untouched (the browser's shortcut, not board input).
   Arrow keys  -> move the selection one step (clamped), preventDefault (no scroll).
   Backspace / Delete / 0 -> clearCell.
   Space / P   -> toggle pencil mode, preventDefault.
@@ -146,10 +147,30 @@ keyboard and screen-reader focus track the selection.
 
 Second effect: a window-level keydown listener for undo/redo, so they work no
 matter which control has focus:
+  ignore unless Cmd/Ctrl is held and the key is Z or Y
+  ignore unless the store's status is 'playing'
+  ignore if the event target sits inside an open dialog
   Cmd/Ctrl+Z               -> undo
   Shift+Cmd/Ctrl+Z, Ctrl+Y -> redo
 It requires a modifier key, so ordinary typing is never affected.
 ```
+
+## October 2026: memo, modifier keys, and a gated undo shortcut
+
+- **`Board` is `memo`'d (it takes no props).** The Experience components that render it read the
+  clock for their own chrome and re-render once a second. Without `memo` each tick re-created all
+  N² `Cell` elements and re-diffed the cage overlay, even though nothing on the board changed.
+  The board's own store slice still re-renders it on a real change.
+- **Modified keys return early in `handleKeyDown`.** Cmd/Ctrl+1–9 switch browser tabs, Cmd/Ctrl+0
+  resets zoom, Cmd/Ctrl+P prints. The handler used to treat them as digit entry, so they both
+  planted a digit and swallowed the shortcut. Undo/redo are unaffected because they have their
+  own window listener.
+- **The undo/redo shortcut only fires on a live game, outside dialogs.** A window-level listener
+  also fires behind any open dialog (rules, settings, "Not quite!", confirm) and while the board
+  is paused and hidden. Neither is a moment to change the grid, and inside a dialog's text field
+  the keystroke should do the field's own undo. So the listener requires `status === 'playing'`
+  (read with `getState()` so the effect does not re-subscribe) and skips any target inside
+  `[role="dialog"]` or an open `<dialog>`.
 
 ## Row structure (September 2026, QA finding F6)
 

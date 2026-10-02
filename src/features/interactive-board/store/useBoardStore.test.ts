@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useBoardStore } from './useBoardStore';
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
+import { useBoardStore, preloadHintDeducers } from './useBoardStore';
 import { hasBit } from '../board-utils';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import { KAKURO_FIXTURE_7X7_CHAINS, parseKakuroFixture } from '@/features/engine/kakuro/kakuro-fixtures';
@@ -24,6 +24,11 @@ const puzzle = (): SudokuPuzzle => ({
   difficulty: 'easy',
   gridSize: 4,
 });
+
+// The solver-driven hint deducers are lazy-loaded in the app (they are kicked off by
+// `startNewGame`); the Kakuro/Skyscrapers hint tests below call `hint()` synchronously right
+// after starting, so the module is awaited once here.
+beforeAll(() => preloadHintDeducers());
 
 beforeEach(() => {
   // Deterministic starting state for every test (also clears undo history).
@@ -209,6 +214,34 @@ describe('undo/redo (zundo)', () => {
     expect(s.grid[0][0]).toBe(1); // still solved — not reverted
     expect(s.grid[0][1]).toBe(2);
     expect(s.status).toBe('solved');
+  });
+});
+
+describe('input range', () => {
+  it('ignores a digit outside 1..maxNum', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 0);
+    store.inputDigit(7);
+    store.inputDigit(0);
+    store.inputDigit(-1);
+    expect(useBoardStore.getState().grid[0][0]).toBe(0);
+    expect(useBoardStore.getState().mistakes).toBe(0);
+  });
+});
+
+describe('hint on a full board', () => {
+  it('leaves a note instead of doing nothing when every cell is filled but wrong', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 0);
+    store.inputDigit(2); // wrong (solution 1)
+    store.selectCell(0, 1);
+    store.inputDigit(1); // wrong (solution 2)
+    expect(useBoardStore.getState().status).toBe('playing');
+    useBoardStore.getState().hint();
+    const note = useBoardStore.getState().lastHint;
+    expect(note?.technique).toBeNull();
+    expect(note?.explanation).toMatch(/filled/i);
+    expect(useBoardStore.getState().grid[0][0]).toBe(2); // nothing was changed
   });
 });
 

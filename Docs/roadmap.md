@@ -795,11 +795,11 @@ speed races**, **community puzzle sharing**, and a **mobile app**.
 
 The subsections below capture the remaining backlog items.
 
-### Site-wide optimization + QA pass 🚧 Built, awaiting landing (October 2026)
+### Site-wide optimization + QA pass ✅ Landed (October 2026, #140–#143)
 
 A full-site review — five parallel read-only audits (client rendering, server/API + security,
 board/store, engine, a11y/SEO/chrome) plus a live browser pass over a production build — and the
-remediation that followed, all on `chore/site-wide-optimization-qa`. The self-contained record,
+remediation that followed, landed as four slices. The self-contained record,
 with measured before/after numbers and the suggested four-PR landing order, is
 [site-wide-optimization-qa-pass.md](site-wide-optimization-qa-pass.md). Headlines: the `motion`
 library removed (every page used to server-render at `opacity:0` until hydration; 37–66 KB gz

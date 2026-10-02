@@ -30,7 +30,7 @@ interface CellProps {
 export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
   // Error highlighting is an app-wide setting (features/settings), not per-game.
   const errorHighlight = useSetting('errorHighlight');
-  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, selValue, size, maxNum, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed, isKakuro, isSkyscrapers, isBlocked, clue } = useBoardStore(
+  const { value, mask, isGiven, isSelected, isPeer, isCagePeer, isWrong, isSameNumber, candMatch, size, maxNum, boxWidth, boxHeight, hasBoxes, isDaily, errorsRevealed, isKakuro, isSkyscrapers, isBlocked, clue } = useBoardStore(
     useShallow((s) => {
       const sel = s.selectedCell;
       const cfg = s.config;
@@ -73,18 +73,23 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
               Math.floor(sel.c / cfg.boxWidth) === Math.floor(c / cfg.boxWidth)));
       const v = s.grid[r][c];
       const selValue = sel != null ? s.grid[sel.r][sel.c] : 0;
+      const mask = s.candidates[r][c];
       return {
         value: v,
-        mask: s.candidates[r][c],
+        mask,
         isGiven: s.givens[r][c],
         isSelected: isSelf,
         isPeer: samePeer,
         isCagePeer: sameCage,
         isWrong: v !== 0 && !s.givens[r][c] && v !== s.solution[r][c],
         isSameNumber: v !== 0 && v === selValue && !isSelf, // another cell holding the selected value
-        // The selected cell's placed value (0 if none/empty) — lets this cell's own candidate
-        // render highlight the one pencil mark matching it, same-number's candidate-side twin.
-        selValue,
+        // The one pencil mark in THIS cell that matches the selected cell's placed value (0 if
+        // none) — same-number's candidate-side twin. Resolved here, inside the selector, rather
+        // than returning the raw selected value: a raw `selValue` changed for all N² cells every
+        // time the selection moved between two different digits or a digit was typed, so every
+        // cell re-rendered and the `React.memo` below was defeated on most moves. Reduced to the
+        // digit-or-0 this cell actually draws, it only changes for the few cells that show it.
+        candMatch: v === 0 && selValue !== 0 && (mask & (1 << (selValue - 1))) !== 0 ? selValue : 0,
         size: cfg.size,
         maxNum: cfg.maxNum,
         boxWidth: cfg.boxWidth,
@@ -179,7 +184,7 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
           {Array.from({ length: maxNum }, (_, i) => {
             const digit = i + 1;
             const present = mask & (1 << i);
-            const isMatch = present && selValue !== 0 && digit === selValue;
+            const isMatch = present && digit === candMatch;
             return (
               <span key={i} className={isMatch ? styles.candidateMatch : undefined}>
                 {present ? digit : ''}

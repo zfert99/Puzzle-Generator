@@ -39,9 +39,16 @@ export function BoardAnnouncer() {
   const [prevClues, setPrevClues] = useState(edgeClues);
   const [message, setMessage] = useState('');
 
+  // The solving move changes `status` and `grid` in the same update. Both diffs below run in
+  // this one render, and the LAST `setMessage` wins — so "Puzzle solved" used to be overwritten
+  // by "7 entered, row 9, column 9" and was never heard. The solve outranks the placement.
+  let justSolved = false;
   if (status !== prevStatus) {
     setPrevStatus(status);
-    if (status === 'solved') setMessage('Puzzle solved');
+    if (status === 'solved') {
+      setMessage('Puzzle solved');
+      justSolved = true;
+    }
   }
   // Marking a Skyscrapers clue done changes the focused cell's own name, which screen readers do
   // not re-announce on their own (G8) — say the clue's new name here. A new game resets every
@@ -65,8 +72,9 @@ export function BoardAnnouncer() {
   if (grid !== prevGrid) {
     const before = prevGrid;
     setPrevGrid(grid);
-    // Skip a grid-size change (a new game) — nothing to diff.
-    if (before.length === grid.length) {
+    // Skip a grid-size change (a new game) — nothing to diff — and the solving move (announced
+    // above as the solve itself).
+    if (before.length === grid.length && !justSolved) {
       const next = describeChange(grid, before, solution, announceWrong);
       if (next && next !== message) setMessage(next);
     }

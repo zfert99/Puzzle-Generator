@@ -43,7 +43,8 @@ That day's leaderboard is closed; letting late solves post to it would let playe
 boards. So the archive **never** calls `/api/solve` — its solved modal just shows the time and
 says "practice replay — not ranked". Replays reuse the shared board via
 `startNewGame(puzzle, 'daily', date)`, and the timer runs only while actively replaying
-(`view === 'playing'`), same as the other surfaces.
+(`view === 'playing'`) through the shared `useGameClock`, which also stops it while the tab is
+hidden (October 2026), same as the other surfaces.
 
 ## Why difficulty is lifted here
 
@@ -139,6 +140,7 @@ view 'browse':
 
 view 'playing':
   reused board (GameHeader / Board / Numpad / KeyboardHints); hints allowed (it's practice)
+  full but wrong → shared ReviewDialog (wrong count, opt-in revealErrors)
   solved → unranked modal (time + mistakes + "not ranked") → back to browse
 ```
 
@@ -157,3 +159,13 @@ The practice-solved overlay is the shared
 not ranked." note as its children), which moves focus to "Back to archive" on open and restores
 it on close — the same F7 wiring as the play and daily surfaces, now carried by the component
 rather than re-wired here.
+
+## Full-board review on replays (October 2026)
+
+**Why:** a replay is daily-shaped — no live error feedback — but unlike `/daily` it never had the
+"Not quite!" review, so a full, wrong practice board gave no signal and the only way out was
+guessing. It now uses the same [`useBoardReview`](../../interactive-board/hooks/useBoardReview.md)
+hook (active while `view === 'playing'`) and
+[`ReviewDialog`](../../interactive-board/components/ReviewDialog.md) as the daily, including the
+"Show me what's wrong" opt-in (`revealErrors`). The hook counts only editable cells, so a Kakuro
+replay's black cells don't block it. The fetch error paragraph is now `role="alert"`.

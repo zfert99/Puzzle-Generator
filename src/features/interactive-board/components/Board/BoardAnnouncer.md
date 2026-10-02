@@ -10,6 +10,19 @@ Derives the message **during render** from the grid/status changed since the las
 (React's sanctioned prev-value-in-state pattern) — no effect, no ref-during-render, so it
 satisfies the `react-hooks` lint rules.
 
+## "Puzzle solved" outranks the placement (October 2026)
+
+**Why:** the solving move changes `status` and `grid` in the same store update, so both diffs run
+in one render, and the last `setMessage` wins. The grid diff ran second, so "Puzzle solved" was
+always overwritten by "7 entered, row 9, column 9" and never heard. A local `justSolved` flag,
+set when the status diff announces the solve, now skips the grid diff for that render.
+
+```text
+on render:
+  status changed to solved -> message = "Puzzle solved"; justSolved = true
+  grid changed and same size and not justSolved -> message = describe the placement
+```
+
 ## Daily suppression
 
 The "…, incorrect" announcement follows the same rule as the visual highlight: on a daily it's

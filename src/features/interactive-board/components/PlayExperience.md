@@ -43,14 +43,15 @@ starting a new one — matching the daily picker's shape. This decouples "which 
 Local state: gridSize + difficulty (for the config), view, viewingSolved, warnOpen.
 saved = useSavedGame()  → the one persisted in-progress game, or null.
 
-Timer effect: while view === 'playing' AND status === 'playing', tick() each second.
+Clock: useGameClock(view === 'playing' AND status === 'playing') ticks each second, and
+  stops while the tab is hidden.
   Gated on `view` so stepping back to the menu (or leaving the page) FREEZES the timer;
   Continue resumes it from the stored elapsedTime. This is what makes leaving/continuing fair.
 
 IF view === 'config':
   Render the menu:
     - If a saved FREE-PLAY game exists (saved.mode === 'play'): a prominent
-      "Continue {size} {difficulty} · M:SS" button → handleContinue (resume() if paused,
+      "Continue {size} {difficulty} · M:SS" button (M:SS is <SavedElapsed>) → handleContinue (resume() if paused,
       then view = 'playing'). No re-fetch — the board is already in the store.
     - <GridSizeSelector> + difficulty buttons (Expert/Extreme disabled for mini grids).
     - Play button: if ANY saved game exists (play OR daily — one slot), open the
@@ -73,7 +74,7 @@ persisted store, so a resumed game never causes an SSR/client mismatch.
 > shows via Continue (gated on `saved.mode === 'play'`) or a fresh play.
 >
 > The solved modal is the shared [SolvedDialog](SolvedDialog.md) (September 2026 extraction),
-> which renders the Motion [SolvedStamp](../../juice/SolvedStamp.md) (chunky stamp badge +
+> which renders the [SolvedStamp](../../juice/SolvedStamp.md) (CSS keyframes since October 2026; chunky stamp badge +
 > confetti + screen-flash, reduced-motion-safe) in place of the old emoji/`celebrate` CSS (5.3a).
 
 ## Deep link: `/play?variant=killer|calc|kakuro|skyscrapers`
@@ -122,6 +123,22 @@ component no longer touches `useDialogFocus` itself.
 Same F10 treatment as `PuzzleForm`: the type toggle is a labelled `role="group"` with
 `aria-pressed` buttons, and the Difficulty heading became a `span` + `aria-labelledby` over its
 group (size buttons get theirs from the shared `GridSizeSelector`).
+
+## Site-wide QA pass (October 2026)
+
+- **`useGameClock` replaces the inline `setInterval(tick)` effect** — the same interval shared
+  with `/daily` and `/archive`, which also stops while the tab is hidden (see
+  [`useGameClock`](../hooks/useGameClock.md)).
+- **`<SavedElapsed />` replaces `formatElapsed(saved.elapsedTime)`.** `useSavedGame` no longer
+  returns the clock, so this component stops re-rendering once a second during play just to keep
+  a menu label current (see [`SavedElapsed`](SavedElapsed.md)).
+- **The type picker is a wrapping flex row, not five equal columns.** The earlier comment chose
+  `grid-cols-5` so the fifth label would not wrap onto its own line, but at 320–430 px five
+  columns gave each label about 27–38 px while "Skyscrapers" needs 89, so the labels overlapped
+  on every phone width. The page's `overflow-x: hidden` hid it from the overflow test. Natural
+  width pills that wrap (centred) are the lesser evil.
+- **Selected pills use `text-on-butterscotch`** (`--ink` turns cream in dark mode, about 1.5:1 on
+  butterscotch), and the fetch error is `role="alert"`.
 
 ## Development-only solver badge (October 2026, Kakuro E1; Skyscrapers E1/E2)
 

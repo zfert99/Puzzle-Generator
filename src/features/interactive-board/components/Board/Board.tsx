@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { memo, useEffect, useRef, useCallback } from 'react';
 import type { KeyboardEvent, CSSProperties } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '../../store/useBoardStore';
@@ -21,8 +21,13 @@ import styles from './Board.module.css';
  * scrolling. Focus follows the selected cell so screen-reader users always hear the
  * active square. Before any selection exists, the first editable cell holds the
  * grid's Tab stop (WCAG 2.1.1) — see `entryIndex` below.
+ *
+ * `memo`'d with no props: the Experience components that render it re-render once a second on
+ * the timer (they read the clock for their own chrome), and without memo each tick re-ran this
+ * component's N² `Cell` element creations and the cage overlay diff. Its store slice is still
+ * what re-renders it on a real change.
  */
-export function Board() {
+export const Board = memo(function Board() {
   const gridRef = useRef<HTMLDivElement>(null);
 
   const { size, maxNum, selectedR, selectedC, variant, cages, blocked, clues, entryIndex } = useBoardStore(
@@ -67,6 +72,14 @@ export function Board() {
       const mod = e.metaKey || e.ctrlKey;
       if (!mod) return;
       const key = e.key.toLowerCase();
+      if (key !== 'z' && key !== 'y') return;
+      // A window-level listener fires behind any open dialog (the rules, settings, "Not quite!"
+      // and confirm modals) and while the board is paused and hidden — neither is a moment to
+      // change the grid. Only a live, visible game takes the shortcut; inside a dialog the key
+      // is left alone so a text field's own undo still works.
+      if (useBoardStore.getState().status !== 'playing') return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('[role="dialog"], dialog[open]')) return;
       const temporal = useBoardStore.temporal.getState();
 
       if (key === 'z') {
@@ -174,6 +187,10 @@ export function Board() {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
       if (handleClueKeys(e)) return;
+      // Modified keys are the browser's, not the board's: Cmd/Ctrl+1–9 switch tabs, Cmd/Ctrl+0
+      // resets zoom, Cmd/Ctrl+P prints. Treating them as digit entry both planted digits and
+      // swallowed the shortcut. (Undo/redo have their own window listener above.)
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
@@ -289,4 +306,4 @@ export function Board() {
       <BoardAnnouncer />
     </>
   );
-}
+});
