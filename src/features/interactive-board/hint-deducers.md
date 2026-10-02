@@ -29,22 +29,22 @@ deducer = DEDUCERS[variant]; none → null (the store reveals)
 kakuro:      explainKakuroHint (a named technique with a reason) if it agrees with the solution;
              else deduceKakuro's forced cells → pickAgreeing; contradiction → null
 skyscrapers: explainSkyscrapersHint (a named technique with a reason) if it agrees with the
-             solution; with a preferred cell, that explained step wins only when it IS the
-             preferred cell — otherwise the exact solver's forced value for the preferred cell
-             wins (unexplained), then the explained step, then the first forced cell that agrees;
-             contradiction with nothing explained → null
+             solution; else deduceSkyscrapers's forced cells → pickAgreeing; contradiction → null
+             (the same shape as kakuro's — the explainer itself places the selected cell first)
+agreesWithSolution(ctx, f): the one place a candidate is checked against the answer (L9)
 pickAgreeing: the preferred cell if forced and agreeing, else the first forced cell that agrees
 result:      { target: { r, c }, note: { cell, digit, technique, explanation, leadUp } }
 ```
 
-## Why Skyscrapers lets the selected cell beat the explained step (E2)
+## Why the Skyscrapers deducer has no precedence of its own (E2 review)
 
-Kakuro's explained step and its "hint the selected cell" promise rarely conflict: its ladder opens
-with eliminations, and the Latin singles are restricted to the preferred cell. Skyscrapers' ladder
-opens with **placement** rules that pick their own cell — `clueN`, `clue1`, `facingSum` — so from
-an empty board the next named step is almost never the cell the player selected. Rather than
-detour (apply other placements until the selected cell falls — which would make the explanation
-cite cells not on the board, L13), the deducer asks the exact solver whether the selected cell is
-forced *now*; if so, that is the hint, with the unexplained "forced by the clues" note. The named
-step is the hint whenever no cell is selected or the selected one is not yet forced. Both
-behaviours are store tests.
+Skyscrapers' ladder opens with **placement** rules that pick their own cell — `clueN`, `clue1`,
+`facingSum` — so with the first draft of the explainer (singles-only preference, as Kakuro's) the
+named next step from an empty board was almost never the cell the player had selected, and the
+deducer grew a Skyscrapers-only rule: ask the exact solver whether the selected cell is forced
+and hint it unexplained. The review called that a bandaid at the wrong depth. The fix lives in
+`explainSkyscrapersHint`: with a preferred cell, **every** placing technique is confined to that
+cell first (eliminations still run anywhere), so a selected cell the board can deduce is hinted
+*by name* — "(3,1) is 3: the heights climb 1 to 4" — and only when no rule can place it does the
+ladder place elsewhere. The two deducers are now the same shape, and the store tests pin both
+orders (selected cell named; ladder's placement elsewhere when nothing can place the selection).

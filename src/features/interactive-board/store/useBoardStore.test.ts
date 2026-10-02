@@ -442,15 +442,14 @@ describe('Skyscrapers', () => {
     expect(s.lastHint?.explanation).toMatch(/every tower is visible/);
   });
 
-  it('hints the selected cell when the exact solver forces it, even when the named step lies elsewhere', () => {
+  it('hints the selected cell by name when a rule can place it, even if the ladder would place elsewhere first', () => {
     const store = useBoardStore.getState();
-    store.selectCell(2, 0); // forced to 3 by the top clue 4, but the ladder's next step is (0,0)
+    store.selectCell(2, 0); // the top clue 4 climbs 1..4, so (2,0) is 3 — placed directly, not via (0,0)
     store.hint();
     const s = useBoardStore.getState();
     expect(s.grid[2][0]).toBe(3);
     expect(s.grid[0][0]).toBe(0);
-    expect(s.lastHint?.technique).toBeNull();
-    expect(s.lastHint?.explanation).toMatch(/forced by the clues/i);
+    expect(s.lastHint?.technique).toBe('clueN');
   });
 
   it('falls back to the answer when the board holds a mistake the solver cannot see past', () => {

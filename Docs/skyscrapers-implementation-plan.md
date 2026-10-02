@@ -642,14 +642,16 @@ fires on at least one fixture; classify a 7×7 in < 20 ms.
   on the 5×5 and the all-clue SQUARE; hint explanation names `clueN` from an empty grid, honours
   the preferred cell only as the next deduction, `null` on a contradictory grid; scorer ordering
   and the density clamp; store hints (named step; selected forced cell beats it); badge lines.
-- *Measured (`tsx`, Node 24, warm, 100 runs):* classify 5×5 **0.47 ms** · 6×6 **7.4 ms** · 7×7
-  **7.0 ms** — the 20 ms gate with ~3× headroom (a cold first call read 19 ms: the permutation
-  table's lazy build). Histograms: 5×5 `clueN×5 positionBound×4 nearlyFilledClue×2
-  clue2Pattern×1 nakedSingle×18 hiddenSingle×2 lineFilter×3` → tier 3; 6×6 `clue1×1
-  positionBound×11 clue2Pattern×7 nakedSingle×24 hiddenSingle×11 lineFilter×19 forcingChain×4` →
-  tier 5; 7×7 `positionBound×14 clue2Pattern×1 nakedSingle×37 hiddenSingle×12 lineFilter×21
-  forcingChain×2` → tier 5. Scores 24.8 / 170.4 / 126.5. Metrics: rating 2.57 / 4.91 / 5.0 —
-  tiers 1–2 place 11 / 2 / 8 cells.
+- *Measured (`tsx`, Node 24, warm, 100 runs, after the review fixes):* classify 5×5 **0.42 ms** ·
+  6×6 **6.7 ms** · 7×7 **6.3 ms** — the 20 ms gate with ~3× headroom (a cold first call read
+  19 ms: the permutation table's lazy build; before the review's precomputation 0.47 / 7.4 /
+  7.0). Histograms: 5×5 `clueN×5 positionBound×4 nearlyFilledClue×2 clue2Pattern×1
+  nakedSingle×18 hiddenSingle×2 lineFilter×3` → tier 3; 6×6 `clue1×1 positionBound×11
+  clue2Pattern×7 nakedSingle×25 hiddenSingle×10 lineFilter×18 forcingChain×4` → tier 5; 7×7
+  `positionBound×14 clue2Pattern×1 nakedSingle×37 hiddenSingle×12 lineFilter×20 forcingChain×2` →
+  tier 5 (the house order changed one hidden single into a naked single — same grades, same
+  chains). Scores 24.8 / 163.7 / 122.2. Metrics: rating 2.57 / 4.91 / 5.0 — tiers 1–2 place
+  11 / 2 / 8 cells.
 - *Gate, honestly:* **soundness ✅** (fuzz + fixtures, zero disagreements). **Timing ✅**. **"Every
   T1–T4 technique fires on at least one fixture" ❌ as literally stated** — `facingSum` (no
   facing pair in any fixture), `reachability` (pre-empted by `nearlyFilledClue` / `positionBound`
@@ -668,11 +670,32 @@ fires on at least one fixture; classify a 7×7 in < 20 ms.
   puzzle **hard** because line filtering is a tier-3 human technique — the research's SAT-metric
   warning, now a design property (L13). (2) An explanation-first hint and "hint the selected
   cell" conflict the moment the ladder opens with placement rules that choose their own cell;
-  Skyscrapers resolves it by letting the exact solver's forced value win for the *selected* cell
-  (L14), tested both ways. (3) A wall-clock assertion in the unit suite measured the suite's
-  parallel load (77 ms for a 7 ms solve) — the real number lives in this log; the test only
-  guards against a runaway.
-- *Blockers:* none. Owner's `/code-review high` pending on the PR.
+  the first draft patched it in the deducer (exact-solver fallback for the selected cell), the
+  review moved it to the root: the explainer confines *every* placer to the selected cell first,
+  so the selection is hinted by name (L14), tested both ways. (3) A wall-clock assertion in the
+  unit suite measured the suite's parallel load (77 ms for a 7 ms solve) — the real number lives
+  in this log; the test only guards against a runaway.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 10 findings, all fixed
+  before merge):* (1) **grading the fixtures at import** ran three solves plus the table builds
+  (~30 ms) in the client bundle on every `/play` load via `usePuzzle` — the labels are typed now
+  and `skyscrapers-fixtures.test.ts` re-grades each fixture as the drift guard. (2) **The
+  selected-cell precedence was a deducer-level special case** (altitude) — moved into
+  `explainSkyscrapersHint`: `step(cap, disabled, target)` confines every placing technique to the
+  target, so the deducer is Kakuro's shape again and the selected cell is hinted by name; the
+  store test now expects `clueN` at (2,0), not an unexplained fallback. (3) Dead branch in the
+  explainer (both arms returned the same hint) collapsed. (4) **A repeated height in a row or
+  column was not a contradiction from the start** — the constructor now keeps a seen-mask per
+  house; a `[[4,4,…]]` grid records zero steps and the explainer returns `null` (tested; before,
+  a tier-3 step was recorded first). (5) The explainer's fixed guard of 500 was below 9×9's 729
+  candidate bits — bounded by N³ + 1 now. (6) `applyLineFilter` rebuilt 2N line descriptors and
+  `houses()` 2N arrays per call — both are constructor fields (`filterLines`, `houses`); classify
+  measured 0.47 → 0.42 / 7.4 → 6.7 / 7.0 → 6.3 ms. (7) The third copy of the agree-with-solution
+  check became `agreesWithSolution(ctx, f)`, used by `pickAgreeing` and both deducers. (8)
+  `lineCellsFor` was the third private line-indexing convention — now `lineCells(size, side,
+  index)` in `skyscrapers-types.ts`, used by the exact solver's `compile`, the logical solver and
+  `lineFor`. (9) The identity map `SIDE_WORD` removed. (10) JSDoc on `SkyscrapersLogicalSolver`
+  and `SkyscrapersClassification` (AGENTS.md §2).
+- *Blockers:* none.
 
 ### E3 — Yield measurement spike (throwaway, no production code) ⏳
 

@@ -42,9 +42,14 @@ function pickAgreeing(
   ctx: HintContext,
   forced: readonly { cell: number; digit: number }[]
 ): { cell: number; digit: number } | null {
-  const agrees = (f: { cell: number; digit: number }) =>
-    f.digit === ctx.solution[Math.floor(f.cell / ctx.config.size)][f.cell % ctx.config.size];
+  const agrees = (f: { cell: number; digit: number }) => agreesWithSolution(ctx, f);
   return forced.find((f) => f.cell === ctx.preferredCell && agrees(f)) ?? forced.find(agrees) ?? null;
+}
+
+/** The one place a candidate placement is checked against the answer (L9). */
+function agreesWithSolution(ctx: HintContext, f: { cell: number; digit: number }): boolean {
+  const size = ctx.config.size;
+  return f.digit === ctx.solution[Math.floor(f.cell / size)][f.cell % size];
 }
 
 const toTarget = (cell: number, size: number) => ({ r: Math.floor(cell / size), c: cell % size });
@@ -58,9 +63,8 @@ const toTarget = (cell: number, size: number) => ({ r: Math.floor(cell / size), 
 const kakuro: Deducer = (ctx) => {
   const size = ctx.config.size;
   const shape = { gridSize: size, runs: ctx.runs };
-  const agrees = (f: { cell: number; digit: number }) => f.digit === ctx.solution[Math.floor(f.cell / size)][f.cell % size];
   const explained = explainKakuroHint(shape, ctx.grid, { preferCell: ctx.preferredCell ?? undefined });
-  if (explained && agrees(explained)) {
+  if (explained && agreesWithSolution(ctx, explained)) {
     return {
       target: toTarget(explained.cell, size),
       note: { cell: explained.cell, digit: explained.digit, technique: explained.technique, explanation: explained.explanation, leadUp: explained.leadUp },
@@ -74,42 +78,31 @@ const kakuro: Deducer = (ctx) => {
 };
 
 /**
- * Skyscrapers: first the logical solver's next placement — a named technique with a reason
- * (E2) — then the exact solver's propagation (sound, but unexplained — E1). Same no-detour rule
- * as Kakuro's (the explanation only ever cites the board as the player sees it), with one
- * difference: the one-move clue rules (`clueN`, `clue1`, `facingSum`) place a specific cell
- * before anything else is considered, so when the player has *selected* a cell the logical
- * solver's next step rarely lands on it. The selected cell therefore wins when the exact solver
- * forces it — unexplained, but the cell the player asked about — and the explained step is the
- * hint otherwise. The agree-with-solution check gates every route (L9).
+ * Skyscrapers: the same shape as Kakuro's — first the logical solver's next placement, a named
+ * technique with a reason (E2), then the exact solver's propagation, sound but unexplained (E1).
+ * The explainer itself confines every placing rule to the selected cell first, so a selected
+ * cell the board can deduce is hinted by name (a clue-N climb, a single, …) and the deducer
+ * needs no precedence of its own. The agree-with-solution check gates both routes (L9).
  */
 const skyscrapers: Deducer = (ctx) => {
   if (!ctx.edgeClues) return null;
   const size = ctx.config.size;
   const shape = { gridSize: size, clues: ctx.edgeClues };
-  const agrees = (f: { cell: number; digit: number }) => f.digit === ctx.solution[Math.floor(f.cell / size)][f.cell % size];
   const explained = explainSkyscrapersHint(shape, ctx.grid, { preferCell: ctx.preferredCell ?? undefined });
-  const explainedHint =
-    explained && agrees(explained)
-      ? {
-          target: toTarget(explained.cell, size),
-          note: { cell: explained.cell, digit: explained.digit, technique: explained.technique, explanation: explained.explanation, leadUp: explained.leadUp },
-        }
-      : null;
-  if (explainedHint && (ctx.preferredCell == null || explained!.cell === ctx.preferredCell)) return explainedHint;
-  const { forced, contradiction } = deduceSkyscrapers(shape, ctx.grid);
-  const unexplained = (pick: { cell: number; digit: number }) => ({
-    target: toTarget(pick.cell, size),
-    note: { ...pick, technique: null, explanation: 'Forced by the clues and the row and column it sits in (no single named step)', leadUp: [] },
-  });
-  if (!contradiction) {
-    const selected = forced.find((f) => f.cell === ctx.preferredCell && agrees(f));
-    if (selected) return unexplained(selected);
+  if (explained && agreesWithSolution(ctx, explained)) {
+    return {
+      target: toTarget(explained.cell, size),
+      note: { cell: explained.cell, digit: explained.digit, technique: explained.technique, explanation: explained.explanation, leadUp: explained.leadUp },
+    };
   }
-  if (explainedHint) return explainedHint;
+  const { forced, contradiction } = deduceSkyscrapers(shape, ctx.grid);
   if (contradiction) return null;
   const pick = pickAgreeing(ctx, forced);
-  return pick ? unexplained(pick) : null;
+  if (!pick) return null;
+  return {
+    target: toTarget(pick.cell, size),
+    note: { ...pick, technique: null, explanation: 'Forced by the clues and the row and column it sits in (no single named step)', leadUp: [] },
+  };
 };
 
 /** The variants whose hints come from a solver. Every other variant reveals from the solution. */

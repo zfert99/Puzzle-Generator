@@ -109,8 +109,8 @@ over the 400-LOC target, as E1 was; the plan slices the engine by solver, not by
 | markdownlint (`**/*.md`) | exit 0 (one MD004 hit from a wrapped "+ 3" fixed) |
 | `npm run lint` | clean (one unused helper removed) |
 | `npx tsc --noEmit` · `npm run build` | clean · clean |
-| `npx vitest run` | **91 files / 880 tests green** (21 new, 5 rewritten); no entry from the Known flaky tests table fired |
-| Benchmarks | the slice's gate is a measurement (E5 adds `benchmark-skyscrapers.ts`): classify **5×5 0.47 ms · 6×6 7.4 ms · 7×7 7.0 ms** warm over 100 runs against the 20 ms gate; cold first call 19 ms (the lazy table build) |
+| `npx vitest run` | **91 files / 881 tests green** (22 new, 5 rewritten); no entry from the Known flaky tests table fired |
+| Benchmarks | the slice's gate is a measurement (E5 adds `benchmark-skyscrapers.ts`): classify **5×5 0.42 ms · 6×6 6.7 ms · 7×7 6.3 ms** warm over 100 runs against the 20 ms gate (0.47 / 7.4 / 7.0 before the review's precomputation); cold first call 19 ms (the lazy table build) |
 
 ### Findings
 
@@ -122,11 +122,22 @@ over the 400-LOC target, as E1 was; the plan slices the engine by solver, not by
 - **Bivalue forcing chains left the 6×6 `'unrated'`.** Its bottleneck cells were trivalue; the
   trial now covers 2–3 candidates, fewest first, and the fixture grades extreme in four chains.
   No guessing introduced — a value goes only when its supposition is proved impossible (L12).
-- **The hint's precedence had to be decided, not inherited.** With the logical solver first, the
-  E1 store test "hints the selected cell when the solver forces it" went red: `clueN` places its
-  own cell before any single is considered, so the named step almost never lands on the
-  selection. The deducer now lets the exact solver's forced value win for the *selected* cell and
-  uses the explained step otherwise; both orders are store tests (L14).
+- **The hint's precedence had to be decided, not inherited — and then decided at the right
+  depth.** With the logical solver first, the E1 store test "hints the selected cell when the
+  solver forces it" went red: `clueN` places its own cell before any single is considered, so the
+  named step almost never landed on the selection. The first fix let the exact solver's forced
+  value win for the selected cell inside the deducer; the review called it a bandaid, and the fix
+  moved into the explainer — `step()` confines every placing technique to a `target`, so the
+  selection is hinted *by name* and the deducer is Kakuro's shape again. Both orders are store
+  tests (L14).
+- **`/code-review high` (owner-run, on the PR): 10 findings, all fixed in-PR.** The two with
+  weight: grading the fixtures at import ran ~30 ms of solver work in the client bundle on every
+  `/play` load (typed labels now, re-graded by a test), and the deducer-level precedence above.
+  Also: a repeated height was not a contradiction from the start (seen-mask per house now; a
+  broken grid records zero steps); a 500-iteration explain guard under 9×9's 729 bits (N³ + 1);
+  2N line/house arrays rebuilt per technique call (constructor fields; 5–10% faster); a dead
+  branch; three copies of the agree-with-solution check and three line-indexing conventions each
+  folded into one; an identity map; two missing JSDoc blocks.
 - **A wall-clock assertion in the unit suite measured the suite.** 77 ms under parallel load for a
   7 ms solve. The test now only guards against a runaway (< 1 s); the real number is in the plan's
   step-log and the log's measurements table.
@@ -149,9 +160,8 @@ over the 400-LOC target, as E1 was; the plan slices the engine by solver, not by
 
 ### Review statements
 
-- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
-  runs `/code-review high` on the PR. `/security-review` not required: no auth/authz/data-access
-  change.
+- The owner ran `/code-review high` on the PR (10 findings, fixed above); the agent did not launch
+  it. `/security-review` not required: no auth/authz/data-access change.
 
 ### Lessons
 
@@ -162,6 +172,9 @@ over the 400-LOC target, as E1 was; the plan slices the engine by solver, not by
 - **When a second deducer is put in front of a first, re-run the first's behavioural tests before
   deciding they are stale.** The red "selected cell" test was the design question, not a dead
   assertion.
+- **A module evaluated in the client bundle must do no work at import that a test could pin
+  instead.** "Computed at import so it can never drift" is paid by every visitor; a typed value
+  plus a test that recomputes it is paid once, in CI.
 
 ---
 

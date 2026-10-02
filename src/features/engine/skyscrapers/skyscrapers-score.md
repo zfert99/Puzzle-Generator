@@ -22,7 +22,7 @@ scoreSkyscrapersSolve(result):
     → { raw, densityFactor, final: raw × densityFactor }
 ```
 
-On the served fixtures: 5×5 **24.8** (raw 18.8 × 1.32), 6×6 **170.4** (114.5 × 1.49), 7×7
-**126.5** (101.4 × 1.25) — the 6×6 outranks the bigger 7×7 within the extreme band because it
+On the served fixtures: 5×5 **24.8** (raw 18.8 × 1.32), 6×6 **163.7** (110.9 × 1.48), 7×7
+**122.2** (98.4 × 1.24) — the 6×6 outranks the bigger 7×7 within the extreme band because it
 needed twice the chains and was more bottlenecked, which is exactly the ordering the two factors
 exist to express. A test pins the chain-tier 7×7 above the line-filter-tier 5×5.

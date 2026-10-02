@@ -277,9 +277,9 @@ solution** (L9: a board holding a wrong height can force a height that is consis
 mistake). A contradiction, or no agreeing forced cell, falls through to the plain reveal. Since
 E2 the **logical solver** goes first: `explainSkyscrapersHint` names the technique (`clueN`,
 `lineFilter`, `forcingChain`, …) and gives the reason and lead-up — `HintNote.technique` is now
-`KakuroTechnique | SkyscrapersTechnique | null`. The exact solver's unexplained "forced by the
-clues and the row and column it sits in" note remains for the selected cell when the ladder's
-next step lies elsewhere, and as the fallback; the precedence lives in `hint-deducers.md`.
+`KakuroTechnique | SkyscrapersTechnique | null`. The selected cell is placed by name whenever any
+rule can deduce it (the explainer confines its placers to that cell first); the exact solver's
+unexplained "forced by the clues and the row and column it sits in" note is the fallback only.
 
 ### Solver-driven hints live in `hint-deducers.ts` (October 2026, Skyscrapers E1 review)
 

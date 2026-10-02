@@ -29,9 +29,9 @@ allocation in the hot loop).
 ```text
 compile(shape):
     table      = permutationTable(N)
-    for each row r:    lineCells[r]     = its N flat cell indices left→right
+    for each row r:    lineCells[r]     = lineCells(N, 'left', r)   (shared helper, left→right)
                        lineBucket[r]    = table bucket for (left[r], right[r])
-    for each column c: lineCells[N + c] = its N flat cell indices top→bottom
+    for each column c: lineCells[N + c] = lineCells(N, 'top', c)    (top→bottom)
                        lineBucket[N+c]  = table bucket for (top[c], bottom[c])
     cellLines[cell]    = [its row line, its column line]
 ```

@@ -257,14 +257,26 @@ describe('explainSkyscrapersHint', () => {
     expect(hint!.explanation).toMatch(/every tower is visible/);
   });
 
-  it('places the preferred cell when it is the next deduction, and never detours for it', () => {
+  it('places the preferred cell by whichever rule deduces it, and places elsewhere only when none can', () => {
     const grid = [[1, 2, 3, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
     const preferred = explainSkyscrapersHint({ gridSize: 4, clues: blank(4) }, grid, { preferCell: 3 });
     expect(preferred).toMatchObject({ cell: 3, digit: 4, technique: 'nakedSingle' });
-    // A clue rule placing elsewhere is the hint instead (no silent detour — Kakuro L13).
+    // A clue-N climb knows every cell of its line at once: the selected (2,0) is placed by name,
+    // not (0,0) first — and not by an unexplained exact-solver fallback.
     const clues = deriveClues(SQUARE); // top clue 4 on column 0 climbs 1..4
     const empty = SQUARE.map((row) => row.map(() => 0));
-    expect(explainSkyscrapersHint({ gridSize: 4, clues }, empty, { preferCell: 8 })).toMatchObject({ cell: 0, digit: 1, technique: 'clueN' });
+    expect(explainSkyscrapersHint({ gridSize: 4, clues }, empty, { preferCell: 8 })).toMatchObject({ cell: 8, digit: 3, technique: 'clueN' });
+    // A selected cell nothing can place yet: the ladder's next placement elsewhere is the hint
+    // (no silent detour — Kakuro L13).
+    expect(explainSkyscrapersHint({ gridSize: 4, clues }, empty, { preferCell: 5 })).toMatchObject({ cell: 0, digit: 1, technique: 'clueN' });
+  });
+
+  it('flags a repeated height in a row or column as a contradiction from the start', () => {
+    const grid = [[4, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+    const result = new SkyscrapersLogicalSolver({ gridSize: 4, clues: blank(4) }, grid).solve({ recordSteps: true });
+    expect(result.contradiction).toBe(true);
+    expect(result.steps).toHaveLength(0); // no technique is recorded against a broken grid
+    expect(explainSkyscrapersHint({ gridSize: 4, clues: blank(4) }, grid)).toBeNull();
   });
 
   it('returns null for a contradictory grid', () => {

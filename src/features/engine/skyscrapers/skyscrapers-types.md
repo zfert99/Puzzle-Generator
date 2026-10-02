@@ -60,9 +60,13 @@ for each height in the line:
 return seen
 ```
 
-`lineFor` returns the cells a clue reads, in reading order (first element nearest the clue):
-`left` is the row as stored, `right` the row reversed, `top` the column downward, `bottom` is
-`top` reversed — two pairs, not four cases.
+`lineFor` returns the heights a clue reads, in reading order (first element nearest the clue).
+It is built on **`lineCells(size, side, index)`** — the flat cell indices (`row × size + column`)
+of that line from the clue's edge inward — which is the **one line convention every solver
+shares**: the exact solver compiles its lines through it, the logical solver builds its clued
+lines and houses from it, and `lineFor` maps it over a grid. One helper, so a clue can never mean
+different cells to different engines (the E2 review's reuse finding: three solvers had grown
+three private copies).
 
 ## `clueAt(clues, side, index)` and `presentClueCount(clues)`
 

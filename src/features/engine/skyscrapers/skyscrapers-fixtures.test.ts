@@ -8,6 +8,7 @@ import {
   parseSkyscrapersFixture,
   selectSkyscrapersBatch,
 } from './skyscrapers-fixtures';
+import { classifySkyscrapers } from './skyscrapers-logical-solver';
 import { isLatinSquare } from '../grid-utils';
 import { deriveClues, presentClueCount, validateSkyscrapers } from './skyscrapers-types';
 
@@ -67,7 +68,8 @@ describe('baked fixtures', () => {
       expect(isLatinSquare(puzzle.solution)).toBe(true);
       expect(validateSkyscrapers(puzzle)).toEqual([]);
       expect(puzzle.solution).toHaveLength(puzzle.gridSize);
-      expect(puzzle.difficulty).not.toBe('unrated'); // graded by the classifier (E2); the tiers are pinned in the solver tests
+      // The typed label must be the classifier's word (D7) — this is the drift guard for `difficulty`.
+      expect(puzzle.difficulty).toBe(classifySkyscrapers(puzzle).difficulty);
     }
   );
 

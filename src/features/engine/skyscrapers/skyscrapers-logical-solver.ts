@@ -21,6 +21,7 @@ import {
   GUTTER_SIDES,
   clueAt,
   clueStatus,
+  lineCells,
   presentClueCount,
   type GutterSide,
   type SkyscrapersDifficulty,
@@ -119,20 +120,18 @@ export interface SkyscrapersSolveResult {
   steps: SkyscrapersStep[];
 }
 
-const SIDE_WORD: Record<GutterSide, string> = { top: 'top', bottom: 'bottom', left: 'left', right: 'right' };
-
-/** The line a clue reads, as flat cell indices from the clue's edge inward. */
-function lineCellsFor(size: number, side: GutterSide, index: number): number[] {
-  const cells: number[] = [];
-  for (let d = 0; d < size; d++) {
-    if (side === 'left') cells.push(index * size + d);
-    else if (side === 'right') cells.push(index * size + (size - 1 - d));
-    else if (side === 'top') cells.push(d * size + index);
-    else cells.push((size - 1 - d) * size + index);
-  }
-  return cells;
+/** A row or column as the Latin techniques see it: its cells, and how a hint names it. */
+interface House {
+  cells: number[];
+  label: string;
 }
 
+/**
+ * The human-style solver: a candidate grid plus the technique ladder, applied one deduction at a
+ * time (`step`) or to the end (`solve`). Build one per puzzle (and per player grid for a hint);
+ * it is stateful and single-use. `classifySkyscrapers`, `measureSkyscrapers` and
+ * `explainSkyscrapersHint` below are the three ways the rest of the app reads it.
+ */
 export class SkyscrapersLogicalSolver {
   private readonly size: number;
   private readonly shape: SkyscrapersShape;
@@ -144,29 +143,47 @@ export class SkyscrapersLogicalSolver {
   private readonly steps: SkyscrapersStep[] = [];
   /** Every clued line: side, index, clue, and its cells from the clue inward. */
   private readonly cluedLines: { side: GutterSide; index: number; clue: number; cells: number[] }[] = [];
+  /** Every row (read from the left) and column (from the top) with both of its clues — line filtering's view. */
+  private readonly filterLines: { cells: number[]; left: number; right: number; label: string }[] = [];
+  /** Every row and column — the Latin techniques' view. Built once; the solve loop allocates nothing here. */
+  private readonly houses: House[] = [];
 
   constructor(shape: SkyscrapersShape, grid?: readonly number[][]) {
     this.shape = shape;
     this.size = shape.gridSize;
     const size = this.size;
+    const { clues } = shape;
     const all = (1 << size) - 1;
     this.grid = Array.from({ length: size }, (_, r) => Array.from({ length: size }, (_, c) => grid?.[r]?.[c] ?? 0));
     this.cands = new Int32Array(size * size).fill(all);
     for (const side of GUTTER_SIDES) {
       for (let i = 0; i < size; i++) {
-        const clue = clueAt(shape.clues, side, i);
-        if (clue > 0) this.cluedLines.push({ side, index: i, clue, cells: lineCellsFor(size, side, i) });
+        const clue = clueAt(clues, side, i);
+        if (clue > 0) this.cluedLines.push({ side, index: i, clue, cells: lineCells(size, side, i) });
       }
     }
-    // A placed height is a singleton, and leaves its row and column (the Latin rule).
+    for (let i = 0; i < size; i++) {
+      const row = { cells: lineCells(size, 'left', i), label: `row ${i + 1}` };
+      const column = { cells: lineCells(size, 'top', i), label: `column ${i + 1}` };
+      this.houses.push(row, column);
+      this.filterLines.push({ ...row, left: clueAt(clues, 'left', i), right: clueAt(clues, 'right', i) });
+      this.filterLines.push({ ...column, left: clueAt(clues, 'top', i), right: clueAt(clues, 'bottom', i) });
+    }
+    // A placed height is a singleton, and leaves its row and column (the Latin rule). A height
+    // that repeats in a row or column is a contradiction from the start (a player's grid can hold
+    // one) — `stripFromPeers` only touches empty cells, so the repeat is checked explicitly.
+    const rowSeen = new Int32Array(size);
+    const colSeen = new Int32Array(size);
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         const h = this.grid[r][c];
-        if (h > 0) {
-          if (h > size || this.cands[r * size + c] === 0) this.contradiction = true;
-          this.cands[r * size + c] = 1 << (h - 1);
-          this.stripFromPeers(r * size + c, 1 << (h - 1));
-        }
+        if (h === 0) continue;
+        const bit = 1 << (h - 1);
+        if (h > size || rowSeen[r] & bit || colSeen[c] & bit) this.contradiction = true;
+        rowSeen[r] |= bit;
+        colSeen[c] |= bit;
+        this.cands[r * size + c] = bit;
+        this.stripFromPeers(r * size + c, bit);
       }
     }
     // A filled prefix that already breaks its clue is a contradiction from the start — judged by
@@ -190,7 +207,7 @@ export class SkyscrapersLogicalSolver {
 
   private lineText(line: { side: GutterSide; index: number; clue: number }): string {
     const axis = line.side === 'left' || line.side === 'right' ? 'row' : 'column';
-    return `clue ${line.clue} on ${axis} ${line.index + 1} from the ${SIDE_WORD[line.side]}`;
+    return `clue ${line.clue} on ${axis} ${line.index + 1} from the ${line.side}`;
   }
 
   private note(tier: SkyscrapersTier): void {
@@ -270,14 +287,17 @@ export class SkyscrapersLogicalSolver {
 
   // ---- tier 1: the one-move clues and the Latin singles ----
 
-  /** Clue N: the heights climb 1, 2, …, N from that edge — place the first unplaced one. */
-  private applyClueN(): SkyscrapersStep | null {
+  /**
+   * Clue N: the heights climb 1, 2, …, N from that edge — place the first unplaced one, or, when a
+   * `target` cell is asked for, that cell (every position's height is known at once).
+   */
+  private applyClueN(target: number): SkyscrapersStep | null {
     const N = this.size;
     for (const line of this.cluedLines) {
       if (line.clue !== N) continue;
       for (let d = 0; d < N; d++) {
         const cell = line.cells[d];
-        if (this.valueOf(cell) === 0) {
+        if (this.valueOf(cell) === 0 && (target === -1 || cell === target)) {
           return this.placeStep('clueN', cell, d + 1, `${this.lineText(line)}: every tower is visible, so the heights climb 1 to ${N} — ${d + 1} goes at ${this.cellText(cell)}`);
         }
       }
@@ -286,12 +306,12 @@ export class SkyscrapersLogicalSolver {
   }
 
   /** Clue 1: only the tallest tower is visible, so it stands next to the clue. */
-  private applyClue1(): SkyscrapersStep | null {
+  private applyClue1(target: number): SkyscrapersStep | null {
     const N = this.size;
     for (const line of this.cluedLines) {
       if (line.clue !== 1) continue;
       const cell = line.cells[0];
-      if (this.valueOf(cell) === 0) {
+      if (this.valueOf(cell) === 0 && (target === -1 || cell === target)) {
         return this.placeStep('clue1', cell, N, `${this.lineText(line)}: only one tower is visible, so the tallest (${N}) stands next to the clue at ${this.cellText(cell)}`);
       }
     }
@@ -299,7 +319,7 @@ export class SkyscrapersLogicalSolver {
   }
 
   /** Facing clues a + b = N + 1: the tallest tower is at distance a − 1 from the a side. */
-  private applyFacingSum(): SkyscrapersStep | null {
+  private applyFacingSum(target: number): SkyscrapersStep | null {
     const N = this.size;
     const { clues } = this.shape;
     const pairs: [GutterSide, GutterSide][] = [['left', 'right'], ['top', 'bottom']];
@@ -308,10 +328,10 @@ export class SkyscrapersLogicalSolver {
         const a = clueAt(clues, near, i);
         const b = clueAt(clues, far, i);
         if (a === 0 || b === 0 || a + b !== N + 1) continue;
-        const cell = lineCellsFor(N, near, i)[a - 1];
-        if (this.valueOf(cell) === 0) {
+        const cell = lineCells(N, near, i)[a - 1];
+        if (this.valueOf(cell) === 0 && (target === -1 || cell === target)) {
           const axis = near === 'left' ? 'row' : 'column';
-          return this.placeStep('facingSum', cell, N, `${axis} ${i + 1}: the clues ${a} and ${b} add up to ${N + 1}, so the tallest tower (${N}) is ${a} in from the ${SIDE_WORD[near]} — ${this.cellText(cell)}`);
+          return this.placeStep('facingSum', cell, N, `${axis} ${i + 1}: the clues ${a} and ${b} add up to ${N + 1}, so the tallest tower (${N}) is ${a} in from the ${near} — ${this.cellText(cell)}`);
         }
       }
     }
@@ -406,14 +426,14 @@ export class SkyscrapersLogicalSolver {
    * clue puts N right behind it; (c) with N placed d cells in (d ≥ 2), the first tower must
    * out-top every tower between, so it is at least d.
    */
-  private applyClue2Pattern(): SkyscrapersStep | null {
+  private applyClue2Pattern(target: number): SkyscrapersStep | null {
     const N = this.size;
     for (const line of this.cluedLines) {
       if (line.clue !== 2) continue;
       const first = line.cells[0];
       const second = line.cells[1];
       const firstValue = this.valueOf(first);
-      if (firstValue === 1 && this.valueOf(second) === 0) {
+      if (firstValue === 1 && this.valueOf(second) === 0 && (target === -1 || second === target)) {
         return this.placeStep('clue2Pattern', second, N, `${this.lineText(line)}: a 1 next to the clue means the tallest (${N}) must be right behind it — ${this.cellText(second)}`);
       }
       if (this.valueOf(second) === 0) {
@@ -477,11 +497,7 @@ export class SkyscrapersLogicalSolver {
   private applyLineFilter(): SkyscrapersStep | null {
     const N = this.size;
     const table = permutationTable(N);
-    const { clues } = this.shape;
-    const lines: { cells: number[]; left: number; right: number; label: string }[] = [];
-    for (let r = 0; r < N; r++) lines.push({ cells: lineCellsFor(N, 'left', r), left: clueAt(clues, 'left', r), right: clueAt(clues, 'right', r), label: `row ${r + 1}` });
-    for (let c = 0; c < N; c++) lines.push({ cells: lineCellsFor(N, 'top', c), left: clueAt(clues, 'top', c), right: clueAt(clues, 'bottom', c), label: `column ${c + 1}` });
-    for (const line of lines) {
+    for (const line of this.filterLines) {
       if (line.left === 0 && line.right === 0) continue; // nothing a clue says; the Latin rules own it
       if (line.cells.every((cell) => this.valueOf(cell) !== 0)) continue;
       const bucket = table.buckets[bucketIndex(N, line.left, line.right)];
@@ -518,19 +534,10 @@ export class SkyscrapersLogicalSolver {
     return null;
   }
 
-  /** Every row and column, as flat cell lists, with a label. */
-  private houses(): { cells: number[]; label: string }[] {
-    const N = this.size;
-    const out: { cells: number[]; label: string }[] = [];
-    for (let r = 0; r < N; r++) out.push({ cells: Array.from({ length: N }, (_, c) => r * N + c), label: `row ${r + 1}` });
-    for (let c = 0; c < N; c++) out.push({ cells: Array.from({ length: N }, (_, r) => r * N + c), label: `column ${c + 1}` });
-    return out;
-  }
-
   /** Naked pairs and triples within a row or column: k cells sharing k candidates own them. */
   private applyNakedSubset(): SkyscrapersStep | null {
     for (const k of [2, 3]) {
-      for (const house of this.houses()) {
+      for (const house of this.houses) {
         const empties = house.cells.filter((cell) => this.valueOf(cell) === 0 && popcount(this.cands[cell]) <= k);
         const found = this.findNakedSubset(house, empties, k);
         if (found) return found;
@@ -539,7 +546,7 @@ export class SkyscrapersLogicalSolver {
     return null;
   }
 
-  private findNakedSubset(house: { cells: number[]; label: string }, empties: number[], k: number): SkyscrapersStep | null {
+  private findNakedSubset(house: House, empties: number[], k: number): SkyscrapersStep | null {
     const pick = (start: number, chosen: number[], union: number): SkyscrapersStep | null => {
       if (chosen.length === k) {
         if (popcount(union) !== k) return null;
@@ -563,7 +570,7 @@ export class SkyscrapersLogicalSolver {
   /** Hidden pairs within a row or column: two heights confined to the same two cells own them. */
   private applyHiddenSubset(): SkyscrapersStep | null {
     const N = this.size;
-    for (const house of this.houses()) {
+    for (const house of this.houses) {
       const spots = new Map<number, number[]>();
       for (let h = 1; h <= N; h++) {
         if (house.cells.some((cell) => this.valueOf(cell) === h)) continue;
@@ -679,19 +686,21 @@ export class SkyscrapersLogicalSolver {
 
   /**
    * The weakest technique that makes progress, visibility rules before Latin rules within a
-   * tier, up to `cap`. `disabled` techniques are skipped (the hint explainer uses it to prefer
-   * eliminations); `preferCell`, when set, lets the Latin singles fire only for that cell.
+   * tier, up to `cap`. `disabled` techniques are skipped. `target`, when set, confines **every
+   * placing technique** to that one cell — eliminations still run anywhere — so the hint
+   * explainer can place the cell the player selected the moment the board makes it deducible,
+   * by whichever rule does it (a clue-N climb as much as a naked single).
    */
-  step(cap: SkyscrapersTier = 5, disabled: ReadonlySet<SkyscrapersTechnique> = new Set(), preferCell = -1): SkyscrapersStep | null {
+  step(cap: SkyscrapersTier = 5, disabled: ReadonlySet<SkyscrapersTechnique> = new Set(), target = -1): SkyscrapersStep | null {
     const ladder: [SkyscrapersTechnique, () => SkyscrapersStep | null][] = [
-      ['clueN', () => this.applyClueN()],
-      ['clue1', () => this.applyClue1()],
-      ['facingSum', () => this.applyFacingSum()],
+      ['clueN', () => this.applyClueN(target)],
+      ['clue1', () => this.applyClue1(target)],
+      ['facingSum', () => this.applyFacingSum(target)],
       ['positionBound', () => this.applyPositionBound()],
       ['nearlyFilledClue', () => this.applyNearlyFilledClue()],
-      ['nakedSingle', () => (preferCell === -1 ? this.applyNakedSingle() : this.placeIfSingle(preferCell))],
-      ['hiddenSingle', () => (preferCell === -1 ? this.applyHiddenSingle() : this.hiddenSingleAt(preferCell))],
-      ['clue2Pattern', () => this.applyClue2Pattern()],
+      ['nakedSingle', () => (target === -1 ? this.applyNakedSingle() : this.placeIfSingle(target))],
+      ['hiddenSingle', () => (target === -1 ? this.applyHiddenSingle() : this.hiddenSingleAt(target))],
+      ['clue2Pattern', () => this.applyClue2Pattern(target)],
       ['reachability', () => this.applyReachability()],
       ['lineFilter', () => this.applyLineFilter()],
       ['nakedSubset', () => this.applyNakedSubset()],
@@ -811,6 +820,7 @@ export function measureSkyscrapers(shape: SkyscrapersShape): SkyscrapersMetrics 
   };
 }
 
+/** What `classifySkyscrapers` returns: the grade, the solve it rests on, and the metrics when asked for. */
 export interface SkyscrapersClassification {
   /** The tier, or `null` when the ladder cannot finish the puzzle (no guessing — D6). */
   tier: SkyscrapersTier | null;
@@ -840,9 +850,12 @@ export interface SkyscrapersHint {
 
 /**
  * The next placement the logical solver would make from the player's grid, with its technique,
- * its reason, and the eliminations that led to it. With `preferCell`, eliminations run first
- * and the Latin singles fire only for that cell, so the preferred cell is placed the moment it
- * is deducible; no detour (Kakuro L13: the lead-up cites only what is on the player's board).
+ * its reason, and the eliminations that led to it. With `preferCell`, every placing technique is
+ * first confined to that cell (eliminations run anywhere), so the selected cell is placed the
+ * moment the board makes it deducible — by a clue-N climb as much as by a single; only when no
+ * rule can place it does the ladder place elsewhere, and that placement is the hint. Either way
+ * the first placement returns: no detour (Kakuro L13 — the lead-up cites only eliminations, so
+ * every reason describes the board as the player sees it).
  */
 export function explainSkyscrapersHint(
   shape: SkyscrapersShape,
@@ -852,19 +865,13 @@ export function explainSkyscrapersHint(
   const { cap = 5, preferCell = -1 } = options;
   const solver = new SkyscrapersLogicalSolver(shape, grid);
   const leadUp: string[] = [];
-  const placers = new Set<SkyscrapersTechnique>(['nakedSingle', 'hiddenSingle']);
-  for (let guard = 0; guard < 500; guard++) {
-    const step =
-      preferCell === -1
-        ? solver.step(cap)
-        : (solver.step(cap, placers, preferCell) ?? solver.step(cap, undefined, preferCell));
+  // Every step either places a cell (and returns) or removes at least one candidate bit, so the
+  // walk is bounded by the grid's N² × N bits; the guard only stops a defect from looping.
+  const maxSteps = shape.gridSize ** 3 + 1;
+  for (let guard = 0; guard < maxSteps; guard++) {
+    const step = preferCell === -1 ? solver.step(cap) : (solver.step(cap, undefined, preferCell) ?? solver.step(cap));
     if (!step) break;
     if (step.placed) {
-      if (preferCell === -1 || step.placed.cell === preferCell) {
-        return { ...step.placed, technique: step.technique, tier: step.tier, explanation: step.explanation, leadUp: [...leadUp] };
-      }
-      // A placement elsewhere is still progress the player can be told about — but no detour:
-      // return it as the hint rather than silently applying it (L13).
       return { ...step.placed, technique: step.technique, tier: step.tier, explanation: step.explanation, leadUp: [...leadUp] };
     }
     leadUp.push(step.explanation);

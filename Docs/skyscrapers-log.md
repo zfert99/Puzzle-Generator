@@ -35,15 +35,23 @@
   `classifySkyscrapers` / `measureSkyscrapers` / `explainSkyscrapersHint`, and the two-factor
   scorer (`skyscrapers-score.ts`). The fixtures are relabelled by the classifier at import —
   **5×5 hard, 6×6 extreme, 7×7 extreme** — the Hint button names its technique, the dev badge
-  shows the grade, score, histogram and metrics. `[measure]` classify 0.47 / 7.4 / 7.0 ms at
-  5 / 6 / 7 against the 20 ms gate; soundness fuzz clean. `[gap]` G7 gets its first histograms:
+  shows the grade, score, histogram and metrics. `[measure]` classify 0.42 / 6.7 / 6.3 ms at
+  5 / 6 / 7 against the 20 ms gate (after the review's precomputation; 0.47 / 7.4 / 7.0 before);
+  soundness fuzz clean. `[gap]` G7 gets its first histograms:
   T3 needed at 5×5, T5 at 6×6 and 7×7, **T4 (`xWing`) needed by none** — and `facingSum`,
   `reachability`, the subsets and the X-wing fired on no fixture at all, so the plan's
   "every T1–T4 technique fires on a fixture" gate is met by hand-built unit cases, not by the
   fixtures; the corpora of E3/E4 own the coverage claim. `[divergence]` forcing chains widened
   from bivalue to 2–3 candidates — bivalue alone left the 6×6 `'unrated'` (L12). `[learning]`
-  L13 (grade by human technique, not by the propagator), L14 (the selected cell beats the
-  explained step). Owner's `/code-review high` pending.
+  L13 (grade by human technique, not by the propagator), L14 (fix the selected-cell rule in
+  the explainer, not the deducer). Owner ran `/code-review high`: **10 findings, all fixed
+  in-PR** (table in the plan under E2) — the two with weight: the fixtures were graded *at
+  import* inside the client bundle (~30 ms on every `/play` load; typed labels + a re-grading
+  test now), and the selected-cell hint rule was a deducer special case on top of an explainer
+  that confined only the Latin singles to the selected cell (every placer is confined now, so the
+  selection is hinted by name). Also: a repeated height was not a contradiction from the start;
+  a 9×9-unsafe loop guard; per-call line/house allocation; three private line-indexing copies
+  folded into `lineCells` in the types module.
 - **2026-10-02 (E1)** V3 merged ([#131](https://github.com/zfert99/Puzzle-Generator/pull/131)).
   **E1 built** on `feature/skyscrapers-e1`: the per-size permutation table (`skyscrapers-visibility.ts`)
   and the line-filter exact solver (`skyscrapers-solver.ts`, the Kakuro contract); the Hint
@@ -162,7 +170,7 @@
 
 | # | Rule | Came from |
 |---|---|---|
-| L14 | **An explanation-first hint and a "hint the selected cell" promise conflict as soon as the ladder opens with placement rules that pick their own cell.** Kakuro never hit it (its ladder opens with eliminations); Skyscrapers' `clueN` / `clue1` / `facingSum` place a specific cell before any single is considered, so the named next step almost never lands on the selection. Decide the precedence explicitly — here the exact solver's forced value wins for the *selected* cell, the explained step otherwise — and test both orders, rather than letting whichever deducer runs first decide | E2, 2026-10-02 |
+| L14 | **When a shared mechanism cannot express a variant's need, extend the mechanism — do not patch the caller.** Skyscrapers' ladder opens with placement rules that pick their own cell, so the explainer's Kakuro-shaped "singles only for the preferred cell" rule almost never hinted the selected cell, and the first draft patched the *deducer* with an exact-solver fallback for it. The review's altitude finding moved the fix down: `step()` takes a `target` that confines **every** placing technique, the selection is hinted by name, and the two deducers are the same shape again. Test both orders (selected cell placed by name; the ladder's placement elsewhere when nothing can place the selection) | E2 review, 2026-10-02 |
 | L13 | **Grade by the human technique, not by what the propagator can do.** E1's line filter at fixpoint placed all 25 cells of the 5-clue 5×5 from empty; the classifier grades the same puzzle **hard**, because per-line filtering is a tier-3 move for a person. A solver's ease is not a player's — the research's SAT-metric warning — so the grade is the hardest named rung with the cheap rungs always tried first, and a fixture "solved by propagation" is evidence about the propagator, not the puzzle | E2, 2026-10-02 |
 | L12 | **A trial-based top rung's candidate bound is a lever to measure, not a constant to inherit.** Tatham's forcing step is bivalue; with bivalue cells only, the ladder left the 6×6 fixture `'unrated'` — its bottleneck cells had three candidates. Widening to 2–3 candidates (fewest first) finished it in four chains and kept the no-guessing rule (a value is removed only when its supposition is proved impossible). When a hand-baked puzzle stalls at the top rung, check the bound before concluding the puzzle needs bifurcation | E2, 2026-10-02 |
 | L1 | **Reuse a Latin technique only after checking the house property it rests on — and write the answer down.** Kakuro needed a `required` guard because a run need not contain every digit; Skyscrapers rows and columns are full permutations, so hidden singles / pairs / fish are sound unchanged. E2 asserts this in a test so the question is answered on record rather than re-asked per technique | Plan authoring, 2026-10-01 (Kakuro L12 applied in reverse) |
@@ -181,7 +189,7 @@
 
 | Date | Commit | What | Numbers |
 |---|---|---|---|
-| 2026-10-02 | E2 | **Logical solver on the fixtures** (`tsx` script, Node 24, warm, 100 runs each) | **Classify:** 5×5 **0.47 ms** · 6×6 **7.4 ms** · 7×7 **7.0 ms** (gate 20 ms; cold first call 19 ms = the table build). **Grades:** hard (T3) / extreme (T5) / extreme (T5). **Histograms:** 5×5 `clueN×5 positionBound×4 nearlyFilledClue×2 clue2Pattern×1 nakedSingle×18 hiddenSingle×2 lineFilter×3`; 6×6 `clue1×1 positionBound×11 clue2Pattern×7 nakedSingle×24 hiddenSingle×11 lineFilter×19 forcingChain×4`; 7×7 `positionBound×14 clue2Pattern×1 nakedSingle×37 hiddenSingle×12 lineFilter×21 forcingChain×2`. **Scores:** 24.8 / 170.4 / 126.5. **Metrics:** rating 2.57 / 4.91 / 5.0; fixed 7 / 2 / 8; implied 11 / 2 / 8; trivial clues 1 / 1 / 0; facing sums 0 / 0 / 0. Soundness fuzz: 25 random unique 4×4/5×5 puzzles + 3 fixtures, zero disagreements with the exact solution |
+| 2026-10-02 | E2 | **Logical solver on the fixtures** (`tsx` script, Node 24, warm, 100 runs each; after the review fixes) | **Classify:** 5×5 **0.42 ms** · 6×6 **6.7 ms** · 7×7 **6.3 ms** (gate 20 ms; cold first call 19 ms = the table build; 0.47 / 7.4 / 7.0 before the lines/houses were precomputed). **Grades:** hard (T3) / extreme (T5) / extreme (T5). **Histograms:** 5×5 `clueN×5 positionBound×4 nearlyFilledClue×2 clue2Pattern×1 nakedSingle×18 hiddenSingle×2 lineFilter×3`; 6×6 `clue1×1 positionBound×11 clue2Pattern×7 nakedSingle×25 hiddenSingle×10 lineFilter×18 forcingChain×4`; 7×7 `positionBound×14 clue2Pattern×1 nakedSingle×37 hiddenSingle×12 lineFilter×20 forcingChain×2`. **Scores:** 24.8 / 163.7 / 122.2. **Metrics:** rating 2.57 / 4.91 / 5.0; fixed 7 / 2 / 8; implied 11 / 2 / 8; trivial clues 1 / 1 / 0; facing sums 0 / 0 / 0. Soundness fuzz: 25 random unique 4×4/5×5 puzzles + 3 fixtures, zero disagreements with the exact solution |
 | 2026-10-02 | E1 | **Exact solver on the fixtures** (`tsx` script, Node 24, warm, 200 runs each) | **Table build:** 5: 1.2 ms · 6: 3.5 ms · 7: 9.7 ms · 9: 205 ms (lazy, once per session). **Uniqueness verify:** 5×5 **0.07 ms** / 1 node · 6×6 **0.40 ms** / 7 nodes · 7×7 **1.1 ms** / 3 nodes (gate 50 ms). **Propagation from empty:** 25/25 · 5/36 · 8/49 cells forced. In-repo now: 204/576 4×4 squares not all-clue unique; the 4×4 pair → 2 solutions |
 | 2026-10-02 | V1 (throwaway script, not committed) | **All-clue uniqueness of random Latin squares** — random backtracking fill, all 4N clues, line-filter counter capped at 2 solutions; and **repair** by random intercalate swaps accepted when the count (cap 60) does not rise, then greedy clue removal while unique | **P(unique):** 5×5 2/2 tries · 6×6 1/15 · **7×7 0/94,962** (1–3 ms per count; both solutions of a sample verified independently). **Repair 7×7:** unique after **38 swaps / 192 ms**; removal then kept **14/28** clues (255 ms total). Fixtures kept: 5×5 **5/20**, 6×6 **15/24** |
 | 2026-10-01 | plan (no code) | **Minimum clue count at 4×4 (G5)** — every non-empty subset of the 16 edge clues (65,535) against all 576 Latin squares; a square is "determined" by a subset if no other square shares its masked clue vector; throwaway Node script, 9.7 s | **Smallest determining subset: 3 clues** (416 of 560 three-clue subsets determine ≥ 1 square); **no 2-clue subset determines any square**. Fewest clues per square: 3 → 208 squares, 4 → 142, 5 → 22, undetermined by all 16 → 204. Consistent with Nakamura's N−1 conjecture |

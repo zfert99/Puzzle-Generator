@@ -77,12 +77,14 @@ earns a rung. Hidden triples are likewise absent until something needs them.
 ## The deduction loop
 
 ```text
-step(cap, disabled, preferCell):
+step(cap, disabled, target):
     for each technique in ladder order, skipping tiers above cap and disabled ones:
         apply it; a contradiction → null; a step → return it
     nothing applied → null
-    (with preferCell set, nakedSingle / hiddenSingle fire only for that cell — the hint explainer
-     uses this so the preferred cell is placed the moment it is deducible, never by a detour)
+    (with target set, EVERY placing technique — clueN, clue1, facingSum, clue2Pattern's placement,
+     the Latin singles — fires only for that cell; eliminations still run anywhere. The hint
+     explainer uses this so the selected cell is placed the moment the board makes it deducible,
+     by whichever rule does it, never by a detour)
 
 solve({ maxTier, disable, recordSteps }):
     while not contradicted and not solved:
@@ -92,9 +94,12 @@ solve({ maxTier, disable, recordSteps }):
     → { solved, contradiction, hardestTier, techniqueCounts, passes, avgOpenSingles, steps }
 ```
 
-A player's grid can arrive **contradicted**: a placed height that repeats in its row or column,
-or a filled prefix that already breaks its clue — judged by the board's own prefix rule
-(`clueStatus`, G10), so the solver and the red clue always agree on what is provably wrong.
+A player's grid can arrive **contradicted**: a placed height that repeats in its row or column
+(checked explicitly in the constructor with a seen-mask per row and column — `stripFromPeers`
+only touches empty cells, so a repeat would otherwise pass unnoticed until a house emptied), or
+a filled prefix that already breaks its clue — judged by the board's own prefix rule
+(`clueStatus`, G10), so the solver and the red clue always agree on what is provably wrong. No
+step is recorded against such a grid.
 Any later contradiction (a cell emptied of candidates, a height with no place, a line with no
 surviving arrangement) stops the solve the same way; `classifySkyscrapers` reports such a puzzle
 as `'unrated'` and the hint explainer returns `null`, never a step built on a mistake.
@@ -124,30 +129,32 @@ tier = hardestTier (0 → 1: a puzzle with nothing to deduce is still "easy")
 → { tier, difficulty: TIER_DIFFICULTY[tier], result, metrics }
 ```
 
-Fixtures (pinned in tests): 5×5 **hard** (tier 3 — line filtering; 0.47 ms), 6×6 **extreme**
-(tier 5 — four forcing chains; 7.4 ms), 7×7 **extreme** (tier 5 — two chains; 7.0 ms), measured
-warm over 100 runs against the plan's 20 ms gate. The unit test only guards against a pathological
+Fixtures (pinned in tests): 5×5 **hard** (tier 3 — line filtering; 0.4 ms), 6×6 **extreme**
+(tier 5 — four forcing chains; 6.7 ms), 7×7 **extreme** (tier 5 — two chains; 6.3 ms), measured
+warm over 100 runs against the plan's 20 ms gate. The line and house cell lists are built once in
+the constructor (the E2 review's efficiency finding): the solve loop allocates none of them. The unit test only guards against a pathological
 regression (< 1 s): a wall-clock assertion under the suite's parallel load measures the load.
 
 ## `explainSkyscrapersHint(shape, grid, { cap, preferCell })`
 
 ```text
 solver on the player's grid; leadUp = []
-loop (guarded):
+loop (bounded by N³ + 1 — every step places or removes ≥ 1 candidate bit):
     no preferCell → step(cap)
-    preferCell   → step(cap) with the Latin singles disabled (eliminations first),
-                   then step(cap) with the singles allowed only for preferCell
+    preferCell   → step(cap, target = preferCell)   (placers confined to that cell; eliminations free)
+                   ?? step(cap)                      (nothing can place it yet → the ladder's next placement)
     none → null
     a placement → return { cell, digit, technique, tier, explanation, leadUp }
     an elimination → push its explanation onto leadUp and continue
 ```
 
 **No detour** (Kakuro L13): the lead-up cites only eliminations, so every reason describes the
-board as the player sees it. A placement elsewhere than the preferred cell is returned as the
-hint rather than silently applied. Because the one-move clue rules (`clueN`, `clue1`,
-`facingSum`) pick their own cell before any single is considered, the ladder's next step rarely
-lands on a cell the player has selected; `hint-deducers.ts` therefore lets the exact solver's
-forced value win for the *selected* cell and uses the explained step otherwise.
+board as the player sees it, and the first placement returns. The selected cell is placed by
+*whichever* rule can deduce it — under a clue of N, (3,1) is "3" by the clue-N climb without
+(1,1) and (2,1) being placed first, since the climb knows every position at once — and only when
+no rule can place it does the ladder place elsewhere, which is then the hint. That is why
+`hint-deducers.ts` needs no Skyscrapers-specific precedence (the E2 review's altitude finding:
+the first draft patched the selected-cell rule into the deducer with an exact-solver detour).
 
 ## Soundness
 

@@ -122,16 +122,25 @@ export function visibleCount(line: readonly number[]): number {
  * The line a clue on `side` at `index` reads, in reading order (first element nearest the clue).
  */
 export function lineFor(grid: readonly (readonly number[])[], side: GutterSide, index: number): number[] {
-  switch (side) {
-    case 'left':
-      return [...grid[index]];
-    case 'right':
-      return [...grid[index]].reverse();
-    case 'top':
-      return grid.map((row) => row[index]);
-    case 'bottom':
-      return grid.map((row) => row[index]).reverse();
+  const size = grid.length;
+  return lineCells(size, side, index).map((cell) => grid[Math.floor(cell / size)][cell % size]);
+}
+
+/**
+ * The flat cell indices (`row × size + column`) a clue reads, from the clue's edge inward — the
+ * one line convention every solver shares (the exact solver's compiled lines, the logical
+ * solver's clued lines, and `lineFor` above), so a clue can never mean different cells to
+ * different engines.
+ */
+export function lineCells(size: number, side: GutterSide, index: number): number[] {
+  const cells: number[] = [];
+  for (let d = 0; d < size; d++) {
+    if (side === 'left') cells.push(index * size + d);
+    else if (side === 'right') cells.push(index * size + (size - 1 - d));
+    else if (side === 'top') cells.push(d * size + index);
+    else cells.push((size - 1 - d) * size + index);
   }
+  return cells;
 }
 
 /**
