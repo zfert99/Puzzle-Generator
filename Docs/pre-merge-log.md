@@ -92,6 +92,57 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Skyscrapers V0: looks-only board at 5×5 / 6×6 / 7×7 on `/skyscrapers`
+
+Branch `feature/skyscrapers-v0` on `5b6cac5`. Diff: 1 route (`src/app/skyscrapers/page.tsx`),
+1 static Server Component + CSS module + 6 tests (`components/SkyscrapersBoard/`), mirrored
+`.md` for both, and the plan/log/roadmap/README/index/status flips to "in progress". **~180 LOC
+of source**, well inside the slice budget.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` | clean |
+| `npx vitest run` | **84 files / 776 tests green** (6 new); no entry from the Known flaky tests table fired |
+| Benchmarks | n/a — no engine code |
+
+### Findings
+
+- None in review. The one design call: lines are drawn on the play cells and the frame on the
+  play area's edge cells, **not** with Kakuro's gap-as-line board background — that trick draws a
+  line between every pair of cells, including gutter cells that must read as open space.
+- No dark-theme override was needed (no filled blocks to re-tint); verified by reading the CSS,
+  the owner's visual pass covers both themes.
+
+### Invariants checked
+
+None apply — a static, read-only Server Component with no store, no input, no data access, no
+routes beyond a `noindex` workbench page. The ARIA skeleton (play gridcells, read-only gutter
+gridcells named by reading direction, hidden presentational corners) is asserted by the tests so
+V2 inherits it rather than re-deriving it.
+
+### Docs sweep
+
+New: two mirrored docs. Updated: plan (status, slice table, V0 step-log, D4 "planned by owner");
+log (journal, D4 status); roadmap (Phase 11 status, backlog header); README row; Docs index row;
+project-status. Reverse sweep for "nothing built" / "📋 Planned" on Skyscrapers lines: all live
+hits flipped.
+
+### Verified vs read
+
+- **Verified:** tests, lint, tsc, markdownlint; the page renders at `/puzzles/skyscrapers` with
+  no console errors (dev server).
+- **Read only:** the visual result in both themes and at 360 px — that is the slice's gate and
+  it is the **owner's** verdict, handed over with the dev server running (not self-certified).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, data or route logic (a static noindex page).
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
 ## 2026-10-01 — Skyscrapers plan: research, implementation plan, running log, Phase 11 (docs only)
 
 Branch `feature/skyscrapers` on `946d83f`. **No `.ts`/`.tsx` touched.** Lands the fifth puzzle
