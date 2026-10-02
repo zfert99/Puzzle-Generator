@@ -92,6 +92,79 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers E2: the logical solver, classifier and scorer
+
+Branch `feature/skyscrapers-e2` on `99b1387`. Diff: `skyscrapers-logical-solver.ts` (14 named
+techniques in five tiers, `classifySkyscrapers` / `measureSkyscrapers` / `explainSkyscrapersHint`)
+and `skyscrapers-score.ts`, with tests and mirrored docs; the fixtures relabelled by the classifier
+at import; the Skyscrapers hint deducer explains first; `HintNote.technique` widened; the dev badge's
+`ladder:` / `metrics:` lines; copy; plan/log/roadmap/index/status; the sample booklet regenerated.
+**~930 LOC of new engine source** (the ladder is the slice) plus ~110 changed lines elsewhere —
+over the 400-LOC target, as E1 was; the plan slices the engine by solver, not by LOC.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 (one MD004 hit from a wrapped "+ 3" fixed) |
+| `npm run lint` | clean (one unused helper removed) |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **91 files / 880 tests green** (21 new, 5 rewritten); no entry from the Known flaky tests table fired |
+| Benchmarks | the slice's gate is a measurement (E5 adds `benchmark-skyscrapers.ts`): classify **5×5 0.47 ms · 6×6 7.4 ms · 7×7 7.0 ms** warm over 100 runs against the 20 ms gate; cold first call 19 ms (the lazy table build) |
+
+### Findings
+
+- **The plan's "every T1–T4 technique fires on at least one fixture" gate is not met by the
+  fixtures and is recorded as such.** `facingSum`, `reachability`, `nakedSubset`, `hiddenSubset`
+  and `xWing` fired on none of the three hand-baked puzzles; each has a minimal hand-built firing
+  case as a test instead, and the coverage claim moves to E3/E4's corpora (log G7). Three puzzles
+  were never going to carry it.
+- **Bivalue forcing chains left the 6×6 `'unrated'`.** Its bottleneck cells were trivalue; the
+  trial now covers 2–3 candidates, fewest first, and the fixture grades extreme in four chains.
+  No guessing introduced — a value goes only when its supposition is proved impossible (L12).
+- **The hint's precedence had to be decided, not inherited.** With the logical solver first, the
+  E1 store test "hints the selected cell when the solver forces it" went red: `clueN` places its
+  own cell before any single is considered, so the named step almost never lands on the
+  selection. The deducer now lets the exact solver's forced value win for the *selected* cell and
+  uses the explained step otherwise; both orders are store tests (L14).
+- **A wall-clock assertion in the unit suite measured the suite.** 77 ms under parallel load for a
+  7 ms solve. The test now only guards against a runaway (< 1 s); the real number is in the plan's
+  step-log and the log's measurements table.
+- Four of the first twenty tests were wrong, not the solver (a facing-sum count assumed every pair
+  of the test square summed to N + 1 — it is four of eight; a clue-2 case forgot that
+  `nearlyFilledClue` is tried first; the contradiction case needed the constructor to apply the
+  board's prefix rule, which it now does via `clueStatus`, so the solver and the red clue agree).
+
+### Invariants checked
+
+- Every logical placement equals the exact solution on every fixture and on 25 random uniquely
+  solvable 4×4/5×5 puzzles; no solve reports a contradiction on a valid board.
+- A hidden single on a full permutation is sound without a `required` guard (L1, on record).
+- The grade is the hardest tier *needed*: a tier-3 step never fires while a tier-1 step is
+  available (ladder order asserted); the 5×5 that E1's propagator solved outright grades hard.
+- A served fixture's label is the classifier's or `'unrated'`, never typed (D7): `graded()` at
+  import, tiers pinned in tests, `'unrated'` on a blank board.
+- A hint is placed only if it agrees with the solution (L9), on both the explained and the forced
+  route; a contradictory grid yields `null` from the explainer.
+
+### Review statements
+
+- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
+  runs `/code-review high` on the PR. `/security-review` not required: no auth/authz/data-access
+  change.
+
+### Lessons
+
+- **A coverage gate phrased over fixed test data is a claim about the data, not the code.** "Every
+  technique fires on a fixture" with three fixtures was unmeetable by construction; phrase such
+  gates over a corpus the slice can actually produce, and until then back each technique with its
+  own minimal case.
+- **When a second deducer is put in front of a first, re-run the first's behavioural tests before
+  deciding they are stale.** The red "selected cell" test was the design question, not a dead
+  assertion.
+
+---
+
 ## 2026-10-02 — Skyscrapers E1: the exact solver behind the Hint button
 
 Branch `feature/skyscrapers-e1` on `2923d95`. Diff: `skyscrapers-visibility.ts` (per-size

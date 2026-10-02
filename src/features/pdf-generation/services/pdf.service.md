@@ -150,9 +150,10 @@ The gutter takes two of the tracks, so the booklet's `gridDrawSize` is 420 to ke
 close to a Sudoku's. `generateSkyscrapersPDF` builds the booklet like the other three (title
 "Skyscrapers", a Towers subtitle, one page per puzzle, then one answer page each, same bookmarks
 and puzzle↔answer links). An `'unrated'` fixture prints as **hand-made** in the page title — no
-grade appears on paper that the classifier did not give (D7). Until the generator lands (E5) the booklet renders the baked fixtures —
-one per size, `'unrated'` — and `preview-skyscrapers.ts` writes `Docs/samples/skyscrapers-sample.pdf`
-from them.
+grade appears on paper that the classifier did not give (D7). Until the generator lands (E5) the
+booklet renders the baked fixtures — one per size, graded by the classifier since E2 (hard /
+extreme / extreme), so the title now carries the real grade — and `preview-skyscrapers.ts` writes
+`Docs/samples/skyscrapers-sample.pdf` from them.
 
 ## Navigation parity (September 2026, QA F9)
 

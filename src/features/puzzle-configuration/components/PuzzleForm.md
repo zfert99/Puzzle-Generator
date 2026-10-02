@@ -133,8 +133,8 @@ follow-up 5).
 
 A fifth toggle — the type row is a five-column grid now, because a wrapping flex row stranded the
 fifth label alone on a full-width line (V3 review). Sizes come from the plan's D4 — 5 / 6 / 7, default 6 —
-through `GridSizeSelector`. Until the generator lands (E5) there is one hand-made, ungraded
-fixture per size, so the form shows **no `DifficultyConfigurator`** for Skyscrapers (there are no
+through `GridSizeSelector`. Until the generator lands (E5) there is one hand-made fixture per
+size (graded by the classifier since E2), so the form shows **no `DifficultyConfigurator`** for Skyscrapers (there are no
 counts to configure) and `handleGenerate` sends exactly one puzzle (`easy: 1`, the others 0) —
 the route prints the size's fixture whatever level the count names. E5 gives Skyscrapers the
 configurator back, with its own ladder, the way Kakuro's E5 did.

@@ -10,6 +10,7 @@ import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import type { KakuroPuzzle, Run } from '@/features/engine/kakuro/kakuro-types';
 import { kakuroGridConfig } from '@/features/engine/kakuro/kakuro-types';
 import type { KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
+import type { SkyscrapersTechnique } from '@/features/engine/skyscrapers/skyscrapers-logical-solver';
 import type { SkyscraperClues, SkyscrapersPuzzle, GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { GUTTER_SIDES, clueFlatIndex, skyscrapersGridConfig } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { computePeers, toggleBit } from '../board-utils';
@@ -58,12 +59,12 @@ export type GameStatus = 'configuring' | 'playing' | 'paused' | 'solved';
 
 /**
  * What the last Hint did and why — shown under the board. Only the logical solver produces a
- * reason (Kakuro today); a plain reveal records `technique: null` with a one-line note.
+ * reason (Kakuro, Skyscrapers); a plain reveal records `technique: null` with a one-line note.
  */
 export interface HintNote {
   cell: number;
   digit: number;
-  technique: KakuroTechnique | null;
+  technique: KakuroTechnique | SkyscrapersTechnique | null;
   explanation: string;
   /** The eliminations that led there, oldest first (empty for a reveal). */
   leadUp: string[];

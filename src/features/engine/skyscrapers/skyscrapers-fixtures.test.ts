@@ -67,7 +67,7 @@ describe('baked fixtures', () => {
       expect(isLatinSquare(puzzle.solution)).toBe(true);
       expect(validateSkyscrapers(puzzle)).toEqual([]);
       expect(puzzle.solution).toHaveLength(puzzle.gridSize);
-      expect(puzzle.difficulty).toBe('unrated');
+      expect(puzzle.difficulty).not.toBe('unrated'); // graded by the classifier (E2); the tiers are pinned in the solver tests
     }
   );
 

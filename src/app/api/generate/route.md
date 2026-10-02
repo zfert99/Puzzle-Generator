@@ -76,7 +76,8 @@ test data only.
 ## 1d. Skyscrapers branch (plan slice V3 → E5)
 
 **Goal:** When `variant === 'skyscrapers'`, render a Skyscrapers booklet. Until the generator
-lands (E5) there is exactly **one** hand-made, ungraded fixture per size, so the branch prints
+lands (E5) there is exactly **one** hand-made fixture per size (graded by the classifier since
+E2), so the branch prints
 that fixture once per request and refuses anything else with the reason.
 **Steps:**
 

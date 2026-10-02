@@ -13,6 +13,9 @@ describe('SkyscrapersDevBadge', () => {
     const badge = screen.getByTestId('skyscrapers-dev-badge');
     expect(badge).toHaveTextContent(/unique ✓ · \d+ nodes/);
     expect(badge).toHaveTextContent(/15 of 24 clues/);
+    expect(badge).toHaveTextContent(/ladder: extreme \(tier 5\) · score \d/);
+    expect(badge).toHaveTextContent(/forcingChain×\d/);
+    expect(badge).toHaveTextContent(/metrics: trivial clues \d/);
   });
 
   it('reports a non-unique puzzle as such', () => {

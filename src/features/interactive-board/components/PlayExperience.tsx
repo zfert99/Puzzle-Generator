@@ -99,7 +99,7 @@ export default function PlayExperience() {
   // technique tier, expert/extreme by forcing-chain length); the label is the solver's.
   const isKakuro = variant === 'kakuro';
   // Skyscrapers serves a hand-baked fixture per size until its generator lands (plan E4/E5) —
-  // the difficulty picker is shown for the layout's sake, but the board's grade is 'unrated'.
+  // the difficulty picker is shown for the layout's sake; the board's grade is the classifier's (E2).
   const isSkyscrapers = variant === 'skyscrapers';
   const wantsResume = searchParams.get('resume') === '1';
 
@@ -263,7 +263,7 @@ export default function PlayExperience() {
             </p>
           ) : isSkyscrapers ? (
             <p className="text-xs text-ink-soft text-center mt-2">
-              Skyscrapers is being built: one hand-made puzzle per size for now, ungraded — the generator and the difficulty ladder come next.
+              Skyscrapers is being built: one hand-made puzzle per size for now, graded by the solver — the generator comes next.
             </p>
           ) : (
             miniGrid && (

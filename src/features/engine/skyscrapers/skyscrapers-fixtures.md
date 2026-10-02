@@ -26,8 +26,13 @@ parseSkyscrapersFixture(rows, mask, difficulty = 'unrated'):
     refuse it if validateSkyscrapers reports any problem
 ```
 
-`difficulty` defaults to `'unrated'`: no fixture carries a grade the classifier (E2) did not
-assign (D7). E2 relabels the served set from its own output and pins the labels in tests.
+`difficulty` defaults to `'unrated'`: no fixture carries a grade the classifier did not assign
+(D7). **Since E2 the served set is relabelled at import** — `graded(puzzle)` runs
+`classifySkyscrapers` on each fixture and stores its `difficulty` — so what the header, the
+Continue label and the PDF title show is the solver's word. Thinning clues to the uniqueness floor
+makes hard puzzles: the set grades **hard / extreme / extreme** (5×5 / 6×6 / 7×7), pinned in
+`skyscrapers-logical-solver.test.ts` so a label can never drift from the solver; the generator
+(E4/E5) is what makes the easy ones. The `SKYSCRAPERS_NONUNIQUE_4X4` pair stays `'unrated'`.
 
 ## How the squares and masks were found
 

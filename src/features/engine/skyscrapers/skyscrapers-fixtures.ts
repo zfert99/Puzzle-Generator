@@ -11,6 +11,7 @@
  */
 
 import { isGridSize, type GridSize } from '../sudoku';
+import { classifySkyscrapers } from './skyscrapers-logical-solver';
 import {
   GUTTER_SIDES,
   SKYSCRAPERS_LADDER,
@@ -96,20 +97,32 @@ export function parseSkyscrapersFixture(
  * only 5 of 20 clues (one more than the N−1 conjecture's floor, G5); the 6×6 keeps 15 of 24;
  * the 7×7 keeps 14 of 28. The 7×7 square had to be **repaired** into uniqueness (no random
  * 7×7 was unique with all 28 clues in 94,962 tries — log measurement, G4); see the `.md`.
+ *
+ * Each is **labelled by the classifier at import** (E2, decision D7: a served label is the logical
+ * solver's or `'unrated'`, never a guess). Thinning clues to the uniqueness floor makes hard
+ * puzzles, so the set grades hard / extreme / extreme — `skyscrapers-logical-solver.test.ts` pins
+ * those, so a label can never drift from the solver; the generator (E4/E5) makes the easy ones.
  */
-export const SKYSCRAPERS_FIXTURE_5X5 = parseSkyscrapersFixture(
-  ['45213', '54321', '12534', '31452', '23145'],
-  { top: '..xx.', bottom: '.x...', left: '.....', right: '.xx..' }
+function graded(puzzle: SkyscrapersPuzzle): SkyscrapersPuzzle {
+  return { ...puzzle, difficulty: classifySkyscrapers(puzzle).difficulty };
+}
+
+export const SKYSCRAPERS_FIXTURE_5X5 = graded(
+  parseSkyscrapersFixture(['45213', '54321', '12534', '31452', '23145'], { top: '..xx.', bottom: '.x...', left: '.....', right: '.xx..' })
 );
 
-export const SKYSCRAPERS_FIXTURE_6X6 = parseSkyscrapersFixture(
-  ['132546', '561234', '214365', '356412', '423651', '645123'],
-  { top: 'x.x.x.', bottom: '.x.x..', left: 'xxx.xx', right: '.xxxxx' }
+export const SKYSCRAPERS_FIXTURE_6X6 = graded(
+  parseSkyscrapersFixture(
+    ['132546', '561234', '214365', '356412', '423651', '645123'],
+    { top: 'x.x.x.', bottom: '.x.x..', left: 'xxx.xx', right: '.xxxxx' }
+  )
 );
 
-export const SKYSCRAPERS_FIXTURE_7X7 = parseSkyscrapersFixture(
-  ['7146253', '5213476', '4351762', '6574321', '1762534', '2435617', '3627145'],
-  { top: '.xx.x..', bottom: 'x.x.xx.', left: '.xx..xx', right: 'x..xx..' }
+export const SKYSCRAPERS_FIXTURE_7X7 = graded(
+  parseSkyscrapersFixture(
+    ['7146253', '5213476', '4351762', '6574321', '1762534', '2435617', '3627145'],
+    { top: '.xx.x..', bottom: 'x.x.xx.', left: '.xx..xx', right: 'x..xx..' }
+  )
 );
 
 export const SKYSCRAPERS_FIXTURES: readonly SkyscrapersPuzzle[] = [
@@ -131,8 +144,8 @@ export const SKYSCRAPERS_NONUNIQUE_4X4: readonly SkyscrapersPuzzle[] = [
 /**
  * What `/api/generate` prints until the generator exists (plan slice V3; the Kakuro counterpart was
  * `selectKakuroBatch`, replaced by `generateKakuroBatch` in E5): there is exactly **one** fixture
- * per size and it carries no grade, so a request is answered with that fixture once — whatever
- * levels the counts name — and only when exactly one puzzle is asked for. Asking for more would
+ * per size and its grade is whatever the classifier gave it, so a request is answered with that
+ * fixture once — whatever levels the counts name — and only when exactly one puzzle is asked for. Asking for more would
  * print the same page twice; the route refuses it with the reason.
  */
 export function selectSkyscrapersBatch(

@@ -462,7 +462,8 @@ export function drawSkyscrapersGrid(
 /**
  * Build a Skyscrapers booklet — one page per puzzle, then one answer page each — on the shared
  * bookmarks + puzzle↔answer links. Until the generator lands (E5) the booklet renders the baked
- * fixtures (one per size, `'unrated'`); `preview-skyscrapers.ts` writes the sample from them.
+ * fixtures (one per size, graded by the classifier since E2); `preview-skyscrapers.ts` writes the
+ * sample from them.
  */
 export async function generateSkyscrapersPDF(puzzles: SkyscrapersPuzzle[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {

@@ -433,23 +433,24 @@ describe('Skyscrapers', () => {
     expect(useBoardStore.getState().edgeClues).toBeNull();
   });
 
-  it('hints a cell the exact solver forces rather than the first empty cell (E1)', () => {
-    // Top clue 4 on column 0 forces 1,2,3,4 down it; top clue 1 on column 3 puts the 4 at (0,3).
-    // Every cell of row 0 is forced, so the hint fills (0,0) with 1 — the solver's and the
-    // reveal's first cell coincide here; the next test separates them.
+  it('hints the logical solver\'s next step and names its technique (E2)', () => {
+    // Top clue 4 on column 0: the heights climb 1..4, so the first step is clueN at (0,0).
     useBoardStore.getState().hint();
     const s = useBoardStore.getState();
     expect(s.grid[0][0]).toBe(1);
-    expect(s.lastHint?.technique).toBeNull();
-    expect(s.lastHint?.explanation).toMatch(/forced by the clues/i);
+    expect(s.lastHint?.technique).toBe('clueN');
+    expect(s.lastHint?.explanation).toMatch(/every tower is visible/);
   });
 
-  it('hints the selected cell when the solver forces it, else the first forced cell', () => {
+  it('hints the selected cell when the exact solver forces it, even when the named step lies elsewhere', () => {
     const store = useBoardStore.getState();
-    store.selectCell(2, 0); // forced to 3 by the top clue 4
+    store.selectCell(2, 0); // forced to 3 by the top clue 4, but the ladder's next step is (0,0)
     store.hint();
-    expect(useBoardStore.getState().grid[2][0]).toBe(3);
-    expect(useBoardStore.getState().grid[0][0]).toBe(0);
+    const s = useBoardStore.getState();
+    expect(s.grid[2][0]).toBe(3);
+    expect(s.grid[0][0]).toBe(0);
+    expect(s.lastHint?.technique).toBeNull();
+    expect(s.lastHint?.explanation).toMatch(/forced by the clues/i);
   });
 
   it('falls back to the answer when the board holds a mistake the solver cannot see past', () => {

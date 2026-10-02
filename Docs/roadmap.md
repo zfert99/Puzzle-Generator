@@ -661,8 +661,10 @@ revisited under the same rule later.
 > 2026-10-02), **V3** (printable: the fixtures in a booklet on `/generate`, G9's print
 > conventions applied; merged 2026-10-02) and **E1** (the exact solver — a per-size permutation
 > table and per-line filtering — behind the Hint button; every fixture proven unique in-repo,
-> 7×7 verified in 1.1 ms); D4 sizes planned at the recommendation (5/6/7) and still measured by
-> E3. Full plan:
+> 7×7 verified in 1.1 ms; merged 2026-10-02) and **E2** (the logical solver — 14 named techniques
+> in five tiers, forcing chains on top, never a guess — grading the fixtures hard / extreme /
+> extreme, naming the Hint's technique; 7×7 classified in 7 ms); D4 sizes planned at the
+> recommendation (5/6/7) and still measured by E3. Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;

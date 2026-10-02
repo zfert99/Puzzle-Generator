@@ -196,8 +196,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 1 | V1 — Types + baked fixtures ✅ | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
 | 2 | V2 — Board on the baked puzzle ✅ | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
 | 3 | V3 — PDF on the baked puzzle ✅ | A printable Skyscrapers page in the booklet |
-| 4 | E1 — Visibility table + exact solver + uniqueness 🚧 | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
-| 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
+| 4 | E1 — Visibility table + exact solver + uniqueness ✅ | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
+| 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer 🚧 | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
 | 6 | E3 — Yield measurement spike | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
 | 7 | E4 — Clue-removal generator | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
 | 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
@@ -478,7 +478,7 @@ one answer page); PDF service tests cover the renderer; route tests cover the sc
 - *Blockers:* none. **Gate passed:** the owner approved the booklet and merged
   ([#131](https://github.com/zfert99/Puzzle-Generator/pull/131), 2026-10-02).
 
-### E1 — Visibility table + exact solver + uniqueness 🚧
+### E1 — Visibility table + exact solver + uniqueness ✅
 
 - `skyscrapers-visibility.ts`: per-N **permutation table** built lazily and cached — `perms`
   (`Uint8Array` of N·N! heights), `visL[p]`, `visR[p]`, and `bucket(visL, visR)` → the
@@ -568,7 +568,7 @@ record the real number); fuzz clean; board hint driven by the solver.
 - *Blockers:* none. **Gate passed by measurement;** visible on the board: the Hint button places
   a solver-forced height with a "forced by the clues" note, and the dev badge reads unique ✓.
 
-### E2 — Logical solver (technique classifier) + instrumentation ⏳
+### E2 — Logical solver (technique classifier) + instrumentation 🚧
 
 - Tier *definition* (Simonis, via Kakuro G9): a puzzle's tier is the **weakest technique level
   that finishes it search-free**. Ordinal; the scorer only orders within a tier.
@@ -613,6 +613,66 @@ record the real number); fuzz clean; board hint driven by the solver.
 
 **Gate:** classifier agrees with the exact solver on every fuzz puzzle; every T1–T4 technique
 fires on at least one fixture; classify a 7×7 in < 20 ms.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-e2`):**
+
+- *Process:* `skyscrapers-logical-solver.ts` — `SkyscrapersLogicalSolver` (a class, no
+  inheritance) with the ladder as 14 named techniques in five tiers: T1 `clueN`, `clue1`,
+  `facingSum`, `positionBound`, `nearlyFilledClue`, `nakedSingle`, `hiddenSingle`; T2
+  `clue2Pattern`, `reachability`; T3 `lineFilter` (first productive line only — Tatham's rule),
+  `nakedSubset` (pairs + triples), `hiddenSubset` (pairs); T4 `xWing`; T5 `forcingChain`
+  (contradiction trials with tiers 1–4, ≤ 200 steps). One deduction per step, restart from the
+  cheapest after any progress, visibility rules before Latin rules within a tier.
+  `classifySkyscrapers` (hardest tier → `TIER_DIFFICULTY`, `'unrated'` when the ladder stalls),
+  `measureSkyscrapers` (trivial clues, facing sums, `fixed` / `implied` / `rating`),
+  `explainSkyscrapersHint` (eliminations first, singles only for the preferred cell, no detour —
+  L13). `skyscrapers-score.ts` — the Kakuro/Killer two-factor scorer with weights seeded from the
+  ladder order. **Visible on the board:** the fixtures are relabelled by the classifier at import
+  (`graded()` in `skyscrapers-fixtures.ts`) so the header, Continue label and PDF title carry the
+  solver's grade — **hard / extreme / extreme**; the Hint button walks the logical solver's next
+  step and names its technique (`hint-deducers.ts`, `HintNote.technique` widened); the dev badge
+  gained a `ladder:` line (grade, score, technique histogram) and a `metrics:` line. Tests (22 new and
+  3 rewritten): tier ordering; soundness on every fixture and on random uniquely-solvable
+  4×4/5×5 puzzles (every placement equals the solution, never a contradiction); a minimal firing
+  case per technique (`clueN`, `clue1`, `facingSum`, `positionBound`, `clue2Pattern` ×2,
+  `reachability`/`nearlyFilledClue`, `nakedSubset`, `hiddenSubset`, `xWing`) and the empty unclued
+  board as the shared must-not-fire case; the L1 assertion (a hidden single on a full permutation
+  is sound unguarded); contradictions from a wrong height and from a complete broken line; the
+  fixtures' tiers **pinned** with the techniques they rest on; `'unrated'` on a blank 4×4; metrics
+  on the 5×5 and the all-clue SQUARE; hint explanation names `clueN` from an empty grid, honours
+  the preferred cell only as the next deduction, `null` on a contradictory grid; scorer ordering
+  and the density clamp; store hints (named step; selected forced cell beats it); badge lines.
+- *Measured (`tsx`, Node 24, warm, 100 runs):* classify 5×5 **0.47 ms** · 6×6 **7.4 ms** · 7×7
+  **7.0 ms** — the 20 ms gate with ~3× headroom (a cold first call read 19 ms: the permutation
+  table's lazy build). Histograms: 5×5 `clueN×5 positionBound×4 nearlyFilledClue×2
+  clue2Pattern×1 nakedSingle×18 hiddenSingle×2 lineFilter×3` → tier 3; 6×6 `clue1×1
+  positionBound×11 clue2Pattern×7 nakedSingle×24 hiddenSingle×11 lineFilter×19 forcingChain×4` →
+  tier 5; 7×7 `positionBound×14 clue2Pattern×1 nakedSingle×37 hiddenSingle×12 lineFilter×21
+  forcingChain×2` → tier 5. Scores 24.8 / 170.4 / 126.5. Metrics: rating 2.57 / 4.91 / 5.0 —
+  tiers 1–2 place 11 / 2 / 8 cells.
+- *Gate, honestly:* **soundness ✅** (fuzz + fixtures, zero disagreements). **Timing ✅**. **"Every
+  T1–T4 technique fires on at least one fixture" ❌ as literally stated** — `facingSum` (no
+  facing pair in any fixture), `reachability` (pre-empted by `nearlyFilledClue` / `positionBound`
+  on these three), `nakedSubset`, `hiddenSubset` and `xWing` fired on none of the three fixtures.
+  Three hand-baked puzzles cannot carry that coverage claim; each of those techniques has its
+  minimal hand-built firing case as a test instead, and **E3/E4 corpora** are where the histogram
+  question (G7: is T4 ever *needed*?) gets answered. Recorded in the log under G7.
+- *Divergence from the spec:* (1) `forcingChain` tests cells with **2–3** candidates, not bivalue
+  only — bivalue chains left the 6×6 fixture `'unrated'` (its bottlenecks were trivalue cells);
+  with trivalue trials it finishes in four chains. Still no guessing: a value goes only when its
+  supposition is proved impossible (L12). (2) `twoLineInteraction` and hidden triples are not
+  built — nothing in the fixtures needed them; E3 decides. (3) The scorer's second factor is
+  "open singles per pass" (the Kakuro/Killer mapping) rather than a new dependency measure, for
+  comparability across types.
+- *Learnings:* (1) the E1 propagator solved the 5×5 outright; the classifier grades the same
+  puzzle **hard** because line filtering is a tier-3 human technique — the research's SAT-metric
+  warning, now a design property (L13). (2) An explanation-first hint and "hint the selected
+  cell" conflict the moment the ladder opens with placement rules that choose their own cell;
+  Skyscrapers resolves it by letting the exact solver's forced value win for the *selected* cell
+  (L14), tested both ways. (3) A wall-clock assertion in the unit suite measured the suite's
+  parallel load (77 ms for a 7 ms solve) — the real number lives in this log; the test only
+  guards against a runaway.
+- *Blockers:* none. Owner's `/code-review high` pending on the PR.
 
 ### E3 — Yield measurement spike (throwaway, no production code) ⏳
 
