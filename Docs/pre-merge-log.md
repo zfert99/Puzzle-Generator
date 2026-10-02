@@ -92,6 +92,71 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Skyscrapers plan: research, implementation plan, running log, Phase 11 (docs only)
+
+Branch `feature/skyscrapers` on `946d83f`. **No `.ts`/`.tsx` touched.** Lands the fifth puzzle
+type's paper trail: `Docs/research/skyscrapers.md` (four-stream deep research),
+`Docs/research/skyscrapers-research-gaps-findings.md` (G1/G2/G9/G10 answered, G5 narrowed, same
+day), `Docs/skyscrapers-implementation-plan.md`, `Docs/skyscrapers-log.md`, roadmap Phase 11 +
+gantt row + backlog pointer, README row 11, Docs index, project-status. Two throwaway Node
+scripts (all-clue ambiguity replication; 4×4 minimum-clue enumeration) ran in the session
+scratchpad by design — plan E1 turns both results into tests.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npx vitest run` · `npm run lint` · `npm run build` | not run — docs only; nothing under `src/` changed |
+| Benchmarks | n/a — two measurements instead: 4×4 / 5×5 all-clue ambiguity (35.42% / 57.61%, matches the research exactly) and 4×4 minimum clues (3 suffice, 2 never) |
+
+### Findings
+
+- Two research claims were **wrong and corrected before landing**: the research doc said no live
+  trademark surfaced (a live EU/UK "SKYSCRAPER" games-software mark exists — D1 now wires "Towers"
+  as the fallback title), and it inferred Tatham flags a violated clue only on a completed line
+  from a **stale GitHub mirror** (the current source flags prefix-provable violations immediately
+  and has a `COL_DONE` colour — D9 amended). Both corrections are noted in the research doc's
+  banner rather than silently rewritten.
+- The roadmap still said the daily scales "to 5 + 5 = 10" and the Kakuro backlog header still read
+  "In Progress" after Phase 10 shipped — reverse-sweep misses from R1, fixed here.
+- The reuse map was built from a fresh survey of `main`, not from the Kakuro plan's table: it
+  found `selectKakuroBatch` gone (E5 replaced it), the Kakuro gutter is top+left only, and ≥ 14
+  hardcoded variant lists — each is now a named checklist item for V2/V3/R1.
+
+### Invariants checked
+
+None apply (no code). Every number in the docs was copied from script output or the research
+notes, not retyped; the 4×4 counterexample pair was hand-verified against the rules.
+
+### Docs sweep
+
+New: three docs. Updated: roadmap (Phase 11, gantt, backlog pointer, two stale lines), README,
+Docs index (two rows), project-status (plan of record + horizons), the research doc's banner and
+§6. Reverse sweep for "fifth type" / "next two puzzle types" / "5 + 5": the one remaining hit
+(`daily-redesign-plan.md:32`, "next two puzzle types plug in") is correct historical framing of
+a plan written at 3 types and was left alone. Memory note updated.
+
+### Verified vs read
+
+- **Verified:** the two measurements (own scripts); markdownlint; every internal link target
+  exists (markdownlint MD051 caught one bad anchor — an emoji with a variation selector changes
+  the generated heading id; swapped for a plain emoji).
+- **Read only:** every external claim in the research docs rests on the cited URLs and the
+  researchers' confidence tags; trademark findings are web-indexed register data, not counsel.
+
+### Review statements
+
+- `/security-review`: **not run** — docs only.
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it (and there
+  is no code in this PR).
+
+### Lesson
+
+- **A heading with an emoji that carries a variation selector (e.g. 🏙️) breaks `#anchor` links** —
+  markdownlint's MD051 generates a different fragment than the visually identical plain emoji.
+  Use plain emoji in headings that anything links to, and let MD051 be the tripwire.
+
 ## 2026-10-01 — Kakuro review follow-up 9: all 6 `/code-review high` findings on R1 addressed
 
 Branch `feature/kakuro-review-9` on `e75cd37` (main, after R1). Table in the plan (R1 → "Review

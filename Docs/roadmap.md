@@ -648,6 +648,46 @@ revisited under the same rule later.
 
 ---
 
+## Phase 11 — Skyscrapers (Towers) 🏢
+
+> **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
+> **Branch:** fresh (`feature/skyscrapers`), then one branch per slice off `main`
+> **Status:** 📋 Planned — plan written 2026-10-01, nothing built. Full plan:
+> [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
+> (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
+> **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;
+> its research-gaps table seeds the log's G1–G12) ·
+> [skyscrapers-research-gaps-findings.md](research/skyscrapers-research-gaps-findings.md) (G1, G2,
+> G9, G10 answered and G5 narrowed the same day — a live EU "SKYSCRAPER" mark makes "Towers" the
+> wired fallback title; Tatham's prefix rule for violated clues)
+> **Estimated effort:** Medium (the *least* new engine of the five — a Latin square plus one new
+> constraint; the new work is the visibility solver, a four-sided clue gutter and a clue-removal
+> generator)
+> **Prerequisite:** Phase 10 (per-type sizes in the daily registry, the Kakuro gutter and
+> `ClueCell`, the classifier-in-the-objective generator contract)
+
+The **fifth and final planned puzzle type**: an N×N Latin square of heights 1..N (no boxes) with
+edge clues on all four sides, each the number of towers *visible* from that edge (taller hides
+shorter). Invented 1992 by Masanori Natsuhara; the name is generic (every publisher uses it;
+"Towers" is the alias). Solution-first generation à la Tatham: Latin fill → all 4N clues → remove
+clues while unique and solvable at ≤ the target tier → accept only at exactly the target tier. The
+research's twist: a square with *all* 4N clues is **often not unique** (35% at 4×4, 58% at 5×5,
+measured; N ≥ 6 is the first thing E3 measures). Difficulty rides which clues are blank and which
+values they carry, not clue count; tiers calibrate *within* a size from a technique classifier
+(clue 1/N and facing sums → position bounds → clue-2 patterns → per-line permutation filtering →
+Latin subsets → fish → bounded forcing chains — every tier logic-only, bifurcation rejected).
+Slices copy the Kakuro order **visual first, then the engine underneath**: a looks-only
+four-sided-gutter board (V0) → types + baked fixtures (V1) → playable at
+`/play?variant=skyscrapers` (V2) → printable (V3) → permutation-table exact solver driving the
+Hint button (E1) → classifier driving the difficulty badge (E2) → the **yield / size measurement
+spike** (E3 — settles mini 5×5-vs-4×4 and large 7×7-vs-9×9, owner decision D4) → clue-removal
+generator (E4) → tiers, pickers, hub card (E5) → the daily as the fifth type (R1: **5 standard +
+3 minis = 8 boards/day**, the daily plan's end state; a 6×6 standard would be the first non-9×9
+standard — decision D5). **Sizes are Skyscrapers' own** (D11): research recommends mini 5×5,
+standard 6×6, large 7×7.
+
+---
+
 ## Phase Map
 
 ```mermaid
@@ -672,6 +712,7 @@ gantt
     Phase 6 - Killer Sudoku             :p6, after p5, 21d
     Phase 8 - Keisan                    :p8, after p6, 14d
     Phase 10 - Kakuro                   :p10, after p8, 21d
+    Phase 11 - Skyscrapers              :p11, after p10, 14d
 
     section 🗄️ Infrastructure (cont.)
     Phase 9 - Social & Economy          :p9, after p8, 21d
@@ -748,7 +789,9 @@ move application, session state, UI, public demo.
 The `/daily` grew to a **30-board wall** (Classic + Killer + Keisan ladders + 15 minis) that
 overwhelms the ritual and scatters a small player base across empty leaderboards. Restructure:
 **one daily slot per puzzle TYPE, with the DIFFICULTY randomized** — N types → N standard +
-N mini boards (**3 + 3 = 6 now**, scaling to 5 + 5 = 10 as the next two puzzle types land).
+N mini boards at launch (**3 + 3 = 6**); since Kakuro the mini count is fixed at **three slots seating
+3 of the N types** (D4 in `kakuro-log.md`), so the day is **4 + 3 = 7 now** and **5 + 3 = 8** when the
+fifth type lands.
 Standard = 3 distinct random difficulties (9×9); minis = 3-tier (e/m/h), size easy/medium = 4×4,
 hard = random(4×4/6×6). Also adds a **Killer 4×4 (easy-only)** generator and archive **completion
 counts (X/N)**; medals/gold-days remain deferred to Phase 9. **This supersedes the earlier
@@ -786,7 +829,7 @@ Once the Phase 6 Killer engine lands, KenKen is a natural extension of the same
 > (`src/features/engine/killer/`), reusing only variant-agnostic primitives (grid fill, the
 > classic `HumanSolver` techniques). See the [Killer plan](archive/killer-sudoku-implementation-plan.md).
 
-### Kakuro / Cross Sums 🚧 In Progress — now Phase 10 (plan written September 2026)
+### Kakuro / Cross Sums ✅ Done — Phase 10 (plan written September 2026, shipped 2026-10-01)
 
 **Promoted to [Phase 10](#phase-10--kakuro-cross-sums-) — plan:
 [kakuro-implementation-plan.md](kakuro-implementation-plan.md), running log:
@@ -811,6 +854,34 @@ its own engine module rather than an extension of `killer/`. Headlines from the 
 
 Slots into the daily as one more type-as-slot entry (3+3 → 4+4) with no daily-system surgery, which
 is what the [restructure](daily-redesign-plan.md) was built for.
+
+### Skyscrapers (Towers) 📋 Planned — now Phase 11 (plan written 2026-10-01)
+
+**Promoted to [Phase 11](#phase-11--skyscrapers-towers-) — plan:
+[skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md), running log:
+[skyscrapers-log.md](skyscrapers-log.md).** The owner picked Skyscrapers as the fifth and final
+planned type on 2026-10-01; research: [skyscrapers.md](research/skyscrapers.md). Headlines:
+
+- **The name is generic and usable.** Invented 1992 by Masanori Natsuhara (Sekai Bunka-sha's
+  *Puzzler*), not a Nikoli puzzle; every publisher ships it as "Skyscrapers" (Tatham: "Towers");
+  the only U.S. filing found is an unrelated 1997 application abandoned in 1998. **Register check
+  (G1, same day):** US and Japan clear; the EU/UK holds a live singular "SKYSCRAPER"
+  games-software mark (Inspired Gaming, exp. 2027) — so "Towers" is wired as the fallback title.
+- **It is a Latin square plus one new constraint**, so most of the engine already exists: Keisan's
+  no-box Latin fill, peers and technique ladder transfer; the new piece is the *visibility count*
+  and a per-line permutation table bucketed by clue pair (720 permutations at 6×6, 5,040 at 7×7,
+  362,880 at 9×9).
+- **Difficulty rides which clues are blank and which values they carry**, not clue count — 1s and
+  Ns resolve a line in one move, mid-range clues only bound. Tiers calibrate *within* a size from
+  the classifier; every published tier logic-only.
+- **Generation twist:** a Latin square with *all* 4N clues is often not unique — 35% at 4×4 and 58%
+  at 5×5 by exhaustive enumeration (replicated); N ≥ 6 is unmeasured and is the first de-risk
+  measurement (E3, the K7 pattern).
+- **Recommended sizes to measure:** mini 5×5 (vs 4×4), standard 6×6, large 7×7 (vs 9×9) — per the
+  owner's per-type-sizes rule (D11), settled by tier reachability and yield, not by inheritance.
+
+Slots into the daily as the fifth type-as-slot entry (4 + 3 → 5 + 3), the end state the
+[restructure](daily-redesign-plan.md) was designed for.
 
 ### Multiplayer Speed Races 🔜 Up next (deferred from Phase 4)
 
