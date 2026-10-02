@@ -236,10 +236,22 @@ the recommended sizes; 9×9 + gutter = 11 tracks would be, and is why 9×9 is th
   to re-tint — the one case that forced Kakuro's dark rule does not exist in Skyscrapers.
   (3) The owner's "plan for recommended but still measure" turned D4 from *open* into *planned*:
   the visual slices build 5/6/7, and E3 keeps the power to overturn any of them.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 6 findings, all fixed
+  before merge):* (1) **hidden corners made the ARIA grid non-rectangular** — the top and bottom
+  rows exposed N cells, the middle rows N+2; corners are now empty read-only gridcells and every
+  row/cell carries `aria-rowindex` / `aria-colindex` with counts on the grid (D9), asserted by a
+  test. (2) The frame placement — the one off-by-one-prone piece of render logic — had no test;
+  it now has one per corner, edge and interior cell. (3) `npm run build` is the project's
+  separate build gate (the PR template) and CI does not run it; run and recorded. (4) The
+  display helpers were in the component despite L2 — `src/features/engine/skyscrapers/skyscrapers-types.ts`
+  now exists with `skyscrapersTracks` / `buildDisplayCells`, their tests and mirrored doc.
+  (5) Dead CSS (per-side and corner `transparent` rules) deleted. (6) The test-only `data-size`
+  attribute and the grid-level `aria-readonly` (false in V2) dropped; `aria-readonly` stays on
+  the gutter and corner cells.
 - *Blockers:* none. **Gate pending:** the owner's visual verdict in both themes and at 360 px.
-- *Carried into V1:* the display-coordinate helpers (`skyscrapersTracks`, `buildDisplayCells`)
-  move into the engine's `skyscrapers-types.ts` when V1 creates it (L2); `gutterLabel` gains the
-  clue digit; the route gains real clue digits from the fixtures.
+- *Carried into V1:* `skyscrapers-types.ts` gains the puzzle shape, clue arrays and
+  `visibleCount`; `gutterLabel` gains the clue digit; the route gains real clue digits from the
+  fixtures.
 
 ### V1 — Types + baked fixtures ⏳
 

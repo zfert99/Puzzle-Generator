@@ -34,31 +34,16 @@
 .frameRight { border-right: 3px solid var(--grid-line-strong); }
 .frameBottom { border-bottom: 3px solid var(--grid-line-strong); }
 
-/* Gutter cells carry no lines of their own: the clue digits (V1) float on the page beside the
-   framed play area, the way every publisher prints them (research §6). Centred so a digit
-   lands on its row/column axis. */
+/* Gutter cells (and the unstyled corners) carry no lines or background of their own: the clue
+   digits (V1) float on the page beside the framed play area, the way every publisher prints
+   them (research §6). Centred so a digit lands on its row/column axis. */
 .gutter {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
   color: var(--ink-soft);
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: calc(var(--cell-size) * 0.4);
   line-height: 1;
-}
-
-/* Reserved per side for V1's clue digits (e.g. a different inset per edge). Present now so the
-   markup is final and V1 only adds content. */
-.top,
-.bottom,
-.left,
-.right {
-  background: transparent;
-}
-
-/* Where two gutters meet there is nothing to show. */
-.corner {
-  background: transparent;
 }

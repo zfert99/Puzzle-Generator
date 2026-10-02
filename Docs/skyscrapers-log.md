@@ -37,6 +37,9 @@
   framed play area, ARIA grid skeleton and direction-naming gutter labels (D9); 6 tests. Owner's
   visual verdict pending (the slice's gate). `[learning]` the gap-as-line trick does not transfer
   (lines belong on the play cells; the gutter is open space) — recorded in the plan's V0 step-log.
+  Owner ran `/code-review high` on the branch: **6 findings, all fixed in-PR** (table in the plan
+  under V0) — the one with teeth was `aria-hidden` corners making the ARIA grid non-rectangular;
+  `[learning]` L5. The display helpers now start in the engine (`skyscrapers-types.ts`), per L2.
 - **2026-10-01 (gaps research)** [research/skyscrapers-research-gaps-findings.md](research/skyscrapers-research-gaps-findings.md)
   received — three web streams (trademark registers, complexity papers, print + clue-UX
   conventions) plus one exact in-session measurement. `[gap]` **G1 resolved**: US and Japan clear,
@@ -105,6 +108,7 @@
 |---|---|---|
 | L1 | **Reuse a Latin technique only after checking the house property it rests on — and write the answer down.** Kakuro needed a `required` guard because a run need not contain every digit; Skyscrapers rows and columns are full permutations, so hidden singles / pairs / fish are sound unchanged. E2 asserts this in a test so the question is answered on record rather than re-asked per technique | Plan authoring, 2026-10-01 (Kakuro L12 applied in reverse) |
 | L2 | **Put display-coordinate helpers in the engine's types module from day one when two consumers are already in the plan.** Kakuro's clue picture lived in board code until the PDF became a second consumer and had to move (its V3 step-log); Skyscrapers' gutter indexing has the board *and* the PDF as known consumers before V0 | Kakuro V3 step-log, applied 2026-10-01 |
+| L5 | **Hiding a cell from the accessibility tree changes the shape of its grid.** `aria-hidden` on an empty corner cell is not neutral: the first and last rows then expose N cells against N+2 in the middle, and a screen reader reports a malformed grid with column numbers that jump between rows. Keep every cell of a `role="grid"` in the tree (empty, read-only) and state the geometry with `aria-rowcount` / `aria-colcount` / `aria-rowindex` / `aria-colindex` | V0 review, 2026-10-02 |
 | L4 | **Check a source mirror's freshness before quoting it as the source.** The research doc read Tatham's colour enum from a stale GitHub mirror (`ghewgill/puzzles`) that lacked `COL_DONE`, and inferred "violated only on a completed line"; the current `towers.c` has the done colour and flags prefix-provable violations immediately. Quote the upstream or a dated release, and say which | G10, 2026-10-01 |
 | L3 | **A measured number from a research pass is "replicated" only when the repo can reproduce it.** The 4×4 / 5×5 ambiguity counts were replicated once in-session with a throwaway script; E1 turns them into tests so the claim survives the session that made it | Research banner, 2026-10-01 |
 

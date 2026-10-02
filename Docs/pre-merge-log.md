@@ -105,15 +105,22 @@ of source**, well inside the slice budget.
 |---|---|
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean |
-| `npx tsc --noEmit` | clean |
-| `npx vitest run` | **84 files / 776 tests green** (6 new); no entry from the Known flaky tests table fired |
+| `npx tsc --noEmit` · `npm run build` | clean · clean (the build is the PR template's separate gate and **CI does not run it** — review finding 3) |
+| `npx vitest run` | **85 files / 779 tests green** (9 new); no entry from the Known flaky tests table fired |
 | Benchmarks | n/a — no engine code |
 
 ### Findings
 
-- None in review. The one design call: lines are drawn on the play cells and the frame on the
-  play area's edge cells, **not** with Kakuro's gap-as-line board background — that trick draws a
-  line between every pair of cells, including gutter cells that must read as open space.
+- **`/code-review high` (owner-run, on the branch): 6 findings, all fixed in-PR.** The one with
+  teeth: hiding the four corners left the ARIA grid with N accessible cells in its first and last
+  rows against N+2 in the middle rows — a malformed grid to a screen reader. Corners are now empty
+  read-only gridcells, with `aria-rowindex` / `aria-colindex` on every row and cell and counts on
+  the grid. Also: the frame placement gained its missing test; the display helpers moved into the
+  engine (`skyscrapers-types.ts`, per L2) instead of waiting for V1; dead per-side CSS and a
+  test-only `data-size` attribute removed; `aria-readonly` kept only where it stays true in V2.
+- Design call kept: lines are drawn on the play cells and the frame on the play area's edge
+  cells, **not** with Kakuro's gap-as-line board background — that trick draws a line between
+  every pair of cells, including gutter cells that must read as open space.
 - No dark-theme override was needed (no filled blocks to re-tint); verified by reading the CSS,
   the owner's visual pass covers both themes.
 
@@ -141,7 +148,19 @@ hits flipped.
 ### Review statements
 
 - `/security-review`: **not run** — no auth, data or route logic (a static noindex page).
-- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+- `/code-review`: **run by the owner** (`/code-review high`, in-session) — 6 findings, all fixed
+  before merge (above).
+
+### Lesson
+
+- **Hiding a cell from the accessibility tree changes the shape of its grid.** `aria-hidden` on
+  a corner cell is not neutral: rows then disagree on their column count and AT reports a
+  malformed table. Keep every cell of a `role="grid"` in the tree (empty and read-only if it
+  holds nothing) and state the geometry with `aria-rowcount` / `aria-colcount` / `aria-rowindex`
+  / `aria-colindex`.
+- **The Next build is a gate of its own.** `tsc` and eslint pass code the `next build` rejects
+  (route-segment and metadata rules, prerender failures), and `ci.yml` does not run the build —
+  a Vercel deploy of `main` is otherwise the first place it fails.
 
 ## 2026-10-01 — Skyscrapers plan: research, implementation plan, running log, Phase 11 (docs only)
 

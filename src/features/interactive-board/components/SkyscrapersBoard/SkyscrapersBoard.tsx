@@ -1,45 +1,9 @@
 import type { CSSProperties } from 'react';
+import {
+  buildDisplayCells,
+  type GutterSide,
+} from '@/features/engine/skyscrapers/skyscrapers-types';
 import styles from './SkyscrapersBoard.module.css';
-
-/** Which strip of the clue gutter a display cell belongs to, if any. */
-export type GutterSide = 'top' | 'bottom' | 'left' | 'right';
-
-/**
- * One cell of the (N+2)×(N+2) picture a player sees: the N×N play area, a one-cell clue gutter
- * on all four sides, and the four corners where two gutters meet (which hold nothing).
- */
-export type DisplayCell =
-  | { kind: 'play'; row: number; col: number }
-  | { kind: 'gutter'; side: GutterSide; index: number }
-  | { kind: 'corner' };
-
-/** Display tracks per axis for an interior size N: the play area plus a gutter cell on each side. */
-export function skyscrapersTracks(size: number): number {
-  return size + 2;
-}
-
-/**
- * Expands an interior size N into the (N+2)×(N+2) display grid. Display index 0 and N+1 on
- * either axis are the gutter; display (r, c) is play cell (r − 1, c − 1). Unlike Kakuro, whose
- * clues live inside the grid and along two edges, every Skyscrapers clue sits outside the play
- * area, so the gutter is symmetric on all four sides and the corners are dead.
- */
-export function buildDisplayCells(size: number): DisplayCell[][] {
-  const tracks = skyscrapersTracks(size);
-  const last = tracks - 1;
-  const isEdge = (i: number) => i === 0 || i === last;
-
-  return Array.from({ length: tracks }, (_, r) =>
-    Array.from({ length: tracks }, (_, c): DisplayCell => {
-      if (isEdge(r) && isEdge(c)) return { kind: 'corner' };
-      if (r === 0) return { kind: 'gutter', side: 'top', index: c - 1 };
-      if (r === last) return { kind: 'gutter', side: 'bottom', index: c - 1 };
-      if (c === 0) return { kind: 'gutter', side: 'left', index: r - 1 };
-      if (c === last) return { kind: 'gutter', side: 'right', index: r - 1 };
-      return { kind: 'play', row: r - 1, col: c - 1 };
-    })
-  );
-}
 
 /** Where a clue on this side looks: the direction a solver reads the line from that edge. */
 const LOOKING: Record<GutterSide, string> = {
@@ -65,28 +29,31 @@ export function gutterLabel(side: GutterSide, index: number): string {
  * the size is static data, so there is no hydration concern. V2 replaces this with the
  * interactive board on `useBoardStore`.
  *
- * It already carries the WAI-ARIA grid skeleton (grid → row → gridcell) that V2 needs: play
- * cells are gridcells, gutter cells are read-only gridcells named by the direction their clue
- * reads in, and the four corners are presentational and hidden from assistive technology.
+ * It already carries the WAI-ARIA grid skeleton V2 needs. Every row exposes the same N+2
+ * cells — the corners are empty read-only gridcells, not hidden elements — so assistive
+ * technology sees one rectangular grid; `aria-rowindex` / `aria-colindex` on every cell and the
+ * counts on the grid make that explicit (D9). Gutter cells are read-only and named by the
+ * direction their clue reads in; play cells are named by position.
  */
 export function SkyscrapersBoard({ size }: { size: number }) {
   const cells = buildDisplayCells(size);
-  const last = cells.length - 1;
+  const tracks = cells.length;
+  const last = tracks - 1;
 
   return (
     <div
       role="grid"
       aria-label={`Skyscrapers board, ${size} by ${size}`}
-      aria-readonly="true"
+      aria-rowcount={tracks}
+      aria-colcount={tracks}
       className={styles.board}
-      data-size={size}
-      style={{ '--tracks': cells.length } as CSSProperties}
+      style={{ '--tracks': tracks } as CSSProperties}
     >
       {cells.map((row, r) => (
-        <div key={r} role="row" className={styles.row}>
+        <div key={r} role="row" aria-rowindex={r + 1} className={styles.row}>
           {row.map((cell, c) => {
             if (cell.kind === 'corner') {
-              return <div key={c} role="presentation" aria-hidden="true" className={styles.corner} />;
+              return <div key={c} role="gridcell" aria-readonly="true" aria-colindex={c + 1} />;
             }
             if (cell.kind === 'gutter') {
               return (
@@ -94,8 +61,9 @@ export function SkyscrapersBoard({ size }: { size: number }) {
                   key={c}
                   role="gridcell"
                   aria-readonly="true"
+                  aria-colindex={c + 1}
                   aria-label={gutterLabel(cell.side, cell.index)}
-                  className={`${styles.gutter} ${styles[cell.side]}`}
+                  className={styles.gutter}
                 />
               );
             }
@@ -111,6 +79,7 @@ export function SkyscrapersBoard({ size }: { size: number }) {
               <div
                 key={c}
                 role="gridcell"
+                aria-colindex={c + 1}
                 aria-label={`Row ${cell.row + 1}, column ${cell.col + 1}, empty`}
                 className={classes.join(' ')}
               />

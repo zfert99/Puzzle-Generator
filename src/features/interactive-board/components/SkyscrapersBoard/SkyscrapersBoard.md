@@ -12,29 +12,14 @@ written; V2 replaces it with the interactive board on `useBoardStore`.
 There is no state to own and the size is static data, so there is nothing to hydrate and no
 server/client mismatch to worry about. It gains `"use client"` only when it becomes interactive.
 
-## `skyscrapersTracks(size)` and `buildDisplayCells(size)`
+## Where the geometry comes from
 
-A puzzle is stored as the **interior** N×N only (plan decision D2), because the rest of the
-codebase keys on `grid.length` being the puzzle's named size. A player, though, sees a strip of
-clue cells on every side. These helpers produce that picture: an (N+2)×(N+2) grid where display
-index 0 and N+1 on either axis are the gutter and the four corners are dead.
-
-This differs from Kakuro's gutter (top and left only, plus clues inside the grid): every
-Skyscrapers clue sits *outside* the play area, so the gutter is symmetric and the corners hold
-nothing. The display-coordinate helpers live beside the board for V0; V1 moves them into the
-engine's `skyscrapers-types.ts` because the PDF renderer (V3) is a known second consumer
-(log learning L2).
-
-```text
-tracks = N + 2; last = tracks - 1
-for each display row r, column c:
-    both r and c on an edge           → corner
-    r == 0                            → gutter, side top,    index c - 1
-    r == last                         → gutter, side bottom, index c - 1
-    c == 0                            → gutter, side left,   index r - 1
-    c == last                         → gutter, side right,  index r - 1
-    otherwise                         → play cell (r - 1, c - 1)
-```
+The (N+2)×(N+2) picture — play area, four gutter strips, four dead corners — is built by
+`buildDisplayCells` in the engine's
+[`skyscrapers-types.ts`](../../../engine/skyscrapers/skyscrapers-types.md), not here: the PDF
+renderer (V3) is a known second consumer, so the helpers start in the engine (log learning L2)
+instead of moving there later as Kakuro's did. This component only decides how each display cell
+is drawn and named.
 
 ## `gutterLabel(side, index)`
 
@@ -46,17 +31,24 @@ digit, and V2 adds the state (open / satisfied / violated / done).
 ## `SkyscrapersBoard({ size })`
 
 Renders the display cells as a CSS grid. It already uses the WAI-ARIA grid skeleton (`grid` →
-`row` → `gridcell`) because V2 needs exactly that structure: play cells are gridcells named by
-position, gutter cells are **read-only** gridcells named by `gutterLabel`, and the corners are
-`role="presentation"` + `aria-hidden` so they are never announced.
+`row` → `gridcell`) because V2 needs exactly that structure, and it keeps the grid
+**rectangular for assistive technology**: every row exposes the same N+2 gridcells. The corners
+are empty read-only gridcells rather than hidden elements — hiding them would leave the first and
+last rows with N accessible cells against N+2 in the middle rows, which a screen reader reports as
+a malformed grid with column numbers that jump between rows (review finding on V0). `aria-rowcount`
+/ `aria-colcount` on the grid and `aria-rowindex` / `aria-colindex` on every row and cell make the
+geometry explicit (D9). Gutter cells are read-only and named by `gutterLabel`; play cells are
+named by position and carry no `aria-readonly`, because in V2 they become editable while the
+gutter stays read-only.
 
 ```text
-render a grid labelled "Skyscrapers board, N by N", read-only, with --tracks = N + 2
-for each display row:
-    render a row wrapper (out of layout — cells stay direct grid items)
-    for each cell:
-        corner → a hidden, presentational div
-        gutter → a read-only gridcell, labelled by gutterLabel, styled by its side
+render a grid labelled "Skyscrapers board, N by N", rowcount = colcount = N + 2,
+       with --tracks = N + 2
+for each display row r:
+    render a row wrapper with aria-rowindex (out of layout — cells stay direct grid items)
+    for each cell c, with aria-colindex:
+        corner → an empty read-only gridcell, no label, no styling
+        gutter → a read-only gridcell labelled by gutterLabel
         play   → a gridcell "Row r, column c, empty"; add the frame class(es) on the
                  edge cells of the play area (first/last play row and column)
 ```
@@ -75,6 +67,9 @@ for each display row:
 - **The board is a size container.** `--cell-size` is one track's width in container units, so
   V1's clue digits can be sized as a fraction of a cell and stay in proportion at 5×5, 7×7, or on
   a phone (the gutter font size is already wired to it, at 0.4 of a cell).
+- **No reserved rules.** Corners have no class at all and the gutter has no per-side class: a
+  bare div is already transparent, and a per-side rule is added when a per-side difference
+  exists, not before (review finding on V0).
 - **Theme tokens only.** Line colours derive from `--ink` / `--paper`, so the board flips with
   `[data-theme]` without a dark override of its own — there are no filled blocks to re-tint, which
   is the case that forced Kakuro's dark-theme rule.
