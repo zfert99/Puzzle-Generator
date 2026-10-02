@@ -25,8 +25,8 @@ export default function PuzzleForm() {
   const isKiller = variant === 'killer';
   const isCalc = variant === 'calc';
   const isKakuro = variant === 'kakuro';
-  // Skyscrapers prints one hand-made, ungraded fixture per size until its generator lands (plan
-  // E5), so it has no difficulty counts to configure — the form sends exactly one puzzle.
+  // Skyscrapers prints one hand-made fixture per size (graded by the classifier, E2) until its
+  // generator lands (plan E5), so it has no difficulty counts to configure — the form sends exactly one puzzle.
   const isSkyscrapers = variant === 'skyscrapers';
   const title = isKiller ? 'Killer Sudoku' : isCalc ? 'Keisan' : isKakuro ? 'Kakuro' : isSkyscrapers ? 'Skyscrapers' : 'Sudoku';
   // The size the configurator reasons about is the active variant's, not classic's.
@@ -124,7 +124,7 @@ export default function PuzzleForm() {
           <GridSizeSelector value={skySize} onChange={setSkySize} sizes={[5, 6, 7]} />
           <p className="text-xs text-ink-soft text-center mb-6">
             Towers — a clue counts the buildings visible from that edge. Skyscrapers is being built: one
-            hand-made, ungraded puzzle per size until the generator lands.
+            hand-made puzzle per size, graded by the solver, until the generator lands.
           </p>
         </>
       ) : (

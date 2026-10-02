@@ -38,7 +38,7 @@ const kakuroRequestSchema = z.object({
 
 /**
  * Skyscrapers request shape (plan slice V3). Sizes are Skyscrapers' own (D4: 5 / 6 / 7); counts
- * are non-negative integers. Until the generator lands (E5) there is one hand-made, ungraded
+ * are non-negative integers. Until the generator lands (E5) there is one hand-made, classifier-graded
  * fixture per size, so the branch below accepts exactly one puzzle per request — whatever level
  * the count names — and says why otherwise; that total check (with the selector's own guard
  * behind it) is the V3 cap to delete when `generateSkyscrapersBatch` exists.

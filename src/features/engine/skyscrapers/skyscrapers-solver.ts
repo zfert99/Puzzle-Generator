@@ -17,7 +17,7 @@
 
 import { digitOfBit, popcount } from '../grid-utils';
 import { bucketIndex, permutationTable, type PermutationTable } from './skyscrapers-visibility';
-import type { SkyscraperClues } from './skyscrapers-types';
+import { lineCells as lineCellsOf, type SkyscraperClues } from './skyscrapers-types';
 
 /** What the solver needs of a puzzle: its size and clues. (`SkyscrapersPuzzle` satisfies it.) */
 export interface SkyscrapersShape {
@@ -89,21 +89,17 @@ function compile(shape: SkyscrapersShape): Compiled {
     return valid(l) && valid(r) ? table.buckets[bucketIndex(size, l, r)] : EMPTY_BUCKET;
   };
 
+  // Rows read from the left clue, columns from the top clue — the shared `lineCells` convention,
+  // so a bucket's `visLeft` is the left/top clue and `visRight` the right/bottom one.
   for (let r = 0; r < size; r++) {
-    const cells = new Int32Array(size);
-    for (let c = 0; c < size; c++) {
-      cells[c] = r * size + c;
-      cellLines[(r * size + c) * 2] = r;
-    }
+    const cells = Int32Array.from(lineCellsOf(size, 'left', r));
+    for (const cell of cells) cellLines[cell * 2] = r;
     lineCells.push(cells);
     lineBucket.push(bucketFor(clues.left[r], clues.right[r]));
   }
   for (let c = 0; c < size; c++) {
-    const cells = new Int32Array(size);
-    for (let r = 0; r < size; r++) {
-      cells[r] = r * size + c;
-      cellLines[(r * size + c) * 2 + 1] = size + c;
-    }
+    const cells = Int32Array.from(lineCellsOf(size, 'top', c));
+    for (const cell of cells) cellLines[cell * 2 + 1] = size + c;
     lineCells.push(cells);
     lineBucket.push(bucketFor(clues.top[c], clues.bottom[c]));
   }

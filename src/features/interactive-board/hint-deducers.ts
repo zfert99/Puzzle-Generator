@@ -3,6 +3,7 @@ import type { Run } from '@/features/engine/kakuro/kakuro-types';
 import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
 import { explainKakuroHint, type KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
 import { deduceSkyscrapers } from '@/features/engine/skyscrapers/skyscrapers-solver';
+import { explainSkyscrapersHint, type SkyscrapersTechnique } from '@/features/engine/skyscrapers/skyscrapers-logical-solver';
 import type { SkyscraperClues } from '@/features/engine/skyscrapers/skyscrapers-types';
 
 /** What a solver-driven hint hands back to the store: where to place, and the note to show. */
@@ -11,7 +12,7 @@ export interface DeducedHint {
   note: {
     cell: number;
     digit: number;
-    technique: KakuroTechnique | null;
+    technique: KakuroTechnique | SkyscrapersTechnique | null;
     explanation: string;
     leadUp: string[];
   };
@@ -41,9 +42,14 @@ function pickAgreeing(
   ctx: HintContext,
   forced: readonly { cell: number; digit: number }[]
 ): { cell: number; digit: number } | null {
-  const agrees = (f: { cell: number; digit: number }) =>
-    f.digit === ctx.solution[Math.floor(f.cell / ctx.config.size)][f.cell % ctx.config.size];
+  const agrees = (f: { cell: number; digit: number }) => agreesWithSolution(ctx, f);
   return forced.find((f) => f.cell === ctx.preferredCell && agrees(f)) ?? forced.find(agrees) ?? null;
+}
+
+/** The one place a candidate placement is checked against the answer (L9). */
+function agreesWithSolution(ctx: HintContext, f: { cell: number; digit: number }): boolean {
+  const size = ctx.config.size;
+  return f.digit === ctx.solution[Math.floor(f.cell / size)][f.cell % size];
 }
 
 const toTarget = (cell: number, size: number) => ({ r: Math.floor(cell / size), c: cell % size });
@@ -57,9 +63,8 @@ const toTarget = (cell: number, size: number) => ({ r: Math.floor(cell / size), 
 const kakuro: Deducer = (ctx) => {
   const size = ctx.config.size;
   const shape = { gridSize: size, runs: ctx.runs };
-  const agrees = (f: { cell: number; digit: number }) => f.digit === ctx.solution[Math.floor(f.cell / size)][f.cell % size];
   const explained = explainKakuroHint(shape, ctx.grid, { preferCell: ctx.preferredCell ?? undefined });
-  if (explained && agrees(explained)) {
+  if (explained && agreesWithSolution(ctx, explained)) {
     return {
       target: toTarget(explained.cell, size),
       note: { cell: explained.cell, digit: explained.digit, technique: explained.technique, explanation: explained.explanation, leadUp: explained.leadUp },
@@ -73,13 +78,24 @@ const kakuro: Deducer = (ctx) => {
 };
 
 /**
- * Skyscrapers (plan slice E1): the exact solver's propagation. The logical solver (E2) adds the
- * named technique and the reason; until then the note says the height is forced.
+ * Skyscrapers: the same shape as Kakuro's — first the logical solver's next placement, a named
+ * technique with a reason (E2), then the exact solver's propagation, sound but unexplained (E1).
+ * The explainer itself confines every placing rule to the selected cell first, so a selected
+ * cell the board can deduce is hinted by name (a clue-N climb, a single, …) and the deducer
+ * needs no precedence of its own. The agree-with-solution check gates both routes (L9).
  */
 const skyscrapers: Deducer = (ctx) => {
   if (!ctx.edgeClues) return null;
   const size = ctx.config.size;
-  const { forced, contradiction } = deduceSkyscrapers({ gridSize: size, clues: ctx.edgeClues }, ctx.grid);
+  const shape = { gridSize: size, clues: ctx.edgeClues };
+  const explained = explainSkyscrapersHint(shape, ctx.grid, { preferCell: ctx.preferredCell ?? undefined });
+  if (explained && agreesWithSolution(ctx, explained)) {
+    return {
+      target: toTarget(explained.cell, size),
+      note: { cell: explained.cell, digit: explained.digit, technique: explained.technique, explanation: explained.explanation, leadUp: explained.leadUp },
+    };
+  }
+  const { forced, contradiction } = deduceSkyscrapers(shape, ctx.grid);
   if (contradiction) return null;
   const pick = pickAgreeing(ctx, forced);
   if (!pick) return null;

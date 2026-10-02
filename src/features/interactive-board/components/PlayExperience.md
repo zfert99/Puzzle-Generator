@@ -122,9 +122,10 @@ Same F10 treatment as `PuzzleForm`: the type toggle is a labelled `role="group"`
 `aria-pressed` buttons, and the Difficulty heading became a `span` + `aria-labelledby` over its
 group (size buttons get theirs from the shared `GridSizeSelector`).
 
-## Development-only solver badge (October 2026, Kakuro E1; Skyscrapers E1)
+## Development-only solver badge (October 2026, Kakuro E1; Skyscrapers E1/E2)
 
-Skyscrapers has its own badge (`SkyscrapersDevBadge`: unique? · nodes · clue count), gated the
+Skyscrapers has its own badge (`SkyscrapersDevBadge`: unique? · nodes · clue count; since E2 the
+classifier's grade, score, technique histogram and metrics), gated the
 same way on `NODE_ENV === 'development'` and `boardVariant === 'skyscrapers'`.
 
 ### Kakuro
@@ -147,6 +148,7 @@ offers **5 / 6 / 7** — the plan's D4, planned at the research recommendation a
 by E3 — and the deep link seeds the planned standard, 6×6. `topTiersLockedFor` exempts it, like
 Kakuro: its tiers are calibrated within a size (D6), so the full ladder is shown at every size.
 Until the generator lands (E4/E5) the menu says so: one hand-made fixture per size is served
-(`usePuzzle` short-circuits, no network) and the board's grade is `'unrated'` — the difficulty
-picker is for the layout's sake. No hub card yet (D8: the card goes live at E5, so `main` never
+(`usePuzzle` short-circuits, no network) and the board's grade is **the classifier's** (E2 — the
+fixtures grade hard / extreme / extreme), not the picker's — the difficulty picker is for the
+layout's sake. No hub card yet (D8: the card goes live at E5, so `main` never
 advertises a one-puzzle type); the deep link is the surface.
