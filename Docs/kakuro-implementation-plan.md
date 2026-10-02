@@ -20,8 +20,8 @@
 > [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
 > [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) and
 > [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); R1 (daily rotation at four
-> types) [#125](https://github.com/zfert99/Puzzle-Generator/pull/125) and its review follow-up —
-> **every slice done**) · **Branch:** one per slice off
+> types) [#125](https://github.com/zfert99/Puzzle-Generator/pull/125) and its review follow-up
+> [#126](https://github.com/zfert99/Puzzle-Generator/pull/126) — **every slice done**) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`,
 > `-review-8`, `-r1`, `-review-9`) ·
@@ -947,7 +947,7 @@ in both sections, existing types' rolls unchanged); floors present for every rol
 - *Blockers:* none. **Phase 10 is complete.**
 
 **Review follow-up 9 (2026-10-01 — hosted `/code-review high` over #125, 6 findings, all
-addressed; recorded in full):**
+addressed in [#126](https://github.com/zfert99/Puzzle-Generator/pull/126); recorded in full):**
 
 | # | Finding (file) | Outcome |
 |---|---|---|

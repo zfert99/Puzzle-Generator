@@ -29,7 +29,7 @@
 ## Journal
 
 - **2026-10-01 (review 9)** R1 merged (#125). Owner ran `/code-review high` over it: **6
-  findings, all addressed** (table in the plan under R1). `[bug]` the anti-cheat mistake cap
+  findings, all addressed** (#126; table in the plan under R1). `[bug]` the anti-cheat mistake cap
   counted Kakuro's black cells as empties — the first daily type whose zeros are not all cells —
   fixed by consulting the solution. The mini roll is now two draws so a one-size type is seated
   in the hard slot as often as the others (`[measure]` shares over 2 000 seeds in the table);
