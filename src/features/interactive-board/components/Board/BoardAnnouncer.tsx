@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useBoardStore } from '../../store/useBoardStore';
 import { useSetting } from '@/features/settings/useSettings';
+import { GUTTER_SIDES } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { describeSkyscraperClue, skyscraperClueState } from '../../skyscrapers-board';
 
 /**
  * Screen-reader announcer for board changes (WCAG 4.1.3, per
@@ -21,6 +23,9 @@ export function BoardAnnouncer() {
   const status = useBoardStore((s) => s.status);
   const isDaily = useBoardStore((s) => s.mode === 'daily');
   const errorsRevealed = useBoardStore((s) => s.errorsRevealed);
+  const doneClues = useBoardStore((s) => s.doneClues);
+  const edgeClues = useBoardStore((s) => s.edgeClues);
+  const size = useBoardStore((s) => s.config.size);
   const errorHighlightSetting = useSetting('errorHighlight');
   // Match the visual rule: on a daily, "incorrect" is only announced once the player opts in
   // via the review modal's reveal; in free play it follows the app-wide setting.
@@ -30,11 +35,28 @@ export function BoardAnnouncer() {
   // pattern, which avoids a setState-in-effect cascade.
   const [prevGrid, setPrevGrid] = useState(grid);
   const [prevStatus, setPrevStatus] = useState(status);
+  const [prevDone, setPrevDone] = useState(doneClues);
   const [message, setMessage] = useState('');
 
   if (status !== prevStatus) {
     setPrevStatus(status);
     if (status === 'solved') setMessage('Puzzle solved');
+  }
+  // Marking a Skyscrapers clue done changes the focused cell's own name, which screen readers do
+  // not re-announce on their own (G8) — say the clue's new name here.
+  if (doneClues !== prevDone) {
+    const before = prevDone;
+    setPrevDone(doneClues);
+    if (edgeClues && before.length === doneClues.length) {
+      const flat = doneClues.findIndex((done, i) => done !== before[i]);
+      if (flat !== -1) {
+        const side = GUTTER_SIDES[Math.floor(flat / size)];
+        const index = flat % size;
+        const { clue, status } = skyscraperClueState(edgeClues, grid, side, index);
+        const next = describeSkyscraperClue(side, index, clue, status, doneClues[flat]);
+        if (next !== message) setMessage(next);
+      }
+    }
   }
   if (grid !== prevGrid) {
     const before = prevGrid;

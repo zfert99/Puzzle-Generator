@@ -223,7 +223,9 @@ export function Board() {
   const tracks = isKakuro ? kakuroTracks(size) : isSkyscrapers ? skyscrapersTracks(size) : size;
   // How many display rows precede interior row 0, and display columns precede interior column 0.
   const offset = isKakuro || isSkyscrapers ? 1 : 0;
-  const corner = (col: number) => <div role="gridcell" aria-readonly aria-colindex={col} className={styles.gutterCell} />;
+  // A corner is a real cell of the grid for assistive technology (L5) and says so — an unnamed
+  // gridcell is read as silence or "blank", which a listener cannot tell from a blank clue.
+  const corner = (col: number) => <div role="gridcell" aria-label="Corner" aria-readonly aria-colindex={col} className={styles.gutterCell} />;
   const gutterRow = (side: GutterSide, rowIndex: number) => (
     <div role="row" aria-rowindex={rowIndex} className={styles.row}>
       {corner(1)}
@@ -240,6 +242,7 @@ export function Board() {
         ref={gridRef}
         role="grid"
         aria-label={isKakuro ? 'Kakuro board' : isSkyscrapers ? 'Skyscrapers board' : 'Sudoku board'}
+        aria-describedby={isSkyscrapers ? 'skyscrapers-gutter-help' : undefined}
         aria-rowcount={tracks}
         aria-colcount={tracks}
         className={styles.board}
@@ -275,6 +278,14 @@ export function Board() {
         {isSkyscrapers && gutterRow('bottom', tracks)}
         {variant !== 'classic' && cages.length > 0 && <CageOverlay cages={cages} size={size} />}
       </div>
+      {/* The gutter is outside the Tab order (D9), so the way in has to be told, not found: the
+          grid's description names it for a screen reader on focus (G8). */}
+      {isSkyscrapers && (
+        <p id="skyscrapers-gutter-help" className="sr-only">
+          Clues sit outside the grid on all four sides. Press C to move to the clues, arrow keys to move between
+          them, Enter or Space to mark a clue done, and C or Escape to return to the board.
+        </p>
+      )}
       <BoardAnnouncer />
     </>
   );

@@ -1116,6 +1116,18 @@ both sections over a week of seeded rolls; the first real cron after deploy roun
   section fold.
 - *Blockers:* none. **Phase 11 is complete** once this merges.
 
+**G8 follow-up (2026-10-02 — branch `feature/skyscrapers-g8-a11y`, after the merge):** the owed
+screen-reader pass, done over the accessibility tree the browser exposes (the built-in browser's
+tree dump of the live board) plus axe. Four gaps fixed: the corner cells had no name (now
+"Corner"); a blank clue read "Clue cell, looking down from the top of column 2, blank" (now
+"No clue, top of column 2"; a present clue "Clue 3, from the top of column 2, unsolved" — the
+engine's "open" is a disclosure word to a listener); the `C` key to reach the gutter was known
+only to the rules dialog (now the grid's `aria-describedby` instructions and three keyboard-legend
+rows, which read the board's variant from the store); marking a clue done changed the focused
+cell's own name, which screen readers do not re-announce (now the live region says it). An axe
+journey over a started Skyscrapers board joins `e2e/a11y.spec.ts`. **Not done:** a live NVDA /
+JAWS / VoiceOver session — G8 is narrowed, not closed (L22).
+
 ### Deferred / follow-ons (not v1)
 
 - **Variants:** Skyscrapers with Parks (one empty lot per line; Tim Peeters 1999) and Sum

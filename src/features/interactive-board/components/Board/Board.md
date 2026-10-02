@@ -198,9 +198,15 @@ existing per-cell borders, so a Kakuro inherits every other board behaviour unch
 A Skyscrapers is drawn with **two** extra tracks per axis — a clue gutter on all four sides —
 so `--size` is `skyscrapersTracks(size) = size + 2`. The gutter is rendered as a top row
 (corner, N `SkyscraperClueCell`s, corner), a leading and trailing clue cell on every interior
-row, and a bottom row; the corners are empty read-only gridcells so every row exposes the same
-N+2 cells (the ARIA grid stays rectangular — V0's review finding) and the grid carries
-`aria-rowcount` / `aria-colcount`. The grid's accessible name is "Skyscrapers board".
+row, and a bottom row; the corners are read-only gridcells **named "Corner"** so every row exposes
+the same N+2 cells (the ARIA grid stays rectangular — V0's review finding) and a listener hears a
+cell, not silence (the G8 pass: an unnamed gridcell is read as nothing or "blank", which cannot be
+told from a blank clue); the grid carries `aria-rowcount` / `aria-colcount`. The grid's accessible
+name is "Skyscrapers board" and, for this variant only, it is **described by** a visually hidden
+paragraph (`#skyscrapers-gutter-help`) that says how to reach the gutter — "Press C to move to
+the clues, arrow keys to move between them, Enter or Space to mark a clue done, C or Escape to
+return" — because the gutter sits outside the Tab order (D9) and the way in has to be told, not
+found.
 
 **Why the frame is on the cells.** The board's own 3px border is turned off for this variant
 (`Board.module.css`) and the edge play cells draw it (`Cell.tsx`'s `frameTop/…`): the gutter

@@ -225,7 +225,7 @@ test.describe('Interactive play', () => {
     await expect(page.getByRole('button', { name: '7', exact: true })).toHaveCount(0);
 
     // A clue marks done on click; a play cell takes a digit.
-    const clue = grid.getByRole('gridcell', { name: /^Clue \d.*, open$/ }).first();
+    const clue = grid.getByRole('gridcell', { name: /^Clue \d.*, unsolved$/ }).first();
     await clue.click();
     await expect(grid.getByRole('gridcell', { name: /marked done$/ })).toHaveCount(1);
     await grid.getByRole('gridcell', { name: /^Empty/ }).first().click();

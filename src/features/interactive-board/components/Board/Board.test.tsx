@@ -236,6 +236,11 @@ describe('Board — Skyscrapers', () => {
     render(<Board />);
 
     const grid = screen.getByRole('grid', { name: 'Skyscrapers board' });
+    // The gutter is outside the Tab order, so the grid's description tells a listener how to reach
+    // it (G8), and every corner is a named cell rather than silence (L5).
+    expect(grid).toHaveAttribute('aria-describedby', 'skyscrapers-gutter-help');
+    expect(document.getElementById('skyscrapers-gutter-help')?.textContent).toMatch(/Press C to move to the clues/);
+    expect(screen.getAllByRole('gridcell', { name: 'Corner' })).toHaveLength(4);
     expect(grid).toHaveAttribute('aria-rowcount', '6');
     expect(grid).toHaveAttribute('aria-colcount', '6');
     const rows = screen.getAllByRole('row');
@@ -246,9 +251,9 @@ describe('Board — Skyscrapers', () => {
       expect(cells).toHaveLength(6);
       cells.forEach((cell, c) => expect(cell).toHaveAttribute('aria-colindex', String(c + 1)));
     });
-    expect(screen.getByRole('gridcell', { name: 'Clue 4, looking down from the top of column 1, open' })).toHaveTextContent('4');
-    expect(screen.getByRole('gridcell', { name: 'Clue 1, looking right from the left of row 4, open' })).toHaveTextContent('1');
-    expect(screen.getAllByRole('gridcell', { name: /looking left from the right of row \d, blank$/ })).toHaveLength(4);
+    expect(screen.getByRole('gridcell', { name: 'Clue 4, from the top of column 1, unsolved' })).toHaveTextContent('4');
+    expect(screen.getByRole('gridcell', { name: 'Clue 1, from the left of row 4, unsolved' })).toHaveTextContent('1');
+    expect(screen.getAllByRole('gridcell', { name: /^No clue, right of row \d$/ })).toHaveLength(4);
     expect(screen.getAllByRole('gridcell', { name: /^Empty/ })).toHaveLength(16);
     // Interior (0,1) is the third column a screen reader counts, after the gutter.
     expect(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i })).toHaveAttribute('aria-colindex', '3');
@@ -271,9 +276,9 @@ describe('Board — Skyscrapers', () => {
     // Row 2's left clue is 2. Put a 4 first: the tallest is next to the clue — provably violated.
     await user.click(screen.getByRole('gridcell', { name: /empty, row 2, column 1/i }));
     await user.keyboard('4');
-    expect(screen.getByRole('gridcell', { name: 'Clue 2, looking right from the left of row 2, violated' })).toHaveAttribute('data-status', 'violated');
+    expect(screen.getByRole('gridcell', { name: 'Clue 2, from the left of row 2, violated' })).toHaveAttribute('data-status', 'violated');
     // Top clue of column 1 is 4: a 4 in row 2 is not in that column's prefix (row 1 is empty) — still open.
-    expect(screen.getByRole('gridcell', { name: 'Clue 4, looking down from the top of column 1, open' })).toBeInTheDocument();
+    expect(screen.getByRole('gridcell', { name: 'Clue 4, from the top of column 1, unsolved' })).toBeInTheDocument();
 
     // Fix it: 2 1 4 3 satisfies "2 from the left".
     await user.keyboard('4'); // toggles the 4 off
@@ -284,7 +289,7 @@ describe('Board — Skyscrapers', () => {
     await user.keyboard('4');
     await user.click(screen.getByRole('gridcell', { name: /empty, row 2, column 4/i }));
     await user.keyboard('3');
-    expect(screen.getByRole('gridcell', { name: 'Clue 2, looking right from the left of row 2, satisfied' })).toHaveAttribute('data-status', 'satisfied');
+    expect(screen.getByRole('gridcell', { name: 'Clue 2, from the left of row 2, satisfied' })).toHaveAttribute('data-status', 'satisfied');
   });
 
   it('marks a clue done by click, and by keyboard via C, arrows and Enter', async () => {
@@ -294,9 +299,9 @@ describe('Board — Skyscrapers', () => {
     // Select a play cell, click a clue: it marks done and focus comes straight back to the play
     // cell, so the next digit still lands on the board (no focus steal).
     await user.click(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i }));
-    const first = screen.getByRole('gridcell', { name: 'Clue 4, looking down from the top of column 1, open' });
+    const first = screen.getByRole('gridcell', { name: 'Clue 4, from the top of column 1, unsolved' });
     await user.click(first);
-    expect(screen.getByRole('gridcell', { name: 'Clue 4, looking down from the top of column 1, marked done' })).toBeInTheDocument();
+    expect(screen.getByRole('gridcell', { name: 'Clue 4, from the top of column 1, marked done' })).toBeInTheDocument();
     expect(screen.getByRole('gridcell', { name: /empty, row 1, column 2/i })).toHaveFocus();
     await user.keyboard('2');
     expect(screen.getByRole('gridcell', { name: /value 2, row 1, column 2/i })).toBeInTheDocument();
@@ -307,10 +312,13 @@ describe('Board — Skyscrapers', () => {
     await user.keyboard('{Control>}c{/Control}'); // a modified C is copy, not the gutter jump
     expect(screen.getByRole('gridcell', { name: /empty, row 1, column 1/i })).toHaveFocus();
     await user.keyboard('c');
-    expect(screen.getByRole('gridcell', { name: /looking down from the top of column 1, marked done/ })).toHaveFocus();
+    expect(screen.getByRole('gridcell', { name: /from the top of column 1, marked done/ })).toHaveFocus();
     await user.keyboard('{ArrowRight}');
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('gridcell', { name: 'Clue 2, looking down from the top of column 2, marked done' })).toBeInTheDocument();
+    expect(screen.getByRole('gridcell', { name: 'Clue 2, from the top of column 2, marked done' })).toBeInTheDocument();
+    // The mark is announced (G8): a screen reader does not re-read the focused cell's own name
+    // when it changes, so the live region says it.
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain('Clue 2, from the top of column 2, marked done');
     // A digit typed while a clue has focus never lands on the board.
     await user.keyboard('3');
     expect(screen.queryAllByRole('gridcell', { name: /^Value/ })).toHaveLength(0);
