@@ -194,6 +194,21 @@ describe('rollDailyAssignment', () => {
     expect(kakuroMini).toBeLessThan(300);
   });
 
+  it('seats every type in the hard mini slot about equally — a one-size type is not halved (review 9)', () => {
+    // The roll draws a seating first, then a hard size within it, so Kakuro (one mini size) is
+    // seated hard as often as a two-size type. Each of the 4 types should take the hard seat in
+    // about a quarter of days; with 600 seeds a 10-point band around 25% is a safe bound.
+    const hardSeat: Record<string, number> = {};
+    for (let seed = 0; seed < 600; seed++) {
+      const hard = rollDailyAssignment(mulberry32(seed)).find((s) => s.key === 'mini-hard')!;
+      hardSeat[hard.variant] = (hardSeat[hard.variant] ?? 0) + 1;
+    }
+    for (const variant of VARIANTS) {
+      expect(hardSeat[variant] / 600, variant).toBeGreaterThan(0.15);
+      expect(hardSeat[variant] / 600, variant).toBeLessThan(0.35);
+    }
+  });
+
   it('restricted to the Sudoku family, the mini configurations are exactly the pre-D4 set', () => {
     // 6 seatings of 3 types × hard slot ∈ {4, 6} = 12, minus the 6 that put Killer on a 4×4
     // medium or hard — the old `PERMS_3 × [4, 6]` enumeration under `isEligible`; easy/medium

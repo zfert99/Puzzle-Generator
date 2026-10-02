@@ -2,6 +2,7 @@ import { and, eq, gte, lt, min } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { dailyPuzzles, solveAttempts, type DailyPuzzle } from '@/lib/db/schema';
 import {
+  SIZES,
   rollDailyAssignment,
   toDailyPuzzleRow,
   getProfile,
@@ -83,8 +84,11 @@ function generatePuzzleFor(slot: PlannedSlot): EnginePuzzle {
  * fire would be inert complexity, so the plan text was corrected instead.
  */
 function eligibleAlternatives(slot: PlannedSlot): PlannedSlot[] {
-  const sizes: DailySize[] =
-    slot.section === 'standard' ? [9] : slot.gridSize === 4 ? [4, 6] : [6, 4]; // rolled size first
+  // The sizes this section ships across every type (`SIZES`, per-type since R1), rolled size
+  // first — not literals, so a type with a different standard or mini size joins the pool by
+  // registering, not by editing this function (a review finding on R1).
+  const sectionSizes = VARIANTS.flatMap((variant) => (slot.section === 'standard' ? [SIZES[variant].standard] : [...SIZES[variant].mini]));
+  const sizes: DailySize[] = [slot.gridSize, ...sectionSizes.filter((size) => size !== slot.gridSize)].filter((size, i, all) => all.indexOf(size) === i);
   const alts: PlannedSlot[] = [];
   for (const gridSize of sizes) {
     for (const variant of VARIANTS) {

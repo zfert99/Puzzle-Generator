@@ -55,3 +55,7 @@ The row's `variant` column (migration `0004`) is now the single source of truth.
 
 Accepts any daily-board key (plus legacy `'killer'`); `gridSize` in the response derives from
 the stored grid's length, so mini boards need no schema change.
+
+`route.test.ts` (R1 review) pins the payload shape per variant with the service mocked at the
+boundary: a Kakuro row comes back as `runs`, Killer/Keisan as `cages`, classic as neither, and a
+missing board as 404 — the one place a stored row becomes a board, which no unit test had covered.

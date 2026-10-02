@@ -81,20 +81,27 @@ const MIN_MISTAKE_BOUND = 100;
  * The board answers it: givens can't be mistaken (they aren't editable), and an empty cell has
  * exactly `size − 1` wrong digits available. Measured against the boards actually in rotation:
  * 4×4 minis floor at 100, a 6×6 Killer runs 180, a 9×9 classic with 41 clues 320, and a caged 9×9
- * — no givens at all — 648. The ceiling this replaces was a flat 100 000, a count no board here
- * can generate; today's `mini-easy` row still carries exactly that, banked by a probe, and it is
- * served on the public leaderboard.
+ * — no givens at all — 648; a 9×9 Kakuro with ~50 white cells ~400 (its black cells are `0` in
+ * both grids and are not cells, so the solution is consulted to tell them from empties). The
+ * ceiling this replaces was a flat 100 000, a count no board here can generate; today's
+ * `mini-easy` row still carries exactly that, banked by a probe, and it is served on the public
+ * leaderboard.
  *
  * **Clamped, never rejected.** Above the bound the count stops being informative, but `mistakes`
  * never touches ranking, so failing an otherwise-valid solve over a display stat would be the
  * worse outcome — the same reasoning the route has always applied, now with a number that means
  * something.
  */
-export function maxPlausibleMistakes(puzzleGrid: Grid): number {
+export function maxPlausibleMistakes(puzzleGrid: Grid, solution?: Grid): number {
   const size = puzzleGrid.length;
   let emptyCells = 0;
-  for (const row of puzzleGrid) {
-    for (const value of row) if (value === 0) emptyCells++;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      // A `0` in the puzzle is a cell to fill — unless the solution is `0` there too, which is a
+      // Kakuro black cell (plan D3), never filled and never mistaken. Counting those would bound a
+      // 9×9 Kakuro as if it had 81 cells instead of ~50 (a review finding on R1).
+      if (puzzleGrid[r][c] === 0 && (solution === undefined || solution[r][c] !== 0)) emptyCells++;
+    }
   }
   return Math.max(MIN_MISTAKE_BOUND, emptyCells * (size - 1));
 }

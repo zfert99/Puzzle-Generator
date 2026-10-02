@@ -20,10 +20,11 @@
 > [#122](https://github.com/zfert99/Puzzle-Generator/pull/122) and its review follow-up
 > [#123](https://github.com/zfert99/Puzzle-Generator/pull/123) and
 > [#124](https://github.com/zfert99/Puzzle-Generator/pull/124); R1 (daily rotation at four
-> types) [#125](https://github.com/zfert99/Puzzle-Generator/pull/125) — **every slice done**) · **Branch:** one per slice off
+> types) [#125](https://github.com/zfert99/Puzzle-Generator/pull/125) and its review follow-up —
+> **every slice done**) · **Branch:** one per slice off
 > `main` (`feature/kakuro`, `-v1`, `-v2`, `-e1`, `-review-1`, `-e2`, `-review-2`, `-e2b`,
 > `-review-3`, `-e3`, `-review-4`, `-v3`, `-review-5`, `-e4`, `-review-6`, `-e5`, `-review-7`,
-> `-review-8`, `-r1`) ·
+> `-review-8`, `-r1`, `-review-9`) ·
 > **Roadmap:** Phase 10 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings):** [kakuro-log.md](kakuro-log.md) — every
 > `D#` / `G#` referenced below lives there with its current status.
@@ -944,6 +945,18 @@ in both sections, existing types' rolls unchanged); floors present for every rol
 - *Learnings:* L25 (seed into the environment that will serve it — a dev workstation pointed at a
   shared database must not write rows the deployed code cannot read).
 - *Blockers:* none. **Phase 10 is complete.**
+
+**Review follow-up 9 (2026-10-01 — hosted `/code-review high` over #125, 6 findings, all
+addressed; recorded in full):**
+
+| # | Finding (file) | Outcome |
+|---|---|---|
+| 1 | The anti-cheat mistake cap counted Kakuro's black cells as empties — a 9×9 bounded as 81 cells instead of ~50 (`solve-rules.ts`) | **Fixed** — `maxPlausibleMistakes(grid, solution?)` counts only cells that are `0` in the puzzle and non-zero in the solution; the service passes both; tested (648 → 400 on a 50-white Kakuro, Sudoku family unchanged) |
+| 2 | The generation fallback pool hardcoded `[9]` / `[4, 6]` beside the new per-type `SIZES` table (`dailies.service.ts`) | **Fixed** — candidate sizes derived from `SIZES` across the registered types, rolled size first |
+| 3 | A uniform pick over configurations seated a one-size type (Kakuro) in the hard mini half as often as a two-size type (`daily-row.ts`) | **Fixed** — two draws: seating uniformly, then hard size within it. Measured over 2 000 seeds: hard seat classic 24% / killer 33% / keisan 20% / kakuro 23%; the roller test bounds every type to 15–35% (Killer's lead is the older easy/hard lean from its no-4×4-medium rule) |
+| 4 | The hub's ContinueBanner labelled a saved board by size alone — "6×6 · hard" could be any of four types (`ContinueBanner.tsx`) | **Fixed** — `slotLabel` from the saved variant/size: "Hard 6×6 · Kakuro"; tests updated |
+| 5 | No route-level test covered a Kakuro row served as `runs` (`api/daily/route.ts`) | **Fixed** — `route.test.ts` with the service mocked at the boundary: runs / cages / neither / 404 |
+| 6 | The `Variant` union typed twice (`daily-row.ts`, `schema.ts` `$type`) | **Fixed** — `DailyVariant` lives with the column in `schema.ts`; the registry re-exports it |
 
 ### Deferred / follow-ons (not v1)
 

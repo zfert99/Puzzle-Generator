@@ -2,7 +2,7 @@ import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
-import type { Grid, NewDailyPuzzle } from './schema';
+import type { DailyVariant, Grid, NewDailyPuzzle } from './schema';
 
 /**
  * The daily registry — **type-as-slot** model. One daily slot per puzzle TYPE with the
@@ -24,8 +24,8 @@ import type { Grid, NewDailyPuzzle } from './schema';
  * `isDailyDifficulty`); historical rows carry their backfilled `variant` (migration `0004`).
  */
 
-/** Puzzle type. Mirrors the engine variants and the stored `daily_puzzles.variant`. */
-export type Variant = 'classic' | 'killer' | 'calc' | 'kakuro';
+/** Puzzle type — the stored `daily_puzzles.variant`; the union lives with the column (`schema.ts`). */
+export type Variant = DailyVariant;
 /** The five 9×9 difficulty rungs. Standard slots are keyed by these. */
 export type StandardRung = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 /** Mini difficulties — the 3-tier ladder (no expert/extreme minis). */
@@ -242,9 +242,10 @@ export function miniConfigurations(types: readonly Variant[]): { variant: Varian
  *   random injection). Every type covers the full standard ladder, so any pairing is valid; keys
  *   are the rungs → distinct. One rung sits out each day at four types.
  * - **Minis:** enumerate every valid seating of 3 of the N types into the three tier slots, with
- *   the hard slot's size rolled from the seated type's mini sizes (`miniConfigurations`), then
- *   pick one uniformly. One type sits out the minis each day at four types. This still
- *   guarantees Killer only ever lands on easy-4×4 or a 6×6 hard slot, and Kakuro only on 6×6.
+ *   the hard slot's size rolled from the seated type's mini sizes (`miniConfigurations`); pick a
+ *   seating uniformly, then a hard size uniformly within it. One type sits out the minis each
+ *   day at four types. This still guarantees Killer only ever lands on easy-4×4 or a 6×6 hard
+ *   slot, and Kakuro only on 6×6.
  */
 export function rollDailyAssignment(rng: () => number = Math.random): PlannedSlot[] {
   const rungs = shuffle(STANDARD_RUNGS, rng).slice(0, VARIANTS.length);
@@ -257,8 +258,18 @@ export function rollDailyAssignment(rng: () => number = Math.random): PlannedSlo
     difficulty,
   }));
 
-  const configs = miniConfigurations(VARIANTS);
-  const chosen = configs[Math.floor(rng() * configs.length)];
+  // Two draws, not one uniform pick over configurations: a configuration is a seating × a hard
+  // size, so a type with two mini sizes would otherwise be twice as likely in the hard seat as a
+  // type with one (Kakuro) — a review finding on R1. Draw the seating uniformly, then the hard
+  // size uniformly among that seating's valid sizes.
+  const bySeating = new Map<string, ReturnType<typeof miniConfigurations>>();
+  for (const config of miniConfigurations(VARIANTS)) {
+    const seating = config.map((a) => a.variant).join('>');
+    bySeating.set(seating, [...(bySeating.get(seating) ?? []), config]);
+  }
+  const seatings = [...bySeating.values()];
+  const seated = seatings[Math.floor(rng() * seatings.length)];
+  const chosen = seated[Math.floor(rng() * seated.length)];
   const minis: PlannedSlot[] = chosen.map((a) => ({
     key: MINI_KEYS[a.difficulty],
     section: 'mini',

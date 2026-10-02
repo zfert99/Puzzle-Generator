@@ -28,6 +28,13 @@
 
 ## Journal
 
+- **2026-10-01 (review 9)** R1 merged (#125). Owner ran `/code-review high` over it: **6
+  findings, all addressed** (table in the plan under R1). `[bug]` the anti-cheat mistake cap
+  counted Kakuro's black cells as empties — the first daily type whose zeros are not all cells —
+  fixed by consulting the solution. The mini roll is now two draws so a one-size type is seated
+  in the hard slot as often as the others (`[measure]` shares over 2 000 seeds in the table);
+  the fallback pool reads `SIZES`; the hub banner names the type; a route test pins
+  runs-vs-cages; one `DailyVariant` union.
 - **2026-10-01 (R1)** Review follow-up 8 merged (#124). **R1 built** (#125) — Kakuro in the daily:
   `[decision]` **D4 locked by the owner** (keep 3 mini slots, roll 3 of the 4 types; a mini plays
   at its type's own size — D11) and applied; the day is now **4 standard + 3 minis = 7 boards**;
@@ -252,6 +259,7 @@
 
 | Date | Commit | What | Numbers |
 |---|---|---|---|
+| 2026-10-01 | review 9 | **Mini-seat shares** over 2 000 seeded rolls after the two-draw change | hard seat: classic 23.5% · killer 33.4% · keisan 19.9% · kakuro 23.3%; any mini seat: classic 76.7% · killer 66.6% · keisan 76.2% · kakuro 80.4% |
 | 2026-10-01 | R1 | **Daily dry run** — five seeded days rolled and generated with the real engines (no DB), each slot timed | 7 slots/day; per day 4.1 s, 3.3 s, 10.6 s, 0.3 s, 1.7 s; slowest slot a 9×9 easy Kakuro at 9.8 s (walk down from a hard base), Kakuro 9×9 otherwise 0.1–1.2 s, 6×6 minis 27–49 ms; every rolled combo had a profile |
 | 2026-10-01 | review 8 | **Lean signal A/B** — capped-solve `lean` (engine) vs top-tier step share, same 15 seeded bases per cell, easy → target | steps median / max: 9×9 expert 59/287 vs 47/437 · 9×9 extreme 132/338 vs 152/464 · 7×7 extreme 86/321 vs 99/388 — rejected |
 | 2026-10-01 | review 7 | **Up-walk A/B** — 15 identical seeded bases per cell walked down to easy, then up to the target with the flat band (E5) vs the tiered band; steps are the CPU-independent signal | **steps median / max, flat → tiered:** 7×7 expert 35/162 → 19/208 · 7×7 extreme 98/360 → 86/321 · 9×9 expert 49/**1832** → 59/**287** · 9×9 extreme 139/**886** → 132/**338**; 15/15 reached either way |

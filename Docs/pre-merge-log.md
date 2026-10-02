@@ -92,6 +92,77 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro review follow-up 9: all 6 `/code-review high` findings on R1 addressed
+
+Branch `feature/kakuro-review-9` on `e75cd37` (main, after R1). Table in the plan (R1 → "Review
+follow-up 9"); journal + a shares row in `kakuro-log.md`. ~60 code lines net (the mistake cap's
+solution-aware count, the `SIZES`-driven fallback pool, the two-draw mini roll, the typed banner
+label, one `DailyVariant` union), a new 60-line route test, ~30 other test lines, ~70 doc lines.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 83 files, **770 passed**, 0 failed — 1 new file (`api/daily/route.test.ts`: runs / cages / neither / 404 with the service mocked at the boundary), 2 new cases (Kakuro black cells in the mistake cap; every type's hard-seat share bounded 15–35% over 600 seeds), 3 banner assertions retargeted |
+| `npm run lint` | exit 0 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Playwright `home.spec.ts` (banner on the hub) | 5 passed on the re-run; the first run's one flaky test was the known `fullyParallel` contention, retried green |
+| Mini-seat shares (2 000 seeded rolls) | hard seat: classic 23.5% · killer 33.4% · keisan 19.9% · **kakuro 23.3%** (was ~half the others' by construction); any mini seat: 77 / 67 / 76 / 80% |
+
+### Findings (the review's, with outcomes)
+
+1. **Mistake cap counted Kakuro's black cells** → `maxPlausibleMistakes(grid, solution?)` counts
+   only cells `0` in the puzzle and non-zero in the solution (648 → 400 on a 50-white 9×9;
+   Sudoku family unchanged, optional arg so no caller breaks).
+2. **Fallback sizes hardcoded** → derived from `SIZES` across the registered types.
+3. **One-size type halved in the hard seat** → two draws (seating, then size); measured even.
+   Killer's 33% is the older skew (no 4×4 medium seat) — recorded, not hidden.
+4. **Banner label without type** → `slotLabel` from the saved variant/size.
+5. **No route test for runs-vs-cages** → added.
+6. **Variant union twice** → `DailyVariant` in `schema.ts`, re-exported by the registry.
+
+### Invariants checked
+
+No slot key, write, query or migration. **Anti-cheat:** the cap is the only rule touched; it can
+only get *tighter* (a cell that is `0` in both grids is no longer counted) and only for Kakuro —
+re-derived and tested in both directions. **Roller:** every day still valid under `isEligible`,
+keys distinct, the Sudoku-family restriction still reproduces the pre-D4 set (the configuration
+set is unchanged; only the pick changed). **Retired keys** untouched. **Trust boundary:** the new
+route test mocks `@/lib/db/client` and the dailies service — the boundaries — never a module in
+between (AGENTS.md §4).
+
+### Docs sweep
+
+Mirrored `.md` for every touched source file (`solve-rules`, `dailies.service`, `daily-row`,
+`schema`, `ContinueBanner`, `api/daily/route`); plan review table + header; log journal +
+Measurements. Reverse sweep for "pick one uniformly" / "Killer · medium" / "9×9 · medium" /
+`[4, 6]` — the registry doc, the banner doc, the service doc; historical entries left as the
+record.
+
+### Verified vs read
+
+- **Verified:** the table; the shares over 2 000 seeds; the cap on a hand-built 50-white board.
+- **Read only:** the banner in a browser with a saved Kakuro board (the jsdom test covers the
+  three label shapes; no saved Kakuro game exists in the pane's profile).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change (the mistake cap only
+  tightens).
+- `/code-review`: **run by the owner** (`high`) on R1; this is its follow-up, not re-reviewed.
+
+### Lessons
+
+- **A new row type can change what an old invariant means** — "0 = empty" was true for three
+  types and silently false for the fourth; when a type encodes something new in an existing
+  column, grep every reader of that column, not just the ones you changed.
+- **"Uniform over valid configurations" is only uniform over what you enumerated** — when the
+  enumeration multiplies one axis (sizes) into another (seatings), draw the axes separately or
+  measure the marginals before calling it fair.
+
+---
+
 ## 2026-10-01 — Kakuro R1: Kakuro in the daily — D4 locked, 4 standard + 3 minis seating 3 of 4 types
 
 Branch `feature/kakuro-r1` on `fb9c8c6` (main, after review follow-up 8). Plan R1 step-log; D4

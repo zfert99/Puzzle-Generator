@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useSavedGame, formatElapsed } from '@/features/interactive-board/store/useSavedGame';
-import { formatDailyKey, toUtcDateString } from '@/lib/db/daily-row';
+import { difficultyForKey, formatDailyKey, isDailyVariant, toUtcDateString } from '@/lib/db/daily-row';
+import { slotLabel } from '@/features/dailies/slot-display';
 
 /**
  * Front-door "continue" affordance. Reads the single saved game from the board store and, if
@@ -25,14 +26,20 @@ export function ContinueBanner() {
    * they still had to play. The date is the only thing that separates them.
    */
   const isAnotherDaysDaily = Boolean(saved.dailyDate && saved.dailyDate !== toUtcDateString(new Date()));
-  const what =
-    saved.mode === 'daily'
-      ? isAnotherDaysDaily
-        ? `Practice · ${formatDailyKey(saved.difficulty)}`
-        : `Daily · ${formatDailyKey(saved.difficulty)}`
-      : saved.variant === 'killer'
-        ? `Killer · ${saved.difficulty}`
-        : `${saved.gridSize}×${saved.gridSize} · ${saved.difficulty}`;
+  // "Hard 6×6 · Kakuro" — the same difficulty · size · type composition the daily picker uses,
+  // from the saved board's own variant and size. With four types a bare "6×6 · hard" could be any
+  // of them (a review finding on R1); the key-only form stays as the fallback for an
+  // unregistered variant, visible rather than invented.
+  const board = isDailyVariant(saved.variant)
+    ? slotLabel({
+        key: saved.difficulty,
+        variant: saved.variant,
+        difficulty: difficultyForKey(saved.difficulty),
+        gridSize: saved.gridSize,
+        section: saved.gridSize < 9 ? 'mini' : 'standard',
+      })
+    : formatDailyKey(saved.difficulty);
+  const what = saved.mode === 'daily' ? (isAnotherDaysDaily ? `Practice · ${board}` : `Daily · ${board}`) : board;
 
   return (
     <Link

@@ -57,12 +57,19 @@ It is **not** a defect in what ships today: while the leaderboard is flavor, the
 here is the right call, and the proposed guard carries its own false-rejection risk on the fastest
 minis.
 
-## `maxPlausibleMistakes(puzzleGrid)`
+## `maxPlausibleMistakes(puzzleGrid, solution?)`
 
 **Why:** `mistakes` is client-reported and unverifiable, so the only answerable question is
 "could a real client have produced this number?" — and the board is what answers it. Givens are
 not editable, so they cannot be got wrong; an empty cell has exactly `size - 1` wrong digits
 available. The distinct-wrong-placement count is therefore `emptyCells × (size - 1)`.
+
+**What counts as empty (R1 review).** A `0` in the puzzle grid is a cell to fill — unless the
+solution is `0` there too, which is a Kakuro **black** cell (plan D3): never filled, never
+mistaken. Kakuro is the first daily type whose zeros are not all empties, and without the
+solution a 9×9 Kakuro with ~50 white cells was bounded as if it had 81 (648 instead of ~400).
+The service passes both grids; the solution is optional so every existing caller and test is
+unchanged, and for the Sudoku family no cell is `0` in both grids, so nothing moves.
 
 ```text
 count the zeros in the stored puzzle grid    # blanks; givens are excluded by construction

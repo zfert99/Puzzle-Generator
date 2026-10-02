@@ -53,7 +53,7 @@ describe('ContinueBanner', () => {
 
     render(<ContinueBanner />);
 
-    expect(screen.getByText(/Daily · hard/)).toBeInTheDocument();
+    expect(screen.getByText(/Daily · Hard · Killer/)).toBeInTheDocument();
     expect(screen.queryByText(/Practice/)).not.toBeInTheDocument();
   });
 
@@ -73,7 +73,7 @@ describe('ContinueBanner', () => {
 
     render(<ContinueBanner />);
 
-    expect(screen.getByText(/Practice · hard/)).toBeInTheDocument();
+    expect(screen.getByText(/Practice · Hard · Killer/)).toBeInTheDocument();
     expect(screen.queryByText(/Daily ·/)).not.toBeInTheDocument();
   });
 
@@ -82,7 +82,7 @@ describe('ContinueBanner', () => {
 
     render(<ContinueBanner />);
 
-    expect(screen.getByText(/Killer · medium/)).toBeInTheDocument();
+    expect(screen.getByText(/Medium · Killer/)).toBeInTheDocument();
     expect(screen.getByRole('link')).toHaveAttribute('href', '/play?resume=1');
   });
 });
