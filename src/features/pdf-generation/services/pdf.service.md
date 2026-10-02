@@ -128,6 +128,32 @@ two (title "Kakuro", one page per puzzle, then one answer page each, same bookma
 puzzle↔answer links). Until the generator lands (E5) the booklet renders the baked fixtures —
 `preview-kakuro.ts` writes `Docs/samples/kakuro-sample.pdf` from them.
 
+## 4d. Skyscrapers (plan slice V3, October 2026)
+
+Skyscrapers has no cages, no givens and no black cells — the clues sit *outside* the grid — so it
+gets its own renderer. `drawSkyscrapersGrid(doc, puzzle, startX, startY, gridDrawSize,
+showSolution)` draws the engine's **(N+2)×(N+2) display grid**: the N×N play area one cell in on
+each axis, with the clue digits floating in a one-cell gutter on all four sides. The picture
+follows the print conventions measured in the gap-findings (G9: Krazydad and the championship
+booklets) and matches the interactive board, because both iterate the engine's
+`buildDisplayCells` and read the clues through `clueAt` — the renderer has no gutter geometry of
+its own (the V3 review's reuse finding; log L2):
+
+```text
+light rules between the play cells; a heavy frame around the play area (5× the rule)
+each present clue → its digit centred in its gutter cell, half the solved-digit size,
+                    one tone lighter (#444); a blank clue draws nothing; no arrows
+answer page only → the solution digit centred in every play cell
+```
+
+The gutter takes two of the tracks, so the booklet's `gridDrawSize` is 420 to keep the play area
+close to a Sudoku's. `generateSkyscrapersPDF` builds the booklet like the other three (title
+"Skyscrapers", a Towers subtitle, one page per puzzle, then one answer page each, same bookmarks
+and puzzle↔answer links). An `'unrated'` fixture prints as **hand-made** in the page title — no
+grade appears on paper that the classifier did not give (D7). Until the generator lands (E5) the booklet renders the baked fixtures —
+one per size, `'unrated'` — and `preview-skyscrapers.ts` writes `Docs/samples/skyscrapers-sample.pdf`
+from them.
+
 ## Navigation parity (September 2026, QA F9)
 
 Classic booklets carried `/Outlines` (bookmarks) and puzzle↔answer `/Annots` (links) from the

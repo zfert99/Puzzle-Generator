@@ -212,14 +212,15 @@ export default function PlayExperience() {
 
         {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
             not carried by background colour alone. */}
-        <div role="group" aria-label="Puzzle type" className="flex flex-wrap gap-2 mb-6">
+        {/* Five equal columns: a wrapping flex row would strand the fifth label on its own full-width line. */}
+        <div role="group" aria-label="Puzzle type" className="grid grid-cols-5 gap-2 mb-6">
           {(['classic', 'killer', 'calc', 'kakuro', 'skyscrapers'] as const).map((v) => (
             <button
               key={v}
               type="button"
               aria-pressed={variant === v}
               onClick={() => handleVariantChange(v)}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
+              className={`px-2 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
                 variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
               }`}
             >

@@ -29,6 +29,15 @@
 
 ## Journal
 
+- **2026-10-02 (V3)** V2 merged ([#130](https://github.com/zfert99/Puzzle-Generator/pull/130))
+  on the owner's visual verdict. **V3 built** on `feature/skyscrapers-v3`: `drawSkyscrapersGrid` +
+  `generateSkyscrapersPDF` on the shared nav helpers (G9's print numbers applied: clue digits
+  half the solved digit, one tone lighter, frame 5× the rule, no arrows); a Zod'd `/api/generate`
+  branch printing exactly one fixture per request (sizes 5/6/7); the print form's fifth toggle
+  with no difficulty counts until E5; `Docs/samples/skyscrapers-sample.pdf`. Owner's look at the
+  booklet pending (the slice's gate). Owner ran `/code-review high`: **5 findings, all fixed
+  in-PR** (table in the plan under V3) — the renderer now iterates the engine's display cells
+  instead of mapping sides itself; `[learning]` L9.
 - **2026-10-02 (V2)** V1 merged ([#129](https://github.com/zfert99/Puzzle-Generator/pull/129)).
   **V2 built** on `feature/skyscrapers-v2`: playable at `/play?variant=skyscrapers` on the baked
   fixtures — four-sided gutter on the real board, `edgeClues` persisted / `doneClues` undo-able
@@ -130,6 +139,7 @@
 |---|---|---|
 | L1 | **Reuse a Latin technique only after checking the house property it rests on — and write the answer down.** Kakuro needed a `required` guard because a run need not contain every digit; Skyscrapers rows and columns are full permutations, so hidden singles / pairs / fish are sound unchanged. E2 asserts this in a test so the question is answered on record rather than re-asked per technique | Plan authoring, 2026-10-01 (Kakuro L12 applied in reverse) |
 | L2 | **Put display-coordinate helpers in the engine's types module from day one when two consumers are already in the plan.** Kakuro's clue picture lived in board code until the PDF became a second consumer and had to move (its V3 step-log); Skyscrapers' gutter indexing has the board *and* the PDF as known consumers before V0 | Kakuro V3 step-log, applied 2026-10-01 |
+| L9 | **A helper moved into the engine "for the second consumer" is only reused if the second consumer calls it.** V0's review put `buildDisplayCells` in the engine because the PDF was coming; V3's first draft then wrote its own side→row/column mapping anyway. When a slice is the consumer a helper was moved for, start from that helper, and let a test or review catch a second mapping as a defect, not a style choice | V3 review, 2026-10-02 |
 | L8 | **A focusable control inside a widget with its own key handler must decide where focus goes after a click.** `tabIndex -1` makes an element reachable by keyboard only in theory — a mouse click focuses it too — so a click on a gutter clue silently switched the board into gutter mode and swallowed the next digits. Any control that is "keyboard-only" by design needs its click handler to hand focus back explicitly | V2 review, 2026-10-02 |
 | L7 | **Count solutions by line, not by cell.** Three throwaway counters were written for the V1 fixtures: a cell-by-cell backtracker with prefix checks never finished one 7×7 count; a row-permutation DFS with top-clue pruning stalled once clues were sparse; the research's design — per-line permutation buckets filtered against cell masks, propagated to a fixpoint, then MRV — counted any 7×7 in 1–3 ms. E1 builds the third, and only the third | V1, 2026-10-02 |
 | L6 | **Repair the square, never retry it — from the first fixture, not from E3.** The Kakuro lesson (L7/L15 there) arrived at V1 here: random 7×7 Latin squares are never unique with all clues (0 / 94,962), while intercalate swaps accepted on a capped solution count reach uniqueness in tens of steps. Any "generate and reject" step in E4 is a design error, not a tuning problem | V1, 2026-10-02 |

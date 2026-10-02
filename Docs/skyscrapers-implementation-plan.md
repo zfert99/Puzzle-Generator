@@ -3,7 +3,8 @@
 > **Status:** 🚧 In progress (plan written 2026-10-01; build started 2026-10-01 — V0
 > [#128](https://github.com/zfert99/Puzzle-Generator/pull/128) merged 2026-10-02 on the owner's
 > visual verdict; V1 [#129](https://github.com/zfert99/Puzzle-Generator/pull/129) merged
-> 2026-10-02; V2 built 2026-10-02). · **Branch:** one per slice off
+> 2026-10-02; V2 [#130](https://github.com/zfert99/Puzzle-Generator/pull/130) merged 2026-10-02;
+> V3 built 2026-10-02). · **Branch:** one per slice off
 > `main` (`feature/skyscrapers`, then `-v1`, `-v2`, … as Kakuro did; never stacked — V1's step-log
 > in the Kakuro plan says why) · **Roadmap:** Phase 11 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings · measurements):**
@@ -192,8 +193,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 |---|---|---|
 | 0 | V0 — Looks-only static board ✅ | Empty 5×5 / 6×6 / 7×7 boards with a four-sided clue gutter at `/skyscrapers` — no digits, no input |
 | 1 | V1 — Types + baked fixtures ✅ | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
-| 2 | V2 — Board on the baked puzzle 🚧 | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
-| 3 | V3 — PDF on the baked puzzle | A printable Skyscrapers page in the booklet |
+| 2 | V2 — Board on the baked puzzle ✅ | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
+| 3 | V3 — PDF on the baked puzzle 🚧 | A printable Skyscrapers page in the booklet |
 | 4 | E1 — Visibility table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
 | 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
 | 6 | E3 — Yield measurement spike | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
@@ -323,7 +324,7 @@ digits for all three fixtures.
 - *Blockers:* none. **Owed to E1:** the repo proves nothing unique yet — only the throwaway
   counter did; E1 adds that test over the three fixtures and the 4×4 pair.
 
-### V2 — Board on the baked puzzle 🚧
+### V2 — Board on the baked puzzle ✅
 
 - **Real discriminant first** (K5): `PuzzleVariant` / `BoardPuzzle` / `usePuzzle` unions gain
   `'skyscrapers'`; `startNewGame` switches on `variant`. While no generator exists, `usePuzzle`
@@ -412,10 +413,11 @@ visual check handed to the owner.
   (tested). (5) The no-op `.clueSatisfied` class and an identity status map removed.
   (6) Gap cases for the prefix rule added to the engine tests. (7) The diff is ~650 LOC of
   source against the ~400 target — acknowledged, Kakuro V2 precedent; the owner's call.
-- *Blockers:* none. **Gate pending:** the owner's visual verdict (both themes, 5/6/7, 360 px).
+- *Blockers:* none. **Gate passed:** the owner approved the board and merged
+  ([#130](https://github.com/zfert99/Puzzle-Generator/pull/130), 2026-10-02).
 - *Owed:* NVDA/VoiceOver pass over the gutter (G8) — by R1 at the latest.
 
-### V3 — PDF on the baked puzzle ⏳
+### V3 — PDF on the baked puzzle 🚧
 
 - `drawSkyscrapersGrid(doc, puzzle, x, y, size, showSolution)` + `generateSkyscrapersPDF` on the
   shared nav helpers (bookmarks + puzzle↔answer links) and `drawCenteredDigit`. Print conventions
@@ -432,6 +434,48 @@ visual check handed to the owner.
 
 **Gate:** a Skyscrapers page in the sample booklet, verified by eye (rasterise one puzzle page and
 one answer page); PDF service tests cover the renderer; route tests cover the schema.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-v3`):**
+
+- *Process:* `drawSkyscrapersGrid` draws the (N+2)×(N+2) display grid — light rules between the
+  play cells, a 2.5 pt frame around the play area (5× the rule, Krazydad's ratio), clue digits
+  centred in their gutter cells at half the solved-digit size and one tone lighter (#444), no
+  arrows, blank clues blank, solution digits on the answer page — reading the clues through the
+  engine's `clueAt`, so paper and screen derive one picture. `generateSkyscrapersPDF` is the
+  fifth booklet on the shared navigation helpers (`gridDrawSize` 420 because the gutter takes two
+  tracks). `/api/generate` gained a **Zod** branch (`skyscrapersRequestSchema`: sizes 5 | 6 | 7,
+  default 6; counts 0..1) that prints **exactly one** puzzle per request — the size's fixture,
+  whatever level the count names — and refuses more with the reason; `selectSkyscrapersBatch`
+  lives beside the fixtures (the Kakuro review-4 lesson). `PuzzleForm` gained a fifth toggle with
+  sizes 5/6/7 and **no difficulty configurator** (nothing to configure until E5; it sends
+  `easy: 1`); `usePuzzleGeneration` the filename; `DifficultyConfigurator` the variant and a
+  size-5 row. `preview-skyscrapers.ts` wrote `Docs/samples/skyscrapers-sample.pdf` (3 puzzles +
+  answers). Tests: PDF parity (bookmarks, links, 7 pages), five route cases (happy path +
+  filename, default size, more-than-one refused, size 9 refused, zeros / negative / non-numeric),
+  the form's Skyscrapers path, the selector. Mirrored docs for every touched file; the samples
+  index.
+- *Verified by eye:* the 6×6 puzzle page and answer page rasterised (`sips`; single-page renders
+  made with `drawSkyscrapersGrid` directly, since QuickLook renders only a PDF's first page) —
+  gutter digits, frame, centring, digit sizes checked. Handed to the owner with the sample.
+- *Divergence from the spec:* the spec anticipated Kakuro's "one per level" cap; with **one
+  fixture per size and no grade** the honest rule is one puzzle per request (any level), and the
+  form hides the configurator rather than offering five counts that mean nothing yet. The
+  `max(1)` per level and the total check are the two lines E5 deletes.
+- *Learnings:* a renderer that reads clues through the same engine helper the board uses
+  (`clueAt`) needed no display-coordinate code of its own — L2's reason, confirmed on the
+  second consumer.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 5 findings, all fixed
+  before merge):* (1) the renderer re-derived the gutter geometry with its own side→row/column
+  ternaries — it now iterates the engine's `buildDisplayCells`, the helper L2 put there for this
+  consumer. (2) The one-puzzle rule was enforced three times (schema `max(1)`, route total,
+  selector) — the schema's per-level cap is gone; the route owns the wording, the selector the
+  invariant. (3) The route's happy path is now parametrised over 5/6/7, and a content-stream test
+  (compression off, counting PDFKit's `[<hh> 0] TJ` shows) asserts every present clue is drawn and
+  the heights only on the answer page. (4) The printed title says **hand-made** for an `'unrated'`
+  fixture instead of leaking the engine label (D7). (5) The five-type toggle rows (print form and
+  play menu) are five-column grids — a wrapping flex row stranded the fifth label on its own line.
+- *Blockers:* none. **Gate pending:** the owner's look at the sample booklet (regenerated after
+  the review — the title wording changed).
 
 ### E1 — Visibility table + exact solver + uniqueness ⏳
 

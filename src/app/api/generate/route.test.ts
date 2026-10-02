@@ -171,6 +171,41 @@ describe('Sad Paths', () => {
     expect(res.status).toBe(400);
   });
 
+  // ── Skyscrapers (V3): one baked, ungraded fixture per size ─────────────────
+
+  test.each([5, 6, 7])('Skyscrapers: one puzzle at %i×%i returns a 3-page PDF named Skyscrapers.pdf', async (size) => {
+    const res = await POST(buildRequest({ variant: 'skyscrapers', gridSize: size, easy: 1 }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="Skyscrapers.pdf"');
+    const text = Buffer.from(await res.arrayBuffer()).toString('latin1');
+    expect(text.startsWith('%PDF')).toBe(true);
+    expect((text.match(/\/Type \/Page[^s]/g) ?? []).length).toBe(3); // title + puzzle + answer
+  }, 30_000);
+
+  test('Skyscrapers: gridSize defaults to 6×6 and any single level count selects the fixture', async () => {
+    const res = await POST(buildRequest({ variant: 'skyscrapers', extreme: 1 }));
+    expect(res.status).toBe(200);
+  }, 30_000);
+
+  test('Skyscrapers: more than one puzzle is refused with the reason, until the generator lands', async () => {
+    const res = await POST(buildRequest({ variant: 'skyscrapers', gridSize: 7, easy: 1, medium: 1 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/one hand-made/i);
+    expect((await POST(buildRequest({ variant: 'skyscrapers', gridSize: 7, easy: 2 }))).status).toBe(400);
+  });
+
+  test('Skyscrapers: a size outside 5/6/7 is rejected', async () => {
+    const res = await POST(buildRequest({ variant: 'skyscrapers', gridSize: 9, easy: 1 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/5, 6, or 7/);
+  });
+
+  test('Skyscrapers: all zeros, a negative or a non-numeric count return 400', async () => {
+    expect((await POST(buildRequest({ variant: 'skyscrapers', gridSize: 5 }))).status).toBe(400);
+    expect((await POST(buildRequest({ variant: 'skyscrapers', gridSize: 5, easy: -1 }))).status).toBe(400);
+    expect((await POST(buildRequest({ variant: 'skyscrapers', gridSize: 5, easy: 'apple' }))).status).toBe(400);
+  });
+
   test('Bad Data Types: non-numeric values are rejected', async () => {
     const res = await POST(buildRequest({ easy: 'apple', medium: 'banana', hard: 'cherry', expert: 'date' }));
     expect(res.status).toBe(400);

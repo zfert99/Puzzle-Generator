@@ -46,3 +46,8 @@ The hook returns `{ loading, error, generate }`:
 Because this hook is the application's network boundary, tests should drive the
 **real** hook and mock only `fetch` — not mock the hook itself (AGENTS.md
 Section 4, Mocking Boundaries).
+
+## Skyscrapers (October 2026, V3)
+
+`variant` accepts `'skyscrapers'` and the download name is `Skyscrapers.pdf`, matching the
+route's `Content-Disposition`.

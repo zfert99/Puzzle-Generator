@@ -10,10 +10,11 @@ const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const CALC_DIFFICULTIES = ['easy', 'medium', 'hard']; // 9×9 adds 'expert' (see the calc size branch)
 
 export default function PuzzleForm() {
-  const [variant, setVariant] = useState<'classic' | 'killer' | 'calc' | 'kakuro'>('classic');
+  const [variant, setVariant] = useState<'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers'>('classic');
   const [killerSize, setKillerSize] = useState<6 | 9>(9);
   const [calcSize, setCalcSize] = useState<4 | 6 | 9>(6);
   const [kakuroSize, setKakuroSize] = useState<6 | 7 | 9>(7); // Kakuro's own sizes (D11): the 6×6 mini, 7×7, the 9×9 standard
+  const [skySize, setSkySize] = useState<5 | 6 | 7>(6); // Skyscrapers' planned sizes (D4): 5×5 mini, 6×6 standard, 7×7 large
   const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
@@ -24,9 +25,12 @@ export default function PuzzleForm() {
   const isKiller = variant === 'killer';
   const isCalc = variant === 'calc';
   const isKakuro = variant === 'kakuro';
-  const title = isKiller ? 'Killer Sudoku' : isCalc ? 'Keisan' : isKakuro ? 'Kakuro' : 'Sudoku';
+  // Skyscrapers prints one hand-made, ungraded fixture per size until its generator lands (plan
+  // E5), so it has no difficulty counts to configure — the form sends exactly one puzzle.
+  const isSkyscrapers = variant === 'skyscrapers';
+  const title = isKiller ? 'Killer Sudoku' : isCalc ? 'Keisan' : isKakuro ? 'Kakuro' : isSkyscrapers ? 'Skyscrapers' : 'Sudoku';
   // The size the configurator reasons about is the active variant's, not classic's.
-  const activeSize = isKiller ? killerSize : isCalc ? calcSize : isKakuro ? kakuroSize : gridSize;
+  const activeSize = isKiller ? killerSize : isCalc ? calcSize : isKakuro ? kakuroSize : isSkyscrapers ? skySize : gridSize;
 
   const handleGridSizeChange = (size: 4 | 6 | 9) => {
     setGridSize(size);
@@ -47,6 +51,8 @@ export default function PuzzleForm() {
       await generate({ variant: 'calc', gridSize: calcSize, easy: counts.easy, medium: counts.medium, hard: counts.hard, expert: calcSize === 9 ? counts.expert : 0, extreme: calcSize === 9 ? counts.extreme : 0, noOp: mystery });
     } else if (isKakuro) {
       await generate({ variant: 'kakuro', gridSize: kakuroSize, ...counts });
+    } else if (isSkyscrapers) {
+      await generate({ variant: 'skyscrapers', gridSize: skySize, easy: 1, medium: 0, hard: 0, expert: 0, extreme: 0 });
     } else {
       await generate({ ...counts, gridSize });
     }
@@ -60,18 +66,19 @@ export default function PuzzleForm() {
 
       {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
           not carried by background colour alone. */}
-      <div role="group" aria-label="Puzzle type" className="flex gap-2 mb-6">
-        {(['classic', 'killer', 'calc', 'kakuro'] as const).map((v) => (
+      {/* Five equal columns: a wrapping flex row would strand the fifth label on its own full-width line. */}
+      <div role="group" aria-label="Puzzle type" className="grid grid-cols-5 gap-2 mb-6">
+        {(['classic', 'killer', 'calc', 'kakuro', 'skyscrapers'] as const).map((v) => (
           <button
             key={v}
             type="button"
             aria-pressed={variant === v}
             onClick={() => setVariant(v)}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
+            className={`px-2 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
               variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
             }`}
           >
-            {v === 'classic' ? 'Sudoku' : v === 'killer' ? 'Killer' : v === 'calc' ? 'Keisan' : 'Kakuro'}
+            {v === 'classic' ? 'Sudoku' : v === 'killer' ? 'Killer' : v === 'calc' ? 'Keisan' : v === 'kakuro' ? 'Kakuro' : 'Skyscrapers'}
           </button>
         ))}
       </div>
@@ -112,10 +119,19 @@ export default function PuzzleForm() {
             Cross sums — each run adds up to its clue, no digit repeats in a run. Every level at every size.
           </p>
         </>
+      ) : isSkyscrapers ? (
+        <>
+          <GridSizeSelector value={skySize} onChange={setSkySize} sizes={[5, 6, 7]} />
+          <p className="text-xs text-ink-soft text-center mb-6">
+            Towers — a clue counts the buildings visible from that edge. Skyscrapers is being built: one
+            hand-made, ungraded puzzle per size until the generator lands.
+          </p>
+        </>
       ) : (
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
       )}
 
+      {!isSkyscrapers && (
       <DifficultyConfigurator
         gridSize={activeSize}
         counts={counts}
@@ -124,6 +140,7 @@ export default function PuzzleForm() {
         mystery={isCalc && mystery}
         difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : isKakuro ? [...KAKURO_LADDER] : undefined}
       />
+      )}
 
       {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 

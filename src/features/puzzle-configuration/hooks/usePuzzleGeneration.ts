@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { apiPath } from '@/lib/base-path';
 
 interface GenerationConfig {
-  variant?: 'classic' | 'killer' | 'calc' | 'kakuro';
+  variant?: 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers';
   gridSize?: number;
   easy: number;
   medium: number;
@@ -19,6 +19,7 @@ const PDF_FILENAME: Record<NonNullable<GenerationConfig['variant']>, string> = {
   killer: 'Killer_Sudoku.pdf',
   calc: 'Keisan.pdf',
   kakuro: 'Kakuro.pdf',
+  skyscrapers: 'Skyscrapers.pdf',
 };
 
 export function usePuzzleGeneration() {

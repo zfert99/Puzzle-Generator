@@ -5,6 +5,8 @@ import { computeCageOutline, type LabeledCage } from '@/features/engine/killer/c
 import type { CalcPuzzle, CalcOperator } from '@/features/engine/calc/calc-types';
 import { calcGridConfig } from '@/features/engine/calc/calc-generator';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
+import type { SkyscrapersPuzzle } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { buildDisplayCells, clueAt } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { buildClues, kakuroTracks, whiteMaskOf } from '@/features/engine/kakuro/kakuro-layout';
 
 /**
@@ -397,6 +399,116 @@ export async function generateKakuroPDF(puzzles: KakuroPuzzle[]): Promise<Buffer
  * `generateCalcPDF` re-created the page loop without them, and the roadmap advertises bookmarks
  * and internal links as a shipped feature of "the PDFs", not of one variant.
  */
+/** Clue digits are set one tone lighter than the solution digits (Krazydad: #444 vs black). */
+const SKYSCRAPERS_CLUE_FILL = '#444444';
+
+/**
+ * Draw a Skyscrapers puzzle (plan slice V3). The picture is the engine's (N+2)×(N+2) display grid:
+ * the N×N play area framed by a heavy border, with the clue digits floating in a one-cell gutter
+ * on all four sides — plain digits, no arrows, no boxes, blank where the clue is blank — exactly
+ * what every publisher prints (research §6, gap-findings G9: Krazydad sets clue digits at half the
+ * solved-digit size, one tone lighter, with the frame 5× the inner rule). Digits come from `grid`
+ * on a puzzle page and `solution` on an answer page, like the other renderers; every fixture's
+ * `grid` is empty (no givens, D3).
+ */
+export function drawSkyscrapersGrid(
+  doc: PDFKit.PDFDocument,
+  puzzle: SkyscrapersPuzzle,
+  startX: number,
+  startY: number,
+  gridDrawSize: number,
+  showSolution: boolean,
+): void {
+  const size = puzzle.gridSize;
+  // The engine's display picture — the same one the board draws — so paper and screen cannot
+  // disagree on where a clue sits (log L2: the helpers live in the engine for this consumer).
+  const cells = buildDisplayCells(size);
+  const tracks = cells.length;
+  const cell = gridDrawSize / tracks;
+  // The play area starts one cell in on each axis.
+  const playX = startX + cell;
+  const playY = startY + cell;
+  const playSize = cell * size;
+
+  // Light interior rules, then the heavy frame (5× the rule, Krazydad's ratio) around the play area.
+  doc.strokeColor('black').lineWidth(0.5);
+  for (let i = 1; i < size; i++) {
+    doc.moveTo(playX, playY + i * cell).lineTo(playX + playSize, playY + i * cell).stroke();
+    doc.moveTo(playX + i * cell, playY).lineTo(playX + i * cell, playY + playSize).stroke();
+  }
+  doc.lineWidth(2.5).rect(playX, playY, playSize, playSize).stroke();
+
+  // Clue digits: half the solved-digit size, one tone lighter, centred on their row/column in
+  // the gutter cell (which keeps them ~0.3 cell clear of the frame).
+  doc.fillColor(SKYSCRAPERS_CLUE_FILL).fontSize(cell * 0.3);
+  cells.forEach((row, r) =>
+    row.forEach((display, c) => {
+      if (display.kind !== 'gutter') return;
+      const clue = clueAt(puzzle.clues, display.side, display.index);
+      if (clue !== 0) drawCenteredDigit(doc, String(clue), startX + c * cell, startY + r * cell, cell);
+    })
+  );
+
+  const digits = showSolution ? puzzle.solution : puzzle.grid;
+  doc.fillColor('black').fontSize(cell * 0.6);
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const digit = digits[r][c];
+      if (digit !== 0) drawCenteredDigit(doc, String(digit), playX + c * cell, playY + r * cell, cell);
+    }
+  }
+}
+
+/**
+ * Build a Skyscrapers booklet — one page per puzzle, then one answer page each — on the shared
+ * bookmarks + puzzle↔answer links. Until the generator lands (E5) the booklet renders the baked
+ * fixtures (one per size, `'unrated'`); `preview-skyscrapers.ts` writes the sample from them.
+ */
+export async function generateSkyscrapersPDF(puzzles: SkyscrapersPuzzle[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ autoFirstPage: false, bufferPages: true, margin: 50 });
+    const buffers: Buffer[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    // The gutter takes two of the tracks, so the play area is a little smaller than a Sudoku's.
+    const gridDrawSize = 420;
+
+    doc.addPage();
+    doc.fontSize(32).text('Skyscrapers', { align: 'center' });
+    doc.moveDown(1);
+    doc.fontSize(14).text(
+      'Towers: every row and column holds each height once; a clue says how many buildings are visible looking in from that edge.',
+      { align: 'center' },
+    );
+
+    // Navigation parity with the classic booklet (F9) — see generateKillerPDF for the layout note.
+    const puzzlesOutline = doc.outline.addItem('Puzzles');
+    const answersOutline = doc.outline.addItem('Answer Keys');
+
+    const drawPage = (p: SkyscrapersPuzzle, i: number, answer: boolean) => {
+      doc.addPage();
+      // No grade appears that the classifier did not give (D7): an 'unrated' fixture prints as
+      // hand-made rather than carrying an engine label onto paper.
+      const grade = p.difficulty === 'unrated' ? 'hand-made' : p.difficulty;
+      const title = `Skyscrapers #${i + 1} (${p.gridSize}×${p.gridSize}, ${grade})${answer ? ' — Answer' : ''}`;
+      doc.fillColor('black').fontSize(22).text(title, { align: 'center' });
+      doc.moveDown(1);
+      addPageNavigation(doc, answer ? answersOutline : puzzlesOutline, i, title, answer);
+      const startY = doc.y;
+      drawSkyscrapersGrid(doc, p, (doc.page.width - gridDrawSize) / 2, startY, gridDrawSize, answer);
+      doc.y = startY + gridDrawSize + 30;
+      drawCrossLink(doc, i, answer);
+    };
+
+    puzzles.forEach((p, i) => drawPage(p, i, false));
+    puzzles.forEach((p, i) => drawPage(p, i, true));
+
+    doc.end();
+  });
+}
+
 function addPageNavigation(
   doc: PDFKit.PDFDocument,
   sectionOutline: PDFKit.PDFOutline,

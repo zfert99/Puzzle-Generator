@@ -136,7 +136,8 @@ store's `lastHint`. See `HintNote.md`.
 
 ## Skyscrapers toggle (October 2026, plan slice V2)
 
-A fifth toggle (the type row now wraps). Sizes come from the per-variant table: Skyscrapers
+A fifth toggle — the type row is a five-column grid, because a wrapping flex row stranded the
+fifth label alone on a full-width line (Skyscrapers V3 review). Sizes come from the per-variant table: Skyscrapers
 offers **5 / 6 / 7** — the plan's D4, planned at the research recommendation and still measured
 by E3 — and the deep link seeds the planned standard, 6×6. `topTiersLockedFor` exempts it, like
 Kakuro: its tiers are calibrated within a size (D6), so the full ladder is shown at every size.

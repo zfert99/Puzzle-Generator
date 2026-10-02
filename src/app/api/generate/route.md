@@ -73,6 +73,27 @@ test data only.
 
 ---
 
+## 1d. Skyscrapers branch (plan slice V3 → E5)
+
+**Goal:** When `variant === 'skyscrapers'`, render a Skyscrapers booklet. Until the generator
+lands (E5) there is exactly **one** hand-made, ungraded fixture per size, so the branch prints
+that fixture once per request and refuses anything else with the reason.
+**Steps:**
+
+1. Validate the body with a **Zod schema** (`skyscrapersRequestSchema`): `gridSize` is
+   `5 | 6 | 7` (Skyscrapers' planned sizes, D4 — a 9 is rejected, default 6), each level count a
+   non-negative integer.
+2. All counts zero → `400`; a total above one → `400` ("one hand-made Skyscrapers per size until
+   the generator lands") — the fixture would otherwise print twice. This total check is the V3
+   cap to delete with `generateSkyscrapersBatch`; the route owns the HTTP wording and the
+   selector keeps the invariant behind it (one rule, two owners — not a third `max(1)` in the
+   schema, which could not express a *total* anyway).
+3. `selectSkyscrapersBatch(counts, { gridSize })` (beside the fixtures, so the route stays a
+   controller — the Kakuro review-4 lesson) → `generateSkyscrapersPDF` → `Skyscrapers.pdf`. The
+   log line carries the counts and the size like the other branches.
+
+E5 replaces step 3 with the generator and lifts the caps, exactly as Kakuro's E5 did.
+
 ## 2. Input Validation
 
 **Goal:** Reject bad or dangerous requests before doing any heavy lifting. We run five checks in order:
