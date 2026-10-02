@@ -31,7 +31,9 @@
 
 - **2026-10-02 (devlog)** The build-log entry for the Skyscrapers build shipped to biscuitlab.net
   per the devlog rule — Biscuit-Website `src/content/log/the-ladder-graded-every-puzzle-hard.mdx`
-  ("The solver said no 6×6 was easy"), with a cropped 6×6 board image; story = the E3 yield spike
+  ("The solver said no 6×6 was easy"), with three images per the devlog research — a 12-frame GIF
+  of the 5×5 solving itself hint by hint, the line-scan histogram with the two cuts, and the
+  all-clue floor before/after; story = the E3 yield spike
   → the all-clue tier floor → the E3b re-tier, plus L16 (restart a capped climb) and L21 (the first
   non-9×9 standard). Pushed to that repo's `main` (2a21f5e, then a one-number fix).
 - **2026-10-02 (G8 pass)** R1 merged ([#138](https://github.com/zfert99/Puzzle-Generator/pull/138))
