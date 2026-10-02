@@ -663,8 +663,11 @@ revisited under the same rule later.
 > table and per-line filtering — behind the Hint button; every fixture proven unique in-repo,
 > 7×7 verified in 1.1 ms; merged 2026-10-02) and **E2** (the logical solver — 14 named techniques
 > in five tiers, forcing chains on top, never a guess — grading the fixtures hard / extreme /
-> extreme, naming the Hint's technique; 7×7 classified in 7 ms); D4 sizes planned at the
-> recommendation (5/6/7) and still measured by E3. Full plan:
+> extreme, naming the Hint's technique; 7×7 classified in 7 ms; merged 2026-10-02) and **E3**
+> (the yield spike, measured 2026-10-02: **D4 settled at 5 / 6 / 7** — 9×9 out; repair-with-restart
+> for 7×7; expert/extreme populated at 6×6; **but easy/medium 6×6 cannot be generated under the
+> E2 tiering** — 91% of all-clue squares already grade hard, so a line-filter re-tier by scan
+> size is recommended before E4 — `research/skyscrapers-feasibility-findings.md`). Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;

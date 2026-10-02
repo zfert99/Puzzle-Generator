@@ -171,7 +171,7 @@ the visibility constraint, a four-sided gutter, and the clue-removal generator.
 | D1 | Display **Skyscrapers**, subtitle **Towers**; engine/slug `skyscrapers`; the title is **one constant with "Towers" wired as the fallback title** (a live EU/UK "SKYSCRAPER" games-software mark exists; US/JP clear); no publisher affiliation implied; the technique name "Skyscraper" is reserved in `STRATEGY_NAMES`' vocabulary so a future HumanSolver pattern never collides with the type label | **Locked 2026-10-01** (G1 resolved); professional read before any EU logo / paid use |
 | D2 | **Interior N×N `grid` + `solution`, plus `clues: { top, bottom, left, right }`** (length-N arrays, **0 = blank**); display is (N+2)×(N+2). `grid.length === N` stays true everywhere. Daily storage: clues ride the existing `cages` jsonb as `StoredSkyscraperClue[]` with `variant` gating every reader (no migration) — the nullable-`clues`-column alternative is recorded | **Proposed — owner may veto the column reuse** |
 | D3 | **No givens at any published tier** (the commercial norm; Tatham allows them). `grid` keeps the slot so Tatham-style fixtures round-trip; the generator never emits givens in v1 | Proposed (research) |
-| D4 | **Three sizes, chosen for Skyscrapers:** mini **5×5** (vs 4×4), standard **6×6**, large **7×7** (vs 9×9). **Planned at the recommendation** — V0–V2 build and show 5/6/7 — and **still measured by E3** (tier reachability at guess count 0 and per-tier yield at 5/6/7 and at 4, 9 for the alternatives; 7-vs-9 line-filter wall time), which can overturn any of the three. 4×4 survives, if at all, as a tutorial board; 9×9 as a later weekly special | **Planned by owner 2026-10-01** ("plan for recommended but still measure"); E3 confirms or overturns |
+| D4 | **Three sizes, chosen for Skyscrapers:** mini **5×5** (vs 4×4), standard **6×6**, large **7×7** (vs 9×9). **Planned at the recommendation** — V0–V2 build and show 5/6/7 — and **still measured by E3** (tier reachability at guess count 0 and per-tier yield at 5/6/7 and at 4, 9 for the alternatives; 7-vs-9 line-filter wall time), which can overturn any of the three. 4×4 survives, if at all, as a tutorial board; 9×9 as a later weekly special | **Settled by E3 (2026-10-02): mini 5×5, standard 6×6, large 7×7** — 9×9 fails repair (0/8 in 60 s) and timing (60–100 ms per count, 130–470 ms per classify); 4×4 has no expert tier and its hard is a 24-arrangement scan — tutorial board at most ([findings §3b](research/skyscrapers-feasibility-findings.md)) |
 | D5 | **A 6×6 standard is the first non-9×9 daily standard.** `DailySize` widens (5, 6-as-standard); the standard roll becomes a 5-rung bijection at 5 types; slot labels carry the size where it is not 9×9 ("Hard 6×6 · Skyscrapers"); the "standard = 9×9" copy in the daily plan and roadmap is amended | Proposed; G11 |
 | D6 | **Every published tier is logic-only.** Five rungs mapped from the research ladder: Easy = rungs 0–4 · Medium = + rung 5 · Hard = + rungs 6–7 · Expert = + rung 8 · Extreme = + rung 9. **Rung 10 (bifurcation) is a reject, never a tier.** Guess count 0 everywhere, copy says "solvable by logic alone" | Proposed (research-backed; rungs 5–7 ordering is G7) |
 | D7 | Difficulty label from the **classifier post-generation**; generator parameters (which clues to remove, in what order) only bias | Locked (research + Kakuro D8 precedent) |
@@ -179,7 +179,7 @@ the visibility constraint, a four-sided gutter, and the clue-removal generator.
 | D9 | **Clue UX:** four-sided gutter of plain digits (no arrows); a violated clue turns the error colour **as soon as the violation is provable from the filled prefix** (Tatham's rule — O(N), zero false positives); "satisfied" is an opt-in muted state, off by default; a manual **"mark clue done"** toggle ships in V2, **undo-able and persisted**, drawn error > done > normal — it doubles as the a11y progress tracker; a "which towers this clue sees" highlight on clue focus is a later teaching aid | Proposed (research §6), **amended by G10** |
 | D10 | Roadmap **Phase 11**, engine-first like Phases 6/8/10 | Applied (this PR) |
 | D11 | **Sizes are per puzzle type** (Kakuro D11, owner 2026-09-11) — applies here from day one | Locked (inherited) |
-| D12 | **Mini tiers:** the mini ships easy/medium/hard only if E3/E5 prove Hard separable from Medium at the chosen mini size (research: attested at 5×5 via Tatham's 5×5 Hard, *not* at 4×4); otherwise fewer tiers (the Killer-4×4-easy-only precedent) | Proposed; measured in E3/E5 |
+| D12 | **Mini tiers:** the mini ships easy/medium/hard only if E3/E5 prove Hard separable from Medium at the chosen mini size (research: attested at 5×5 via Tatham's 5×5 Hard, *not* at 4×4); otherwise fewer tiers (the Killer-4×4-easy-only precedent) | **Settled conditionally by E3 (2026-10-02): easy / medium / hard at 5×5** — three tiers at guess count 0 with distinct hardest-rung signatures; the bands are populated (≈ 10% / 80% / small at the all-clue floor) only after the line-filter re-tier of [findings §3c](research/skyscrapers-feasibility-findings.md); E5 verifies |
 
 ## 4. Slices — visual first, then the engine underneath
 
@@ -197,8 +197,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 2 | V2 — Board on the baked puzzle ✅ | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
 | 3 | V3 — PDF on the baked puzzle ✅ | A printable Skyscrapers page in the booklet |
 | 4 | E1 — Visibility table + exact solver + uniqueness ✅ | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
-| 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer 🚧 | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
-| 6 | E3 — Yield measurement spike | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
+| 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer ✅ | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
+| 6 | E3 — Yield measurement spike 🚧 | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
 | 7 | E4 — Clue-removal generator | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
 | 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
 | 9 | R1 — Daily rotation (5 types) | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
@@ -568,7 +568,7 @@ record the real number); fuzz clean; board hint driven by the solver.
 - *Blockers:* none. **Gate passed by measurement;** visible on the board: the Hint button places
   a solver-forced height with a "forced by the clues" note, and the dev badge reads unique ✓.
 
-### E2 — Logical solver (technique classifier) + instrumentation 🚧
+### E2 — Logical solver (technique classifier) + instrumentation ✅
 
 - Tier *definition* (Simonis, via Kakuro G9): a puzzle's tier is the **weakest technique level
   that finishes it search-free**. Ordinal; the scorer only orders within a tier.
@@ -695,9 +695,9 @@ fires on at least one fixture; classify a 7×7 in < 20 ms.
   index)` in `skyscrapers-types.ts`, used by the exact solver's `compile`, the logical solver and
   `lineFor`. (9) The identity map `SIDE_WORD` removed. (10) JSDoc on `SkyscrapersLogicalSolver`
   and `SkyscrapersClassification` (AGENTS.md §2).
-- *Blockers:* none.
+- *Blockers:* none. Merged 2026-10-02 ([#133](https://github.com/zfert99/Puzzle-Generator/pull/133)).
 
-### E3 — Yield measurement spike (throwaway, no production code) ⏳
+### E3 — Yield measurement spike (throwaway, no production code) 🚧
 
 The research's hard warnings are about **yield and sizes** — all-clue ambiguity rising with N,
 no published per-tier yield, no published clue-survival counts, and Tatham's unbounded retry
@@ -724,6 +724,57 @@ size triple written into D4, D12 settled, and log entries under Measurements. **
 6×6 at any tier in **< 200 ms** average, a 7×7 in **< 1 s**; expert/extreme populated at the
 standard size (≥ ~10% of tier-bounded output) — if not, **stop and re-slice** (a finer visibility
 ladder, two-line interactions, or givens as a lever) before E4 rather than tuning inside E4.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-e3`; findings in
+[research/skyscrapers-feasibility-findings.md](research/skyscrapers-feasibility-findings.md)):**
+
+- *Process:* throwaway `tsx` scripts in the scratchpad (not committed; §6 of the findings says
+  how to regenerate) against `main` at `226a7fa`. Per size 4/5/6/7/9: (a) repair by intercalate
+  swaps with a capped count (50 attempts; 8 at 9×9); (d) verify + classify wall time; (b)/(e)
+  greedy uniqueness-preserving removal over 200 squares — kept-clue histogram and the E2 tier of
+  the result; (c) tier-bounded removal toward each of T1–T5, 40 attempts each. Two supplements
+  the first pass forced: (f) the **all-clue tier floor** (the classifier's tier with every clue
+  present, 300 squares at 5 and 6) with a 300-attempt easy/medium sample, and the **survivor
+  count of every line-filter step** on all-clue squares (how many arrangements the scan covers);
+  plus a 7×7 **repair-with-restart** policy after the plain climb failed half its attempts.
+- *Measured — sizes and repair:* already-unique 74 / 34 / 8 / 0 / 0% at 4–9 (G4 replicated);
+  repair median 0.1 / 0.2 / 3.6 / 98 ms at 4–7, but the plain 7×7 climb succeeds **24/50** (mean
+  1.9 s) and 9×9 **0/8** in 60 s (every square sits at the count cap; a count is 60–100 ms, a
+  classify 130–470 ms). **7×7 with a restart after 40 fruitless swaps and cap 20: 30/30 in a
+  median 178 ms** (mean 203, max 722). Verify 0.04–0.41 ms, classify 0.5–4.8 ms median at 4–7.
+- *Measured — survival (G3/G5):* kept median 4/16 · 7/20 · 11/24 · 14/28; minimum **3 at 4×4 and
+  4 at 5×5 = N − 1** (Nakamura), 7 and 11 at 6 and 7; the results are hard/extreme only (T3
+  63–130, T5 18–116 of 200), 7% / 15% `unrated` at 6 / 7.
+- *Measured — tier reachability (c):* yields T1–T5 = 25/40/88/**0**/23% at 4×4; 3/8/100/10/38%
+  at 5×5; **0/0**/85/10/73% at 6×6; **0/0**/88/15/65% at 7×7. Per accepted: 6×6 hard 35 ms,
+  expert 274, extreme 66; 7×7 hard 122, expert 749, extreme 295.
+- *Measured — the all-clue floor (f):* with **every** clue present a repaired square already
+  needs **T3 for 260/300 at 5×5 and 273/300 at 6×6** (T1: 3 and 1; T2: 30 and 1). Removal only
+  moves a puzzle up, so the floor is the easy/medium yield: **1% / 11% at 5×5, 0.3% / 0.7% at
+  6×6**. The line-filter steps those squares need scan **1–6 surviving arrangements** most of the
+  time (5×5: 310 of 857 steps scan exactly one; 81% of squares need ≤ 3; 6×6: 62% need ≤ 12).
+- *Divergence from the plan — and why we stop here:* the gate's "expert/extreme populated"
+  clause passes (10% / 73% at 6×6), but **easy and medium 6×6 do not exist under the E2
+  tiering**, which puts `lineFilter` flat at tier 3. That is a ladder calibration, not a puzzle
+  property: a scan of one to three arrangements of a clued line is the beginner's move in every
+  published ladder. **Recommendation (findings §3c): tier `lineFilter` by the number of
+  arrangements it scanned — ≤ 3 easy, 4–12 medium, > 12 hard — before E4**, with the all-clue
+  floor distribution as the acceptance test (6×6 becomes ≈ 5% easy / 57% medium / 24% hard at
+  the floor), then re-run (c). Owner's call per the roadblock rule; E4 is unblocked on
+  everything else.
+- *Decisions:* **D4 settled — mini 5×5, standard 6×6, large 7×7**; 9×9 fails both gates and is
+  out as a live size (needs a non-counting objective, like Kakuro's 13×13); 4×4 has no expert
+  (0/40 X-wings) and its "hard" is a 24-arrangement scan — a tutorial board at most. **D12
+  settled conditionally — easy / medium / hard at 5×5**, separable at guess count 0 with distinct
+  hardest-rung signatures, bands to be verified populated by E5 after the re-tier. **E4 amended:**
+  repair-with-restart (fresh square after ~40 fruitless swaps, cap 20); G7 partly answered —
+  expert (X-wing) is the *scarce* tier at every size (0–15%), extreme abundant (23–73%).
+- *Learnings:* L15 (a flat tier for a catch-all technique turns every puzzle into that tier —
+  grade the catch-all by the size of the scan), L16 (when a climb's objective sits at its cap,
+  restart, don't climb), L17 (the all-clue floor is the yield ceiling for removal-based
+  generation — measure the floor before measuring removal).
+- *Blockers:* **the re-tier is the owner's call before E4** (research doc §3c/§5). Nothing else
+  blocks.
 
 ### E4 — Clue-removal generator ⏳
 

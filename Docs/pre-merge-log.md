@@ -92,6 +92,62 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers E3: the yield spike (docs-only slice)
+
+Branch `feature/skyscrapers-e3` on `226a7fa`. Diff: `Docs/research/skyscrapers-feasibility-findings.md`
+(new), the plan's E3 step-log and D4/D12 rows, the log (journal, D4/D12, G3/G5/G7/G12, L15–L17, a
+measurements row), roadmap, index, status. **No source changed** — the spike ran as throwaway
+scripts in the scratchpad, per the plan's "no production code".
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` · `npx tsc --noEmit` · `npm run build` · `npx vitest run` | not re-run — no `.ts`/`.tsx` in the diff; `main` at `226a7fa` was green |
+| Benchmarks | the slice *is* the measurement: repair 0.1 / 0.2 / 3.6 ms median at 4–6; 7×7 24/50 plain vs **30/30 with restart (178 ms median)**; 9×9 0/8; tier-bounded yields at 6×6 0/0/85/10/73% (T1–T5); all-clue floor 273/300 at T3 |
+
+### Findings
+
+- **Roadblock, surfaced not patched (AGENTS.md Roadblock & Research Rules).** Easy and medium
+  6×6 Skyscrapers cannot be generated under the E2 tiering: with every clue present, 91% of random
+  unique squares already need tier-3 line filtering, and removal only moves a puzzle up. The
+  findings doc (§3c) names the cause (a catch-all technique tiered flat), measures the fix
+  (line-filter steps mostly scan 1–6 arrangements; re-tier by scan size gives ≈ 5 / 57 / 24%
+  easy / medium / hard at the 6×6 floor) and leaves the call to the owner before E4.
+- **The first pass could not explain its own zero.** Forty tier-bounded attempts per tier showed
+  0% easy at 6×6 with no cause; a 300-square all-clue floor histogram (one supplementary minute)
+  explained it. Logged as L17: measure the floor before measuring removal.
+- **The plain 7×7 repair climb was a false negative for the design, not for the size.** 24/50 in
+  20 s read as "7×7 is marginal" until the objective was inspected: every square sat at the count
+  cap, so the climb had no gradient. Restart-after-40 + cap 20 → 30/30 in 178 ms median (L16).
+- **9×9 is measured out, not assumed out:** 0/8 repairs in 60 s each, 60–100 ms per count,
+  130–470 ms per classify (every random all-clue 9×9 `unrated`). D4's alternative is closed with
+  numbers.
+
+### Invariants checked
+
+- Guess count is 0 by construction (the ladder has no guessing tier); every "accepted" puzzle in
+  the tables is unique (count = 1) **and** finished by the ladder at the stated tier.
+- The G4 numbers (already-unique 74 / 34 / 8 / 0%) and G5's N − 1 floor (3 at 4×4, 4 at 5×5)
+  replicated by an independent script, not copied.
+
+### Review statements
+
+- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
+  may run it on the PR — it is a docs-only diff. `/security-review` not applicable.
+
+### Lessons
+
+- **A yield spike's first number is the ceiling, not the yield.** For any generator that only
+  ever *removes* information (clues, givens, cells), the grade of the fully informed instance
+  bounds what removal can reach; histogram that first, then measure removal under it.
+- **A climb that fails half the time is a question about the objective before it is a question
+  about the size.** Check whether the objective is saturated (sitting at its cap) before
+  concluding the instance is hard.
+
+---
+
 ## 2026-10-02 — Skyscrapers E2: the logical solver, classifier and scorer
 
 Branch `feature/skyscrapers-e2` on `99b1387`. Diff: `skyscrapers-logical-solver.ts` (14 named
