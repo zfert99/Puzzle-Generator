@@ -69,17 +69,16 @@ describe('POST /api/puzzle — Skyscrapers (E4)', () => {
     expect(puzzle.gridSize).toBe(6);
     expect(puzzle.clues.top).toHaveLength(6);
     expect(puzzle.grid.flat().every((v: number) => v === 0)).toBe(true);
-    // E4 bounds the removal by the request; the served label may sit at or below it (E5 lands exactly).
-    expect(['easy', 'medium', 'hard']).toContain(puzzle.difficulty);
+    // E5: exactly the requested tier, and the label is the classifier's own.
+    expect(puzzle.difficulty).toBe('hard');
   }, 30_000);
 
-  it('serves a request the size can rarely honour (7×7 easy) through the unbounded fallback instead of failing', async () => {
-    const res = await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'easy', gridSize: 7 }));
-    expect(res.status).toBe(200);
-    const puzzle = await res.json();
-    expect(puzzle.gridSize).toBe(7);
-    expect(['easy', 'medium', 'hard', 'expert', 'extreme', 'unrated']).toContain(puzzle.difficulty);
-  }, 30_000);
+  it('refuses a level the size does not offer (7×7 easy, 5×5 expert) with the offered list', async () => {
+    const easy7 = await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'easy', gridSize: 7 }));
+    expect(easy7.status).toBe(400);
+    expect((await easy7.json()).error).toMatch(/7×7 Skyscrapers offers medium, hard, expert, extreme/);
+    expect((await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'expert', gridSize: 5 }))).status).toBe(400);
+  });
 
   it('rejects a size Skyscrapers does not ship and an unknown difficulty', async () => {
     expect((await POST(buildRequest({ variant: 'skyscrapers', difficulty: 'easy', gridSize: 9 }))).status).toBe(400);

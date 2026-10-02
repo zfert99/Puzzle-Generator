@@ -92,6 +92,63 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers E5: exactly the requested tier, per-size tier sets, the hub card
+
+Branch `feature/skyscrapers-e5` on `93056d5`. Diff: `skyscrapers.ts` in its final form (exact-tier
+generation, `SKYSCRAPERS_TIERS_BY_SIZE`, the batch contract) with tests; the generator's `exactTier`;
+both routes (refuse unoffered levels, generate, 503 on the batch budget); the `/play` picker's
+per-cell tier sets; the print form's configurator and size-aware lock note; the hub card;
+`benchmark-skyscrapers.ts` and 12 log rows; `selectSkyscrapersBatch` deleted; docs. **~300 LOC of
+source.**
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean (one unused import removed) |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **93 files / 904 tests green** (10 new, 7 rewritten); no entry from the Known flaky tests table fired |
+| Benchmarks | `benchmark-skyscrapers.ts` 10 per cell: 6×6 easy / medium / hard **57 / 32 / 40 ms** (gate 200), expert 201, extreme 52; 7×7 459 / 297 / 704 / 311 (medium–extreme); 5×5 11 / 9 / 43. **Fuzz: 1,500 generated puzzles, 0 unsound, 0 non-unique, 0 label mismatches** |
+| Playwright | hub and play specs updated (Skyscrapers card; generated clue counts) but **not run locally** — the port-3000 server belongs to another session; CI runs them against a production build |
+
+### Findings
+
+- **The lock note lied for Skyscrapers.** `DifficultyConfigurator` said "Expert and Extreme are
+  only available for 9×9 grids" whenever a tier was locked; at 5×5 Skyscrapers that is false, and
+  at 7×7 the locked tier is *easy*. The note is variant-aware now and names the offered list.
+- **The picker's lock was a boolean about the top of the ladder.** Skyscrapers locks the bottom at
+  7×7, so `topTiersLockedFor` became `tiersFor(variant, size)` returning the list, and the clamp
+  on switching type/size picks the nearest offered tier instead of hard-coding `'hard'`.
+- **The form's shared counts state would have sent `easy: 2` for a 7×7.** The configurator shows a
+  locked input as 0 but the state still holds the default; the submit zeroes the tiers the size
+  does not offer (asserted in the form test).
+- The plan's "bands disjoint per size" gate has no object: tiers are ordinal technique levels (as
+  Kakuro's E5 found). Recorded as not applicable rather than quietly ticked.
+
+### Invariants checked
+
+- Every served puzzle's label is re-derived from the finished puzzle by the classifier and equals
+  the request (asserted at every offered cell); a level a size does not offer is refused by the
+  entry point, both routes and the picker — four places, one table.
+- Every generated puzzle in the 1,500-puzzle fuzz is unique by the exact solver and every logical
+  placement equals the solution.
+- The batch's out-of-time error is distinct from a caller's not-offered error (asserted).
+
+### Review statements
+
+- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
+  runs `/code-review high` on the PR. `/security-review`: the routes validate closed lists before
+  any work and hold no auth/data access — not required.
+
+### Lessons
+
+- **A lock on a ladder is a list, not a boolean.** The first type that locks the *bottom* tier
+  breaks every "top tiers locked?" flag at once; carry the offered list from the engine to the
+  picker, the form and the routes.
+
+---
+
 ## 2026-10-02 — Skyscrapers E4: the generator behind "New puzzle"
 
 Branch `feature/skyscrapers-e4` on `65fbacc`. Diff: `skyscrapers-generator.ts` (fill →

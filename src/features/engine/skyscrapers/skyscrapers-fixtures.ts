@@ -1,7 +1,7 @@
 /**
  * Hand-baked Skyscrapers puzzles: static, known-good boards the board served from V2 to E3b and
  * the engine slices are tested against. Since E4 the board generates fresh puzzles; these are
- * test data and what `/api/generate` prints until E5.
+ * test data (and the sample booklet's content).
  *
  * A fixture is authored as its **solved Latin square** in text — one string per row, one digit
  * per cell — plus a **clue mask** per side saying which of the 4N clues are kept (`x`) and which
@@ -11,15 +11,13 @@
  * uniqueness-preserving removal with a counting solver) and what E1 still owes them.
  */
 
-import { isGridSize, type GridSize } from '../sudoku';
+import { isGridSize } from '../sudoku';
 import {
   GUTTER_SIDES,
-  SKYSCRAPERS_LADDER,
   deriveClues,
   validateSkyscrapers,
   type SkyscraperClues,
   type SkyscrapersDifficulty,
-  type SkyscrapersLevel,
   type SkyscrapersPuzzle,
 } from './skyscrapers-types';
 
@@ -141,23 +139,3 @@ export const SKYSCRAPERS_NONUNIQUE_4X4: readonly SkyscrapersPuzzle[] = [
   parseSkyscrapersFixture(['1234', '2413', '3142', '4321'], { top: 'xxxx', bottom: 'xxxx', left: 'xxxx', right: 'xxxx' }),
 ];
 
-/**
- * What `/api/generate` prints until the generator exists (plan slice V3; the Kakuro counterpart was
- * `selectKakuroBatch`, replaced by `generateKakuroBatch` in E5): there is exactly **one** fixture
- * per size and its grade is whatever the classifier gave it, so a request is answered with that
- * fixture once — whatever levels the counts name — and only when exactly one puzzle is asked for. Asking for more would
- * print the same page twice; the route refuses it with the reason.
- */
-export function selectSkyscrapersBatch(
-  counts: Partial<Record<SkyscrapersLevel, number>>,
-  options: { gridSize?: GridSize } = {}
-): SkyscrapersPuzzle[] {
-  const total = SKYSCRAPERS_LADDER.reduce((sum, level) => sum + (counts[level] ?? 0), 0);
-  if (total !== 1) {
-    throw new Error(`skyscrapers fixtures: one hand-made puzzle per size until the generator lands — ${total} requested`);
-  }
-  const size = options.gridSize ?? SKYSCRAPERS_FIXTURE_6X6.gridSize;
-  const fixture = SKYSCRAPERS_FIXTURES.find((puzzle) => puzzle.gridSize === size);
-  if (!fixture) throw new Error(`skyscrapers fixtures: no fixture at ${size}×${size}`);
-  return [fixture];
-}

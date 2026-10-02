@@ -26,7 +26,8 @@ difficulty picker offers the **full ladder** at every size (generated server-sid
 the requested tier since E5 — the header shows the grade the classifier assigned, which is the
 one asked for); unlike the Sudoku family's minis, a 7×7 Kakuro has an
 expert and an extreme, so the "9×9 only" lock applies to every type but Kakuro
-— one rule, `topTiersLockedFor(variant, size)`, used by the picker and by both clamps (switching
+— one rule, `tiersFor(variant, size)` (the per-cell tier list; E5 generalised the old
+`topTiersLockedFor` boolean), used by the picker and by both clamps (switching
 type, switching size), so a new size or type changes it in one place. `VARIANT_LABEL` is the one
 place the four display names live (Continue label, toggle). A Kakuro's difficulty is a real value (`'easy'`…, or the
 literal `'unrated'`), so the Continue label and header show it as-is.
@@ -145,10 +146,13 @@ store's `lastHint`. See `HintNote.md`.
 A fifth toggle — the type row is a five-column grid, because a wrapping flex row stranded the
 fifth label alone on a full-width line (Skyscrapers V3 review). Sizes come from the per-variant table: Skyscrapers
 offers **5 / 6 / 7** — the plan's D4, planned at the research recommendation and still measured
-by E3 — and the deep link seeds the planned standard, 6×6. `topTiersLockedFor` exempts it, like
+by E3 — and the deep link seeds the standard, 6×6. `tiersFor` reads its per-size tier sets, unlike
 Kakuro: its tiers are calibrated within a size (D6), so the full ladder is shown at every size.
-Since E4 every Skyscrapers is generated fresh through the route; the picker's tier **bounds the
-clue removal** (a hard request never serves expert) and the board shows the classifier's grade
-for what came out, which may sit *below* the pick until E5 lands puzzles exactly on the requested
-tier and sets each size's tier list — the menu note says so. No hub card yet (D8: the card goes live at E5, so `main` never
+Since E5 every Skyscrapers is generated fresh at **exactly** the picked tier, and each size offers
+the tiers it can produce: the picker reads `SKYSCRAPERS_TIERS_BY_SIZE` through `tiersFor(variant,
+size)` — the one rule every lock decision uses, generalised from the old "expert/extreme are
+9×9-only" boolean because Skyscrapers can lock the *bottom* of the ladder (no easy at 7×7) as well
+as the top (no expert/extreme at 5×5). Switching type or size clamps the pick to the nearest tier
+the new cell offers (`clampDifficulty`: expert on a mini → hard; easy on a 7×7 Skyscrapers →
+medium). The menu note says the 5×5 tops out at hard and the 7×7 starts at medium. No hub card yet (D8: the card goes live at E5, so `main` never
 advertises a one-puzzle type); the deep link is the surface.

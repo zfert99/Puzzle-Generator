@@ -29,13 +29,15 @@ The slow-generation warning is `null` for Kakuro: every tier at every size gener
 under a second (E5). V3's one-per-level cap (`maxPerDifficulty`) was removed with the generator
 in E5 — every input is `0..50` for every type.
 
-## Skyscrapers (October 2026, V3)
+## Skyscrapers (October 2026, V3 → E5)
 
-`variant` accepts `'skyscrapers'` and the slow-generation warning returns `null` for it (a baked
-fixture, nothing generated). `DIFFICULTIES_BY_SIZE` gained a `5` row (the full ladder — only
-Skyscrapers is 5×5, and its tiers are calibrated within a size), so a `gridSize` of 5 never
-indexes `undefined`; in practice `PuzzleForm` does not render the configurator for Skyscrapers
-until E5.
+`variant` accepts `'skyscrapers'` and the slow-generation warning returns `null` for it (every
+offered tier generates in well under a second — the E5 benchmark). `DIFFICULTIES_BY_SIZE` gained a
+`5` row so a `gridSize` of 5 never indexes `undefined`, but `PuzzleForm` passes the size's own
+list (`SKYSCRAPERS_TIERS_BY_SIZE`, D12) through `difficulties`. The locked-tier note is
+variant-aware since E5: for Skyscrapers it reads "7×7 Skyscrapers offers medium, hard, expert,
+extreme." (the lock can be at the *bottom* of the ladder there), for every other type the
+long-standing "Expert and Extreme are only available for 9×9 grids."
 
 ## The "Expert and Extreme are only available for 9×9" note
 
