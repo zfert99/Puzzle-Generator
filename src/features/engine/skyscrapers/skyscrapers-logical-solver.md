@@ -38,9 +38,11 @@ human would have to climb, with the cheap rungs always tried first.
 | 1 | `positionBound` | Under a clue c, the cell at distance d can be at most N − c + 1 + d: anything taller would hide too many of the towers the clue still needs to show. |
 | 1 | `nearlyFilledClue` | c − 1 towers are already visible and N is not among them: only N can still be seen, so the next cell cannot hold a height strictly between the tallest so far and N. (Reachability subsumes it; kept as a named rung because every guide teaches it.) |
 | 1 | `nakedSingle` / `hiddenSingle` | The Latin singles — sound without a `required` guard here (see below). |
+| 1 | `lineScan` | The one-line arrangement scan (below) when **≤ 3** arrangements of the line still fit its clues: "only two arrangements of this row fit" — the beginner's clue-reading. |
 | 2 | `clue2Pattern` | Conceptis's clue-2 rules, named for friendlier hints: N − 1 is never second from the clue; a 1 next to the clue puts N right behind it; with N placed d cells in (d ≥ 2) the first tower is at least d. |
 | 2 | `reachability` | Walk the filled prefix, then ask of each candidate at the next cell: with it placed, can exactly c towers still be seen? Too many already, too few reachable with the cells left, or N already seen with the count short — the candidate goes. |
-| 3 | `lineFilter` | Every arrangement of a line that matches both its clues; a height no arrangement puts in a cell is impossible there. Tatham's `solver_hard` and the research's catch-all. **Stops after the first productive line** so diagnostics do not inflate the record (Tatham's rule). Unclued lines are skipped — the Latin rules own them. |
+| 2 | `lineEnumeration` | The same scan when **4–12** arrangements fit: a real enumeration of one line, still one line at a time. |
+| 3 | `lineFilter` | The same scan when **more than 12** arrangements fit: every arrangement of a line that matches its clues, a height no arrangement puts in a cell is impossible there — Tatham's `solver_hard` and the research's catch-all. Every band **stops after the first productive line** so diagnostics do not inflate the record (Tatham's rule); unclued lines are skipped (the Latin rules own them). |
 | 3 | `nakedSubset` | k empty cells of a row or column whose candidates together are exactly k heights claim them (pairs and triples). |
 | 3 | `hiddenSubset` | Two heights a row or column still needs, confined to the same two cells: those cells hold only them. |
 | 4 | `xWing` | One height, two rows (or columns) where it can stand in the same two columns (rows) only: it stands nowhere else in those columns (rows). |
@@ -58,6 +60,32 @@ needs, because a run need not contain any particular digit. A Skyscrapers row or
 permutation — every height appears exactly once — so the Sudoku forms are sound unchanged. The
 test file asserts it on record (a hidden single on a full permutation places the solution's
 height), so the question is answered once rather than re-asked per technique.
+
+### Why the line scan is three techniques, graded by how much it scanned (E3 §3c)
+
+The per-line arrangement scan is one mechanism — enumerate the line's arrangements that match
+its clues, drop any height no arrangement allows — but it is not one difficulty. E3 measured the
+all-clue tier floor of random unique squares with the scan sitting flat at tier 3: **273 of 300
+6×6 squares graded hard with every clue on the board**, so clue removal (which only moves a
+puzzle up) could never produce an easy or medium 6×6. The same measurement showed the scans
+those squares need mostly cover **1–6 surviving arrangements** — at 5×5 a third of them exactly
+one. A player who reads "clue 3 and clue 1 on this row: only 1 3 2 4 fits" is doing the
+beginner's move in every published ladder, not a hard technique. So the scan is graded by its
+**survivor count** before the step: `lineScan` (≤ `LINE_SCAN_MAX` = 3) at tier 1,
+`lineEnumeration` (≤ `LINE_ENUMERATION_MAX` = 12) at tier 2, `lineFilter` (beyond) at tier 3.
+The ladder asks for the weakest band first, and each band fires on its first productive line.
+The bands are one ordered table (`LINE_BANDS`): each band's lower bound is the previous band's
+upper bound plus one, so a survivor count always falls in exactly one band. The scan itself is
+kept **per clued line** and recomputed only for lines marked dirty: every candidate write goes
+through one method (`setCandidates`) that dirties the cell's row and column scans, so a restrict
+rescans at most two of the 2N lines and the cache cannot go stale by a write that forgot to
+invalidate it (the E3b review's two efficiency/altitude findings — after the change, classify
+is faster than before the re-tier: 0.24 / 5.1 / 4.5 ms on the fixtures). Unclued lines are not
+in the scan at all (the Latin rules own them), so the scan array has one shape; a finished line
+reports one arrangement and nothing to remove without a scan. Each scan stores the candidate
+bits no surviving arrangement uses (`removable`), which is both the "is it productive" test and
+the elimination the band applies. After the re-tier the 6×6 all-clue floor is **25% easy / 61% medium / 2% hard** (the
+rest expert/extreme), and every tier is reachable by removal; the two cuts are E5's to refit.
 
 ### Why forcing chains test three candidates, not two
 
@@ -115,9 +143,8 @@ rating         = mean candidates per empty cell after the tier-1–2 pass (1.0 =
 plus size, present and blank clue counts
 ```
 
-On the served fixtures: 5×5 rating 2.57 (7 fixed / 11 implied of 25), 6×6 rating 4.91 (2 / 2 of
-36), 7×7 rating 5.0 (8 / 8 of 49) — the two big fixtures give tiers 1–2 almost nothing, which is
-why they grade extreme.
+On the served fixtures after the re-tier: 5×5 rating 1.0 (tiers 1–2 finish it: 25 implied of
+25), 6×6 and 7×7 still give tiers 1–2 little — which is why they grade extreme.
 
 ## `classifySkyscrapers(shape, { metrics })`
 
@@ -129,9 +156,10 @@ tier = hardestTier (0 → 1: a puzzle with nothing to deduce is still "easy")
 → { tier, difficulty: TIER_DIFFICULTY[tier], result, metrics }
 ```
 
-Fixtures (pinned in tests): 5×5 **hard** (tier 3 — line filtering; 0.4 ms), 6×6 **extreme**
-(tier 5 — four forcing chains; 6.7 ms), 7×7 **extreme** (tier 5 — two chains; 6.3 ms), measured
-warm over 100 runs against the plan's 20 ms gate. The line and house cell lists are built once in
+Fixtures (pinned in tests): 5×5 **easy** (tier 1 — three small line scans; it graded hard under
+the flat tier), 6×6 **extreme** (tier 5 — four forcing chains), 7×7 **extreme** (tier 5 — two
+chains); classify 0.24 / 5.1 / 4.5 ms warm against the plan's 20 ms gate (per-line dirty scans
+made the re-tiered solver faster than the flat one, 0.4 / 6.7 / 6.3). The line and house cell lists are built once in
 the constructor (the E2 review's efficiency finding): the solve loop allocates none of them. The unit test only guards against a pathological
 regression (< 1 s): a wall-clock assertion under the suite's parallel load measures the load.
 

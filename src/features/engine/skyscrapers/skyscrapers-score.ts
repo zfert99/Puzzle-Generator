@@ -16,7 +16,8 @@ import type { SkyscrapersSolveResult, SkyscrapersTechnique } from './skyscrapers
  * ladder order; re-fit in E5"). Absolute values matter less than ratios — bands are relative
  * cuts over measured distributions, recalibrated whenever weights change. The one-move clues
  * are near-free (the opening every player makes), the clue-2 patterns routine, line filtering
- * is where a hard puzzle lives.
+ * is where a hard puzzle lives — and the one-line arrangement scan is priced by its band (E3
+ * findings §3c): a scan of ≤ 3 arrangements near tier-1 work, ≤ 12 as a routine enumeration.
  */
 export const TECHNIQUE_WEIGHTS: Record<SkyscrapersTechnique, number> = {
   clueN: 0.2,
@@ -26,8 +27,10 @@ export const TECHNIQUE_WEIGHTS: Record<SkyscrapersTechnique, number> = {
   nearlyFilledClue: 0.6,
   nakedSingle: 0.2,
   hiddenSingle: 0.8,
+  lineScan: 0.6,
   clue2Pattern: 1.2,
   reachability: 1.5,
+  lineEnumeration: 1.6,
   lineFilter: 3.0,
   nakedSubset: 3.0,
   hiddenSubset: 3.4,

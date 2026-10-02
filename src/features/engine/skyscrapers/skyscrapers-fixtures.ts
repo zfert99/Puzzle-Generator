@@ -102,13 +102,14 @@ export function parseSkyscrapersFixture(
  * module sits in the client bundle via `usePuzzle` and three full solves plus the permutation
  * tables (~30 ms) would run on every `/play` load for a value that never changes.
  * `skyscrapers-fixtures.test.ts` re-grades every fixture and fails if a label drifts from the
- * solver. Thinning clues to the uniqueness floor makes hard puzzles, so the set grades
- * hard / extreme / extreme; the generator (E4/E5) makes the easy ones.
+ * solver. The set grades **easy / extreme / extreme**: the sparse 5×5 needs only small line scans
+ * (≤ 3 arrangements — tier 1 since the E3 re-tier; it graded hard while every scan sat flat at
+ * tier 3), the two bigger ones need forcing chains. The generator (E4/E5) fills in between.
  */
 export const SKYSCRAPERS_FIXTURE_5X5 = parseSkyscrapersFixture(
   ['45213', '54321', '12534', '31452', '23145'],
   { top: '..xx.', bottom: '.x...', left: '.....', right: '.xx..' },
-  'hard'
+  'easy'
 );
 
 export const SKYSCRAPERS_FIXTURE_6X6 = parseSkyscrapersFixture(

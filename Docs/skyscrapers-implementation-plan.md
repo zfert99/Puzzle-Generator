@@ -173,7 +173,7 @@ the visibility constraint, a four-sided gutter, and the clue-removal generator.
 | D3 | **No givens at any published tier** (the commercial norm; Tatham allows them). `grid` keeps the slot so Tatham-style fixtures round-trip; the generator never emits givens in v1 | Proposed (research) |
 | D4 | **Three sizes, chosen for Skyscrapers:** mini **5×5** (vs 4×4), standard **6×6**, large **7×7** (vs 9×9). **Planned at the recommendation** — V0–V2 build and show 5/6/7 — and **still measured by E3** (tier reachability at guess count 0 and per-tier yield at 5/6/7 and at 4, 9 for the alternatives; 7-vs-9 line-filter wall time), which can overturn any of the three. 4×4 survives, if at all, as a tutorial board; 9×9 as a later weekly special | **Settled by E3 (2026-10-02): mini 5×5, standard 6×6, large 7×7** — 9×9 fails repair (0/8 in 60 s) and timing (60–100 ms per count, 130–470 ms per classify); 4×4 has no expert tier and its hard is a 24-arrangement scan — tutorial board at most ([findings §3b](research/skyscrapers-feasibility-findings.md)) |
 | D5 | **A 6×6 standard is the first non-9×9 daily standard.** `DailySize` widens (5, 6-as-standard); the standard roll becomes a 5-rung bijection at 5 types; slot labels carry the size where it is not 9×9 ("Hard 6×6 · Skyscrapers"); the "standard = 9×9" copy in the daily plan and roadmap is amended | Proposed; G11 |
-| D6 | **Every published tier is logic-only.** Five rungs mapped from the research ladder: Easy = rungs 0–4 · Medium = + rung 5 · Hard = + rungs 6–7 · Expert = + rung 8 · Extreme = + rung 9. **Rung 10 (bifurcation) is a reject, never a tier.** Guess count 0 everywhere, copy says "solvable by logic alone" | Proposed (research-backed; rungs 5–7 ordering is G7) |
+| D6 | **Every published tier is logic-only.** Five rungs mapped from the research ladder: Easy = rungs 0–4 **plus the small line scan (≤ 3 arrangements fit — E3b)** · Medium = + rung 5 **and the one-line enumeration (≤ 12)** · Hard = + rungs 6–7 (the long line filter, Latin pairs/triples) · Expert = + rung 8 · Extreme = + rung 9. **Rung 10 (bifurcation) is a reject, never a tier.** Guess count 0; copy says "solvable by logic alone" | Proposed (research-backed; rungs 5–7 ordering is G7) |
 | D7 | Difficulty label from the **classifier post-generation**; generator parameters (which clues to remove, in what order) only bias | Locked (research + Kakuro D8 precedent) |
 | D8 | **Visual first, simplest → hardest** (Kakuro D12): V0 looks-only board → V1 types + baked fixtures → V2 board → V3 PDF → E1 exact solver (Hint) → E2 classifier (badge, technique hints) → E3 yield spike → E4 generator ("New puzzle") → E5 tiers + pickers + **hub card** → R1 daily. The deep link exists from V2; the hub card waits for E5. The owner may reorder slices (Kakuro pulled E1 ahead of V3) | Locked (owner rule, inherited) |
 | D9 | **Clue UX:** four-sided gutter of plain digits (no arrows); a violated clue turns the error colour **as soon as the violation is provable from the filled prefix** (Tatham's rule — O(N), zero false positives); "satisfied" is an opt-in muted state, off by default; a manual **"mark clue done"** toggle ships in V2, **undo-able and persisted**, drawn error > done > normal — it doubles as the a11y progress tracker; a "which towers this clue sees" highlight on clue focus is a later teaching aid | Proposed (research §6), **amended by G10** |
@@ -198,7 +198,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 3 | V3 — PDF on the baked puzzle ✅ | A printable Skyscrapers page in the booklet |
 | 4 | E1 — Visibility table + exact solver + uniqueness ✅ | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
 | 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer ✅ | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
-| 6 | E3 — Yield measurement spike 🚧 | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
+| 6 | E3 — Yield measurement spike ✅ | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
+| 6b | E3b — Line-scan re-tier 🚧 | The 5×5 fixture reads **easy**; easy/medium 6×6 exist (all-clue floor 25% / 61%); every tier reachable by removal at 5/6/7 |
 | 7 | E4 — Clue-removal generator | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
 | 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
 | 9 | R1 — Daily rotation (5 types) | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
@@ -697,7 +698,7 @@ fires on at least one fixture; classify a 7×7 in < 20 ms.
   and `SkyscrapersClassification` (AGENTS.md §2).
 - *Blockers:* none. Merged 2026-10-02 ([#133](https://github.com/zfert99/Puzzle-Generator/pull/133)).
 
-### E3 — Yield measurement spike (throwaway, no production code) 🚧
+### E3 — Yield measurement spike (throwaway, no production code) ✅
 
 The research's hard warnings are about **yield and sizes** — all-clue ambiguity rising with N,
 no published per-tier yield, no published clue-survival counts, and Tatham's unbounded retry
@@ -774,7 +775,74 @@ ladder, two-line interactions, or givens as a lever) before E4 rather than tunin
   restart, don't climb), L17 (the all-clue floor is the yield ceiling for removal-based
   generation — measure the floor before measuring removal).
 - *Blockers:* **the re-tier is the owner's call before E4** (research doc §3c/§5). Nothing else
-  blocks.
+  blocks. Merged 2026-10-02 ([#134](https://github.com/zfert99/Puzzle-Generator/pull/134)); the
+  owner approved the recommendation the same day → E3b.
+
+### E3b — Line-scan re-tier (the owner's call on E3 §3c) 🚧
+
+The one change E3 asked for before E4: grade the per-line arrangement scan by how many
+arrangements it had to consider, not flat at tier 3.
+
+- `skyscrapers-logical-solver.ts`: the scan is one mechanism (`lineScans`, computed once per
+  candidate state and cached on a `version` counter) read by three techniques — **`lineScan`**
+  (≤ `LINE_SCAN_MAX` = 3 surviving arrangements, tier 1, after the Latin singles), **`lineEnumeration`**
+  (≤ `LINE_ENUMERATION_MAX` = 12, tier 2, after reachability), **`lineFilter`** (beyond, tier 3,
+  as before). Each band fires on its first productive line (Tatham's rule); the explanation says
+  how many arrangements fit ("only one arrangement fits the clues, and none of them allows …").
+- `skyscrapers-score.ts`: weights 0.6 / 1.6 for the two new bands; 3.0 stays for the long scan.
+- Fixtures: the 5×5 relabels **hard → easy** (its three scans each keep ≤ 3 arrangements); the
+  6×6 and 7×7 stay extreme. D6's rung list amended (Easy includes the small scan; Medium the
+  enumeration).
+- **Acceptance test (from the findings):** the all-clue floor distribution and the tier-bounded
+  yields re-measured with the same scripts.
+
+**Gate:** every tier reachable by tier-bounded removal at 5×5 and 6×6; the 6×6 all-clue floor no
+longer hard-dominated; classify still < 20 ms at 7×7.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-e3b-retier`):**
+
+- *Process:* as specified above. Tests: the ladder-order list gains the two bands; a hand-built
+  case per band (a 4×4 row under clues 3 and 1 with its 1 placed — one arrangement → `lineScan`,
+  tier 1, "only one arrangement fits"; an empty 4×4 row under a clue of 2 — 11 arrangements →
+  `lineEnumeration`; a 5×5 row under a clue of 3 — 35 → `lineFilter`, tier 3); the 5×5 fixture
+  is finished by tier 1 and **not** without `lineScan`; the fixture grades pinned at easy /
+  extreme / extreme with `lineScan` present and `lineFilter` absent on the 5×5; the metrics test
+  now expects tiers 1–2 to finish the 5×5 (rating 1.0); the clue-2 test disables the scan so the
+  named pattern is what fires. The fixtures test re-grades the typed labels, which is how the
+  5×5's `'hard'` was caught.
+- *Measured (re-running E3's scripts against the re-tiered ladder):* **all-clue floor** 5×5
+  T1 274 · T2 24 · T5 2 of 300 (was T1 3 · T2 30 · T3 260); 6×6 **T1 74 · T2 183 · T3 6 · T4 7 ·
+  T5 28 · unrated 2 of 300** (was T1 1 · T2 1 · T3 273). **Tier-bounded yield T1–T5:** 5×5
+  **90 / 55 / 8 / 8 / 20%** (was 3 / 8 / 100 / 10 / 38); 6×6 **28 / 85 / 58 / 15 / 53%** (was
+  0 / 0 / 85 / 10 / 73); 7×7 **0 / 28 / 58 / 8 / 68%**. Per accepted at 6×6: 235 / 67 / 115 / 381 /
+  119 ms (T1–T5). Classify on the fixtures 0.24 / 5.1 / 4.5 ms after the review's per-line
+  scans (0.6 / 9.2 / 8.0 with a whole-grid rescan; 0.4 / 6.7 / 6.3 before the re-tier).
+  Scores 13.2 / 139.3 / 100.6.
+- *What the numbers say:* every tier is now reachable at 5×5 and 6×6 and the floor is no longer
+  hard-dominated — the gate passes. Two things moved that E4/E5 must know: **hard is now the
+  scarce tier at 5×5** (8% — a 5×5 rarely needs more than a 12-arrangement scan, so "hard" there
+  means Latin subsets or a long scan), and **easy 7×7 does not exist** (0 / 40; all-clue floor T1 0 · T2 30 · T3 35 · T4 3 · T5 29 of 100) — a
+  7-cell line under a clue pair rarely keeps ≤ 3 arrangements. Both are size properties, not
+  ladder defects: the research's ladder-per-size (D6: tiers calibrated *within* a size) is what
+  E5 implements, and the mini's and large's tier sets follow the measurement (D12 for 5×5:
+  easy / medium / hard with hard rare; 7×7: medium–extreme, no easy — to confirm in E5).
+- *Divergence from the spec:* none beyond the plan's own E3 recommendation; the cuts (3 / 12)
+  are the findings' proposal, unfit — E5 refits against the scorer.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 9 findings, all fixed
+  before merge):* (1) **the scan cache rescanned every clued line on every candidate change**
+  (+37% classify) — now one scan per clued line with a dirty flag, and a candidate write dirties
+  only its row and column; classify went from 9.2 to **5.1 ms** at 6×6, faster than the flat
+  ladder. (2) **Invalidation held by convention** (`cands` was written directly in the constructor
+  and the forcing-chain trial) — every write now goes through `setCandidates`, the trial through
+  `adoptCandidates`. (3) Unclued lines left the scan (`filterLines` holds clued lines only), so the
+  scan array has one shape (AGENTS.md §5) and no null branch. (4) The three bands are one ordered
+  `LINE_BANDS` table; a band's lower bound is derived from its predecessor. (5) Boundary tests at
+  exactly 3, 4 and 12 arrangements (no hand-buildable 13 was found with ≤ 2 placed cells; the 35
+  case covers the top band). (6) The one-arrangement hint reads "and it does not allow", not "none
+  of them". (7) The scan stores the removable bits once; the band applies them instead of
+  recomputing. (8) JSDoc on both cut constants. (9) Parentheses on the mixed condition; `both` is
+  a boolean.
+- *Blockers:* none. E4 can start.
 
 ### E4 — Clue-removal generator ⏳
 
