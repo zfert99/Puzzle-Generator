@@ -4,7 +4,8 @@
 > [#128](https://github.com/zfert99/Puzzle-Generator/pull/128) merged 2026-10-02 on the owner's
 > visual verdict; V1 [#129](https://github.com/zfert99/Puzzle-Generator/pull/129) merged
 > 2026-10-02; V2 [#130](https://github.com/zfert99/Puzzle-Generator/pull/130) merged 2026-10-02;
-> V3 built 2026-10-02). · **Branch:** one per slice off
+> V3 [#131](https://github.com/zfert99/Puzzle-Generator/pull/131) merged 2026-10-02; E1 built
+> 2026-10-02). · **Branch:** one per slice off
 > `main` (`feature/skyscrapers`, then `-v1`, `-v2`, … as Kakuro did; never stacked — V1's step-log
 > in the Kakuro plan says why) · **Roadmap:** Phase 11 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings · measurements):**
@@ -194,8 +195,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 0 | V0 — Looks-only static board ✅ | Empty 5×5 / 6×6 / 7×7 boards with a four-sided clue gutter at `/skyscrapers` — no digits, no input |
 | 1 | V1 — Types + baked fixtures ✅ | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
 | 2 | V2 — Board on the baked puzzle ✅ | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
-| 3 | V3 — PDF on the baked puzzle 🚧 | A printable Skyscrapers page in the booklet |
-| 4 | E1 — Visibility table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
+| 3 | V3 — PDF on the baked puzzle ✅ | A printable Skyscrapers page in the booklet |
+| 4 | E1 — Visibility table + exact solver + uniqueness 🚧 | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
 | 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
 | 6 | E3 — Yield measurement spike | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
 | 7 | E4 — Clue-removal generator | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
@@ -417,7 +418,7 @@ visual check handed to the owner.
   ([#130](https://github.com/zfert99/Puzzle-Generator/pull/130), 2026-10-02).
 - *Owed:* NVDA/VoiceOver pass over the gutter (G8) — by R1 at the latest.
 
-### V3 — PDF on the baked puzzle 🚧
+### V3 — PDF on the baked puzzle ✅
 
 - `drawSkyscrapersGrid(doc, puzzle, x, y, size, showSolution)` + `generateSkyscrapersPDF` on the
   shared nav helpers (bookmarks + puzzle↔answer links) and `drawCenteredDigit`. Print conventions
@@ -474,10 +475,10 @@ one answer page); PDF service tests cover the renderer; route tests cover the sc
   the heights only on the answer page. (4) The printed title says **hand-made** for an `'unrated'`
   fixture instead of leaking the engine label (D7). (5) The five-type toggle rows (print form and
   play menu) are five-column grids — a wrapping flex row stranded the fifth label on its own line.
-- *Blockers:* none. **Gate pending:** the owner's look at the sample booklet (regenerated after
-  the review — the title wording changed).
+- *Blockers:* none. **Gate passed:** the owner approved the booklet and merged
+  ([#131](https://github.com/zfert99/Puzzle-Generator/pull/131), 2026-10-02).
 
-### E1 — Visibility table + exact solver + uniqueness ⏳
+### E1 — Visibility table + exact solver + uniqueness 🚧
 
 - `skyscrapers-visibility.ts`: per-N **permutation table** built lazily and cached — `perms`
   (`Uint8Array` of N·N! heights), `visL[p]`, `visR[p]`, and `bucket(visL, visR)` → the
@@ -510,6 +511,62 @@ one answer page); PDF service tests cover the renderer; route tests cover the sc
 
 **Gate:** uniqueness verify on the 7×7 fixtures **< 50 ms average** (expect well under 1 ms —
 record the real number); fuzz clean; board hint driven by the solver.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-e1`):**
+
+- *Process:* `skyscrapers-visibility.ts` — the per-size permutation table, built lazily and
+  cached: heights, `visLeft` / `visRight` per permutation, and a bucket per clue pair with 0 as
+  blank (each permutation in four buckets, so a one-blank line is one lookup); sized in one pass,
+  filled in a second. `skyscrapers-solver.ts` — the Kakuro contract (`countSkyscrapersSolutions`,
+  `isSkyscrapersUnique`, `deduceSkyscrapers`, `{ solutions, nodes, exhausted, solution }`) on
+  **per-line permutation filtering**: each of the 2N lines keeps its survivor list, narrows it
+  against the cells' masks, ORs the survivors back; a cell that shrinks re-queues its other
+  line. That one step is all-different *and* visibility, so the spec's cheap-rule pre-pass is
+  not needed — the filter already knows the position bound, clue 1 and clue N. MRV search with
+  a node budget and early exit at the second solution; survivor lists compacted in place on
+  per-node copies. The store's `hint` deduces (selected cell if forced, else first forced, each
+  re-checked against the solution — L9); `SkyscrapersDevBadge` shows "unique ✓ · n nodes · k of
+  4N clues" in development. Tests (40 new): table sizes/order/visibility/buckets; 60-trial fuzz
+  against an independent Latin-square brute force at 3–4 with random blanks; blank boards count
+  every Latin square (12 at 3×3, 576 at 4×4 — a free correctness oracle); placed heights
+  respected (the 4×4 pair split by one cell); budget exhaustion → `null`, never a guess; **the
+  research's 204 / 576 all-clue ambiguity reproduced in-repo**; **G5's 4×4 facts** (no 2-clue
+  subset of the counterexample square pins it; some 3-clue subset pins some square); **every
+  fixture proven unique and the solver's solution equals the square**; the 4×4 pair reports two;
+  the sparse 5×5 goes non-unique when any kept clue is blanked; deductions match the solution;
+  store hints (forced cell, selected forced cell, contradiction → reveal); badge.
+- *Measured (`tsx` script, Node 24, warm):* table build 5: 1.2 ms · 6: 3.5 ms · 7: 9.7 ms ·
+  9: 205 ms. **Uniqueness verify:** 5×5 **0.07 ms** (1 node) · 6×6 **0.40 ms** (7 nodes) · 7×7
+  **1.1 ms** (3 nodes) — the 50 ms gate by 45×. **Propagation alone from empty** forces 25/25
+  cells of the 5-clue 5×5 (the fixture is singles-only for this propagator), 5/36 of the 6×6,
+  8/49 of the 7×7.
+- *Divergence from the spec:* no cheap-rule pre-pass and no monotone `Uint32Array` per line
+  across the search — the per-node list copy (2N small arrays) was simpler and the measured
+  cost is already two orders under the gate. If E3's 9×9 wall time needs it, the pre-pass is the
+  first lever.
+- *Learnings:* (1) the line filter at fixpoint is far stronger than the research's "Easy rules"
+  — it solved the sparse 5×5 outright, which E2's classifier must grade by *human* technique,
+  not by what this propagator can do (the research's warning about SAT metrics, in-house).
+  (2) Three of the first five tests were wrong, not the solver: the 4×4 square I reached for is
+  the research's non-unique one. A test square must be chosen *from* the measurement, not from
+  memory — L10.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 6 findings, all fixed
+  before merge):* (1) **a clue outside 0..N indexed past the bucket table** and would have thrown
+  inside the Hint action on a corrupt save — `compile` now maps any such clue to an empty bucket
+  (a contradiction), tested with 9, −1 and 2.5 on a 5×5. (2) Every search node copied all 2N
+  survivor lists — now **copy-on-narrow** (`owned` flags; a list is copied only when a node first
+  drops something from it). Measured, best of 7: 7×7 sparse 32.3 → 31.0 µs/node; 9×9 with four
+  clues 2.87 → 2.72 ms/node, retained heap +1 MB both ways — the copies were transient garbage,
+  not retained memory, and the true 9×9 cost is *scanning* 362,880-entry lists, which is the
+  cheap-rule pre-pass's job if E3 keeps 9×9. The first rewrite used two closures in the hot loop
+  and was 40% *slower*; the shipped one is a single closure-free pass (L11). (3) The
+  `positionMasks` scratch moved into `Compiled` — no allocation per `propagate`. (4) The
+  `filterLine` doc now matches the strategy. (5) `digitOfBit` lives in `grid-utils.ts`, used by
+  the Kakuro and Skyscrapers solvers. (6) The per-variant hint blocks left the store for
+  `hint-deducers.ts` — a registry with the agree-with-the-solution rule written once; a new
+  variant's solver is one entry.
+- *Blockers:* none. **Gate passed by measurement;** visible on the board: the Hint button places
+  a solver-forced height with a "forced by the clues" note, and the dev badge reads unique ✓.
 
 ### E2 — Logical solver (technique classifier) + instrumentation ⏳
 

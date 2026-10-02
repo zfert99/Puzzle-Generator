@@ -128,3 +128,10 @@ for each index i:
     rowMask and colMask must both equal full
 true
 ```
+
+## `digitOfBit(bit)` (October 2026)
+
+The 1-based digit of a single-bit candidate mask — `32 − clz32(bit)`, the inverse of
+`1 << (digit − 1)`. The Kakuro and Skyscrapers exact solvers each carried their own copy
+(Skyscrapers E1 review finding); it lives here with `popcount` and `maskToDigits`, the rest of the
+bitmask vocabulary.

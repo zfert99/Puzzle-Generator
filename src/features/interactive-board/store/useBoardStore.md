@@ -267,3 +267,21 @@ cell-for-cell match, and the hint is a plain reveal until E1 puts a solver behin
 
 Persist version bumped to **6** (a v5 game has no `edgeClues`/`doneClues` and would rehydrate
 with an empty gutter — discarded, like every earlier bump).
+
+## Skyscrapers hints come from the exact solver (October 2026, plan slice E1)
+
+As for Kakuro: a Skyscrapers hint is a **deduction, not a reveal**, whenever the exact solver's
+propagation forces a height from the board as it stands (`deduceSkyscrapers`): the selected cell
+if it is forced, else the first forced cell — and only if the height **agrees with the
+solution** (L9: a board holding a wrong height can force a height that is consistent with the
+mistake). A contradiction, or no agreeing forced cell, falls through to the plain reveal. The
+note names no technique yet (`technique: null`, "forced by the clues and the row and column it
+sits in"); E2's logical solver adds the named step and the lead-up.
+
+### Solver-driven hints live in `hint-deducers.ts` (October 2026, Skyscrapers E1 review)
+
+The per-variant blocks that used to sit inside `hint` — Kakuro's explained/forced deduction and
+Skyscrapers' forced deduction — moved to `hint-deducers.ts`: `hint` builds a narrow `HintContext`
+(grid, solution, config, the preferred cell, runs, edge clues), asks `deduceHintFor(variant, …)`,
+and uses its `{ target, note }` or falls back to the reveal. The agree-with-the-solution rule (L9)
+is written once there instead of per variant.

@@ -14,6 +14,7 @@ import { KeyboardHints } from './KeyboardHints';
 import { SolvedDialog } from './SolvedDialog';
 import { ConfirmModal } from './ConfirmModal';
 import { KakuroDevBadge } from './KakuroDevBadge';
+import { SkyscrapersDevBadge } from './SkyscrapersDevBadge';
 import { HintNote } from './HintNote';
 
 const ALL_DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
@@ -355,6 +356,7 @@ export default function PlayExperience() {
 
       {/* E1/E2's visible proof that real solvers sit behind the board — development only. */}
       {process.env.NODE_ENV === 'development' && boardVariant === 'kakuro' && <KakuroDevBadge />}
+      {process.env.NODE_ENV === 'development' && boardVariant === 'skyscrapers' && <SkyscrapersDevBadge />}
 
       <KeyboardHints />
 

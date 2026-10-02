@@ -92,6 +92,85 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers E1: the exact solver behind the Hint button
+
+Branch `feature/skyscrapers-e1` on `2923d95`. Diff: `skyscrapers-visibility.ts` (per-size
+permutation table) and `skyscrapers-solver.ts` (line-filter exact solver, the Kakuro contract) with
+tests and mirrored docs; the store's `hint` deduces for Skyscrapers; `SkyscrapersDevBadge` +
+gate; store/badge tests; plan/log/roadmap/index/status. **~420 LOC of source**, the engine core
+of the slice.
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **89 files / 859 tests green** (27 new); no entry from the Known flaky tests table fired |
+| Benchmarks | the slice's gate is a measurement, not a benchmark row (E5 adds `benchmark-skyscrapers.ts`): uniqueness verify **5×5 0.07 ms · 6×6 0.40 ms · 7×7 1.1 ms** (200 warm runs each) against the 50 ms gate; table build 1.2 / 3.5 / 9.7 ms, 205 ms at 9×9 |
+
+### Findings
+
+- **`/code-review high` (owner-run, on the branch): 6 findings, all fixed in-PR.** The one with
+  teeth: a clue outside 0..N (a corrupt save) indexed past the bucket table and threw inside the
+  Hint action — `compile` now maps it to an empty bucket (tested with 9, −1, 2.5). Also:
+  copy-on-narrow survivor lists (measured ~5% per node at 7×7 and 9×9 — the copies were transient,
+  not retained; the first two-closure draft was 40% slower, L11); the propagation scratch buffer
+  lives in `Compiled`; a stale comment fixed; `digitOfBit` shared via `grid-utils`; the hint
+  deducers moved out of the store into a registry (`hint-deducers.ts`).
+- **Three of the first five solver tests were wrong, not the solver.** The "obvious" 4×4 Latin
+  square is the research's own non-unique counterexample (it shares all 16 clues with a twin), so
+  every uniqueness claim on it failed; "visible 4 from the right" is the *descending* permutation;
+  and a 20-node budget is never reached when the limit is 2. Each was re-read against the
+  measurement and corrected; the solver's answers were right throughout. L10 in the log.
+- **Blank boards are a free oracle:** with no clues the solver must count every Latin square —
+  12 at 3×3, 576 at 4×4 — and does. Kept as a test.
+- The line filter at fixpoint solved the 5-clue 5×5 fixture outright (25/25 cells forced from
+  empty): the propagator is far stronger than the research's "Easy rules", which E2's classifier
+  must not mistake for human difficulty.
+
+### Invariants checked
+
+- The count agrees with an independent brute force (every Latin square, every present clue) on
+  60 random small puzzles with random blanks; `exhausted` is `false` on all of them.
+- A solver-forced hint is placed only if it **agrees with the solution** (Kakuro L9), the selected
+  cell is honoured when forced, and a contradiction falls back to a reveal — three store tests.
+- The 204/576 all-clue ambiguity and the G5 4×4 facts (no 2-clue subset pins the counterexample;
+  some 3-clue subset pins some square) are now tests, not a research claim.
+- Survivor lists are compacted in place only on a node's own copy (a child never narrows its
+  parent's list) — read, and the fuzz would catch a violation as a wrong count.
+
+### Docs sweep
+
+New: `skyscrapers-visibility.md`, `skyscrapers-solver.md`, `SkyscrapersDevBadge.md`. Updated:
+`useBoardStore.md`, `PlayExperience.md`, `skyscrapers-fixtures.md` ("owed to E1" → proven);
+plan (V3 ✅, E1 step-log with the numbers, slice table, status), log (journal, L10, a measurement
+row), roadmap, Docs index, project-status.
+
+### Verified vs read
+
+- **Verified:** tests, lint, tsc, build, markdownlint; the timings by script; the Hint button and
+  the dev badge on the live board (dev server).
+- **Read only:** nothing material — every claim in the slice is a test or a measurement.
+
+### Review statements
+
+- `/security-review`: **not run** — pure engine code and a dev-only badge; no auth, data or
+  route surface.
+- `/code-review`: **run by the owner** (`/code-review high`, in-session) — 6 findings, all fixed
+  before merge (above).
+
+### Lesson
+
+- **Benchmark a hot-loop change before and after, best-of-N, with `git stash` for the baseline.**
+  The first copy-on-narrow draft was 40% slower per node (two closures inside the loop); only the
+  measurement said so. Five minutes of script beats a plausible story.
+- **A blank-clue count is a solver oracle that costs nothing.** For any constraint type whose
+  unconstrained instance has a known count (Latin squares: 12, 576, 161,280), count it with every
+  clue blank — a propagation or search bug shows up as the wrong total before any fixture is
+  needed.
+
 ## 2026-10-02 — Skyscrapers V3: the fixtures printable on `/generate` and in the sample booklet
 
 Branch `feature/skyscrapers-v3` on `744754b`. Diff: `drawSkyscrapersGrid` + `generateSkyscrapersPDF`
