@@ -19,3 +19,12 @@ Purely presentational (no store access). July 2026: actually hidden on touch-onl
 (previously rendered unconditionally, described as "harmless" there since the numpad is the
 primary input, but the legend was still visible noise). A CSS breakpoint, not a JS viewport
 check, so there's no server/client mismatch to introduce (AGENTS.md hydration-safety rule).
+
+## Skyscrapers gutter keys (October 2026, plan G8)
+
+The legend reads one store field — the board's `variant` — and appends three rows while a
+Skyscrapers board is up: **C** jump to the clues, **Enter / Space** mark a clue done, **Esc** back
+to the board. Before the G8 pass the `C` key existed only in the rules dialog, so a keyboard user
+who dismissed it (or had seen it before) had no way to discover the gutter. Reading the store here
+rather than taking a prop means every surface that renders the legend (play, daily, archive) gets
+the rows without plumbing. The component is `'use client'` for the selector.

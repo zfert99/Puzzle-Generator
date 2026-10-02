@@ -349,7 +349,9 @@ digits for all three fixtures.
 - **A11y (D9, G8):** the WAI-ARIA grid the board already uses, now (N+2)×(N+2): gutter cells
   `role="gridcell"` + `aria-readonly="true"` with names that spell direction and state — "Clue 3,
   looking down from the top of column 2, open" / "…, satisfied" / "…, violated"; corners
-  `aria-hidden`; play cells keep "row r column c" plus the two clues that look at the cell
+  `aria-hidden` *(as built in V2 — the G8 pass after R1 shortened the names to "Clue 3, from the
+  top of column 2, unsolved" / "No clue, top of column 2" and named the corners "Corner"; see the
+  G8 follow-up under R1)*; play cells keep "row r column c" plus the two clues that look at the cell
   ("row 3 column 4; left clue 2, top clue 3") so a screen-reader user has the constraints in
   hand; roving tabindex over play cells only, with a **"jump to clues"** key (e.g. `C`) that
   moves focus into the gutter and arrow keys walking along it; `aria-invalid` on a cell in a
@@ -1115,6 +1117,18 @@ both sections over a week of seeded rolls; the first real cron after deploy roun
   route's payload is a `switch` (`typedPayload`). (7) The progress route's doc describes the
   section fold.
 - *Blockers:* none. **Phase 11 is complete** once this merges.
+
+**G8 follow-up (2026-10-02 — branch `feature/skyscrapers-g8-a11y`, after the merge):** the owed
+screen-reader pass, done over the accessibility tree the browser exposes (the built-in browser's
+tree dump of the live board) plus axe. Four gaps fixed: the corner cells had no name (now
+"Corner"); a blank clue read "Clue cell, looking down from the top of column 2, blank" (now
+"No clue, top of column 2"; a present clue "Clue 3, from the top of column 2, unsolved" — the
+engine's "open" is a disclosure word to a listener); the `C` key to reach the gutter was known
+only to the rules dialog (now the grid's `aria-describedby` instructions and three keyboard-legend
+rows, which read the board's variant from the store); marking a clue done changed the focused
+cell's own name, which screen readers do not re-announce (now the live region says it). An axe
+journey over a started Skyscrapers board joins `e2e/a11y.spec.ts`. **Not done:** a live NVDA /
+JAWS / VoiceOver session — G8 is narrowed, not closed (L22).
 
 ### Deferred / follow-ons (not v1)
 

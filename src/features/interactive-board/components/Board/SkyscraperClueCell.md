@@ -43,7 +43,7 @@ selector: { clue, status } = skyscraperClueState(edgeClues, grid, side, index)
 class:    gutterCell; then clueViolated if violated, else clueDone if done
           (a satisfied clue is not tinted — the name carries the state)
 name:     describeSkyscraperClue(side, index, clue, status, done)
-          e.g. "Clue 3, looking down from the top of column 2, open"
+          e.g. "Clue 3, from the top of column 2, unsolved" / "No clue, top of column 2"
 data:     data-clue="side-index" on a present clue (the board's navigation hook),
           data-status for tests
 content:  the digit, or nothing for a blank

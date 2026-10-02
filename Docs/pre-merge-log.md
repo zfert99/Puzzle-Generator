@@ -92,6 +92,61 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers G8: the accessibility-tree pass over the four-sided gutter
+
+Branch `feature/skyscrapers-g8-a11y` on `eaef117`. Diff: `skyscrapers-board.ts` (clue names),
+`Board.tsx` (named corners, `aria-describedby` gutter instructions), `KeyboardHints.tsx` (the
+gutter keys, from the store's variant), `BoardAnnouncer.tsx` (done marks announced); tests; an
+axe journey over a started Skyscrapers board in `e2e/a11y.spec.ts`; docs. **~60 LOC of source.**
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` · `npm run build` | clean · clean |
+| `npx vitest run` | **94 files / 917 tests green** (2 new, 1 rewritten); no entry from the Known flaky tests table fired |
+| Live check | the running board (the other session's dev server on port 3000, which serves this checkout) read through the built-in browser's accessibility tree before and after: corners named, legend rows present, and a `C` → `Enter` mark produced the live-region text "Clue 4, from the top of column 3, marked done" |
+| Playwright | the new axe journey was **not run locally** (that server belongs to another session); CI runs it |
+
+### Findings
+
+- **The tree, not the attributes, held the defects.** Every cell had a correct role, index and
+  name and axe passed, yet the tree read four unnamed corners, ten words per blank cell, "open"
+  (a disclosure word) for an unsolved clue, a jump key told only in a dismissable dialog, and
+  silence when a mark took. All four fixed; none would have failed a lint or an axe rule (L22).
+- **A live screen reader was not driven.** G8 asked for NVDA / JAWS / VoiceOver; this pass used
+  the accessibility tree the browser exposes, which is what those readers consume but not how they
+  phrase it. Recorded as narrowed, not closed.
+- The first assertion for the live region used `getByRole('status')` — the announcer is a bare
+  `aria-live` div with no role; the test reads the `[aria-live="polite"]` node directly.
+
+### Invariants checked
+
+- The grid still exposes N+2 × N+2 cells with `aria-rowcount`/`aria-colcount`, every row the same
+  width (L5), and the gutter stays outside the Tab order (D9) — the keyboard test is unchanged.
+- The existing e2e Skyscrapers spec's name regexes updated with the wording (`unsolved`), nothing
+  else about its flow changed.
+
+### Review statements
+
+- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
+  may run `/code-review high` on the PR. `/security-review` not applicable.
+- Owner ran `/code-review high` — 5 findings, all fixed in the follow-up commit: the announcer
+  spoke a new same-size game's reset of the done flags as a clue event (now re-based when
+  `edgeClues` changes, with a test); the announcer hand-rolled the inverse of `clueFlatIndex`
+  (now `clueFromFlatIndex` beside it); the new axe journey checked the rules dialog once instead
+  of calling `dismissRulesIfShown` (a race); the plan's V2 a11y bullet and the D9 decision row
+  still described the pre-G8 names; the un-mark announcement was untested.
+
+### Lessons
+
+- **Read the accessibility tree before reading the ARIA attributes** — a minute with the
+  browser's tree dump shows what a listener will hear; axe and the type-checker cannot.
+
+---
+
 ## 2026-10-02 — Skyscrapers R1: the fifth daily type, with the first non-9×9 standard
 
 Branch `feature/skyscrapers-r1` on `4c5fb42`. Diff: `schema.ts` (`DailyVariant` + `StoredSkyscraperClue`),

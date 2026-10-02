@@ -17,3 +17,15 @@ suppressed unless the player opted in via the "Not quite!" review modal's error 
 (`errorsRevealed` in the board store); in free play it follows the `errorHighlight` setting
 instead. Either way, a screen-reader player gets no live correctness signal until it's actually
 turned on.
+
+## Skyscrapers clue marks (October 2026, plan G8)
+
+Marking a clue done changes the focused clue cell's own accessible name, and screen readers do
+not re-announce the name of the element that already has focus — so the mark was silent. The
+announcer now diffs the store's `doneClues` as it diffs the grid, finds the flipped flag, turns the
+flat index back into `(side, index)` with `clueFromFlatIndex` (the inverse of `clueFlatIndex`,
+kept beside it so the packing is written once), and says the clue's new name — "Clue 2, from the
+top of column 2, marked done", or the unsolved/satisfied/violated form when the mark is taken back.
+A new game resets every flag at once and swaps the clues; that is not a mark, so the diff is
+re-based (not spoken) on any render where `edgeClues` changed — otherwise a same-size restart with
+nothing typed would announce the new puzzle's clue at a stale index as "unsolved" (review fix).

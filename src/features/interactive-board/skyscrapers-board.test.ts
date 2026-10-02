@@ -10,12 +10,12 @@ const SQUARE = [
 ];
 
 describe('describeSkyscraperClue', () => {
-  it('spells direction and state, and names a blank', () => {
-    expect(describeSkyscraperClue('top', 1, 3)).toBe('Clue 3, looking down from the top of column 2, open');
-    expect(describeSkyscraperClue('left', 0, 4, 'satisfied')).toBe('Clue 4, looking right from the left of row 1, satisfied');
-    expect(describeSkyscraperClue('right', 2, 1, 'violated')).toBe('Clue 1, looking left from the right of row 3, violated');
-    expect(describeSkyscraperClue('bottom', 3, 2, 'open', true)).toBe('Clue 2, looking up from the bottom of column 4, marked done');
-    expect(describeSkyscraperClue('bottom', 3, 0)).toBe('Clue cell, looking up from the bottom of column 4, blank');
+  it('names the edge the clue reads from and its state, in a listener\'s words', () => {
+    expect(describeSkyscraperClue('top', 1, 3)).toBe('Clue 3, from the top of column 2, unsolved');
+    expect(describeSkyscraperClue('left', 0, 4, 'satisfied')).toBe('Clue 4, from the left of row 1, satisfied');
+    expect(describeSkyscraperClue('right', 2, 1, 'violated')).toBe('Clue 1, from the right of row 3, violated');
+    expect(describeSkyscraperClue('bottom', 3, 2, 'open', true)).toBe('Clue 2, from the bottom of column 4, marked done');
+    expect(describeSkyscraperClue('bottom', 3, 0)).toBe('No clue, bottom of column 4');
   });
 });
 

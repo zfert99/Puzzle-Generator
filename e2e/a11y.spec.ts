@@ -194,3 +194,21 @@ test.describe('a11y: no serious/critical axe violations', () => {
     });
   }
 });
+
+test.describe('a11y: the Skyscrapers board (four-sided clue gutter — plan G8)', () => {
+  test('a started Skyscrapers game passes axe (serious+critical)', async ({ page }) => {
+    await page.goto('/play?variant=skyscrapers', { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: /^Play$/ }).click();
+    const grid = page.getByRole('grid', { name: /skyscrapers board/i });
+    await expect(grid).toBeVisible();
+    await dismissRulesIfShown(page);
+    // Every cell of the gutter has a name a listener can act on — corners included (L5).
+    await expect(grid.getByRole('gridcell', { name: 'Corner' })).toHaveCount(4);
+    await expect(grid).toHaveAttribute('aria-describedby', 'skyscrapers-gutter-help');
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+    const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+    expect(blocking, blocking.map((v) => `${v.id} (${v.impact}): ${v.nodes.length}× — ${v.help}`).join('\n')).toEqual([]);
+  });
+});
