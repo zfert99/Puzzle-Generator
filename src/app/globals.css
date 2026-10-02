@@ -29,7 +29,7 @@
      butterscotch-dark (2.6:1) tones fail WCAG 1.4.3 as small text on paper, so text uses these
      deeper tones instead. */
   --on-butterscotch: #2B1B12;
-  --mint-text: #1B7A5B; --warn-text: #8F5A0E;
+  --mint-text: #15684E; --warn-text: #8F5A0E;
   /* The wildcard sticker fills below are the same in both themes, so the ink on them must be
      too — the theme-flipping `--ink` measured 1.25:1 (cream on lime) in the dark theme. */
   --on-sticker: #2B1B12;
