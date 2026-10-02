@@ -8,9 +8,9 @@ bottlenecked solve and down an open one (Pelánek's dependency structure: a puzz
 available move at a time is harder than one with many, at equal technique).
 
 The weights are **seeded from the ladder order** (plan E2: "re-fit in E5"): the one-move clue
-rules are near-free (0.2–0.3 — the opening every player makes), the clue-2 patterns and
-reachability routine (1.2 / 1.5), line filtering and the Latin subsets are where a hard puzzle
-lives (3.0–3.4), the X-wing 5.0, and a forcing chain 8.0 — priced like Sudoku Explainer's chains.
+rules are near-free (0.2–0.3 — the opening every player makes), a small line scan 0.6, the
+clue-2 patterns, reachability and a one-line enumeration routine (1.2 / 1.5 / 1.6), the long
+line filter and the Latin subsets are where a hard puzzle lives (3.0–3.4), the X-wing 5.0, and a forcing chain 8.0 — priced like Sudoku Explainer's chains.
 Only the ratios matter: bands are relative cuts over measured distributions, recalibrated whenever
 weights change. The grade (hardest tier) stays the primary band; this score orders puzzles inside
 it, so a grindy tier-3 can outrank a breezy tier-4.
@@ -22,7 +22,7 @@ scoreSkyscrapersSolve(result):
     → { raw, densityFactor, final: raw × densityFactor }
 ```
 
-On the served fixtures: 5×5 **24.8** (raw 18.8 × 1.32), 6×6 **163.7** (110.9 × 1.48), 7×7
-**122.2** (98.4 × 1.24) — the 6×6 outranks the bigger 7×7 within the extreme band because it
+On the served fixtures (after the E3 re-tier of the line scan): 5×5 **13.2** (raw 10.4 × 1.27),
+6×6 **139.3** (94.7 × 1.47), 7×7 **100.6** (81.0 × 1.24) — the 6×6 outranks the bigger 7×7 within the extreme band because it
 needed twice the chains and was more bottlenecked, which is exactly the ordering the two factors
-exist to express. A test pins the chain-tier 7×7 above the line-filter-tier 5×5.
+exist to express. A test pins the chain-tier 7×7 above the small-scan-tier 5×5.

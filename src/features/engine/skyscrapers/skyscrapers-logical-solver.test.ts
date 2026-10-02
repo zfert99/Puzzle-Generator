@@ -61,7 +61,7 @@ const blank = (n: number): SkyscraperClues => ({ top: Array(n).fill(0), bottom: 
 
 describe('SkyscrapersLogicalSolver', () => {
   it('orders every technique by tier, so "first that fires" is the weakest that works', () => {
-    const order: SkyscrapersTechnique[] = ['clueN', 'clue1', 'facingSum', 'positionBound', 'nearlyFilledClue', 'nakedSingle', 'hiddenSingle', 'clue2Pattern', 'reachability', 'lineFilter', 'nakedSubset', 'hiddenSubset', 'xWing', 'forcingChain'];
+    const order: SkyscrapersTechnique[] = ['clueN', 'clue1', 'facingSum', 'positionBound', 'nearlyFilledClue', 'nakedSingle', 'hiddenSingle', 'lineScan', 'clue2Pattern', 'reachability', 'lineEnumeration', 'lineFilter', 'nakedSubset', 'hiddenSubset', 'xWing', 'forcingChain'];
     for (let i = 1; i < order.length; i++) expect(TECHNIQUE_TIER[order[i]]).toBeGreaterThanOrEqual(TECHNIQUE_TIER[order[i - 1]]);
   });
 
@@ -133,7 +133,9 @@ describe('SkyscrapersLogicalSolver', () => {
     expect(first).toMatchObject({ technique: 'clue2Pattern', eliminated: [{ cell: 1, mask: 1 << 2 }] });
 
     const grid = [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
-    const placed = new SkyscrapersLogicalSolver({ gridSize: 4, clues }, grid).step(2, new Set(['positionBound', 'nearlyFilledClue', 'nakedSingle', 'hiddenSingle']));
+    // (lineScan is disabled too: with the 1 placed only two arrangements fit the row, and that
+    // weaker tier-1 scan would otherwise fire first — the rule under test is the named pattern.)
+    const placed = new SkyscrapersLogicalSolver({ gridSize: 4, clues }, grid).step(2, new Set(['positionBound', 'nearlyFilledClue', 'nakedSingle', 'hiddenSingle', 'lineScan']));
     expect(placed).toMatchObject({ technique: 'clue2Pattern', placed: { cell: 1, digit: 4 } });
   });
 
@@ -179,9 +181,36 @@ describe('SkyscrapersLogicalSolver', () => {
     expect(new SkyscrapersLogicalSolver({ gridSize: 5, clues: blank(5) }, oneRow).step()).toBeNull();
   });
 
-  it('separates the tiers on the fixtures: the sparse 5×5 needs line filtering, the 6×6 and 7×7 need forcing chains', () => {
-    expect(new SkyscrapersLogicalSolver(SKYSCRAPERS_FIXTURE_5X5).solve({ maxTier: 2 }).solved).toBe(false);
-    expect(new SkyscrapersLogicalSolver(SKYSCRAPERS_FIXTURE_5X5).solve({ maxTier: 3 }).solved).toBe(true);
+  it('grades the one-line arrangement scan by its size: ≤ 3 arrangements is tier 1, ≤ 12 tier 2, beyond tier 3 (E3 §3c)', () => {
+    // Row 1 of a 4×4 under clues 3 (left) and 1 (right) with 1 already placed first: only one
+    // arrangement fits — 1 3 2 4 — so the scan is the beginner's reading. (clue1 would place the
+    // 4 first; it is disabled so the scan itself is under test.)
+    const clues = blank(4);
+    clues.left[0] = 3;
+    clues.right[0] = 1;
+    const grid = [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+    const solver = new SkyscrapersLogicalSolver({ gridSize: 4, clues }, grid);
+    const step = solver.step(1, new Set(['clue1', 'positionBound', 'nearlyFilledClue', 'nakedSingle', 'hiddenSingle']));
+    expect(step?.technique).toBe('lineScan');
+    expect(step?.tier).toBe(1);
+    expect(step?.explanation).toMatch(/only one arrangement fits/);
+    // The same scan on an empty 4×4 row under a single clue of 2 keeps 11 arrangements: tier 2.
+    const two = blank(4);
+    two.left[0] = 2;
+    const wide = new SkyscrapersLogicalSolver({ gridSize: 4, clues: two }).step(2, new Set(['positionBound', 'clue2Pattern', 'reachability']));
+    expect(wide?.technique).toBe('lineEnumeration');
+    expect(wide?.explanation).toMatch(/only 11 arrangements fit/);
+    // A 5×5 row under a single clue of 3 keeps 35 arrangements: the catch-all, tier 3.
+    const many = blank(5);
+    many.left[0] = 3;
+    const long = new SkyscrapersLogicalSolver({ gridSize: 5, clues: many }).step(3, new Set(['positionBound', 'clue2Pattern', 'reachability']));
+    expect(long?.technique).toBe('lineFilter');
+    expect(long?.tier).toBe(3);
+  });
+
+  it('separates the tiers on the fixtures: the sparse 5×5 is finished by tier 1 (small scans), the 6×6 and 7×7 need forcing chains', () => {
+    expect(new SkyscrapersLogicalSolver(SKYSCRAPERS_FIXTURE_5X5).solve({ maxTier: 1 }).solved).toBe(true);
+    expect(new SkyscrapersLogicalSolver(SKYSCRAPERS_FIXTURE_5X5).solve({ disable: ['lineScan'], maxTier: 1 }).solved).toBe(false);
     expect(new SkyscrapersLogicalSolver(SKYSCRAPERS_FIXTURE_6X6).solve({ maxTier: 4 }).solved).toBe(false);
     expect(new SkyscrapersLogicalSolver(SKYSCRAPERS_FIXTURE_7X7).solve({ maxTier: 4 }).solved).toBe(false);
   });
@@ -211,12 +240,14 @@ describe('SkyscrapersLogicalSolver', () => {
 });
 
 describe('classifySkyscrapers', () => {
-  it('grades the served fixtures: 5×5 hard, 6×6 extreme, 7×7 extreme — and every placement is sound', () => {
-    expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_5X5)).toMatchObject({ tier: 3, difficulty: 'hard' });
+  it('grades the served fixtures: 5×5 easy, 6×6 extreme, 7×7 extreme — and every placement is sound', () => {
+    expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_5X5)).toMatchObject({ tier: 1, difficulty: 'easy' });
     expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_6X6)).toMatchObject({ tier: 5, difficulty: 'extreme' });
     expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_7X7)).toMatchObject({ tier: 5, difficulty: 'extreme' });
-    // The techniques the grades rest on (G7's first histogram): line filtering at 5×5, chains above.
-    expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_5X5).result.techniqueCounts.lineFilter).toBeGreaterThan(0);
+    // The techniques the grades rest on: small line scans at 5×5 (its three scans each keep ≤ 3
+    // arrangements — tier 1 since the E3 re-tier; it graded hard under the flat tier), chains above.
+    expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_5X5).result.techniqueCounts.lineScan).toBeGreaterThan(0);
+    expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_5X5).result.techniqueCounts.lineFilter).toBeUndefined();
     expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_6X6).result.techniqueCounts.forcingChain).toBeGreaterThan(0);
     expect(classifySkyscrapers(SKYSCRAPERS_FIXTURE_7X7).result.techniqueCounts.forcingChain).toBeGreaterThan(0);
   });
@@ -241,7 +272,8 @@ describe('measureSkyscrapers', () => {
     expect(m).toMatchObject({ size: 5, presentClues: 5, blankClues: 15, trivialClues: 1, facingSumPairs: 0 });
     expect(m.fixed).toBeGreaterThan(0);
     expect(m.implied).toBeGreaterThanOrEqual(m.fixed);
-    expect(m.rating).toBeGreaterThan(1);
+    expect(m.implied).toBe(25); // tiers 1–2 finish the 5×5 since the re-tier, so…
+    expect(m.rating).toBe(1); // …nothing is left open
     const all = measureSkyscrapers({ gridSize: 4, clues: deriveClues(SQUARE) });
     expect(all.facingSumPairs).toBe(4); // rows 1 and 4 and columns 1 and 4 of that square (4+1)
   });

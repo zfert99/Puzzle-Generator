@@ -265,6 +265,28 @@ board at most (D4's footnote), not a daily mini.
 
 ---
 
+> **Addendum (2026-10-02, E3b — the re-tier applied).** The owner approved the §3c
+> recommendation the same day and it shipped as `lineScan` (≤ 3 surviving arrangements, tier 1) /
+> `lineEnumeration` (≤ 12, tier 2) / `lineFilter` (beyond, tier 3) in
+> `skyscrapers-logical-solver.ts`. Re-running the scripts above against the re-tiered ladder:
+>
+> | size | all-clue floor T1 / T2 / T3 / T4 / T5 / unrated | tier-bounded yield T1–T5 | ms per accepted T1–T5 |
+> |---|---|---|---|
+> | 5×5 | 274 / 24 / 0 / 0 / 2 / 0 of 300 (was 3 / 30 / 260 / 0 / 6 / 1) | **90 / 55 / 8 / 8 / 20%** (was 3 / 8 / 100 / 10 / 38) | 40 / 54 / 548 / 574 / 172 |
+> | 6×6 | 74 / 183 / 6 / 7 / 28 / 2 of 300 (was 1 / 1 / 273 / 2 / 20 / 3) | **28 / 85 / 58 / 15 / 53%** (was 0 / 0 / 85 / 10 / 73) | 235 / 67 / 115 / 381 / 119 |
+> | 7×7 | 0 / 30 / 35 / 3 / 29 / 3 of 100 (was 0 / 0 / 147 / 6 / 42 / 5 of 200) | **0 / 28 / 58 / 8 / 68%** | — / 618 / 350 / 2,526 / 335 |
+>
+> Every tier is reachable by removal at 5×5 and 6×6, and the 6×6 floor is 25% easy / 61% medium
+> instead of 91% hard — the gate passes. Two consequences for E5's per-size tier sets (D6: tiers
+> calibrate *within* a size): **hard is now the scarce 5×5 tier** (8% — a 5-cell line rarely needs
+> more than a 12-arrangement scan, so a hard 5×5 means Latin subsets or a long scan), and **easy
+> 7×7 does not exist** (0/40 — a 7-cell line under a clue pair rarely keeps ≤ 3 arrangements).
+> Both are properties of the sizes, not defects of the ladder; the mini ships easy / medium / hard
+> with hard rare, and the large likely medium–extreme — E5 confirms with its own distribution.
+> The 5×5 fixture relabelled hard → easy; classify costs ~2 ms more at 6×6 and 7×7 (0.6 / 9.2 /
+> 8.0 ms). Hard 6×6 dropped from 85% to 58% and extreme from 73% to 53%: the puzzles did not
+> change, their grades did, which is the point.
+
 ## 4. Gates (plan E3)
 
 | Gate | Result |

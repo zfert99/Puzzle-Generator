@@ -27,15 +27,15 @@ parseSkyscrapersFixture(rows, mask, difficulty = 'unrated'):
 ```
 
 `difficulty` defaults to `'unrated'`: no fixture carries a grade the classifier did not assign
-(D7). **Since E2 the served set carries the classifier's word as a typed label** — `'hard'`,
-`'extreme'`, `'extreme'` for 5×5 / 6×6 / 7×7 — so the header, the Continue label and the PDF
-title show the solver's grade. The label is *written*, not computed at import: this module sits
+(D7). **Since E2 the served set carries the classifier's word as a typed label** — `'easy'`,
+`'extreme'`, `'extreme'` for 5×5 / 6×6 / 7×7 (the 5×5 graded `'hard'` until the E3 re-tier put
+its three small line scans at tier 1) — so the header, the Continue label and the PDF title show
+the solver's grade. The label is *written*, not computed at import: this module sits
 in the client bundle via `usePuzzle`, and grading at import would run three full solves plus the
 permutation-table builds (~30 ms) on every `/play` load for a value that never changes (the E2
 review's efficiency finding; the first draft did exactly that). The drift guard is
 `skyscrapers-fixtures.test.ts`: it re-grades every fixture with `classifySkyscrapers` and fails if
-a typed label disagrees, and `skyscrapers-logical-solver.test.ts` pins the tiers. Thinning clues
-to the uniqueness floor makes hard puzzles; the generator (E4/E5) is what makes the easy ones. The
+a typed label disagrees, and `skyscrapers-logical-solver.test.ts` pins the tiers. The
 `SKYSCRAPERS_NONUNIQUE_4X4` pair stays `'unrated'`.
 
 ## How the squares and masks were found

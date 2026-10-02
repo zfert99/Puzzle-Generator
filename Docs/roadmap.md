@@ -666,8 +666,9 @@ revisited under the same rule later.
 > extreme, naming the Hint's technique; 7×7 classified in 7 ms; merged 2026-10-02) and **E3**
 > (the yield spike, measured 2026-10-02: **D4 settled at 5 / 6 / 7** — 9×9 out; repair-with-restart
 > for 7×7; expert/extreme populated at 6×6; **but easy/medium 6×6 cannot be generated under the
-> E2 tiering** — 91% of all-clue squares already grade hard, so a line-filter re-tier by scan
-> size is recommended before E4 — `research/skyscrapers-feasibility-findings.md`). Full plan:
+> E2 tiering** — 91% of all-clue squares already graded hard, so the line scan was re-tiered by
+> size, **E3b**: easy/medium 6×6 now 28% / 85% of tier-bounded output, every tier reachable at
+> 5/6 — `research/skyscrapers-feasibility-findings.md` and its addendum). Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;
