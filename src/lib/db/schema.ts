@@ -37,7 +37,7 @@ export type Grid = number[][];
  * re-exports it as `Variant` (it imports from here; the reverse would be a cycle), so the
  * registry and the column can never disagree (a review finding on R1: the union was typed twice).
  */
-export type DailyVariant = 'classic' | 'killer' | 'calc' | 'kakuro';
+export type DailyVariant = 'classic' | 'killer' | 'calc' | 'kakuro' | 'skyscrapers';
 
 /** A Killer cage as stored in `daily_puzzles.cages` — mirrors the engine's `Cage` shape. */
 export interface StoredKillerCage {
@@ -66,12 +66,24 @@ export interface StoredKakuroRun {
 }
 
 /**
- * A cage as stored in `daily_puzzles.cages` (jsonb). Killer rows carry `sum`, Keisan rows carry
- * `op` + `target`, Kakuro rows carry runs (`sum` + `dir`) — the row's `variant` column says which,
- * so the serving route picks the right interpretation. The column shape is untyped jsonb, so no
- * migration was needed to add the Keisan variant, nor the Kakuro one (R1).
+ * A Skyscrapers edge clue as stored in `daily_puzzles.cages` — one entry per **present** clue
+ * (Skyscrapers plan D2: the clues ride the jsonb grab-bag with `variant` gating every reader, no
+ * migration). `side` + `index` locate it in the four-sided gutter, `count` is the towers seen.
  */
-export type StoredCage = StoredKillerCage | StoredCalcCage | StoredKakuroRun;
+export interface StoredSkyscraperClue {
+  side: 'top' | 'bottom' | 'left' | 'right';
+  index: number;
+  count: number;
+}
+
+/**
+ * A cage as stored in `daily_puzzles.cages` (jsonb). Killer rows carry `sum`, Keisan rows carry
+ * `op` + `target`, Kakuro rows carry runs (`sum` + `dir`), Skyscrapers rows carry edge clues
+ * (`side` + `index` + `count`) — the row's `variant` column says which, so the serving route picks
+ * the right interpretation. The column shape is untyped jsonb, so no migration was needed to add
+ * the Keisan variant, nor the Kakuro one (R1), nor the Skyscrapers one (Skyscrapers R1).
+ */
+export type StoredCage = StoredKillerCage | StoredCalcCage | StoredKakuroRun | StoredSkyscraperClue;
 
 /**
  * One shared puzzle per difficulty per calendar day (UTC). The `UNIQUE(date,

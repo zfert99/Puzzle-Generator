@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { getDailyPuzzle } from '@/features/dailies/dailies.service';
-import { isDailyDifficulty, isIsoDate, toUtcDateString } from '@/lib/db/daily-row';
+import { isDailyDifficulty, isIsoDate, restoreSkyscraperClues, toUtcDateString } from '@/lib/db/daily-row';
+import type { StoredSkyscraperClue } from '@/lib/db/schema';
 import { logger } from '@/lib/logger';
 
 // Touches the DB (Node-only driver) and reads server time — keep off the Edge runtime.
@@ -67,14 +68,16 @@ export async function GET(req: NextRequest) {
     // The VARIANT is read from the stored column — not inferred from the key (a rung key like
     // `hard` holds a different type each day) nor from `cages` presence (Killer, Keisan and
     // Kakuro all store something there). The board's `startNewGame` branches on this `variant`
-    // tag: cages (sum vs operator+target) for Killer/Keisan, `runs` for Kakuro (its runs ride the
-    // same column — Kakuro plan R1).
+    // tag: cages (sum vs operator+target) for Killer/Keisan, `runs` for Kakuro, `clues` (the four
+    // gutter arrays) for Skyscrapers — the last two ride the same column (Kakuro R1, Skyscrapers R1).
     const caged =
       puzzle.cages && puzzle.variant === 'kakuro'
         ? { variant: puzzle.variant, runs: puzzle.cages }
-        : puzzle.cages && (puzzle.variant === 'killer' || puzzle.variant === 'calc')
-          ? { variant: puzzle.variant, cages: puzzle.cages }
-          : {};
+        : puzzle.cages && puzzle.variant === 'skyscrapers'
+          ? { variant: puzzle.variant, clues: restoreSkyscraperClues(puzzle.cages as StoredSkyscraperClue[], puzzle.grid.length) }
+          : puzzle.cages && (puzzle.variant === 'killer' || puzzle.variant === 'calc')
+            ? { variant: puzzle.variant, cages: puzzle.cages }
+            : {};
 
     return NextResponse.json(
       {

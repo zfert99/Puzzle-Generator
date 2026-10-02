@@ -59,3 +59,11 @@ the stored grid's length, so mini boards need no schema change.
 `route.test.ts` (R1 review) pins the payload shape per variant with the service mocked at the
 boundary: a Kakuro row comes back as `runs`, Killer/Keisan as `cages`, classic as neither, and a
 missing board as 404 — the one place a stored row becomes a board, which no unit test had covered.
+
+## Skyscrapers rows (Skyscrapers plan R1)
+
+A row whose `variant` is `skyscrapers` has its `cages` column (one `StoredSkyscraperClue` per present
+clue — D2) restored to the four gutter arrays by `restoreSkyscraperClues(stored, grid.length)` and
+served as **`clues`**, so the board's `startNewGame` sees a `SkyscrapersPuzzle`. Neither `cages`
+nor `runs` appears on such a response — the `variant` tag, read from the column, decides which of
+the three shapes a row takes (Killer/Keisan `cages`, Kakuro `runs`, Skyscrapers `clues`).

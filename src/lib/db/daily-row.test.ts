@@ -18,6 +18,10 @@ import {
   toDailyPuzzleRow,
   toUtcDateString,
   VARIANTS,
+  SIZES,
+  sectionForKey,
+  storeSkyscraperClues,
+  restoreSkyscraperClues,
   STANDARD_RUNGS,
   type DailySize,
   type Variant,
@@ -128,12 +132,24 @@ describe('isEligible / getProfile coverage (Risk #1)', () => {
     expect(isEligible('killer', 6, 'hard')).toBe(true); // full e/m/h at 6×6
   });
 
-  it('has no expert/extreme minis and always allows 9×9', () => {
+  it("has no expert/extreme minis and always allows every rung at the type's OWN standard size", () => {
     for (const variant of VARIANTS) {
-      expect(isEligible(variant, 4, 'expert')).toBe(false);
-      expect(isEligible(variant, 6, 'extreme')).toBe(false);
-      for (const difficulty of STANDARD_RUNGS) expect(isEligible(variant, 9, difficulty)).toBe(true);
+      for (const miniSize of SIZES[variant].mini) {
+        expect(isEligible(variant, miniSize, 'expert')).toBe(false);
+        expect(isEligible(variant, miniSize, 'extreme')).toBe(false);
+      }
+      for (const difficulty of STANDARD_RUNGS) expect(isEligible(variant, SIZES[variant].standard, difficulty)).toBe(true);
     }
+  });
+
+  it('gives Skyscrapers a 6×6 STANDARD and a 5×5 mini (D5/D12): every rung at 6, e/m/h at 5, nothing at 7 or 9', () => {
+    for (const rung of ['easy', 'medium', 'hard', 'expert', 'extreme'] as const) expect(isEligible('skyscrapers', 6, rung)).toBe(true);
+    expect(isEligible('skyscrapers', 5, 'easy')).toBe(true);
+    expect(isEligible('skyscrapers', 5, 'hard')).toBe(true);
+    expect(isEligible('skyscrapers', 5, 'expert')).toBe(false);
+    expect(isEligible('skyscrapers', 9, 'easy')).toBe(false);
+    expect(isEligible('skyscrapers', 4, 'easy')).toBe(false);
+    expect(SIZES.skyscrapers).toEqual({ mini: [5], standard: 6 });
   });
 
   it('keeps sizes per type (D11): Kakuro has no 4×4 at all, only its 6×6 mini', () => {
@@ -145,37 +161,40 @@ describe('isEligible / getProfile coverage (Risk #1)', () => {
 });
 
 describe('rollDailyAssignment', () => {
-  it('rolls 4 standard (distinct rungs, all 4 types) + 3 minis (3 of the 4 types), all eligible', () => {
+  it('rolls 5 standard (every rung once — a bijection — all 5 types) + 3 minis (3 of the 5 types), all eligible', () => {
     const slots = rollDailyAssignment(mulberry32(1));
-    expect(slots).toHaveLength(7);
+    expect(slots).toHaveLength(8);
 
     const standard = slots.filter((s) => s.section === 'standard');
     const minis = slots.filter((s) => s.section === 'mini');
-    expect(standard).toHaveLength(4);
+    expect(standard).toHaveLength(5);
     expect(minis).toHaveLength(3);
 
-    // Standard: 4 distinct rungs of the 5, keyed by rung, at each type's standard size, one per type.
-    expect(new Set(standard.map((s) => s.key)).size).toBe(4);
-    expect(standard.every((s) => s.gridSize === 9 && s.key === s.difficulty)).toBe(true);
+    // Standard: all 5 rungs (a bijection), keyed by rung, at each type's OWN standard size — 9×9 for
+    // four types, 6×6 for Skyscrapers (D5) — one per type.
+    expect(new Set(standard.map((s) => s.key)).size).toBe(5);
+    expect(standard.every((s) => s.gridSize === SIZES[s.variant].standard && s.key === s.difficulty)).toBe(true);
     expect(new Set(standard.map((s) => s.variant))).toEqual(new Set(VARIANTS));
 
-    // Minis: the three tier slots, keyed mini-<tier>, three DIFFERENT types (one sits out — D4).
+    // Minis: the three tier slots, keyed mini-<tier>, three DIFFERENT types (two sit out — D4).
     expect(minis.map((s) => s.key).sort()).toEqual(['mini-easy', 'mini-hard', 'mini-medium']);
     expect(new Set(minis.map((s) => s.variant)).size).toBe(3);
 
-    // Every slot is a real, generatable board, and all 7 keys are distinct.
+    // Every slot is a real, generatable board, and all 8 keys are distinct.
     expect(slots.every((s) => isEligible(s.variant, s.gridSize, s.difficulty))).toBe(true);
-    expect(new Set(slots.map((s) => s.key)).size).toBe(7);
+    expect(new Set(slots.map((s) => s.key)).size).toBe(8);
   });
 
-  it('holds its invariants across many seeds, and reaches Kakuro in both sections', () => {
+  it('holds its invariants across many seeds, and reaches Kakuro and Skyscrapers in both sections', () => {
     let kakuroStandard = 0;
     let kakuroMini = 0;
+    let skyStandard = 0;
+    let skyMini = 0;
     for (let seed = 0; seed < 300; seed++) {
       const slots = rollDailyAssignment(mulberry32(seed));
-      expect(slots).toHaveLength(7);
+      expect(slots).toHaveLength(8);
       const standard = slots.filter((s) => s.section === 'standard');
-      expect(new Set(standard.map((s) => s.difficulty)).size).toBe(4);
+      expect(new Set(standard.map((s) => s.difficulty)).size).toBe(5); // every rung, every day
       expect(new Set(standard.map((s) => s.variant))).toEqual(new Set(VARIANTS));
       const minis = slots.filter((s) => s.section === 'mini');
       expect(new Set(minis.map((s) => s.variant)).size).toBe(3);
@@ -186,12 +205,21 @@ describe('rollDailyAssignment', () => {
         if (s.variant === 'kakuro' && s.section === 'mini') expect(s.gridSize).toBe(6);
         if (s.variant === 'kakuro' && s.section === 'standard') kakuroStandard++;
         if (s.variant === 'kakuro' && s.section === 'mini') kakuroMini++;
+        if (s.variant === 'skyscrapers' && s.section === 'mini') expect(s.gridSize).toBe(5);
+        if (s.variant === 'skyscrapers' && s.section === 'standard') {
+          expect(s.gridSize).toBe(6); // the first non-9×9 standard (D5)
+          skyStandard++;
+        }
+        if (s.variant === 'skyscrapers' && s.section === 'mini') skyMini++;
       }
     }
     // Every type is in every standard set; Kakuro sits out the minis about a quarter of the time.
     expect(kakuroStandard).toBe(300);
-    expect(kakuroMini).toBeGreaterThan(150);
+    expect(kakuroMini).toBeGreaterThan(100); // 3 of 5 types seated → ~60% per type
     expect(kakuroMini).toBeLessThan(300);
+    expect(skyStandard).toBe(300);
+    expect(skyMini).toBeGreaterThan(100);
+    expect(skyMini).toBeLessThan(300);
   });
 
   it('seats every type in the hard mini slot about equally — a one-size type is not halved (review 9)', () => {
@@ -226,6 +254,7 @@ describe('rollDailyAssignment', () => {
     // With Kakuro seated, its boards are 6×6 wherever it sits.
     for (const config of miniConfigurations(VARIANTS)) {
       for (const a of config) if (a.variant === 'kakuro') expect(a.gridSize).toBe(6);
+      for (const a of config) if (a.variant === 'skyscrapers') expect(a.gridSize).toBe(5);
     }
   });
 
@@ -412,5 +441,45 @@ describe('firstDayOfNextMonth', () => {
     ['0099-12', '0100-01-01'],
   ])('keeps two-digit years in their own century: %p -> %p', (month, expected) => {
     expect(firstDayOfNextMonth(month)).toBe(expected);
+  });
+});
+
+describe('sectionForKey (D5 — the first non-9×9 standard)', () => {
+  it('files active boards by key, so a 6×6 Skyscrapers under `hard` is a STANDARD and a 6×6 `mini-hard` a mini', () => {
+    expect(sectionForKey('hard', 6)).toBe('standard');
+    expect(sectionForKey('extreme', 9)).toBe('standard');
+    expect(sectionForKey('mini-hard', 6)).toBe('mini');
+    expect(sectionForKey('mini-easy', 5)).toBe('mini');
+  });
+
+  it('falls back to the grid size only for retired keys, whose prefixes lie', () => {
+    expect(sectionForKey('killer6-hard', 6)).toBe('mini');
+    expect(sectionForKey('calc4-easy', 4)).toBe('mini');
+    expect(sectionForKey('mini4-medium', 4)).toBe('mini');
+    expect(sectionForKey('killer-hard', 9)).toBe('standard');
+    expect(sectionForKey('killer', 9)).toBe('standard');
+  });
+});
+
+describe('Skyscrapers rows (R1, D2: clues ride the cages column)', () => {
+  const clues = { top: [0, 3, 0, 1, 0], bottom: [2, 0, 0, 0, 0], left: [0, 0, 0, 0, 0], right: [0, 2, 1, 0, 0] };
+
+  it('stores one entry per present clue and restores the four arrays exactly', () => {
+    const stored = storeSkyscraperClues(clues);
+    expect(stored).toHaveLength(5);
+    expect(stored).toContainEqual({ side: 'top', index: 1, count: 3 });
+    expect(stored).toContainEqual({ side: 'right', index: 2, count: 1 });
+    expect(restoreSkyscraperClues(stored, 5)).toEqual(clues);
+    expect(restoreSkyscraperClues([{ side: 'left', index: 9, count: 2 }], 5).left).toEqual([0, 0, 0, 0, 0]); // out of range ignored
+  });
+
+  it('maps a Skyscrapers puzzle to a row with the clues as cages and the clue count as the stat', () => {
+    const grid = Array.from({ length: 5 }, () => Array(5).fill(0));
+    const solution = Array.from({ length: 5 }, (_, r) => Array.from({ length: 5 }, (_, c) => ((r + c) % 5) + 1));
+    const row = toDailyPuzzleRow({ variant: 'skyscrapers', gridSize: 5, grid, solution, clues, difficulty: 'easy' }, '2026-10-02', 'mini-easy');
+    expect(row.variant).toBe('skyscrapers');
+    expect(row.clueCount).toBe(5);
+    expect(row.cages).toEqual(storeSkyscraperClues(clues));
+    expect(row.difficulty).toBe('mini-easy');
   });
 });

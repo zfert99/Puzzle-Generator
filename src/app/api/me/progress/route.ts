@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
     const days: Record<string, DayProgress> = {};
     for (const row of rows) {
       const day = (days[row.date] ??= { standard: { done: 0, total: 0 }, mini: { done: 0, total: 0 } });
-      const set = row.gridSize < 9 ? day.mini : day.standard;
+      const set = row.section === 'mini' ? day.mini : day.standard;
       set.done += row.done;
       set.total += row.total;
     }

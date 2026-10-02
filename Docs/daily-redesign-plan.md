@@ -58,14 +58,18 @@ continue.
 
 **One daily slot per puzzle TYPE; the DIFFICULTY is the randomized axis.** N types → N standard
 slots + 3 mini slots. **Interim (3 types): 3 standard + 3 mini = 6 boards/day** (down from 30);
-**now (4 types, Kakuro plan R1, October 2026): 4 + 3 = 7** — the mini count stayed at three with
+**then (4 types, Kakuro plan R1, October 2026): 4 + 3 = 7** — the mini count stayed at three with
 three of the four types seated each day (decision D4 in `kakuro-log.md`, resolving the open
-scaling question below); end state (5 types): 5 + 3.
+scaling question below); **now (5 types, Skyscrapers plan R1, October 2026): 5 + 3 = 8**, the end
+state — every rung is played every day (a bijection) and two types sit out the minis.
 
-- **Standard set (9×9):** one slot per type (`classic`, `killer`, `calc`, `kakuro`). Each day, draw
-  one **distinct** difficulty per type from `{easy, medium, hard, expert, extreme}` and assign it
-  (a random *injection*; a full 5-rung *bijection* once 5 types exist). Every type supports the full
-  9×9 ladder → no eligibility gaps.
+- **Standard set (each type's own standard size):** one slot per type (`classic`, `killer`, `calc`,
+  `kakuro`, `skyscrapers`). Each day, draw one **distinct** difficulty per type from `{easy, medium,
+  hard, expert, extreme}` and assign it (a random *injection*; a full 5-rung *bijection* at 5 types —
+  now). Every type supports the full ladder at its standard size → no eligibility gaps. The standard
+  size was 9×9 for every type until Skyscrapers, whose standard is the **6×6** (Skyscrapers plan D5,
+  owner's call) — so a board's *section* is filed by its **key**, not by "smaller than 9×9"
+  (`sectionForKey` in `daily-row.ts`).
 - **Mini set:** one slot per type. Difficulties from **`{easy, medium, hard}` only** (no
   expert/extreme minis). **Size follows difficulty:** easy → 4×4, medium → 4×4, hard →
   random(4×4/6×6). **Eligibility** (respected by the roller): `classic`/`calc` ∈ all 4×4 e/m/h + all

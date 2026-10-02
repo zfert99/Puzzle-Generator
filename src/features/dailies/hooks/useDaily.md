@@ -34,3 +34,9 @@ both variants — no separate Killer code path in the hook or the experiences.
 
 `DailyPuzzleResponse` is a discriminated union (classic | killer) whose `difficulty` is a
 daily board KEY; `gridSize` comes from the stored grid (minis are 4×4/6×6).
+
+## Skyscrapers payload (Skyscrapers R1)
+
+The response union gained `Omit<SkyscrapersPuzzle, 'difficulty'> & DailyBase`: `variant:
+'skyscrapers'` plus `clues` (the four gutter arrays, restored by the route from the stored
+per-clue list). `startNewGame` branches on the tag as for the other types.

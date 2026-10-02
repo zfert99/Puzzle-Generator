@@ -2,7 +2,8 @@ import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
-import type { DailyVariant, Grid, NewDailyPuzzle } from './schema';
+import { GUTTER_SIDES, presentClueCount, type SkyscraperClues, type SkyscrapersPuzzle } from '@/features/engine/skyscrapers/skyscrapers-types';
+import type { DailyVariant, Grid, NewDailyPuzzle, StoredCage, StoredSkyscraperClue } from './schema';
 
 /**
  * The daily registry — **type-as-slot** model. One daily slot per puzzle TYPE with the
@@ -10,11 +11,13 @@ import type { DailyVariant, Grid, NewDailyPuzzle } from './schema';
  * `Docs/daily-redesign-plan.md`. Two data structures:
  *
  * - **Slots** — what the cron generates each day: standard slots keyed by difficulty RUNG
- *   (`easy…extreme`, one per type — 4 of 5 drawn/day at four types) + mini slots keyed
- *   `mini-<tier>` (always 3; at four types, 3 of the 4 types roll into them — Kakuro plan D4).
- *   The TYPE is rolled per day and stored in `daily_puzzles.variant` — the key no longer
- *   encodes it. Sizes are **per type** (Kakuro plan D11): `SIZES[variant]` says which mini
- *   sizes a type ships, so a mini slot is played at the assigned type's own mini size.
+ *   (`easy…extreme`, one per type — at five types every rung is drawn, a bijection) + mini slots
+ *   keyed `mini-<tier>` (always 3; 3 of the 5 types roll into them — Kakuro plan D4). The TYPE is
+ *   rolled per day and stored in `daily_puzzles.variant` — the key no longer encodes it. Sizes
+ *   are **per type** (Kakuro plan D11): `SIZES[variant]` says which mini sizes a type ships and
+ *   which size is its standard — 9×9 for four types, **6×6 for Skyscrapers** (Skyscrapers plan D5,
+ *   the first non-9×9 standard), so a section is never read off the grid size alone
+ *   (`sectionForKey`).
  * - **Profile table** (`PROFILE`) — per `(variant, size, difficulty)`: `minSolveMs` (anti-cheat
  *   plausibility floor, see `solve-rules.md`) and `botTimeMs` (Puzzle Bot's beatable time). Values
  *   moved verbatim from the old registry + the new `(killer,4,easy)` row.
@@ -26,12 +29,12 @@ import type { DailyVariant, Grid, NewDailyPuzzle } from './schema';
 
 /** Puzzle type — the stored `daily_puzzles.variant`; the union lives with the column (`schema.ts`). */
 export type Variant = DailyVariant;
-/** The five 9×9 difficulty rungs. Standard slots are keyed by these. */
+/** The five standard difficulty rungs. Standard slots are keyed by these. */
 export type StandardRung = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 /** Mini difficulties — the 3-tier ladder (no expert/extreme minis). */
 export type MiniTier = 'easy' | 'medium' | 'hard';
 /** A grid size some daily type ships; which type ships which is `SIZES` (D11). */
-export type DailySize = 4 | 6 | 9;
+export type DailySize = 4 | 5 | 6 | 9;
 
 /**
  * Any daily key routes accept. Kept as `string` because keys are now data-driven (slot keys +
@@ -39,14 +42,17 @@ export type DailySize = 4 | 6 | 9;
  */
 export type DailyDifficulty = string;
 
-export const VARIANTS: readonly Variant[] = ['classic', 'killer', 'calc', 'kakuro'];
+export const VARIANTS: readonly Variant[] = ['classic', 'killer', 'calc', 'kakuro', 'skyscrapers'];
 
 /**
  * The sizes each type ships in the daily (Kakuro plan D11: sizes are per type, not the inherited
  * 4/6/9). The Sudoku family keeps `{ mini: [4, 6], standard: 9 }`, so nothing it does changes;
- * Kakuro's mini is the 6×6 (D6′ — its 7×7 is a `/play` size, not a daily one). A mini slot's
- * easy/medium board is played at the type's *smallest* mini size and its hard board at a size
- * rolled from the type's list — for the Sudoku family that is exactly the old
+ * Kakuro's mini is the 6×6 (D6′ — its 7×7 is a `/play` size, not a daily one). **Skyscrapers'
+ * standard is the 6×6** (Skyscrapers plan D5, owner's call 2026-10-02): it is the only Skyscrapers
+ * size that offers all five rungs (E5's tier sets — the 5×5 tops out at hard, the 7×7 has no
+ * easy), and a standard slot must cover the whole ladder for the roll's bijection; its mini is the
+ * 5×5. A mini slot's easy/medium board is played at the type's *smallest* mini size and its hard
+ * board at a size rolled from the type's list — for the Sudoku family that is exactly the old
  * "easy/medium = 4×4, hard = random(4/6)" rule.
  */
 export const SIZES: Record<Variant, { readonly mini: readonly DailySize[]; readonly standard: DailySize }> = {
@@ -54,12 +60,14 @@ export const SIZES: Record<Variant, { readonly mini: readonly DailySize[]; reado
   killer: { mini: [4, 6], standard: 9 },
   calc: { mini: [4, 6], standard: 9 },
   kakuro: { mini: [6], standard: 9 },
+  skyscrapers: { mini: [5], standard: 6 },
 };
 
 /**
  * Is this string one of the daily's registered variants? The board store's `PuzzleVariant` and
- * the registry's `Variant` now agree (Kakuro joined the daily in plan slice R1); the guard stays
- * because a surface that labels a board from the store narrows with it rather than an assertion.
+ * the registry's `Variant` agree (Kakuro joined the daily in its R1, Skyscrapers in its R1); the
+ * guard stays because a surface that labels a board from the store narrows with it rather than an
+ * assertion.
  */
 export function isDailyVariant(value: string): value is Variant {
   return (VARIANTS as readonly string[]).includes(value);
@@ -144,6 +152,19 @@ const PROFILE: Record<string, ProfileEntry> = {
   'kakuro-6-easy': { minSolveMs: 6_000, botTimeMs: 60_000 },
   'kakuro-6-medium': { minSolveMs: 8_000, botTimeMs: 100_000 },
   'kakuro-6-hard': { minSolveMs: 10_000, botTimeMs: 150_000 },
+  // ---- Skyscrapers (Skyscrapers plan R1) — ESTIMATES from cell count, not telemetry (G6): the
+  // only public numbers are a ~3.4–4.5 s hall-of-fame on small easy grids and GM Puzzles'
+  // 9–36 min "very hard" 6×6. The **6×6 standard** (36 cells, no givens) floors sit well below
+  // record pace (≈ 0.2–0.5 s/cell) and the bot near a typical skilled pace; the 5×5 mini (25 cells)
+  // scales down. Tune from live attempts once they exist.
+  'skyscrapers-6-easy': { minSolveMs: 8_000, botTimeMs: 90_000 },
+  'skyscrapers-6-medium': { minSolveMs: 10_000, botTimeMs: 150_000 },
+  'skyscrapers-6-hard': { minSolveMs: 12_000, botTimeMs: 240_000 },
+  'skyscrapers-6-expert': { minSolveMs: 15_000, botTimeMs: 360_000 },
+  'skyscrapers-6-extreme': { minSolveMs: 20_000, botTimeMs: 600_000 },
+  'skyscrapers-5-easy': { minSolveMs: 4_000, botTimeMs: 45_000 },
+  'skyscrapers-5-medium': { minSolveMs: 5_000, botTimeMs: 70_000 },
+  'skyscrapers-5-hard': { minSolveMs: 6_000, botTimeMs: 110_000 },
 };
 
 /** The tuning for a `(variant, size, difficulty)`, or `undefined` if not an eligible combo. */
@@ -156,10 +177,11 @@ export function getProfile(
 }
 
 /**
- * Whether a `(variant, size, difficulty)` is a real daily board. Standard = every type at its
- * standard size (9×9) on all five rungs. Minis = 3-tier only, at a size the type ships
- * (`SIZES`): classic/calc at 4×4 and 6×6, Kakuro at 6×6 only; **Killer is easy-only at 4×4**
- * (de-risked — tiers collapse to tier-1 on a 16-cell no-givens grid) but full e/m/h at 6×6.
+ * Whether a `(variant, size, difficulty)` is a real daily board. Standard = every type at **its**
+ * standard size (9×9 for four types, 6×6 for Skyscrapers — D5) on all five rungs. Minis = 3-tier
+ * only, at a size the type ships (`SIZES`): classic/calc at 4×4 and 6×6, Kakuro at 6×6 only,
+ * Skyscrapers at 5×5 only; **Killer is easy-only at 4×4** (de-risked — tiers collapse to tier-1 on
+ * a 16-cell no-givens grid) but full e/m/h at 6×6.
  */
 export function isEligible(variant: Variant, gridSize: DailySize, difficulty: StandardRung): boolean {
   if (gridSize === SIZES[variant].standard) return true;
@@ -190,6 +212,21 @@ export function difficultyForKey(key: string): StandardRung {
   const tail = key.slice(key.lastIndexOf('-') + 1);
   if ((STANDARD_RUNGS as readonly string[]).includes(tail)) return tail as StandardRung;
   return 'medium'; // legacy 'killer' (and any unknown key): the historical engine difficulty
+}
+
+/**
+ * Which section a stored board belongs to. The **key** decides for active boards (a bare rung is
+ * standard, `mini-*` is a mini); the grid size is only the fallback for retired keys, whose
+ * prefixes lie (`mini4-*`, `killer6-*`, `calc4-*` are minis without a `mini-` prefix) but whose
+ * standards were all 9×9. Size alone stopped being the rule when Skyscrapers brought the first
+ * **6×6 standard** (D5): "smaller than 9×9 ⇒ mini" would file a `hard` Skyscrapers under the
+ * minis. Every surface that files a board — `/api/daily/slots`, the playing label, the continue
+ * banner, the archive progress aggregate — uses this one rule.
+ */
+export function sectionForKey(key: string, gridSize: number): 'standard' | 'mini' {
+  if ((STANDARD_RUNGS as readonly string[]).includes(key)) return 'standard';
+  if (key.startsWith('mini-')) return 'mini';
+  return gridSize < 9 ? 'mini' : 'standard';
 }
 
 /** Fisher–Yates copy shuffle driven by an injectable RNG (deterministic in tests). */
@@ -235,17 +272,18 @@ export function miniConfigurations(types: readonly Variant[]): { variant: Varian
 
 /**
  * Roll one day's assignment: a valid, distinct set of daily slots. Pure (RNG injected) so the
- * cron and tests share it. Returns one standard slot per type + 3 mini slots — **4 + 3 = 7** at
- * four types (Kakuro plan D4; 5 + 3 at five).
+ * cron and tests share it. Returns one standard slot per type + 3 mini slots — **5 + 3 = 8** at
+ * five types (the daily plan's end state; 4 + 3 at four, Kakuro plan D4).
  *
- * - **Standard:** draw `VARIANTS.length` distinct rungs of the 5, assign one to each type (a
- *   random injection). Every type covers the full standard ladder, so any pairing is valid; keys
- *   are the rungs → distinct. One rung sits out each day at four types.
+ * - **Standard:** draw `VARIANTS.length` distinct rungs of the 5, assign one to each type — at
+ *   five types a **bijection**: every rung is played every day, by a different type. Every type
+ *   covers the full standard ladder at its own standard size (Skyscrapers at 6×6 — D5), so any
+ *   pairing is valid; keys are the rungs → distinct.
  * - **Minis:** enumerate every valid seating of 3 of the N types into the three tier slots, with
  *   the hard slot's size rolled from the seated type's mini sizes (`miniConfigurations`); pick a
- *   seating uniformly, then a hard size uniformly within it. One type sits out the minis each
- *   day at four types. This still guarantees Killer only ever lands on easy-4×4 or a 6×6 hard
- *   slot, and Kakuro only on 6×6.
+ *   seating uniformly, then a hard size uniformly within it. Two types sit out the minis each
+ *   day at five types. This still guarantees Killer only ever lands on easy-4×4 or a 6×6 hard
+ *   slot, Kakuro only on 6×6, and Skyscrapers only on 5×5.
  */
 export function rollDailyAssignment(rng: () => number = Math.random): PlannedSlot[] {
   const rungs = shuffle(STANDARD_RUNGS, rng).slice(0, VARIANTS.length);
@@ -355,18 +393,19 @@ export function countClues(grid: Grid): number {
  * registry), so it is correct even though the roller assigns types to rung-keyed slots.
  */
 export function toDailyPuzzleRow(
-  puzzle: SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle,
+  puzzle: SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle | SkyscrapersPuzzle,
   isoDate: string,
   key: DailyDifficulty,
 ): NewDailyPuzzle {
   // Real discriminant, not `'cages' in puzzle`: Killer AND Keisan both carry cages, so the old
-  // duck-type couldn't tell them apart. Killer/Keisan/Kakuro carry an explicit `variant`; classic
-  // doesn't. A Kakuro's RUNS ride the `cages` column (same shape plus `dir` — the plan's reason
-  // for making a run look like a cage), with the run count as the display stat.
+  // duck-type couldn't tell them apart. Killer/Keisan/Kakuro/Skyscrapers carry an explicit
+  // `variant`; classic doesn't. A Kakuro's RUNS and a Skyscrapers' edge CLUES ride the `cages`
+  // column (the jsonb grab-bag `variant` gates — Kakuro D2/D3, Skyscrapers D2), each with its
+  // own count as the display stat.
   if (!('variant' in puzzle)) {
     return { date: isoDate, difficulty: key, variant: 'classic', grid: puzzle.grid, solution: puzzle.solution, clueCount: countClues(puzzle.grid), cages: null };
   }
-  const stored = puzzle.variant === 'kakuro' ? puzzle.runs : puzzle.cages;
+  const stored: StoredCage[] = puzzle.variant === 'kakuro' ? puzzle.runs : puzzle.variant === 'skyscrapers' ? storeSkyscraperClues(puzzle.clues) : puzzle.cages;
   return {
     date: isoDate,
     difficulty: key,
@@ -377,6 +416,32 @@ export function toDailyPuzzleRow(
     cages: stored,
   };
 }
+
+/**
+ * A Skyscrapers clue set as the `cages` column stores it: one entry per **present** clue, so the
+ * entry count is the clue count (the display stat) and a blank is simply absent (Skyscrapers D2).
+ */
+export function storeSkyscraperClues(clues: SkyscraperClues): StoredSkyscraperClue[] {
+  const stored: StoredSkyscraperClue[] = [];
+  for (const side of GUTTER_SIDES) {
+    clues[side].forEach((count, index) => {
+      if (count > 0) stored.push({ side, index, count });
+    });
+  }
+  return stored;
+}
+
+/** The inverse of `storeSkyscraperClues`: four length-`size` arrays with 0 for every absent clue. */
+export function restoreSkyscraperClues(stored: readonly StoredSkyscraperClue[], size: number): SkyscraperClues {
+  const clues: SkyscraperClues = { top: Array(size).fill(0), bottom: Array(size).fill(0), left: Array(size).fill(0), right: Array(size).fill(0) };
+  for (const { side, index, count } of stored) {
+    if (index >= 0 && index < size) clues[side][index] = count;
+  }
+  return clues;
+}
+
+/** The clue count a Skyscrapers row reports — kept beside the store/restore pair so the three agree. */
+export const skyscrapersClueCount = presentClueCount;
 
 /** Format a `Date` as an ISO `YYYY-MM-DD` string in UTC (the daily rollover zone). */
 export function toUtcDateString(now: Date): string {

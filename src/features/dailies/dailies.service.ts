@@ -20,6 +20,8 @@ import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/k
 import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
 import { generateKakuro, type KakuroSize } from '@/features/engine/kakuro/kakuro';
 import type { KakuroLevel, KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
+import { generateSkyscrapers } from '@/features/engine/skyscrapers/skyscrapers';
+import type { SkyscrapersLevel, SkyscrapersPuzzle, SkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
@@ -47,18 +49,24 @@ export interface GenerateDailiesResult {
   skipped: boolean;
 }
 
-type EnginePuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle;
+type EnginePuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle | SkyscrapersPuzzle;
 
 /** Generate the puzzle for one slot, dispatching by the slot's rolled variant. */
 function generatePuzzleFor(slot: PlannedSlot): EnginePuzzle {
   switch (slot.variant) {
     case 'killer':
-      return generateKillerSudoku(slot.difficulty as KillerDifficulty, { gridSize: slot.gridSize });
+      // The Sudoku family's registry sizes are 4/6/9; `DailySize` also admits Skyscrapers' 5, which
+      // `SIZES` never assigns to these types — hence the narrowing casts.
+      return generateKillerSudoku(slot.difficulty as KillerDifficulty, { gridSize: slot.gridSize as 4 | 6 | 9 });
     case 'calc':
-      return generateCalcSudoku(slot.difficulty as CalcDifficulty, { gridSize: slot.gridSize });
+      return generateCalcSudoku(slot.difficulty as CalcDifficulty, { gridSize: slot.gridSize as 4 | 6 | 9 });
     case 'kakuro':
       // Fresh and at exactly the slot's tier (Kakuro E5); the daily's sizes for it are 6 and 9.
       return generateKakuro(slot.difficulty as KakuroLevel, { gridSize: slot.gridSize as KakuroSize });
+    case 'skyscrapers':
+      // Fresh and at exactly the slot's tier (Skyscrapers E5); the daily's sizes for it are the 5×5
+      // mini and the 6×6 standard (D5), both of which offer every rung the roller can hand them.
+      return generateSkyscrapers(slot.difficulty as SkyscrapersLevel, { gridSize: slot.gridSize as SkyscrapersSize });
     default:
       return generateSudoku(slot.difficulty as Difficulty, slot.gridSize);
   }
@@ -139,7 +147,7 @@ function generateSlotWithFallback(
 
 /**
  * Generate and persist one day's dailies for `isoDate` (UTC): a per-day roll over the type-as-slot
- * model (3 standard + 3 mini today; see `daily-row.ts`).
+ * model (5 standard + 3 mini at five types; see `daily-row.ts`).
  *
  * **Idempotent via the explicit guard below, NOT via `onConflictDoNothing` alone** — the roll is
  * random, so the unique index can't recognise a re-run (it would draw different rungs and add them).

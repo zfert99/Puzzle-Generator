@@ -18,7 +18,8 @@ Select every daily_puzzles row for that date: key, variant, grid.
 Shape each into { key, variant, difficulty, gridSize, section }:
   difficulty = the rung the key refers to (difficultyForKey — handles active AND retired keys)
   gridSize   = derived from the stored grid's length (no grid_size column needed)
-  section    = 'mini' if gridSize < 9, else 'standard'
+  section    = sectionForKey(key, gridSize): a rung key -> standard, mini-* -> mini,
+               a retired key -> by size (< 9 is a mini)
 Sort: standard slots in ladder order, then minis easy -> hard.
 Return 200 { date, slots }.
 ```
@@ -38,13 +39,15 @@ solution the interactive board needs locally) comes from `GET /api/daily`, which
 that anti-cheat posture is reasoned about. Keeping this endpoint solution-free means it can stay
 public and uncached-but-cheap without widening the surface that serves answers.
 
-**Why `section` comes from the grid size, not the `mini-` key prefix.** The prefix looks like the
-obvious signal but is wrong for **retired** keys: `mini4-medium`, `killer6-hard` and `calc4-easy`
-carry no `mini-` prefix, so they'd be filed under Standard — and because the shared `slotLabel` only
-shows a board's size for minis, an archived day rendered several indistinguishable
-"Medium · Classic" pills. Size is the real signal (a board is a mini iff it's smaller than 9×9) and
-it holds for active and retired keys alike. Caught by looking at the rendered page, now covered by a
-route test.
+**Why `section` comes from the key first and the grid size only for retired keys.** For active
+boards the key is the truth — a bare rung is a standard slot *whatever its size*, which matters since
+Skyscrapers' standard is the 6×6 (Skyscrapers plan D5, the first non-9×9 standard; "smaller than
+9×9 ⇒ mini" would have filed a `hard` Skyscrapers under the minis). For **retired** keys the prefix
+lies (`mini4-medium`, `killer6-hard`, `calc4-easy` carry no `mini-` prefix) but every retired
+standard was 9×9, so size decides there — filing them under Standard once rendered several
+indistinguishable "Medium · Classic" pills on an archived day. One rule, `sectionForKey` in
+`daily-row.ts`, shared with the playing label, the continue banner and the progress aggregate;
+both cases are route tests.
 
 ## Archive behaviour
 

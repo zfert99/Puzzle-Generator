@@ -50,6 +50,12 @@ describe('slotLabel', () => {
     expect(slotLabel(DAY[1])).toBe('Expert · Keisan');
   });
 
+  it('includes the grid size for a non-9×9 STANDARD — the 6×6 Skyscrapers (D5) — and labels the fifth type', () => {
+    expect(slotLabel(slot('hard', 'skyscrapers', 'hard', 6, 'standard'))).toBe('Hard 6×6 · Skyscrapers');
+    expect(slotLabel(slot('mini-easy', 'skyscrapers', 'easy', 5, 'mini'))).toBe('Easy 5×5 · Skyscrapers');
+    expect(slotLabel(slot('hard', 'kakuro', 'hard', 9, 'standard'))).toBe('Hard · Kakuro');
+  });
+
   it('includes the grid size for minis, so same-tier boards stay distinguishable', () => {
     expect(slotLabel(DAY[3])).toBe('Easy 4×4 · Killer');
     expect(slotLabel(slot('mini-hard', 'calc', 'hard', 6, 'mini'))).toBe('Hard 6×6 · Keisan');

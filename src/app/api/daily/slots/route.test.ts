@@ -42,12 +42,22 @@ describe('GET /api/daily/slots', () => {
     expect(slots[3]).toMatchObject({ key: 'mini-hard', variant: 'killer', difficulty: 'hard', gridSize: 6, section: 'mini' });
   });
 
+  it('files a 6×6 Skyscrapers under a rung key as a STANDARD — the first non-9×9 standard (D5)', async () => {
+    setRows([
+      { key: 'hard', variant: 'skyscrapers', size: 6 },
+      { key: 'mini-hard', variant: 'kakuro', size: 6 },
+    ]);
+    const { slots } = await (await GET(buildRequest())).json();
+    expect(slots[0]).toMatchObject({ key: 'hard', variant: 'skyscrapers', gridSize: 6, section: 'standard' });
+    expect(slots[1]).toMatchObject({ key: 'mini-hard', variant: 'kakuro', gridSize: 6, section: 'mini' });
+  });
+
   /**
-   * Regression: `section` must come from the GRID SIZE, not a `mini-` key prefix. Keying off the
-   * prefix filed every retired mini (`mini4-*`, `killer6-*`, `calc4-*`) under Standard — and since
-   * the shared `slotLabel` only shows a board's size for minis, an archived day rendered several
+   * Regression: for RETIRED keys `section` must come from the grid size, not the key prefix. Keying
+   * off the prefix filed every retired mini (`mini4-*`, `killer6-*`, `calc4-*`) under Standard — and
+   * since the shared `slotLabel` only shows a board's size for minis, an archived day rendered several
    * indistinguishable "Medium · Classic" pills. Archived dates are the permanent case, so this is
-   * not a cutover-only concern.
+   * not a cutover-only concern. (Active keys decide by key since D5 — see the test above.)
    */
   it('classifies RETIRED mini keys as minis (so their size shows and labels stay distinct)', async () => {
     setRows([

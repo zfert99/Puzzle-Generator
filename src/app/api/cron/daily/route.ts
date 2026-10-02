@@ -7,7 +7,7 @@ import { logger } from '@/lib/logger';
 
 // Uses node:crypto + the DB driver — must run on the Node.js runtime, never the Edge.
 export const runtime = 'nodejs';
-// 7 boards/day (type-as-slot roll: 4 standard + 3 minis at four types). Worst case ≈ one 9×9 extreme (Killer-extreme ~5.5 s) plus fast
+// 8 boards/day (type-as-slot roll: 5 standard + 3 minis at five types). Worst case ≈ one 9×9 extreme (Killer-extreme ~5.5 s) plus fast
 // minis; 60 s leaves ample headroom while trimming the old 30-board budget.
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';

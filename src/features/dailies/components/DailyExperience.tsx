@@ -19,7 +19,7 @@ import { Tape } from '@/features/chaos/Tape';
 import { MarqueeTicker } from '@/features/chaos/MarqueeTicker';
 import { useSession } from '@/features/auth/auth-client';
 import { apiPath } from '@/lib/base-path';
-import { difficultyForKey, formatDailyKey, isDailyVariant, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
+import { difficultyForKey, formatDailyKey, isDailyVariant, sectionForKey, toUtcDateString, type DailyDifficulty } from '@/lib/db/daily-row';
 import { slotLabel, type DailySlotInfo } from '../slot-display';
 import { useDaily } from '../hooks/useDaily';
 
@@ -318,7 +318,8 @@ export default function DailyExperience() {
    * day, so looking the key up in today's list labelled a 3 August **Killer** board as
    * "Hard · Keisan" simply because that is what `hard` happens to be today. The board's own
    * `variant`/`gridSize` cannot drift like that. `difficultyForKey` strips any `mini-` prefix, and
-   * a board is a mini iff it is smaller than 9×9 — the same rule `/api/daily/slots` uses.
+   * `sectionForKey` files the board — by key, with size only for retired keys, since a 6×6 can be a
+   * standard (Skyscrapers, D5) — the same rule `/api/daily/slots` uses.
    */
   // The board store can hold any `PuzzleVariant`, but a DAILY game is only ever started from a
   // daily row, so its variant is always a registered daily `Variant`. Kakuro is playable on
@@ -331,7 +332,7 @@ export default function DailyExperience() {
         variant: boardVariant,
     difficulty: difficultyForKey(difficulty),
         gridSize: boardGridSize,
-        section: boardGridSize < 9 ? 'mini' : 'standard',
+        section: sectionForKey(difficulty, boardGridSize),
       })
     : formatDailyKey(difficulty);
 
