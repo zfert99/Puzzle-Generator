@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { getDailyPuzzle } from '@/features/dailies/dailies.service';
 import { isDailyDifficulty, isIsoDate, restoreSkyscraperClues, toUtcDateString } from '@/lib/db/daily-row';
-import type { StoredSkyscraperClue } from '@/lib/db/schema';
+import type { DailyVariant, StoredCage, StoredSkyscraperClue } from '@/lib/db/schema';
 import { logger } from '@/lib/logger';
 
 // Touches the DB (Node-only driver) and reads server time — keep off the Edge runtime.
@@ -21,6 +21,27 @@ export const dynamic = 'force-dynamic';
  * highlighting and hints). Ranked solves are validated server-side against the stored solution
  * in `/api/solve`, so serving it here is safe; archive replays are unranked anyway.
  */
+/**
+ * The per-type part of the response, keyed by the stored `variant` (never inferred from the key or
+ * from what the `cages` column holds): Killer/Keisan `cages`, Kakuro `runs`, Skyscrapers `clues`
+ * (the four gutter arrays restored from the per-clue list), classic nothing. One case table, so an
+ * unhandled variant is visible here rather than falling through a ternary chain.
+ */
+function typedPayload(variant: DailyVariant, stored: StoredCage[] | null, size: number): Record<string, unknown> {
+  if (!stored) return {};
+  switch (variant) {
+    case 'kakuro':
+      return { variant, runs: stored };
+    case 'skyscrapers':
+      return { variant, clues: restoreSkyscraperClues(stored as StoredSkyscraperClue[], size) };
+    case 'killer':
+    case 'calc':
+      return { variant, cages: stored };
+    default:
+      return {};
+  }
+}
+
 export async function GET(req: NextRequest) {
   const startTime = performance.now();
   try {
@@ -70,14 +91,7 @@ export async function GET(req: NextRequest) {
     // Kakuro all store something there). The board's `startNewGame` branches on this `variant`
     // tag: cages (sum vs operator+target) for Killer/Keisan, `runs` for Kakuro, `clues` (the four
     // gutter arrays) for Skyscrapers — the last two ride the same column (Kakuro R1, Skyscrapers R1).
-    const caged =
-      puzzle.cages && puzzle.variant === 'kakuro'
-        ? { variant: puzzle.variant, runs: puzzle.cages }
-        : puzzle.cages && puzzle.variant === 'skyscrapers'
-          ? { variant: puzzle.variant, clues: restoreSkyscraperClues(puzzle.cages as StoredSkyscraperClue[], puzzle.grid.length) }
-          : puzzle.cages && (puzzle.variant === 'killer' || puzzle.variant === 'calc')
-            ? { variant: puzzle.variant, cages: puzzle.cages }
-            : {};
+    const caged = typedPayload(puzzle.variant, puzzle.cages, puzzle.grid.length);
 
     return NextResponse.json(
       {

@@ -107,7 +107,7 @@ Branch `feature/skyscrapers-r1` on `4c5fb42`. Diff: `schema.ts` (`DailyVariant` 
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean |
 | `npx tsc --noEmit` · `npm run build` | clean · clean |
-| `npx vitest run` | **93 files / 914 tests green** (11 new, 9 rewritten); no entry from the Known flaky tests table fired |
+| `npx vitest run` | **93 files / 915 tests green** (12 new, 9 rewritten); no entry from the Known flaky tests table fired |
 | Dry run | five seeded days through the real engines with no database: 8 rows / 8 distinct keys every day, every profile present, Skyscrapers in both sections, 0.7–10.5 s per day against the cron's 60 s |
 | Live seed | **not run from the workstation** (L25 — the shared database; a Skyscrapers row before the serving code deploys would be served as a classic board of zeros); the first cron after deploy is the round-trip |
 
@@ -128,6 +128,14 @@ Branch `feature/skyscrapers-r1` on `4c5fb42`. Diff: `schema.ts` (`DailyVariant` 
 - The scratchpad dry run first failed with `MODULE_NOT_FOUND`: `daily-row.ts` imports `@/…` aliases
   that `tsx` cannot resolve from outside the repo — `--tsconfig tsconfig.json` fixes it (noted for
   the next spike that imports a `lib/` module).
+- **`/code-review high` (owner-run, on the PR): 7 findings, all fixed in-PR.** The one with teeth:
+  the generation fallback for a failed STANDARD slot drew its size pool from `SIZES[*].standard`,
+  which now contains a 6, and `isEligible(type, 6, hard)` is true for any type with a 6×6 mini — a
+  failed 9×9 `hard` Killer could have been replaced by a 6×6 Killer mini board under the standard
+  key. A standard slot now falls back only to other types at their standard sizes (tested). Also:
+  `restoreSkyscraperClues` skips an unknown side; the SQL section rule reads its rung list and mini
+  prefix from the registry; the unused clue-count alias is gone; the daily route's payload is a
+  `switch`; the progress route's doc matches the code.
 
 ### Invariants checked
 
@@ -140,10 +148,9 @@ Branch `feature/skyscrapers-r1` on `4c5fb42`. Diff: `schema.ts` (`DailyVariant` 
 
 ### Review statements
 
-- The hosted `/code-review` has **not** been run by the agent (owner-triggered, billed); the owner
-  runs `/code-review high` on the PR. `/security-review`: the daily tables are shared, public and
-  read-only to clients; the progress aggregate's `user_id` stays in the JOIN condition (asserted) —
-  not required beyond that.
+- The owner ran `/code-review high` on the PR (7 findings, fixed above); the agent did not launch
+  it. `/security-review`: the daily tables are shared, public and read-only to clients; the progress
+  aggregate's `user_id` stays in the JOIN condition (asserted) — not required beyond that.
 
 ### Lessons
 
@@ -151,6 +158,9 @@ Branch `feature/skyscrapers-r1` on `4c5fb42`. Diff: `schema.ts` (`DailyVariant` 
   The registry supported a 6×6 standard; four consumers did not.
 - **A scratch script that imports a repo module with path aliases needs the repo's tsconfig** —
   `npx tsx --tsconfig tsconfig.json <script>`.
+- **When a table gains a value that used to be constant, re-read every pool built FROM that table,
+  not just every rule that reads it.** The fallback pool was correct by construction while all
+  standards were 9; the review, not the type-checker, found the 6 leaking across sections.
 
 ---
 

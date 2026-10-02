@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import type { Database } from '@/lib/db/connection';
 import { solveAttempts, dailyPuzzles, type SolveAttempt } from '@/lib/db/schema';
+import { MINI_KEY_PREFIX, STANDARD_RUNGS } from '@/lib/db/daily-row';
 
 /**
  * Ownership-scoped reads of a user's solve attempts — the data-access half of the BOLA
@@ -114,10 +115,12 @@ export function getDailyProgress(
   /** EXCLUSIVE upper bound — the first day of the following month (`firstDayOfNextMonth`). */
   beforeIso: string,
 ): Promise<DailyProgressRow[]> {
-  // `sectionForKey` in SQL: rung keys → standard, `mini-%` → mini, retired keys by size.
+  // `sectionForKey` in SQL — the rung list and the mini prefix come from the registry, so the two
+  // copies of the rule cannot drift: rung keys → standard, `mini-%` → mini, retired keys by size.
+  const rungs = sql.join(STANDARD_RUNGS.map((rung) => sql`${rung}`), sql`, `);
   const section = sql<'standard' | 'mini'>`case
-    when ${dailyPuzzles.difficulty} in ('easy', 'medium', 'hard', 'expert', 'extreme') then 'standard'
-    when ${dailyPuzzles.difficulty} like 'mini-%' then 'mini'
+    when ${dailyPuzzles.difficulty} in (${rungs}) then 'standard'
+    when ${dailyPuzzles.difficulty} like ${`${MINI_KEY_PREFIX}%`} then 'mini'
     when jsonb_array_length(${dailyPuzzles.grid}) < 9 then 'mini'
     else 'standard' end`;
   return db

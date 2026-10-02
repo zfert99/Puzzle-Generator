@@ -92,10 +92,19 @@ function generatePuzzleFor(slot: PlannedSlot): EnginePuzzle {
  * fire would be inert complexity, so the plan text was corrected instead.
  */
 function eligibleAlternatives(slot: PlannedSlot): PlannedSlot[] {
-  // The sizes this section ships across every type (`SIZES`, per-type since R1), rolled size
-  // first — not literals, so a type with a different standard or mini size joins the pool by
-  // registering, not by editing this function (a review finding on R1).
-  const sectionSizes = VARIANTS.flatMap((variant) => (slot.section === 'standard' ? [SIZES[variant].standard] : [...SIZES[variant].mini]));
+  // A STANDARD slot's substitute is another type at ITS standard size — never a mini-size board
+  // under a standard key. While every standard was 9×9 the size pool alone kept sections apart;
+  // Skyscrapers' 6×6 standard (D5) put a 6 in the standard pool, and `isEligible(type, 6, hard)`
+  // is true for any type with a 6×6 *mini* (the Skyscrapers R1 review's finding).
+  if (slot.section === 'standard') {
+    return VARIANTS.filter((variant) => variant !== slot.variant)
+      .map((variant) => ({ ...slot, variant, gridSize: SIZES[variant].standard }))
+      .filter((alt) => isEligible(alt.variant, alt.gridSize, alt.difficulty));
+  }
+  // A MINI slot's pool: the mini sizes every type ships (`SIZES`, per-type since R1), rolled size
+  // first — not literals, so a type with a different mini size joins the pool by registering, not
+  // by editing this function (a review finding on Kakuro's R1).
+  const sectionSizes = VARIANTS.flatMap((variant) => [...SIZES[variant].mini]);
   const sizes: DailySize[] = [slot.gridSize, ...sectionSizes.filter((size) => size !== slot.gridSize)].filter((size, i, all) => all.indexOf(size) === i);
   const alts: PlannedSlot[] = [];
   for (const gridSize of sizes) {

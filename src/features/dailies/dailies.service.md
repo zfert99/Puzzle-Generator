@@ -168,3 +168,13 @@ makes sense. **Neither is current** — see `generateDailyPuzzles` above for wha
   per-day roll over 6 slots and dropped `maxDuration` to 60. Critically, the old loop's idempotency
   came free from the fixed key set; the roll is random, so it needs the explicit guard documented
   above.
+
+## A standard slot falls back only to another type's standard size (Skyscrapers R1 review)
+
+While every standard was 9×9 the size pool alone kept the two sections apart. Skyscrapers' 6×6
+standard (D5) put a 6 in the standard pool, and `isEligible(type, 6, hard)` is true for any type
+that ships a 6×6 **mini** — so a failed 9×9 `hard` could have been replaced by a 6×6 Killer mini
+board under the standard key. `eligibleAlternatives` now has two shapes: a **standard** slot's
+substitutes are the other types each at **its own standard size**; a **mini** slot keeps the
+size-ordered pool over the mini sizes. A test fails the rolled `hard` slot and asserts the
+substitute's size is its type's standard.

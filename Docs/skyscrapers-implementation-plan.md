@@ -1104,8 +1104,17 @@ both sections over a week of seeded rolls; the first real cron after deploy roun
 - *Learnings:* L21 — a convention that held by coincidence ("every standard is 9×9") lives in more
   places than the one that defines it; the first exception has to be found by grep, not by the
   type-checker, and the fix is one named rule shared by every filer.
-- *Blockers:* none. **Phase 11 is complete** once this merges; the owner's `/code-review high`
-  pending.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 7 findings, all fixed
+  before merge):* (1) **the generation fallback could serve a mini-size board under a standard
+  key** — with a 6 in the standard size pool, `isEligible(type, 6, hard)` is true for any type with
+  a 6×6 mini; a standard slot now falls back only to other types at *their* standard sizes
+  (tested). (2) `restoreSkyscraperClues` skips a stored entry with an unknown side instead of
+  throwing. (3) The SQL section `CASE` takes its rung list and mini prefix from the registry
+  (`STANDARD_RUNGS`, `MINI_KEY_PREFIX`). (4) A test fails the rolled `hard` standard slot and
+  asserts the substitute's size. (5) The unused `skyscrapersClueCount` alias is gone. (6) The daily
+  route's payload is a `switch` (`typedPayload`). (7) The progress route's doc describes the
+  section fold.
+- *Blockers:* none. **Phase 11 is complete** once this merges.
 
 ### Deferred / follow-ons (not v1)
 

@@ -2,7 +2,7 @@ import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
 import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
-import { GUTTER_SIDES, presentClueCount, type SkyscraperClues, type SkyscrapersPuzzle } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { GUTTER_SIDES, type SkyscraperClues, type SkyscrapersPuzzle } from '@/features/engine/skyscrapers/skyscrapers-types';
 import type { DailyVariant, Grid, NewDailyPuzzle, StoredCage, StoredSkyscraperClue } from './schema';
 
 /**
@@ -74,11 +74,13 @@ export function isDailyVariant(value: string): value is Variant {
 }
 export const STANDARD_RUNGS: readonly StandardRung[] = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const MINI_TIERS: readonly MiniTier[] = ['easy', 'medium', 'hard'];
+/** The prefix every active mini key carries — the one string `sectionForKey` and the SQL section rule share. */
+export const MINI_KEY_PREFIX = 'mini-';
 /** Mini slot keys, one per tier. The type they hold is rolled per day. */
 export const MINI_KEYS: Record<MiniTier, string> = {
-  easy: 'mini-easy',
-  medium: 'mini-medium',
-  hard: 'mini-hard',
+  easy: `${MINI_KEY_PREFIX}easy`,
+  medium: `${MINI_KEY_PREFIX}medium`,
+  hard: `${MINI_KEY_PREFIX}hard`,
 };
 
 /** One resolved daily slot for a given day — what the cron generates and stores. */
@@ -225,7 +227,7 @@ export function difficultyForKey(key: string): StandardRung {
  */
 export function sectionForKey(key: string, gridSize: number): 'standard' | 'mini' {
   if ((STANDARD_RUNGS as readonly string[]).includes(key)) return 'standard';
-  if (key.startsWith('mini-')) return 'mini';
+  if (key.startsWith(MINI_KEY_PREFIX)) return 'mini';
   return gridSize < 9 ? 'mini' : 'standard';
 }
 
@@ -431,17 +433,19 @@ export function storeSkyscraperClues(clues: SkyscraperClues): StoredSkyscraperCl
   return stored;
 }
 
-/** The inverse of `storeSkyscraperClues`: four length-`size` arrays with 0 for every absent clue. */
+/**
+ * The inverse of `storeSkyscraperClues`: four length-`size` arrays with 0 for every absent clue.
+ * A stored entry with an unknown side or an out-of-range index is skipped, not thrown on — the
+ * column is persisted data the serving route must survive (the E1 lesson about corrupt saves).
+ */
 export function restoreSkyscraperClues(stored: readonly StoredSkyscraperClue[], size: number): SkyscraperClues {
   const clues: SkyscraperClues = { top: Array(size).fill(0), bottom: Array(size).fill(0), left: Array(size).fill(0), right: Array(size).fill(0) };
   for (const { side, index, count } of stored) {
+    if (!(GUTTER_SIDES as readonly string[]).includes(side)) continue;
     if (index >= 0 && index < size) clues[side][index] = count;
   }
   return clues;
 }
-
-/** The clue count a Skyscrapers row reports — kept beside the store/restore pair so the three agree. */
-export const skyscrapersClueCount = presentClueCount;
 
 /** Format a `Date` as an ISO `YYYY-MM-DD` string in UTC (the daily rollover zone). */
 export function toUtcDateString(now: Date): string {

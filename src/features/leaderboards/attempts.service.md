@@ -73,7 +73,9 @@ row can join per puzzle.
 
 **Why it groups by a section computed in SQL.** The caller used to fold size into section
 ("smaller than 9×9 ⇒ mini"), which held until Skyscrapers brought the first 6×6 **standard**
-(Skyscrapers plan D5). The aggregate now carries `sectionForKey`'s rule as a `CASE`: a bare rung is
+(Skyscrapers plan D5). The aggregate now carries `sectionForKey`'s rule as a `CASE` whose rung list
+and mini prefix come from the registry (`STANDARD_RUNGS`, `MINI_KEY_PREFIX` via `sql.join`), so the
+SQL copy cannot drift from the TypeScript one: a bare rung is
 standard, `mini-%` a mini, and a retired key (whose prefix lies) goes by size — the same rule
 `/api/daily/slots`, the playing label and the continue banner use. The route sums the rows per
 section; `DailyProgressRow` carries `section`, not `gridSize`.

@@ -180,8 +180,9 @@ zeros (D3) and its present-clue count is the stat.
 A Skyscrapers' **edge clues ride the `cages` column** as `StoredSkyscraperClue { side, index,
 count }[]`, one entry per present clue — `storeSkyscraperClues(clues)`; a blank is simply absent,
 so the entry count is the clue count. `/api/daily` turns them back into the four length-N gutter
-arrays with `restoreSkyscraperClues(stored, size)` (an out-of-range index is ignored rather than
-written past the array) and hands them to the board as `clues`, so `startNewGame` sees a
+arrays with `restoreSkyscraperClues(stored, size)` (an out-of-range index or an unknown side is
+skipped rather than thrown on — the column is persisted data the route must survive) and hands them
+to the board as `clues`, so `startNewGame` sees a
 `SkyscrapersPuzzle`. No migration, the Keisan/Kakuro rule: the row's `variant` gates every reader.
 
 ## `toUtcDateString(now)`

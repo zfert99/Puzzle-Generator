@@ -471,6 +471,7 @@ describe('Skyscrapers rows (R1, D2: clues ride the cages column)', () => {
     expect(stored).toContainEqual({ side: 'right', index: 2, count: 1 });
     expect(restoreSkyscraperClues(stored, 5)).toEqual(clues);
     expect(restoreSkyscraperClues([{ side: 'left', index: 9, count: 2 }], 5).left).toEqual([0, 0, 0, 0, 0]); // out of range ignored
+    expect(restoreSkyscraperClues([{ side: 'north' as never, index: 0, count: 2 }], 5)).toEqual({ top: [0, 0, 0, 0, 0], bottom: [0, 0, 0, 0, 0], left: [0, 0, 0, 0, 0], right: [0, 0, 0, 0, 0] }); // unknown side skipped, not thrown
   });
 
   it('maps a Skyscrapers puzzle to a row with the clues as cages and the clue count as the stat', () => {

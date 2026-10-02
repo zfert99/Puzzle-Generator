@@ -40,7 +40,10 @@
   rules** (slots route, playing label, continue banner, progress aggregate) — all four now share
   `sectionForKey`. `[measure]` five seeded days through the real engines, no database: 8 rows / 8
   keys each, 0.7–10.5 s per day, Skyscrapers in both sections. `[learning]` L21. `[gap]` G8 still
-  owed. Owner's `/code-review high` pending; **Phase 11 complete on merge**.
+  owed. Owner ran `/code-review high`: **7 findings, all fixed in-PR** (table in the plan under R1)
+  — the one with teeth: the generation fallback could have served a 6×6 mini board under a standard
+  key once a 6 entered the standard size pool; a standard slot now falls back only to another type's
+  standard size. **Phase 11 complete on merge**.
 - **2026-10-02 (E5)** E4 merged ([#136](https://github.com/zfert99/Puzzle-Generator/pull/136)).
   **E5 built** on `feature/skyscrapers-e5`: `skyscrapers.ts` in its final form — every puzzle at
   **exactly** the requested tier (rejection over squares with the generator's `exactTier`),

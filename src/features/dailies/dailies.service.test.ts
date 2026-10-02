@@ -3,6 +3,7 @@ import type { Database } from '@/lib/db/connection';
 import { generateDailyPuzzles, getDailyPuzzle } from './dailies.service';
 import {
   rollDailyAssignment,
+  SIZES,
   getProfile,
   difficultyForKey,
   type PlannedSlot,
@@ -273,6 +274,31 @@ describe('generateDailyPuzzles (type-as-slot roller)', () => {
     const substitute = puzzleRows.find((r) => r.difficulty === 'mini-hard')!;
     expect(substitute.grid).toHaveLength(6);
     expect(substitute.variant).not.toBe(miniHard.variant);
+  });
+
+  it('keeps a STANDARD slot at a standard size when falling back — never a 6×6 mini board under a rung key (D5)', async () => {
+    // Fail the standard `hard` slot for whatever type rolled it; the substitute must be another
+    // type at THAT type's standard size (9×9, or 6×6 only if it is Skyscrapers).
+    const rolled = rollDailyAssignment(mulberry32(3));
+    const hard = rolled.find((s) => s.key === 'hard')!;
+    let puzzleRows: NewDailyPuzzle[] = [];
+    const failHard = (slot: PlannedSlot) => {
+      if (slot.key === 'hard' && slot.variant === hard.variant) throw new Error('boom');
+      return fakePuzzle(slot);
+    };
+    const db = makeDb({
+      puzzleReturning: async (rows) => rows.map((_, i) => ({ id: `id-${i}` })),
+      selectRows: [],
+      onPuzzleValues: (rows) => {
+        puzzleRows = rows;
+      },
+    });
+
+    await generateDailyPuzzles(db, '2026-08-01', { rng: mulberry32(3), generate: failHard });
+
+    const substitute = puzzleRows.find((r) => r.difficulty === 'hard')!;
+    expect(substitute.variant).not.toBe(hard.variant);
+    expect(substitute.grid).toHaveLength(SIZES[substitute.variant].standard);
   });
 
   /**

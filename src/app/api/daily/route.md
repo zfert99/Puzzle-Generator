@@ -66,4 +66,6 @@ A row whose `variant` is `skyscrapers` has its `cages` column (one `StoredSkyscr
 clue — D2) restored to the four gutter arrays by `restoreSkyscraperClues(stored, grid.length)` and
 served as **`clues`**, so the board's `startNewGame` sees a `SkyscrapersPuzzle`. Neither `cages`
 nor `runs` appears on such a response — the `variant` tag, read from the column, decides which of
-the three shapes a row takes (Killer/Keisan `cages`, Kakuro `runs`, Skyscrapers `clues`).
+the three shapes a row takes (Killer/Keisan `cages`, Kakuro `runs`, Skyscrapers `clues`) in one
+`switch` (`typedPayload`), so an unhandled variant is visible as a missing case rather than the
+last arm of a ternary chain (the R1 review).
