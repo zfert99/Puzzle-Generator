@@ -26,7 +26,7 @@ variant context is available. Composing difficulty + type needs the row's stored
 only the fetched slot list carries.
 
 The `Variant → display name` map is where the internal slug/display-name split is honoured:
-`calc` renders as **Keisan** (the product name), never as "calc".
+`calc` renders as **Keisan** (the product name), never as "calc"; `kakuro` as **Kakuro** (R1).
 
 ## `reconcileSelectedKey(slots, current)`
 

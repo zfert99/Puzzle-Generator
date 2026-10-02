@@ -92,6 +92,91 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-01 — Kakuro R1: Kakuro in the daily — D4 locked, 4 standard + 3 minis seating 3 of 4 types
+
+Branch `feature/kakuro-r1` on `fb9c8c6` (main, after review follow-up 8). Plan R1 step-log; D4
+**locked by the owner** in the plan and the log; daily-redesign-plan's open scaling question
+resolved; L25. ~120 code lines across `daily-row.ts` (sizes per type, 8 profile rows, the
+general mini seating, Kakuro row mapping), `schema.ts` (`StoredKakuroRun`, the `$type` union),
+`dailies.service.ts` (dispatch), `/api/daily` (runs), `useDaily`, `slot-display`; ~110 test lines;
+~200 doc lines across 13 docs. **Phase 10's last slice.**
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| `npx vitest run` | 82 files, **765 passed**, 0 failed — roller rewritten for four types (7 slots; 4 distinct rungs, all types; 3 distinct mini types; Kakuro only 6×6 in a mini; Kakuro reached in both sections over 300 seeds), the Sudoku-family restriction reproduces the old 6 configurations, per-type eligibility, the Kakuro row mapping; the service's counts/fallbacks at 7 |
+| `npm run lint` | exit 0 |
+| `npm run build` | green |
+| markdownlint (`**/*.md`) | exit 0 |
+| Dry run (real engines, no DB) | five seeded days: 7 slots each, every profile present, **0.3–10.6 s per day**; slowest slot a 9×9 easy Kakuro at 9.8 s (walk down from a hard base) — inside the cron's 60 s |
+| `db:seed` round-trip | **not run from the workstation** — see Findings |
+
+### Findings
+
+- **The gate's live `db:seed` round-trip was deliberately not run here.** The workstation's
+  `DATABASE_URL` points at a Neon instance that is very likely the production database; a Kakuro
+  row written before the serving code deploys would be read by the *old* `/api/daily` as a classic
+  board of zeros for every player on that slot. The dry run exercised roll → engines → row →
+  profile without the database; the real round-trip happens on the first cron after deploy.
+  Recorded as L25.
+- Self-caught: the pre-D4 configuration count is **6**, not 8 — the Killer-4×4-above-easy rule
+  removes six of the twelve seatings, not four; the test now says why.
+- Self-caught: the service test's `fakePuzzle` needed a Kakuro branch (runs, not cages), and five
+  `6` literals became `7`.
+
+### Invariants checked
+
+- **A slot key is not an identity** — the roller still rolls `(key, variant, size)`; bests and
+  attempts were already scoped on all three, and a Kakuro mini adds a third size (6) to
+  `mini-easy`/`mini-medium` (previously always 4) — covered by that scoping, re-read in
+  `attempts.service` rather than assumed.
+- **Randomised inputs void `ON CONFLICT DO NOTHING`** — unchanged: the idempotency guard
+  (never re-roll a populated day) is still the only thing that makes a retry safe; its test now
+  expects 7.
+- **Retired keys stay readable** — no key changed; the three mini keys and five rungs are the
+  same, `LEGACY_KEYS` untouched, `difficultyForKey` untouched.
+- **Ownership lives in the query** — no query changed.
+- **Migrations:** none — `variant` is `text`, `cages` is untyped jsonb; `StoredKakuroRun` is a
+  TypeScript shape only. Re-read: the old `/api/daily` would mis-serve a Kakuro row (see
+  Findings) — the code and the first Kakuro row must ship in that order, which the cron
+  guarantees.
+- **AI-wrote-it, re-derived:** `miniConfigurations` restricted to the Sudoku family = the old
+  `PERMS_3 × {4, 6}` set under `isEligible` (6) — asserted; `isEligible` for Kakuro: 9 ✓, 6 e/m/h
+  ✓, 6 x/X ✗, 4 ✗ — asserted; every rolled combo has a profile (coverage test + dry run).
+
+### Docs sweep
+
+Mirrored `.md` for every touched source file (`daily-row`, `schema`, `dailies.service`,
+`api/daily/route`, `useDaily`, `slot-display`, `DailyExperience`); reverse sweep for "6 boards" /
+"3 standard" / "3 types" / "PERMS_3" / "before it joins the daily" / "Killer and Keisan both" —
+the daily plan's model section and open question, the registry doc, the service doc, the route
+doc, the experience doc; plan R1 step-log + D4 locked + header; log D4 + journal + L25 +
+Measurements; roadmap (Phase 10 ✅), README table (✅ Done), project-status, Docs README. Historical
+entries (the daily plan's step-logs, earlier pre-merge entries) left as the record.
+
+### Verified vs read
+
+- **Verified:** the table; the dry run; the configuration counts by hand.
+- **Read only:** the live round-trip (deliberately — above); `/daily` in the browser with a
+  Kakuro board (needs a row that only the deployed cron should write).
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, authz, or data-access change (no query, no
+  migration; one new stored variant value behind the same `variant` column).
+- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+
+### Lessons
+
+- **Seed into the environment that will serve it** — a workstation pointed at a shared database
+  must not write rows the deployed code cannot read; dry-run without the DB, let the first cron
+  after deploy do the round-trip. (L25)
+- **Count a combinatorial set by hand before asserting its size** — "8" felt right and was wrong;
+  the test comment now shows the arithmetic so the next change can check it in ten seconds.
+
+---
+
 ## 2026-10-01 — Kakuro review follow-up 8: all 6 `/code-review high` findings on #123 addressed
 
 Branch `feature/kakuro-review-8` on `d6775f7` (main, after review follow-up 7). Table in the plan

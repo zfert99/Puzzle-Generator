@@ -50,13 +50,21 @@ export interface StoredCalcCage {
   noOp?: boolean;
 }
 
+/** A Kakuro run — mirrors the engine's `Run`: a Killer cage plus its direction (Kakuro plan D2/D3). */
+export interface StoredKakuroRun {
+  id: number;
+  dir: 'across' | 'down';
+  sum: number;
+  cells: number[];
+}
+
 /**
  * A cage as stored in `daily_puzzles.cages` (jsonb). Killer rows carry `sum`, Keisan rows carry
- * `op` + `target` — the row's registry KEY (`daily-row.ts`) says which variant, so the serving
- * route picks the right interpretation. The column shape is untyped jsonb, so no migration was
- * needed to add the Keisan variant.
+ * `op` + `target`, Kakuro rows carry runs (`sum` + `dir`) — the row's `variant` column says which,
+ * so the serving route picks the right interpretation. The column shape is untyped jsonb, so no
+ * migration was needed to add the Keisan variant, nor the Kakuro one (R1).
  */
-export type StoredCage = StoredKillerCage | StoredCalcCage;
+export type StoredCage = StoredKillerCage | StoredCalcCage | StoredKakuroRun;
 
 /**
  * One shared puzzle per difficulty per calendar day (UTC). The `UNIQUE(date,
@@ -80,7 +88,7 @@ export const dailyPuzzles = pgTable(
      * Puzzle TYPE, stored so readers no longer infer it from the `difficulty` key (the key's type
      * encoding is being retired). Backfilled from historical keys by migration `0004`.
      */
-    variant: text('variant').$type<'classic' | 'killer' | 'calc'>().notNull(),
+    variant: text('variant').$type<'classic' | 'killer' | 'calc' | 'kakuro'>().notNull(),
     /** Unsolved puzzle sent to the client. */
     grid: jsonb('grid').$type<Grid>().notNull(),
     /** Solved grid — SERVER-ONLY. Never returned for an unsolved daily (anti-cheat). */
@@ -88,10 +96,10 @@ export const dailyPuzzles = pgTable(
     /** Number of given clues — denormalized for cheap display/sorting. Cage count for Killer/Keisan. */
     clueCount: integer('clue_count').notNull(),
     /**
-     * Cages for a caged daily (Killer sum, or Keisan operator+target), or NULL for classic. Which
-     * interpretation applies is told by the row's `variant` column (Killer and Keisan both carry
-     * cages, so cage presence alone can't distinguish them). The column is untyped jsonb, so adding
-     * the Keisan variant needed no migration.
+     * Cages for a caged daily (Killer sum, Keisan operator+target, or Kakuro runs), or NULL for
+     * classic. Which interpretation applies is told by the row's `variant` column (they all carry
+     * `cells`, so presence alone can't distinguish them). The column is untyped jsonb, so adding
+     * the Keisan variant needed no migration — nor the Kakuro one (R1).
      */
     cages: jsonb('cages').$type<StoredCage[]>(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

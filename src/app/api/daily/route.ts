@@ -65,13 +65,16 @@ export async function GET(req: NextRequest) {
     );
 
     // The VARIANT is read from the stored column — not inferred from the key (a rung key like
-    // `hard` holds a different type each day) nor from `cages` presence (Killer and Keisan both
-    // carry cages). The board's `startNewGame` branches on this `variant` tag to interpret the
-    // cages (sum vs operator+target).
+    // `hard` holds a different type each day) nor from `cages` presence (Killer, Keisan and
+    // Kakuro all store something there). The board's `startNewGame` branches on this `variant`
+    // tag: cages (sum vs operator+target) for Killer/Keisan, `runs` for Kakuro (its runs ride the
+    // same column — Kakuro plan R1).
     const caged =
-      puzzle.cages && (puzzle.variant === 'killer' || puzzle.variant === 'calc')
-        ? { variant: puzzle.variant, cages: puzzle.cages }
-        : {};
+      puzzle.cages && puzzle.variant === 'kakuro'
+        ? { variant: puzzle.variant, runs: puzzle.cages }
+        : puzzle.cages && (puzzle.variant === 'killer' || puzzle.variant === 'calc')
+          ? { variant: puzzle.variant, cages: puzzle.cages }
+          : {};
 
     return NextResponse.json(
       {

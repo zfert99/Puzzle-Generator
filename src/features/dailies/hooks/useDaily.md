@@ -27,7 +27,8 @@ fetchDaily(difficulty, date?):
 
 ## Killer dailies
 
-`DailyPuzzleResponse` optionally carries `variant: 'killer'` + `cages`. The board's
+`DailyPuzzleResponse` optionally carries `variant: 'killer'` / `'calc'` + `cages`, or (R1)
+`variant: 'kakuro'` + `runs`. The board's
 `startNewGame` branches on the presence of `cages`, so the same fetch-and-start path serves
 both variants — no separate Killer code path in the hook or the experiences.
 

@@ -17,6 +17,8 @@ import {
 import { generateSudoku, type Difficulty } from '@/features/engine/sudoku';
 import { generateKillerSudoku, type KillerDifficulty } from '@/features/engine/killer/killer-sudoku';
 import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
+import { generateKakuro, type KakuroSize } from '@/features/engine/kakuro/kakuro';
+import type { KakuroLevel, KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
@@ -44,7 +46,7 @@ export interface GenerateDailiesResult {
   skipped: boolean;
 }
 
-type EnginePuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle;
+type EnginePuzzle = SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle;
 
 /** Generate the puzzle for one slot, dispatching by the slot's rolled variant. */
 function generatePuzzleFor(slot: PlannedSlot): EnginePuzzle {
@@ -53,6 +55,9 @@ function generatePuzzleFor(slot: PlannedSlot): EnginePuzzle {
       return generateKillerSudoku(slot.difficulty as KillerDifficulty, { gridSize: slot.gridSize });
     case 'calc':
       return generateCalcSudoku(slot.difficulty as CalcDifficulty, { gridSize: slot.gridSize });
+    case 'kakuro':
+      // Fresh and at exactly the slot's tier (Kakuro E5); the daily's sizes for it are 6 and 9.
+      return generateKakuro(slot.difficulty as KakuroLevel, { gridSize: slot.gridSize as KakuroSize });
     default:
       return generateSudoku(slot.difficulty as Difficulty, slot.gridSize);
   }

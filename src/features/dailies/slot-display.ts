@@ -20,6 +20,7 @@ const VARIANT_LABEL: Record<Variant, string> = {
   classic: 'Classic',
   killer: 'Killer',
   calc: 'Keisan',
+  kakuro: 'Kakuro',
 };
 
 /**

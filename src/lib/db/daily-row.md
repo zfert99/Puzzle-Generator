@@ -9,7 +9,9 @@ seed script and the cron can reuse them and so they are trivially unit-testable 
 **Why:** `/daily` had grown to a **30-board wall** — every type × every tier × every size, generated
 nightly, most leaderboards empty. A daily should be a ritual with a clear win condition, not a menu.
 The restructure inverts what's fixed: **one slot per puzzle TYPE, with the DIFFICULTY rolled per
-day.** Today that's **3 standard + 3 mini = 6 boards** (down from 30); at five types it becomes 5+5.
+day.** At four types (Kakuro joined in its plan's slice R1, October 2026) that's **4 standard +
+3 mini = 7 boards** (down from 30); minis stay at three slots and roll three of the four types
+(Kakuro plan decision D4), so one type sits out the minis each day.
 Full rationale and the step history: `Docs/daily-redesign-plan.md`.
 
 The consequence that drives everything else here: **the key no longer encodes the type.** A key like
@@ -19,14 +21,19 @@ The consequence that drives everything else here: **the key no longer encodes th
 ## Slots
 
 - **Standard** — keyed by difficulty RUNG (`easy…extreme`, reusing the historical classic keys so no
-  migration). Each day draws **3 distinct rungs** of the 5 and assigns one to each type (a random
-  injection; a full 5-rung bijection once 5 types exist). Always 9×9 — every type grades the full
-  9×9 ladder, so no eligibility gaps.
-- **Mini** — keyed `mini-easy` / `mini-medium` / `mini-hard`. Minis are **3-tier only** (no
-  expert/extreme minis) and **size follows difficulty**: easy/medium = 4×4, hard = random(4×4/6×6).
-  That hard slot is the *only* rolled size, and it has two consequences elsewhere: cross-date
-  aggregates must group by size as well as key and variant (`attempts.service.md`), and a generation
-  fallback must try the rolled size before any other (`dailies.service.md`).
+  migration). Each day draws **one distinct rung per type** of the 5 (4 at four types — a random
+  injection; a full 5-rung bijection once 5 types exist) and assigns one to each type. Always the
+  type's standard size (9×9 for all four) — every type grades the full ladder there, so no
+  eligibility gaps.
+- **Mini** — keyed `mini-easy` / `mini-medium` / `mini-hard`, three slots regardless of type count:
+  three of the four types are seated each day (D4). Minis are **3-tier only** (no expert/extreme
+  minis) and **size is per type** (`SIZES`, Kakuro plan D11): the easy/medium boards are played at
+  the seated type's smallest mini size and the hard board at a size rolled from the type's list —
+  for the Sudoku family (`mini: [4, 6]`) that is exactly the old "easy/medium = 4×4, hard =
+  random(4×4/6×6)" rule, and for Kakuro (`mini: [6]`) always its 6×6. The hard slot is thus the
+  *only* rolled size, with two consequences elsewhere: cross-date aggregates must group by size as
+  well as key and variant (`attempts.service.md`), and a generation fallback must try the rolled
+  size before any other (`dailies.service.md`).
 
 No anti-monotony cap is needed — one-slot-per-type makes the types distinct by construction.
 
@@ -70,13 +77,16 @@ once. `rng` is injected so the roll is deterministic in tests.
 
 ```text
 Standard:
-  shuffle the 5 rungs, take 3; shuffle the 3 types; pair them up.
-  Every pairing is valid (all types cover 9×9), so no filtering is needed.
+  shuffle the 5 rungs, take one per type (4); shuffle the types; pair them up.
+  Every pairing is valid (all types cover their standard size), so no filtering is needed.
 
-Minis:
-  enumerate every (type -> slot permutation) x (hard-slot size in {4, 6}),
+Minis (miniConfigurations):
+  enumerate every ordered pick of 3 of the N types into the easy/medium/hard seats,
+    easy/medium at the seated type's smallest mini size, hard at each size the type ships,
   keep only assignments where EVERY slot passes isEligible,
   pick one uniformly at random.
+  (Restricted to the Sudoku family this is the old PERMS_3 x {4, 6} set — 6 configurations —
+   and the roller test asserts it.)
 
 Return the 6 planned slots (key, section, variant, gridSize, difficulty).
 ```
@@ -205,7 +215,24 @@ otherwise -> `${year}-${month + 1 padded}-01`
 
 ## `isDailyVariant(value)` (October 2026)
 
-A type guard for the registry's `Variant`. The board store's `PuzzleVariant` is wider — Kakuro
-plays on `/play` before it joins the daily (Kakuro plan R1) — so a surface that labels a board
-from the store narrows with this guard instead of a type assertion, and can fall back visibly
-when the two disagree.
+A type guard for the registry's `Variant`. The board store's `PuzzleVariant` and the registry's
+`Variant` agree since Kakuro joined the daily (plan slice R1), but a surface that labels a board
+from the store still narrows with this guard instead of a type assertion, so a future unregistered
+variant falls back visibly rather than inventing a type.
+
+## `toDailyPuzzleRow` and Kakuro (R1)
+
+A Kakuro's **runs ride the `cages` column**: a run is structurally a Killer cage plus a direction
+(the plan's reason for shaping it that way — D2/D3), so `StoredCage` gained `StoredKakuroRun` and
+no migration was needed. The row's `variant` says which interpretation applies, exactly as it
+already did for Killer vs Keisan; `clue_count` holds the run count, the analogous display stat.
+`/api/daily` hands the column back as `runs` for a Kakuro row so `startNewGame` sees a
+`KakuroPuzzle`.
+
+## Kakuro profile rows are estimates (R1)
+
+No Kakuro telemetry exists, so its floors and bot times are **derived from cell count** (research
+gap G2) rather than from the logical rating: a 9×9 has ~50 white cells and the record pace is
+anecdotally near 0.8 s/cell, so floors sit well below that (20–50 s across the ladder) and the bot
+near a typical skilled pace (5–25 min); the 6×6 mini (~22 cells) scales the same way (6–10 s;
+1–2.5 min). They are flagged as estimates in the code and should be tuned from live attempts.

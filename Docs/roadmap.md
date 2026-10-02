@@ -604,7 +604,7 @@ Raising the floors is **not** a substitute and buys nothing; the research doc ex
 
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** `feature/kakuro`
-> **Status:** 🚧 In Progress — plan written 2026-09-11; build started 2026-09-30. V0 (looks-only
+> **Status:** ✅ Done (2026-10-01) — plan written 2026-09-11; build started 2026-09-30. V0 (looks-only
 > board), V1 (types, layout rules, two baked fixtures) and V2 (playable on the real board at
 > `/play?variant=kakuro`) and E1 (exact solver, uniqueness proven) merged 2026-10-01; E2 (logical
 > solver: technique ladder T1–T3 + forcing chains T4–T5; the full easy→extreme ladder served at
@@ -613,8 +613,10 @@ Raising the floors is **not** a substitute and buys nothing; the research doc ex
 > Kakuro on `/generate` + sample booklet) and E4 (generator: scatter layouts, repair-to-unique,
 > "New puzzle" real at 6/7/9 — `research/kakuro-layout-method-findings.md` for the layout-method
 > divergence) and E5 (the classifier in the generator's objective — every puzzle fresh at exactly
-> the requested tier at 6/7/9; hub card live; fixtures test data only) done — **the engine is
-> complete**; R1 (daily rotation, gated on D4) next. Full plan:
+> the requested tier at 6/7/9; hub card live; fixtures test data only) and R1 (Kakuro in the
+> daily — D4 locked: 4 standard + 3 minis seating 3 of the 4 types, 7 boards/day) done.
+> **Phase 10 complete 2026-10-01.** Deferred, recorded: the 13×13 large size, a daily "large"
+> slot, per-type size revisits for the Sudoku family. Full plan:
 > [kakuro-implementation-plan.md](kakuro-implementation-plan.md) · running log (decisions, research
 > gaps, bugs, learnings, measurements): [kakuro-log.md](kakuro-log.md)
 > **Research:** [kakuro.md](research/kakuro.md) ·

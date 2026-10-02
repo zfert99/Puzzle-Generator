@@ -57,11 +57,13 @@ continue.
 ## The model — type-as-slot
 
 **One daily slot per puzzle TYPE; the DIFFICULTY is the randomized axis.** N types → N standard
-slots + N mini slots. **Interim now (3 types): 3 standard + 3 mini = 6 boards/day** (down from 30);
-end state (5 types): 5 + 5 = 10.
+slots + 3 mini slots. **Interim (3 types): 3 standard + 3 mini = 6 boards/day** (down from 30);
+**now (4 types, Kakuro plan R1, October 2026): 4 + 3 = 7** — the mini count stayed at three with
+three of the four types seated each day (decision D4 in `kakuro-log.md`, resolving the open
+scaling question below); end state (5 types): 5 + 3.
 
-- **Standard set (9×9):** one slot per type (`classic`, `killer`, `calc`). Each day, draw **3
-  distinct** difficulties from `{easy, medium, hard, expert, extreme}` and assign one to each type
+- **Standard set (9×9):** one slot per type (`classic`, `killer`, `calc`, `kakuro`). Each day, draw
+  one **distinct** difficulty per type from `{easy, medium, hard, expert, extreme}` and assign it
   (a random *injection*; a full 5-rung *bijection* once 5 types exist). Every type supports the full
   9×9 ladder → no eligibility gaps.
 - **Mini set:** one slot per type. Difficulties from **`{easy, medium, hard}` only** (no
@@ -531,11 +533,15 @@ new badge/star/economy state.** `ArchiveExperience.tsx`, `Calendar.tsx`. Update 
 - **Seed script** ([seed.ts](../src/lib/db/seed.ts)) shares the service; update its
   expectations/tests.
 
-## Open scaling question (not a blocker for 3+3)
+## Open scaling question — resolved at the 4th type (D4, October 2026)
 
-At 5 types, **minis are only 3-tier**, so 5 mini slots can't map 1:1 to 3 difficulties. Resolve when
-the 4th/5th type lands — options: expand mini tiers, allow mini-difficulty repeats, or fewer mini
-slots than standard. The 3+3 interim maps cleanly (3 types ↔ 3 mini tiers).
+At 5 types, **minis are only 3-tier**, so 5 mini slots can't map 1:1 to 3 difficulties. The options
+were: expand mini tiers, allow mini-difficulty repeats, or fewer mini slots than standard. **Resolved
+when the 4th type (Kakuro) landed: fewer mini slots than standard** — three mini slots, three of
+the N types seated per day, each played at its own mini size (Kakuro plan decisions D4 + D11,
+`daily-row.ts` `SIZES` / `miniConfigurations`). Keys, leaderboard identity and bests are unchanged
+(bests were already `(key, variant, size)`-scoped). The 3+3 interim mapped 3 types ↔ 3 mini tiers;
+4+3 seats 3 of 4.
 
 ## Verification (end-to-end, once Steps 3–5 land)
 

@@ -80,8 +80,9 @@ INDEX (puzzle_id, time_ms)
 ## Caged dailies (Killer / Keisan)
 
 `daily_puzzles.cages` (nullable jsonb) carries the cage partition for a **caged daily** (Killer or
-Keisan); a classic row has `cages = NULL`. `clue_count` holds the cage count for these (they ship no
-given clues — the cages are the clue). Which cage interpretation applies (Killer sum vs. Keisan
+Keisan) — or, since Kakuro plan slice R1, a Kakuro's **runs** (`StoredKakuroRun`: a cage plus
+`dir`); a classic row has `cages = NULL`. `clue_count` holds the cage (or run) count for these (they
+ship no given clues — the cages are the clue). Which interpretation applies (Killer sum vs. Keisan
 operator+target) is told by the row's **`variant`** column. Historically the type was inferred from
 the `difficulty` key (`killer-*`, `calc*`, or the legacy single `'killer'` key); that inference is
 being retired in favor of stored `variant` (see above). Migrations: `0003_killer_daily_cages.sql`

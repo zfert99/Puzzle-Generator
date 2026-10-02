@@ -1,6 +1,7 @@
 import type { SudokuPuzzle } from '@/features/engine/sudoku';
 import type { KillerPuzzle } from '@/features/engine/killer/killer-types';
 import type { CalcPuzzle } from '@/features/engine/calc/calc-types';
+import type { KakuroPuzzle } from '@/features/engine/kakuro/kakuro-types';
 import type { Grid, NewDailyPuzzle } from './schema';
 
 /**
@@ -9,8 +10,11 @@ import type { Grid, NewDailyPuzzle } from './schema';
  * `Docs/daily-redesign-plan.md`. Two data structures:
  *
  * - **Slots** — what the cron generates each day: standard slots keyed by difficulty RUNG
- *   (`easy…extreme`, 3 of 5 drawn/day) + mini slots keyed `mini-<tier>` (always 3). The TYPE is
- *   rolled per day and stored in `daily_puzzles.variant` — the key no longer encodes it.
+ *   (`easy…extreme`, one per type — 4 of 5 drawn/day at four types) + mini slots keyed
+ *   `mini-<tier>` (always 3; at four types, 3 of the 4 types roll into them — Kakuro plan D4).
+ *   The TYPE is rolled per day and stored in `daily_puzzles.variant` — the key no longer
+ *   encodes it. Sizes are **per type** (Kakuro plan D11): `SIZES[variant]` says which mini
+ *   sizes a type ships, so a mini slot is played at the assigned type's own mini size.
  * - **Profile table** (`PROFILE`) — per `(variant, size, difficulty)`: `minSolveMs` (anti-cheat
  *   plausibility floor, see `solve-rules.md`) and `botTimeMs` (Puzzle Bot's beatable time). Values
  *   moved verbatim from the old registry + the new `(killer,4,easy)` row.
@@ -21,12 +25,12 @@ import type { Grid, NewDailyPuzzle } from './schema';
  */
 
 /** Puzzle type. Mirrors the engine variants and the stored `daily_puzzles.variant`. */
-export type Variant = 'classic' | 'killer' | 'calc';
+export type Variant = 'classic' | 'killer' | 'calc' | 'kakuro';
 /** The five 9×9 difficulty rungs. Standard slots are keyed by these. */
 export type StandardRung = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
 /** Mini difficulties — the 3-tier ladder (no expert/extreme minis). */
 export type MiniTier = 'easy' | 'medium' | 'hard';
-/** A supported daily grid size. */
+/** A grid size some daily type ships; which type ships which is `SIZES` (D11). */
 export type DailySize = 4 | 6 | 9;
 
 /**
@@ -35,12 +39,27 @@ export type DailySize = 4 | 6 | 9;
  */
 export type DailyDifficulty = string;
 
-export const VARIANTS: readonly Variant[] = ['classic', 'killer', 'calc'];
+export const VARIANTS: readonly Variant[] = ['classic', 'killer', 'calc', 'kakuro'];
 
 /**
- * Is this string one of the daily's registered variants? The board store's `PuzzleVariant` is
- * wider than `Variant` (Kakuro plays on `/play` before it joins the daily — Kakuro plan R1), so
- * a surface that labels a board from the store narrows with this rather than an assertion.
+ * The sizes each type ships in the daily (Kakuro plan D11: sizes are per type, not the inherited
+ * 4/6/9). The Sudoku family keeps `{ mini: [4, 6], standard: 9 }`, so nothing it does changes;
+ * Kakuro's mini is the 6×6 (D6′ — its 7×7 is a `/play` size, not a daily one). A mini slot's
+ * easy/medium board is played at the type's *smallest* mini size and its hard board at a size
+ * rolled from the type's list — for the Sudoku family that is exactly the old
+ * "easy/medium = 4×4, hard = random(4/6)" rule.
+ */
+export const SIZES: Record<Variant, { readonly mini: readonly DailySize[]; readonly standard: DailySize }> = {
+  classic: { mini: [4, 6], standard: 9 },
+  killer: { mini: [4, 6], standard: 9 },
+  calc: { mini: [4, 6], standard: 9 },
+  kakuro: { mini: [6], standard: 9 },
+};
+
+/**
+ * Is this string one of the daily's registered variants? The board store's `PuzzleVariant` and
+ * the registry's `Variant` now agree (Kakuro joined the daily in plan slice R1); the guard stays
+ * because a surface that labels a board from the store narrows with it rather than an assertion.
  */
 export function isDailyVariant(value: string): value is Variant {
   return (VARIANTS as readonly string[]).includes(value);
@@ -95,6 +114,15 @@ const PROFILE: Record<string, ProfileEntry> = {
   'calc-9-hard': { minSolveMs: 50_000, botTimeMs: 1_080_000 },
   'calc-9-expert': { minSolveMs: 70_000, botTimeMs: 1_500_000 },
   'calc-9-extreme': { minSolveMs: 90_000, botTimeMs: 1_920_000 },
+  // ---- Kakuro 9×9 (Kakuro plan R1) — ESTIMATES derived from cell count, not telemetry (G2):
+  // a repaired 9×9 has ~50 white cells; the record pace anecdotally sits near 0.8 s/cell, so the
+  // floors sit well below that (≈ 0.4–1 s/cell) and the bot near a typical skilled pace (hard
+  // 9×9 ≈ 10+ min). Tune from live attempts once they exist.
+  'kakuro-9-easy': { minSolveMs: 20_000, botTimeMs: 300_000 },
+  'kakuro-9-medium': { minSolveMs: 25_000, botTimeMs: 480_000 },
+  'kakuro-9-hard': { minSolveMs: 30_000, botTimeMs: 720_000 },
+  'kakuro-9-expert': { minSolveMs: 40_000, botTimeMs: 1_080_000 },
+  'kakuro-9-extreme': { minSolveMs: 50_000, botTimeMs: 1_500_000 },
   // ---- Minis (4×4 / 6×6) ----
   'classic-4-easy': { minSolveMs: 3_000, botTimeMs: 40_000 },
   'classic-4-medium': { minSolveMs: 4_000, botTimeMs: 60_000 },
@@ -112,6 +140,10 @@ const PROFILE: Record<string, ProfileEntry> = {
   'calc-6-easy': { minSolveMs: 10_000, botTimeMs: 150_000 },
   'calc-6-medium': { minSolveMs: 14_000, botTimeMs: 240_000 },
   'calc-6-hard': { minSolveMs: 20_000, botTimeMs: 390_000 },
+  // Kakuro's only mini is the 6×6 (~22 white cells) — the same estimate rule as its 9×9 rows.
+  'kakuro-6-easy': { minSolveMs: 6_000, botTimeMs: 60_000 },
+  'kakuro-6-medium': { minSolveMs: 8_000, botTimeMs: 100_000 },
+  'kakuro-6-hard': { minSolveMs: 10_000, botTimeMs: 150_000 },
 };
 
 /** The tuning for a `(variant, size, difficulty)`, or `undefined` if not an eligible combo. */
@@ -124,15 +156,17 @@ export function getProfile(
 }
 
 /**
- * Whether a `(variant, size, difficulty)` is a real daily board. Standard = every type at 9×9 on
- * all five rungs. Minis = 3-tier only; classic/calc at 4×4 and 6×6; **Killer is easy-only at 4×4**
+ * Whether a `(variant, size, difficulty)` is a real daily board. Standard = every type at its
+ * standard size (9×9) on all five rungs. Minis = 3-tier only, at a size the type ships
+ * (`SIZES`): classic/calc at 4×4 and 6×6, Kakuro at 6×6 only; **Killer is easy-only at 4×4**
  * (de-risked — tiers collapse to tier-1 on a 16-cell no-givens grid) but full e/m/h at 6×6.
  */
 export function isEligible(variant: Variant, gridSize: DailySize, difficulty: StandardRung): boolean {
-  if (gridSize === 9) return true;
+  if (gridSize === SIZES[variant].standard) return true;
+  if (!SIZES[variant].mini.includes(gridSize)) return false;
   if (difficulty === 'expert' || difficulty === 'extreme') return false; // no expert/extreme minis
   if (variant === 'killer') return gridSize === 4 ? difficulty === 'easy' : true;
-  return true; // classic / calc: any 4×4 or 6×6 e/m/h
+  return true;
 }
 
 /**
@@ -168,20 +202,49 @@ function shuffle<T>(items: readonly T[], rng: () => number): T[] {
   return out;
 }
 
-/** The 6 permutations of three indices — used to assign the 3 types to the 3 mini slots. */
-const PERMS_3: readonly (readonly [number, number, number])[] = [
-  [0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0],
-];
+/** Every ordered pick of `k` distinct items — the ways to seat types into the mini slots. */
+function permutationsOf<T>(items: readonly T[], k: number): T[][] {
+  if (k === 0) return [[]];
+  return items.flatMap((item, i) =>
+    permutationsOf([...items.slice(0, i), ...items.slice(i + 1)], k - 1).map((rest) => [item, ...rest])
+  );
+}
+
+/**
+ * Every valid mini configuration for a set of types: each ordered pick of `MINI_TIERS.length`
+ * types seated into the easy/medium/hard slots, the easy and medium boards at the type's
+ * smallest mini size and the hard board at each size the type ships, filtered by `isEligible`.
+ * For the Sudoku family this is exactly the pre-D4 enumeration (6 permutations × hard ∈ {4, 6});
+ * exported so the roller test can assert that restriction reproduces the old set.
+ */
+export function miniConfigurations(types: readonly Variant[]): { variant: Variant; gridSize: DailySize; difficulty: MiniTier }[][] {
+  const configs: { variant: Variant; gridSize: DailySize; difficulty: MiniTier }[][] = [];
+  for (const seating of permutationsOf(types, MINI_TIERS.length)) {
+    const hardType = seating[MINI_TIERS.length - 1];
+    for (const hardSize of SIZES[hardType].mini) {
+      const assignment = seating.map((variant, slotIdx) => ({
+        variant,
+        gridSize: slotIdx === MINI_TIERS.length - 1 ? hardSize : SIZES[variant].mini[0],
+        difficulty: MINI_TIERS[slotIdx],
+      }));
+      if (assignment.every((a) => isEligible(a.variant, a.gridSize, a.difficulty))) configs.push(assignment);
+    }
+  }
+  return configs;
+}
 
 /**
  * Roll one day's assignment: a valid, distinct set of daily slots. Pure (RNG injected) so the
- * cron and tests share it. Returns 3 standard + 3 mini slots (6 total, scaling to 5+5 at 5 types).
+ * cron and tests share it. Returns one standard slot per type + 3 mini slots — **4 + 3 = 7** at
+ * four types (Kakuro plan D4; 5 + 3 at five).
  *
- * - **Standard:** draw 3 distinct rungs of the 5, assign one to each type (a random injection). All
- *   types cover the full 9×9 ladder, so any pairing is valid; keys are the rungs → distinct.
- * - **Minis:** enumerate every valid `(type→slot permutation × hard-slot size ∈ {4,6})` under
- *   `isEligible`, then pick one uniformly. This guarantees Killer only ever lands on easy-4×4 or a
- *   6×6 hard slot; a valid config always exists (classic/Keisan cover medium/hard-4×4).
+ * - **Standard:** draw `VARIANTS.length` distinct rungs of the 5, assign one to each type (a
+ *   random injection). Every type covers the full standard ladder, so any pairing is valid; keys
+ *   are the rungs → distinct. One rung sits out each day at four types.
+ * - **Minis:** enumerate every valid seating of 3 of the N types into the three tier slots, with
+ *   the hard slot's size rolled from the seated type's mini sizes (`miniConfigurations`), then
+ *   pick one uniformly. One type sits out the minis each day at four types. This still
+ *   guarantees Killer only ever lands on easy-4×4 or a 6×6 hard slot, and Kakuro only on 6×6.
  */
 export function rollDailyAssignment(rng: () => number = Math.random): PlannedSlot[] {
   const rungs = shuffle(STANDARD_RUNGS, rng).slice(0, VARIANTS.length);
@@ -190,24 +253,11 @@ export function rollDailyAssignment(rng: () => number = Math.random): PlannedSlo
     key: difficulty,
     section: 'standard',
     variant: types[i],
-    gridSize: 9,
+    gridSize: SIZES[types[i]].standard,
     difficulty,
   }));
 
-  // Easy and medium minis are always 4×4; only the hard slot's size is rolled (below).
-  const configs: { variant: Variant; gridSize: DailySize; difficulty: MiniTier }[][] = [];
-  for (const hardSize of [4, 6] as const) {
-    for (const perm of PERMS_3) {
-      const assignment = perm.map((typeIdx, slotIdx) => ({
-        variant: VARIANTS[typeIdx],
-        gridSize: (slotIdx === 2 ? hardSize : 4) as DailySize,
-        difficulty: MINI_TIERS[slotIdx],
-      }));
-      if (assignment.every((a) => isEligible(a.variant, a.gridSize, a.difficulty))) {
-        configs.push(assignment);
-      }
-    }
-  }
+  const configs = miniConfigurations(VARIANTS);
   const chosen = configs[Math.floor(rng() * configs.length)];
   const minis: PlannedSlot[] = chosen.map((a) => ({
     key: MINI_KEYS[a.difficulty],
@@ -294,21 +344,26 @@ export function countClues(grid: Grid): number {
  * registry), so it is correct even though the roller assigns types to rung-keyed slots.
  */
 export function toDailyPuzzleRow(
-  puzzle: SudokuPuzzle | KillerPuzzle | CalcPuzzle,
+  puzzle: SudokuPuzzle | KillerPuzzle | CalcPuzzle | KakuroPuzzle,
   isoDate: string,
   key: DailyDifficulty,
 ): NewDailyPuzzle {
   // Real discriminant, not `'cages' in puzzle`: Killer AND Keisan both carry cages, so the old
-  // duck-type couldn't tell them apart. Killer/Keisan carry an explicit `variant`; classic doesn't.
-  const hasCages = 'variant' in puzzle; // killer or calc — both store cages (sum vs op+target)
+  // duck-type couldn't tell them apart. Killer/Keisan/Kakuro carry an explicit `variant`; classic
+  // doesn't. A Kakuro's RUNS ride the `cages` column (same shape plus `dir` — the plan's reason
+  // for making a run look like a cage), with the run count as the display stat.
+  if (!('variant' in puzzle)) {
+    return { date: isoDate, difficulty: key, variant: 'classic', grid: puzzle.grid, solution: puzzle.solution, clueCount: countClues(puzzle.grid), cages: null };
+  }
+  const stored = puzzle.variant === 'kakuro' ? puzzle.runs : puzzle.cages;
   return {
     date: isoDate,
     difficulty: key,
-    variant: hasCages ? puzzle.variant : 'classic',
+    variant: puzzle.variant,
     grid: puzzle.grid,
     solution: puzzle.solution,
-    clueCount: hasCages ? puzzle.cages.length : countClues(puzzle.grid),
-    cages: hasCages ? puzzle.cages : null,
+    clueCount: stored.length,
+    cages: stored,
   };
 }
 

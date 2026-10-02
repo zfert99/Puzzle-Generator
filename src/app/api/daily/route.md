@@ -42,13 +42,15 @@ Runs on the Node.js runtime (DB driver is Node-only).
 ## Killer dailies
 
 When the fetched row has cages, the response additionally includes its **stored** `variant`
-(`'killer'` or `'calc'`) and `cages`, which is all `startNewGame` needs to start it as a caged
-board. Everything else — validation, anti-cheat posture, archive dates — is unchanged.
+(`'killer'` or `'calc'`) and `cages`, or `'kakuro'` and `runs` (R1 — the runs are stored in the
+same column and handed back under their own name), which is all `startNewGame` needs to start the
+right board. Everything else — validation, anti-cheat posture, archive dates — is unchanged.
 
 **Why the variant is read, not inferred (daily restructure Step 3b).** It used to be looked up from
 the board registry by key (`getDailyBoard(key).variant`). Under type-as-slot a rung key like `hard`
 holds a different type each day, so that inference would mislabel the row — and a duck-type on
-`cages` can't help either, since Killer *and* Keisan both carry cages (sum vs. operator+target).
+`cages` can't help either, since Killer, Keisan *and* Kakuro all store something there (sum,
+operator+target, runs).
 The row's `variant` column (migration `0004`) is now the single source of truth.
 
 Accepts any daily-board key (plus legacy `'killer'`); `gridSize` in the response derives from
