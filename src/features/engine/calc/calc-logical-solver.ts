@@ -21,6 +21,7 @@
 import type { GridSize } from '../sudoku';
 import { calcCageCombos } from './calc-combinations';
 import type { CalcCage } from './calc-types';
+import { popcount } from '../grid-utils';
 
 /**
  * Grading tiers: 0 = already solved; 1..4 are the named-technique ladder (see the `.md`); 5 and 6 are
@@ -79,15 +80,6 @@ export interface CalcSolveResult {
   guessSteps: number;
 }
 
-function popcount(mask: number): number {
-  let count = 0;
-  let m = mask;
-  while (m) {
-    m &= m - 1;
-    count += 1;
-  }
-  return count;
-}
 
 function lowestDigit(mask: number): number {
   return 32 - Math.clz32(mask & -mask); // digit d where bit === 1 << (d-1)

@@ -1,6 +1,8 @@
 import { createEmptyGrid, fillGrid, copyGrid } from './grid-utils';
 import { applyExtremeDigger, applyExhaustiveDigger, applyQuotaDigger } from './diggers';
 
+export { SUDOKU_BUDGET_ERROR, isSudokuBudgetError } from './diggers';
+
 /**
  * The five possible difficulty levels supported by the engine
  */
@@ -71,6 +73,16 @@ export function getGridConfig(size: GridSize): GridConfig {
   return configs[size];
 }
 
+/** Optional knobs for {@link generateSudoku}, matching the Kakuro/Skyscrapers option name. */
+export interface GenerateSudokuOptions {
+  /**
+   * Wall-clock budget for the whole call, in ms. Only the Expert and Extreme diggers can run
+   * long (their retry loops re-dig whole grids), so only they read it; past it they throw
+   * `SUDOKU_BUDGET_ERROR`. Default: no budget — existing callers are unaffected.
+   */
+  timeBudgetMs?: number;
+}
+
 // Defines the structure of a generated puzzle
 export interface SudokuPuzzle {
   grid: number[][];       // NxN array representing the unsolved puzzle (0 means empty)
@@ -92,10 +104,18 @@ export interface SudokuPuzzle {
  *   reproducible puzzles (deterministic tests); passing it changes nothing about correctness or
  *   difficulty, only which specific puzzle is drawn. Threaded through fill + every digger so the
  *   whole pipeline is seedable — matching the `calc/`/`killer/` engines' `rng` convention.
+ * @param options `timeBudgetMs` — see {@link GenerateSudokuOptions}.
  * @returns A fully generated Sudoku puzzle and its solution.
+ * @throws An error named `SUDOKU_BUDGET_ERROR` when `timeBudgetMs` runs out (Expert/Extreme only).
  */
-export function generateSudoku(difficulty: Difficulty, gridSize: GridSize = 9, rng: () => number = Math.random): SudokuPuzzle {
+export function generateSudoku(
+  difficulty: Difficulty,
+  gridSize: GridSize = 9,
+  rng: () => number = Math.random,
+  options: GenerateSudokuOptions = {},
+): SudokuPuzzle {
   const config = getGridConfig(gridSize);
+  const deadline = options.timeBudgetMs === undefined ? Infinity : performance.now() + options.timeBudgetMs;
 
   const solution = createEmptyGrid(config.size);
   fillGrid(solution, config, rng);
@@ -105,11 +125,11 @@ export function generateSudoku(difficulty: Difficulty, gridSize: GridSize = 9, r
   if (difficulty === 'extreme' && gridSize === 9) {
     // Extreme puzzles require the most advanced strategies (W-Wing, ALS, AICs)
     // Only supported on 9x9 grids
-    applyExtremeDigger(grid, solution, config, rng);
+    applyExtremeDigger(grid, solution, config, rng, deadline);
   } else if (difficulty === 'expert' && gridSize === 9) {
     // Expert puzzles use logical deduction to guarantee they require advanced strategies
     // Only supported on 9x9 grids
-    applyExhaustiveDigger(grid, config, rng);
+    applyExhaustiveDigger(grid, config, rng, deadline);
   } else {
     // Easier puzzles (and all mini puzzles) remove a set number of clues
     // while maintaining a unique solution

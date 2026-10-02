@@ -13,17 +13,7 @@
 import { getGridConfig, type GridSize } from '../sudoku';
 import { candidateMaskExcluding } from './cage-combinations';
 import type { Cage } from './killer-types';
-
-/** Number of set bits in a small integer (a digit-set mask). */
-function popcount(mask: number): number {
-  let count = 0;
-  let m = mask;
-  while (m) {
-    m &= m - 1; // clear the lowest set bit
-    count += 1;
-  }
-  return count;
-}
+import { popcount } from '../grid-utils';
 
 export class KillerSolver {
   private readonly size: number;

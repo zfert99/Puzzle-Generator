@@ -1,24 +1,10 @@
 import { applyNakedSingle, applyHiddenSingle, applyNakedPair, applyHiddenPair, applyPointingPairs } from './strategies/basic';
 import { applyXWing, applySwordfish, applyYWing, applyXYZWing } from './strategies/advanced';
 import { applyWWing, applyALSXZ, applyAIC } from './strategies/extreme';
+import { popcount } from './grid-utils';
 
 export type Cell = { r: number; c: number };
 export type CandidateCell = { r: number; c: number; cands: number[] };
-
-/**
- * Population count (number of set bits) via Brian Kernighan's algorithm. This is
- * how a cell's remaining-candidate count is computed in O(set bits) instead of
- * O(grid size) — the core win of storing candidates as a bitmask rather than the
- * previous `Set<number>[][]`. See AGENTS.md Section 1 (bitmask engine mandate).
- */
-function popcount(mask: number): number {
-  let count = 0;
-  while (mask !== 0) {
-    mask &= mask - 1;
-    count++;
-  }
-  return count;
-}
 
 /**
  * HumanSolver is a pure logical deduction engine for solving Sudoku puzzles.

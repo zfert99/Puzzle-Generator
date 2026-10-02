@@ -96,3 +96,9 @@ both benchmark-driven on fixed layout fixtures:
 25–30 % slowdown across every class — MRV plus the P1 cage masks already catch nearly
 everything the house bound would, and its per-placement min/max loops cost more than the rare
 extra prunes saved. Don't re-add it without a fixture A/B.
+
+## Shared `popcount`
+
+The bit count over digit-set masks comes from `grid-utils.ts` — the engine's single copy — rather
+than a private duplicate in this file (October 2026 dedupe; see `grid-utils.md`). Same algorithm,
+same `(number) → number` shape, so behaviour and V8 monomorphism are unchanged.

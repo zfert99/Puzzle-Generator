@@ -34,17 +34,7 @@
 import type { GridSize } from '../sudoku';
 import { calcCageCombos } from './calc-combinations';
 import type { CalcCage } from './calc-types';
-
-/** Number of set bits in a small integer (a digit-set mask). */
-function popcount(mask: number): number {
-  let count = 0;
-  let m = mask;
-  while (m) {
-    m &= m - 1;
-    count += 1;
-  }
-  return count;
-}
+import { popcount } from '../grid-utils';
 
 /** A cage's valid multisets, precompiled to per-digit counts for fast sub-multiset checks. */
 interface CageCombos {

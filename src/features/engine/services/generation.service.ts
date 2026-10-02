@@ -1,4 +1,4 @@
-import { generateSudoku, SudokuPuzzle, GridSize, Difficulty } from '../sudoku';
+import { generateSudoku, SUDOKU_BUDGET_ERROR, SudokuPuzzle, GridSize, Difficulty } from '../sudoku';
 
 /**
  * Service function to generate a single playable puzzle. Backs the interactive
@@ -22,30 +22,33 @@ export interface GenerationRequest {
 /**
  * Service function to synchronously generate a batch of Sudoku puzzles
  * based on the requested difficulties and grid size.
+ *
+ * @param options.timeBudgetMs One wall-clock budget for the WHOLE batch (default: none). Each
+ *   puzzle is handed what is left of it, and the batch throws an error named
+ *   `SUDOKU_BUDGET_ERROR` (see `isSudokuBudgetError`) once it is spent — so a route can return a
+ *   clean "request too large" instead of hitting its own function timeout half-way through.
  */
-export function generatePuzzleBatch(request: GenerationRequest): SudokuPuzzle[] {
+export function generatePuzzleBatch(request: GenerationRequest, options: { timeBudgetMs?: number } = {}): SudokuPuzzle[] {
   const { easy = 0, medium = 0, hard = 0, expert = 0, extreme = 0, gridSize = 9 } = request;
-  const puzzles: SudokuPuzzle[] = [];
   const size = gridSize as GridSize;
+  const ladder: readonly [Difficulty, number][] = [
+    ['easy', easy], ['medium', medium], ['hard', hard], ['expert', expert], ['extreme', extreme],
+  ];
+  const started = performance.now();
+  const puzzles: SudokuPuzzle[] = [];
 
-  for (let i = 0; i < easy; i++) {
-    puzzles.push(generateSudoku('easy', size));
-  }
-
-  for (let i = 0; i < medium; i++) {
-    puzzles.push(generateSudoku('medium', size));
-  }
-
-  for (let i = 0; i < hard; i++) {
-    puzzles.push(generateSudoku('hard', size));
-  }
-
-  for (let i = 0; i < expert; i++) {
-    puzzles.push(generateSudoku('expert', size));
-  }
-
-  for (let i = 0; i < extreme; i++) {
-    puzzles.push(generateSudoku('extreme', size));
+  for (const [difficulty, count] of ladder) {
+    for (let i = 0; i < count; i++) {
+      if (options.timeBudgetMs === undefined) {
+        puzzles.push(generateSudoku(difficulty, size));
+        continue;
+      }
+      const remaining = options.timeBudgetMs - (performance.now() - started);
+      if (remaining <= 0) {
+        throw Object.assign(new Error(`Sudoku batch ran out of time after ${puzzles.length} puzzles (${options.timeBudgetMs} ms budget)`), { name: SUDOKU_BUDGET_ERROR });
+      }
+      puzzles.push(generateSudoku(difficulty, size, Math.random, { timeBudgetMs: remaining }));
+    }
   }
 
   return puzzles;

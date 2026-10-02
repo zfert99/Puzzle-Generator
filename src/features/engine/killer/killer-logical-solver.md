@@ -48,7 +48,8 @@ file implements the full ladder, **Tiers 1–4**.
   or columns (total = 45 × houseCount), and adds **outies**: a single cell of a cage reaching out
   of the region = (sum of all cages touching the region) − total. Single-house innies stay Tier 1;
   multi-house innies and all outies are Tier 3. Sound — pure arithmetic over known house totals.
-- **Classic pointing pairs** (box-line reduction), via `HumanSolver`.
+- **Classic pointing pairs** (box → line only — claiming is not implemented; see
+  `strategies/basic.md`), via `HumanSolver`.
 
 ### Tier 4
 

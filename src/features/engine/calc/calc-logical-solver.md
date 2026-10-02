@@ -84,3 +84,9 @@ bounded axis is a single step (needs-a-guess vs not), not a depth ladder. T5 gra
 (p95 ~450 ms) at maxSize 3; maxSize-4 T6 grading is far slower (p95 ~7 s). **Consequence:** guess
 *depth* can't separate Expert from Extreme — that's the open K7c design fork (see
 `Docs/research/keisan-9x9-feasibility-findings.md` §7 and the plan).
+
+## Shared `popcount`
+
+The bit count over digit-set masks comes from `grid-utils.ts` — the engine's single copy — rather
+than a private duplicate in this file (October 2026 dedupe; see `grid-utils.md`). Same algorithm,
+same `(number) → number` shape, so behaviour and V8 monomorphism are unchanged.

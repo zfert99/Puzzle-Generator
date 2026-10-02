@@ -78,6 +78,12 @@ Return the shuffled array.
 It is the metric the MRV heuristic minimises — "how many digits are still legal for
 this cell?" — and is shared by `fillGrid` and `countSolutions`.
 
+It is the engine's **only** copy. `HumanSolver`, `strategies/extreme.ts`, `CalcSolver`,
+`CalcLogicalSolver` and `KillerSolver` used to carry four private duplicates; they now import
+this one. That is safe because `grid-utils.ts` imports nothing but a *type* from `sudoku.ts`, so
+no import cycle can form, and it keeps one monomorphic `(number) → number` function for V8 to
+optimise instead of five (AGENTS.md §5).
+
 ## `fillGrid(grid, config, rng = Math.random)`
 
 **Why:** We generate puzzles by starting with a completely solved, valid grid, and then digging holes into it. The `rng` is forwarded to the candidate `shuffle` so seeded, reproducible generation flows all the way through (see `shuffle` above). It uses **bitmask-based backtracking with a Minimum Remaining Values (MRV) heuristic**. The old version filled cells in index order and rescanned the whole row/column/box (`isValid`) for every candidate — O(size) per test. Instead we keep a used-digit bitmask per row, column, and box (so each legality test is a single O(1) bit-AND) and always branch on the empty cell with the FEWEST legal digits first. Most-constrained-first collapses the search tree, and this is the representation AGENTS.md Section 1 mandates for the generator core.

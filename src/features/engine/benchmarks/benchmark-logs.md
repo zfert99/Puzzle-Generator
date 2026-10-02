@@ -228,3 +228,13 @@
 | 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 7×7 Hard (10x) | 297.10 ms | max 810 ms |
 | 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 7×7 Expert (10x) | 704.11 ms | max 1619 ms |
 | 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 7×7 Extreme (10x) | 311.20 ms | max 628 ms |
+| 2026-10-02T21:30:26.314Z | `6db9c70` | HumanSolver Basic (5000x) | 0.14 ms | 7392 solves/sec |
+| 2026-10-02T21:30:26.314Z | `6db9c70` | HumanSolver Advanced (5000x) | 0.19 ms | 5134 solves/sec |
+| 2026-10-02T21:30:26.314Z | `6db9c70` | HumanSolver Extreme (1000x) | 25.88 ms | 39 solves/sec |
+| 2026-10-02T21:31:16.807Z | `6db9c70` | Pipeline Gen (10x Expert) | 17.20 ms | N/A |
+| 2026-10-02T21:31:16.807Z | `6db9c70` | Pipeline Gen (5x Extreme) | 884.40 ms | N/A |
+| 2026-10-02T21:36:08.339Z | `6db9c70` | HumanSolver Basic (5000x) | 0.12 ms | 8550 solves/sec |
+| 2026-10-02T21:36:08.339Z | `6db9c70` | HumanSolver Advanced (5000x) | 0.61 ms | 1642 solves/sec |
+| 2026-10-02T21:36:08.339Z | `6db9c70` | HumanSolver Extreme (1000x) | 26.07 ms | 38 solves/sec |
+| 2026-10-02T21:36:44.953Z | `6db9c70` | Pipeline Gen (10x Expert) | 95.20 ms | N/A |
+| 2026-10-02T21:36:44.953Z | `6db9c70` | Pipeline Gen (5x Extreme) | 153.20 ms | N/A |

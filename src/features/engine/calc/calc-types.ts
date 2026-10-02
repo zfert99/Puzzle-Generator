@@ -19,7 +19,7 @@
  * See `calc-types.md` for the "why".
  */
 
-import type { GridSize } from '../sudoku';
+import type { GridConfig, GridSize } from '../sudoku';
 
 /**
  * The four cage operators. Named rather than symbol-keyed (`'add'` not `'+'`) so the code reads
@@ -137,4 +137,14 @@ export function operatorAllowedForCageSize(op: CalcOperator, size: number): bool
 export function hasAssignableOperator(activeOps: readonly CalcOperator[], size: number): boolean {
   if (size < 2) return true; // a given — no operator required
   return activeOps.some((op) => operatorAllowedForCageSize(op, size));
+}
+
+/**
+ * Keisan is always a pure Latin square — never box-constrained, even at box-tileable 4/6. Lives
+ * here, in the dependency-free types module, rather than beside the generator: the board store
+ * needs only this config to play a Keisan, and importing it from `calc-generator` dragged the
+ * `CalcSolver` and the whole generation pipeline into the client bundle of every route.
+ */
+export function calcGridConfig(size: GridSize): GridConfig {
+  return { size, hasBoxes: false, boxWidth: size, boxHeight: 1, totalCells: size * size, maxNum: size };
 }

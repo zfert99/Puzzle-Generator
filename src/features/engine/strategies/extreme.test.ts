@@ -2,6 +2,11 @@
 import { describe, it, expect } from 'vitest';
 import { HumanSolver } from '../human-solver';
 import { generateSudoku } from '../sudoku';
+import { createEmptyGrid } from '../grid-utils';
+import { applyAIC } from './extreme';
+
+/** Bitmask for a set of candidate digits. */
+const mask = (...digits: number[]) => digits.reduce((m, d) => m | (1 << (d - 1)), 0);
 
 /**
  * The extreme strategies (W-Wing, ALS-XZ, AIC) are validated over generated Extreme
@@ -41,4 +46,22 @@ describe('Extreme strategies (over generated Extreme puzzles)', () => {
     }
     expect(verified).toBe(true);
   }, 120_000);
+});
+
+describe('applyAIC soundness', () => {
+  // The counterexample behind the deleted weak-start/weak-end branch: r1c1 and r1c9 are the only
+  // homes for 5 and 7 in row 1, both {5,7}. The chain (r1c1,5)-(r1c1,7)=(r1c9,7)-(r1c9,5) only
+  // proves the two 5s are not BOTH true — one of them is the answer, so neither may be deleted.
+  // The old branch would have removed 5 from both endpoints (it was masked only by the BFS
+  // `visited` set); this pins the correct outcome against any future search rewrite.
+  it('never eliminates a digit from both endpoints of a weak-ended same-digit chain', () => {
+    const solver = new HumanSolver(createEmptyGrid(9));
+    for (const row of solver.candidates) row.fill(0);
+    solver.candidates[0][0] = mask(5, 7);
+    solver.candidates[0][8] = mask(5, 7);
+
+    expect(applyAIC(solver)).toBe(false);
+    expect(solver.candidates[0][0]).toBe(mask(5, 7));
+    expect(solver.candidates[0][8]).toBe(mask(5, 7));
+  });
 });

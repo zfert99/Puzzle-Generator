@@ -123,6 +123,23 @@ solved grid per attempt (vs. reusing one) avoids thrashing on an unlucky grid �
 counterintuitively. The attempt cap is 20 000 (attempts are ~0.5 ms; hard accepts ~1 in 500,
 so exhaustion is astronomically unlikely with a bounded ~10 s worst case).
 
+## Time budget (`timeBudgetMs`, October 2026)
+
+The attempt cap bounds *attempts*, not time, and an extreme attempt is not ~0.5 ms: unbudgeted
+extremes were measured at **8.6–31 s** in the October 2026 review, and a 20 000-attempt worst case
+is minutes. `KillerGenOptions.timeBudgetMs` adds the Kakuro/Skyscrapers wall-clock contract: the
+deadline is checked once per attempt (one `performance.now()` against a ~0.5 ms+ attempt — free),
+and when it has passed the generator throws an `Error` named `KILLER_BUDGET_ERROR`
+(`'KillerBudgetError'`; test with `isKillerBudgetError`). Exhausting `maxAttempts` still throws the
+plain error — that one is a real fault, not a budget question.
+
+`generateKillerBatch(counts, { gridSize, timeBudgetMs })` treats the budget as **one** budget for
+the whole batch: each puzzle is handed what is left, and the batch throws `KILLER_BUDGET_ERROR`
+once it is spent. Unlike Kakuro's batch there is no per-puzzle fair share and retry: a Killer
+attempt carries no state into the next one, so a slow puzzle is not "stuck" and abandoning it would
+only waste the attempts already paid for. Both default to **no budget**, so every existing caller
+is unchanged; wiring a budget into `/api/generate` is the route's decision.
+
 ## Determinism
 
 Injectable `rng` / `solution` keep the whole pipeline deterministic for tests (and RNG-driven →
@@ -160,5 +177,5 @@ band to build. The operations-graded arithmetic 4×4 niche is filled by Keisan (
 score band (easy-only has no adjacent tier to stay disjoint from). Requesting medium/hard/expert/
 extreme at 4×4 throws (`not available at 4×4`). Generation is trivially cheap (~0.15 ms avg).
 
-`generateKillerBatch(counts, { gridSize })` honours only each size's real ladder: 9×9 = full 5
+`generateKillerBatch(counts, { gridSize, timeBudgetMs })` honours only each size's real ladder: 9×9 = full 5
 tiers, 6×6 = easy/medium/hard, 4×4 = easy only (a `LADDERS` table keyed by size).

@@ -3,6 +3,15 @@
 > **Status:** ✅ Quick wins **G1–G4 shipped** (see the ✅ marks below: board live region, the
 > Playwright reflow + axe suite, `100svh`, a non-color conflict cue); **G5–G8** fold into normal work
 > as those surfaces are touched; **G9 (PWA)** is unscheduled · **Date:** July 2026 (analysis)
+> **October 2026 pass:** G2's overflow test turned out to be **vacuous** — `overflow-x: hidden`
+> on `html, body` clamps the root's `scrollWidth`, so the loop could never fail, and it sat green
+> over a clipped "Sign in" link and an overlapping type picker at 320 px. The test now measures
+> the body too, axe runs in **both themes** and on `/generate` + `/account`, and the first dark
+> run found a 1.5:1 text/fill pair on every primary button. Everything found and fixed (skip
+> link, form labels + autocomplete, `aria-pressed`, a CSS reduced-motion fallback, branded
+> error/404 pages, live regions) and what stays open (G5–G9 plus a native-`<dialog>` focus trap
+> for the five hand-rolled modals) is in
+> [site-wide-optimization-qa-pass.md](site-wide-optimization-qa-pass.md) §2.5 and §5.
 > **Kept live, not archived (September 2026):** [`e2e/a11y.spec.ts`](../e2e/a11y.spec.ts) cites gap
 > G2 as the reason the reflow loop exists, so per AGENTS.md §7 this stays in the root.
 > **Triggered by:** two research docs —

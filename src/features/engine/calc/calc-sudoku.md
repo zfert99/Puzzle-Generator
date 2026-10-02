@@ -20,6 +20,15 @@ repeat up to maxAttempts:
   → return { variant:'calc', grid:all-zero, solution, cages, difficulty, gridSize }
 ```
 
+**Time budget (`timeBudgetMs`, October 2026).** `maxAttempts` bounds attempts, not wall-clock,
+and the rare tiers make that matter — 9×9 extreme averages ~2.3 s at a ~1% accept rate, so a
+40 000-attempt worst case is far beyond any route's timeout. With `options.timeBudgetMs` the loop
+checks a deadline once per attempt and throws an `Error` named `CALC_BUDGET_ERROR`
+(`'CalcBudgetError'`; test with `isCalcBudgetError`) once it passes — the Kakuro/Skyscrapers
+contract. `generateCalcBatch(counts, { gridSize, noOp, timeBudgetMs })` spends **one** budget
+across the whole batch, handing each puzzle what is left and throwing the same error when it is
+spent. Both default to no budget, so existing callers are unchanged.
+
 The uniqueness check is **belt-and-braces**: the logical solver is sound (only true deductions), so a
 puzzle it fully solves already has a unique solution. The exact-solver check stays as a guard against
 a technique bug, off the hot path.

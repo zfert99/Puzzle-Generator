@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { generatePuzzleBatch } from './generation.service';
+import { isSudokuBudgetError } from '../sudoku';
 
 describe('generatePuzzleBatch', () => {
   it('returns exactly the requested number of puzzles per difficulty', () => {
@@ -23,5 +24,15 @@ describe('generatePuzzleBatch', () => {
     expect(puzzles).toHaveLength(1);
     expect(puzzles[0].gridSize).toBe(4);
     expect(puzzles[0].grid).toHaveLength(4);
+  });
+
+  it('throws the typed budget error once the batch budget is spent', () => {
+    let caught: unknown;
+    try {
+      generatePuzzleBatch({ easy: 1, gridSize: 4 }, { timeBudgetMs: 0 });
+    } catch (error) {
+      caught = error;
+    }
+    expect(isSudokuBudgetError(caught)).toBe(true);
   });
 });

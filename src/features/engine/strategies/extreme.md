@@ -28,7 +28,7 @@ FOR each pair (bv1, bv2) of bivalues:
             // Check if the conjugate pair "bridges" the two bivalues:
             //   cp1 sees bv1 AND cp2 sees bv2  (or vice versa)
             IF neither bridge orientation works → SKIP
-            IF cp1 or cp2 IS one of the bivalue cells → SKIP
+            IF cp1 or cp2 IS one of the bivalue cells → SKIP   // compare row AND column of the same cell
 
             // At least one bivalue cell must be elimCand
             solver.eliminateFromCellsSeeingAll([bv1, bv2], elimCand, [bv1, bv2])
@@ -36,6 +36,11 @@ FOR each pair (bv1, bv2) of bivalues:
 
 RETURN false
 ```
+
+**The endpoint-exclusion check (fixed October 2026).** The "cp2 is a bivalue cell" test compared
+`cp2`'s row with `cp1`'s column — a typo that could both skip valid bridges and, worse, *keep* a
+"bridge" whose conjugate cell is `bv1` itself. That degenerate case proves nothing about `bv2`, so
+eliminating B from their common peers was not justified. Both halves now compare the same cell.
 
 ## 2. applyALSXZ(solver) → boolean
 
@@ -89,7 +94,17 @@ Alternating Inference Chains are the most general elimination technique in human
 The method builds a full inference graph of all candidates, then searches for chains using BFS with strict alternation. Two chain types yield eliminations:
 
 - **Type 2** (strong→...→strong): At least one endpoint is true. If both endpoints have the same candidate, eliminate it from cells seeing both endpoints.
-- **Type 1** (weak→...→weak): Both endpoints must be false. If both endpoints are the same candidate in cells that see each other, eliminate from both.
+- **Discontinuous loop** (weak→...→weak back to the start node): assuming the start true forces it false, so it is false — delete it.
+
+**A deleted branch, and why it was wrong (October 2026).** A weak→...→weak chain between two
+*different* cells holding the same digit used to delete that digit from **both** endpoints when
+the cells saw each other. That is unsound: such a chain only proves the two endpoints are not both
+true — which their shared house already says. Counterexample: r1c1 = {5,7}, 7 conjugate between
+r1c1 and r1c9; the chain (r1c1,5)–(r1c1,7)=(r1c9,7)–(r1c9,5) would have deleted the 5 from both
+cells, although one of them must hold it. It never fired only because the BFS `visited` set marks
+the end node as reached on the very first (direct, weak) step, so the chain could never arrive at
+it again — an accident of the search, not a guarantee. The branch was removed outright rather than
+"fixed"; `extreme.test.ts` pins the counterexample.
 
 Max chain depth is capped at 12 nodes to prevent unbounded search.
 
@@ -139,13 +154,10 @@ FOR each startNode in the graph:
                         eliminate that candidate from cells seeing BOTH endpoints
                         IF eliminated → RETURN true
 
-                // TYPE 1 CHAIN: weak → ... → weak
-                // Both endpoints must be false
+                // weak → ... → weak back to the start node
                 ELSE IF startLinkType=='weak' AND lastLink=='weak':
-                    IF same cell, same candidate (Continuous Nice Loop):
+                    IF same cell, same candidate (Discontinuous Nice Loop):
                         self-contradiction → delete the candidate → RETURN true
-                    IF same candidate AND endpoints see each other:
-                        delete from BOTH endpoints → RETURN true
 
             // Extend chain with the OPPOSITE link type (strict alternation)
             nextLinkType = opposite of lastLink

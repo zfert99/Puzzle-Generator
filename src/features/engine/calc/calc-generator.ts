@@ -6,7 +6,7 @@
  * See `calc-generator.md` for the "why".
  */
 
-import type { GridConfig, GridSize } from '../sudoku';
+import type { GridSize } from '../sudoku';
 import { createEmptyGrid, copyGrid, fillGrid } from '../grid-utils';
 import { CalcSolver } from './calc-solver';
 import {
@@ -15,12 +15,13 @@ import {
   hasAssignableOperator,
   type CalcOperator,
   type CalcCage,
+  calcGridConfig,
 } from './calc-types';
 
-/** Keisan is always a pure Latin square — never box-constrained, even at box-tileable 4/6. */
-export function calcGridConfig(size: GridSize): GridConfig {
-  return { size, hasBoxes: false, boxWidth: size, boxHeight: 1, totalCells: size * size, maxNum: size };
-}
+// `calcGridConfig` moved to `calc-types.ts` (October 2026) so the board store can import the
+// Latin-square config without pulling this generator — and the solver behind it — into the
+// client bundle. Re-exported here so existing engine/PDF callers are unchanged.
+export { calcGridConfig };
 
 /** The four orthogonal neighbours of a flat cell index, respecting grid edges (mirrors killer-types). */
 function orthogonalNeighbors(index: number, size: number): number[] {

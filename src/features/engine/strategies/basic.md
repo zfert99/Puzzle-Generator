@@ -63,7 +63,14 @@ RETURN changed
 
 ## 5. applyPointingPairs(solver) → boolean
 
-If a specific candidate within a 3×3 box only appears in a single row (or column), then that candidate's final position for this box MUST be somewhere along that line. Because of this, the candidate cannot exist anywhere else along that same row (or column) OUTSIDE of the box. Also known as "Box-Line Reduction."
+If a specific candidate within a 3×3 box only appears in a single row (or column), then that candidate's final position for this box MUST be somewhere along that line. Because of this, the candidate cannot exist anywhere else along that same row (or column) OUTSIDE of the box.
+
+**Only the box → line direction exists.** The converse — *Claiming* / *Box-Line Reduction*: a
+row's (or column's) candidate confined to one box clears it from the rest of that box — is **not**
+implemented, although this function's JSDoc used to say "(Box-Line Reduction)". Claiming is a
+standard basic technique, so a puzzle that needs it is solved here only by a later advanced step,
+which grades it one tier harder than it is. Kept as a recorded gap rather than added in passing,
+because adding a basic strategy changes the grade (and the generator's output) of every tier.
 
 ```text
 FOR each number 1-9:
