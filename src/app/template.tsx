@@ -1,33 +1,21 @@
-'use client';
-
-import { motion } from 'motion/react';
-import { useReducedMotion } from '@/features/juice/useReducedMotion';
-
 /**
  * Route transition (design system §4): a subtle fade + 8px slide on navigation. A `template`
- * (unlike `layout`) re-mounts on every route change, so wrapping its children in a Motion
- * enter animation gives each page a gentle entrance.
+ * (unlike `layout`) re-mounts on every route change, so giving its wrapper a CSS enter
+ * animation gives each page a gentle entrance.
+ *
+ * This is a Server Component on purpose. It used to be a `motion.div` from the `motion`
+ * library, which (a) shipped ~39 KB gzipped of animation runtime to every route — including
+ * the hub, leaderboard, sign-in and print pages, where nothing else animates — and (b)
+ * server-rendered `style="opacity:0;transform:translateY(8px)"`, so every page's content was
+ * invisible until the framework and that chunk had downloaded, hydrated and run the animation.
+ * The LCP element could never paint before hydration. A CSS keyframe (`.page-enter` in
+ * `globals.css`) plays at first paint with no JavaScript at all, and the existing
+ * `[data-motion="reduce"]` pre-paint attribute switches it off for reduced motion — including
+ * on the very first paint, which the client-side `useReducedMotion` snapshot could not do.
  *
  * The wrapper is `flex-1 flex flex-col` so it transparently passes the body's flex column
- * through to each page's `flex-1` main. Under reduced motion the animation is skipped.
- *
- * IMPORTANT: always render the SAME element type (`motion.div`) regardless of the motion
- * setting — never branch to a plain `<div>`. Switching the element type at this position
- * remounts the whole page subtree, which would reset in-progress puzzle state (view, timer)
- * whenever the Motion setting is toggled mid-game. Gating the animation values keeps the tree
- * stable, so only the animation changes, not the mounted components.
+ * through to each page's `flex-1` main.
  */
 export default function Template({ children }: { children: React.ReactNode }) {
-  const reduced = useReducedMotion();
-
-  return (
-    <motion.div
-      className="flex-1 flex flex-col"
-      initial={reduced ? false : { opacity: 0, y: 8 }}
-      animate={reduced ? undefined : { opacity: 1, y: 0 }}
-      transition={{ duration: reduced ? 0 : 0.15, ease: 'easeOut' }}
-    >
-      {children}
-    </motion.div>
-  );
+  return <div className="flex-1 flex flex-col page-enter">{children}</div>;
 }

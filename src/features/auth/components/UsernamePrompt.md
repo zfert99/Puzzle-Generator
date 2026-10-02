@@ -27,3 +27,16 @@ local literal, and the **server** enforces the same rule via better-auth's field
 trip — bypassing this input still gets a 400. Until August 2026 a copy of the regex lived here
 and in `AccountBadge.tsx` and *nowhere on the server*, which meant the rule applied to the form
 but not to the endpoint.
+
+## Label, autocomplete and the error alert (October 2026)
+
+**Why:** the input relied on its placeholder ("e.g. sudoku_ace") as its only name. It now has a
+visually hidden `<label>` ("Username"). `autocomplete="off"` stops the browser suggesting the
+user's email or saved logins — a public handle is not a credential. The error paragraph is
+`role="alert"` and linked to the form with `aria-describedby`, so "That username is taken" is
+announced instead of appearing silently.
+
+**Grape, not indigo (October 2026):** inputs used to ring in leftover pre-redesign colours
+(Tailwind `indigo-500`, or butterscotch, which is near-invisible on the cream paper). They now use
+`ring-grape`, the design system's interactive colour, so every focus ring on the site matches.
+The banner border moved from `indigo-500/30` to `grape/30` for the same reason.

@@ -40,8 +40,11 @@ prepends the `/puzzles` basePath — Next does not apply basePath to `fetch()`, 
 `/api/...` paths 404 under the multi-zone rewrite.
 
 ```text
-effect [difficulty, date, session?.user.id] -> GET /api/leaderboard -> setEntries/setMe (async)
-effect [date]                               -> GET /api/daily/slots -> setSlots (drives the tabs)
+effect [difficulty, date, session?.user.id, slotsSettled, sessionPending]
+                                            -> wait until slots settled AND session resolved,
+                                               then GET /api/leaderboard -> setEntries/setMe (async)
+effect [date]                               -> GET /api/daily/slots -> setSlots (drives the tabs);
+                                               marks the date settled (boards, none, or error)
 effect [session, date]                      -> if signed in, GET /api/me/streak + /api/me/bests
 tab click                                   -> setLoading(true) + setDifficulty (event handler)
 render                                      -> tabs · (streak · your rank) · personal best · table
@@ -65,6 +68,37 @@ Keyed on `session?.user.id`, not the `session` object: the id changes only when 
 changes, whereas a new object identity from the auth client would refetch the board on unrelated
 re-renders. `LeaderboardView.test.tsx` pins both halves — one test fails if the id leaves the deps,
 another fails if it is swapped for the object.
+
+## The board fetch waits for slots and session (October 2026)
+
+**Why:** the board fetch used to fire on mount alongside the slots fetch and the session lookup,
+which cost two wasted requests on a typical load:
+
+- **Slots.** Tabs are rolled per day, so the initial `'easy'` (or a key carried over from another
+  date) may not exist for this date. Fetching it first returned nothing, flashed "No solves yet
+  today", and then fetched again once the slots reconciled the tab.
+- **Session.** `isMe` is baked into the payload by the server, so a fetch made while the session
+  was still pending came back anonymous, and the id dependency refetched it as the viewer. Every
+  signed-in visitor loaded the board twice.
+
+`slotsSettledFor` records which date's slots have **settled** — boards, an empty day, or a
+network error all count, so a failed slots call cannot stall the board (the same lesson as
+`onSlotsLoaded` above). The board effect returns early until that matches the current `date` and
+`useSession().isPending` is false. Keying on the date rather than a boolean means a date change
+re-gates without a reset effect (`set-state-in-effect` is banned).
+
+## Table and state semantics (October 2026)
+
+- Tabs carry `aria-pressed`, so the selected board is announced rather than shown by colour alone
+  (selected text is `text-on-butterscotch` for dark-mode contrast).
+- The table has a visually hidden `<caption>` naming the day and board, and `<th scope="col">`
+  headers. The `#` header is `aria-hidden` with an sr-only "Rank" — "#" alone is read as
+  "number sign".
+- "Loading…" is `role="status"` with `aria-busy`, the empty-board message is `role="status"`, and
+  the error is `role="alert"`, so each state change is announced.
+- Row dividers use `border-ink/10` (the old `border-white/5` was invisible on the cream paper), and
+  the "(you)" marker inherits the row's text colour instead of grape, which was low-contrast on
+  the butterscotch-tinted row.
 
 ## Tabs come from the day's boards (type-as-slot, Step 3b)
 

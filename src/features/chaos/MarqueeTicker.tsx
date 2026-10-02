@@ -7,7 +7,7 @@
 export function MarqueeTicker({ items }: { items: string[] }) {
   const line = items.join('  ★  ');
   return (
-    <div className="marquee w-full max-w-md mx-auto border-2 border-ink bg-butterscotch text-ink text-xs py-1 rounded-md">
+    <div className="marquee w-full max-w-md mx-auto border-2 border-ink bg-butterscotch text-on-butterscotch text-xs py-1 rounded-md">
       <div className="marquee-track" aria-hidden>
         <span className="px-3">{line}  &#9733;  </span>
         <span className="px-3">{line}  &#9733;  </span>

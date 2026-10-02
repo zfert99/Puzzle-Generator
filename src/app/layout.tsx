@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fredoka, Manrope, Space_Mono, Permanent_Marker, Caveat } from "next/font/google";
 import { THEME_PRE_PAINT_SCRIPT } from "@/features/theme/theme";
 import { SETTINGS_PRE_PAINT_SCRIPT } from "@/features/settings/settings";
@@ -29,11 +29,14 @@ const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka" });
 // Body / UI — clean modern grotesk. Variable font.
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
 
-// Mono — puzzle-grid digits, timers, stats. Not variable; pin the weights we use.
+// Mono — puzzle-grid digits, timers, stats. Not variable; pin the weights we use. `preload:
+// false`: it is only drawn once a board is on screen, never above the fold of the hub,
+// leaderboard, sign-in or print pages — ~19 KB of preload those routes were paying for nothing.
 const spaceMono = Space_Mono({
   subsets: ["latin"],
   weight: ["400", "700"],
   variable: "--font-space-mono",
+  preload: false,
 });
 
 // Chaos-layer marginalia (5.5) — DECORATIVE only, never body copy. Marker for bold scrawl,
@@ -70,6 +73,29 @@ export const metadata: Metadata = {
   // for the exposed origin (canonical-first, NOT a Host-based noindex — that would fire
   // on the proxied response too). Verified per-route under basePath (no double /puzzles).
   alternates: { canonical: "./" },
+  // Social cards: a shared daily link used to unfurl with no title, description or site name.
+  // `summary` (no image asset yet — an `opengraph-image` is a design task), with the same
+  // per-route title/description the page itself carries; `url: "./"` resolves per route like the
+  // canonical above.
+  openGraph: {
+    type: "website",
+    siteName: "Puzzle Lab",
+    title: { default: "Puzzle Lab", template: "%s · Puzzle Lab" },
+    description: "Daily sudoku, competitive leaderboards, and print-ready puzzle books.",
+    url: "./",
+    locale: "en_GB",
+  },
+  twitter: { card: "summary" },
+};
+
+// Browser chrome colour follows the header's grape; the dark value is the dark theme's grape.
+// Theme selection itself is the `data-theme` attribute (see theme.ts), which defaults to the OS
+// preference, so the media-query split here matches the first paint in the common case.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#5A3E96" },
+    { media: "(prefers-color-scheme: dark)", color: "#9B7FD4" },
+  ],
 };
 
 export default function RootLayout({
@@ -97,6 +123,12 @@ export default function RootLayout({
         {/* Applies data-theme before paint — must be the first thing to run. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_PRE_PAINT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: SETTINGS_PRE_PAINT_SCRIPT }} />
+        {/* Skip link (WCAG 2.4.1): the header's seven controls precede every page's content, so a
+            keyboard user Tabbed through all of them on every route. First in the DOM, visible
+            only on focus; each page's <main> carries id="main". */}
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         <WobbleDefs />
         <Backdrop />
         <AppHeader />

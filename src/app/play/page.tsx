@@ -3,7 +3,10 @@ import PlayExperience from '@/features/interactive-board/components/PlayExperien
 import type { Metadata } from 'next';
 
 // Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
-export const metadata: Metadata = { title: 'Play' };
+export const metadata: Metadata = {
+  title: 'Play',
+  description: 'Play Sudoku, Killer, Keisan, Kakuro and Skyscrapers in the browser — five sizes, five difficulties, hints and pencil marks.',
+};
 
 /**
  * /play — the interactive board route.
@@ -20,9 +23,9 @@ export const metadata: Metadata = { title: 'Play' };
  */
 export default function PlayPage() {
   return (
-    <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
+    <main id="main" className="flex-1 flex flex-col items-center justify-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Play Sudoku</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Play</h1>
       </div>
 
       <Suspense fallback={<div className="glass-panel p-8 max-w-md w-full mx-auto h-48" aria-hidden="true" />}>

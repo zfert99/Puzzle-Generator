@@ -44,7 +44,7 @@ export function ContinueBanner() {
   return (
     <Link
       href={href}
-      className="flex items-center justify-between gap-3 rounded-xl border-[3px] border-ink bg-butterscotch px-5 py-3 text-ink shadow-chunky pressable mb-4"
+      className="flex items-center justify-between gap-3 rounded-xl border-[3px] border-ink bg-butterscotch px-5 py-3 text-on-butterscotch shadow-chunky pressable mb-4"
     >
       <span className="font-semibold">▶ Continue your puzzle</span>
       <span className="text-sm capitalize">

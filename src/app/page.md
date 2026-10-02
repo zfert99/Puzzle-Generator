@@ -19,3 +19,6 @@ they do.
 
 The PDF generator that used to live here moved to [`/generate`](generate/page.md) (the
 "Print packs" card). Nav/theme/account live in the global `AppHeader`.
+
+**`id="main"` (October 2026):** the page's `<main>` carries `id="main"`, the target of the root
+layout's "Skip to content" link (WCAG 2.4.1). Every route's `<main>` needs it.

@@ -22,7 +22,19 @@
   --butterscotch: #E8A33D; --butterscotch-dark: #C97F1E;
   --grape: #5A3E96; --grape-dark: #3E2A69;
   --mint: #2FAE86; --cherry: #BB2822;
+  /* Text that sits ON a butterscotch fill. `--ink` flips to cream in the dark theme, where it
+     measured 1.5:1 against the (lighter) dark butterscotch — every primary button and selected
+     pill was unreadable. Butterscotch is a mid-light fill in BOTH themes, so the text on it is
+     always the dark ink. Same for `--mint-text`/`--warn-text`: the fill-grade mint (2.3:1) and
+     butterscotch-dark (2.6:1) tones fail WCAG 1.4.3 as small text on paper, so text uses these
+     deeper tones instead. */
+  --on-butterscotch: #2B1B12;
+  --mint-text: #1B7A5B; --warn-text: #8F5A0E;
+  /* The wildcard sticker fills below are the same in both themes, so the ink on them must be
+     too — the theme-flipping `--ink` measured 1.25:1 (cream on lime) in the dark theme. */
+  --on-sticker: #2B1B12;
   --r-sm: 8px; --r-md: 14px; --r-lg: 20px;
+  color-scheme: light;
 
   /* Chaos-layer "wildcard" sticker colors (5.5) — DECORATION ONLY (stickers, tape,
      pins, marginalia). Never text/buttons/functional UI. Same in both themes. */
@@ -42,6 +54,12 @@
   --butterscotch: #F2B65A; --butterscotch-dark: #D89A3E;
   --grape: #9B7FD4; --grape-dark: #7A5FC0;
   --mint: #4FCBA0; --cherry: #F06B65;
+  --on-butterscotch: #2B1B12;
+  --mint-text: #6FDCB6; --warn-text: #F2B65A;
+  --on-sticker: #2B1B12;
+  /* Native form controls (the leaderboard <select>, number inputs) and scrollbars follow the
+     in-app theme instead of staying light. */
+  color-scheme: dark;
 
   --background: #0a0a0a;
   --foreground: #ededed;
@@ -60,6 +78,10 @@
   --color-grape-dark: var(--grape-dark);
   --color-mint: var(--mint);
   --color-cherry: var(--cherry);
+  --color-on-butterscotch: var(--on-butterscotch);
+  --color-on-sticker: var(--on-sticker);
+  --color-mint-text: var(--mint-text);
+  --color-warn-text: var(--warn-text);
   --color-sticker-pink: var(--sticker-pink);
   --color-sticker-lime: var(--sticker-lime);
   --color-sticker-sky: var(--sticker-sky);
@@ -93,6 +115,27 @@ body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh; /* fallback for browsers without svh */
   min-height: 100svh; /* small viewport unit — no jump when mobile browser chrome hides */
+}
+
+/* Skip link (WCAG 2.4.1) — the first focusable thing on every page, off-screen until it has
+   focus, then a chunky pill over the header. */
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  border: 3px solid var(--ink);
+  border-radius: var(--r-md);
+  background: var(--butterscotch);
+  color: var(--on-butterscotch);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid var(--grape);
+  outline-offset: 2px;
 }
 
 /* Display headings default to the chunky face. */
@@ -200,7 +243,7 @@ h1, h2, .font-display {
 
 .btn-primary {
   background: var(--butterscotch);
-  color: var(--ink);
+  color: var(--on-butterscotch);
 }
 
 .btn-secondary {
@@ -241,7 +284,9 @@ h1, h2, .font-display {
 
 .input-field:focus {
   outline: none;
-  box-shadow: 0 0 0 3px var(--butterscotch);
+  /* Grape, not butterscotch: the butterscotch ring measured 1.95:1 against paper, under the
+     3:1 WCAG 1.4.11 needs for a focus indicator. */
+  box-shadow: 0 0 0 3px var(--grape);
 }
 
 :root[data-motion="reduce"] .btn-primary,
@@ -263,6 +308,39 @@ h1, h2, .font-display {
 }
 
 :root[data-motion="reduce"] .rank-reveal {
+  animation: none;
+}
+
+/* ---- Route transition + solved stamp (juice layer) — CSS, not the `motion` library ---- */
+/* `template.tsx` re-mounts on every navigation, so this plays once per page. It runs at first
+   paint with no JavaScript; the old motion.div version server-rendered opacity:0 and held the
+   whole page invisible until hydration (see template.md). */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-enter 150ms ease-out both; }
+
+/* The solved badge: scale 0 → 1.15 → 1 with a squash/rotate, settling on the -3deg tilt the
+   `-rotate-3` utility also gives it when the animation is off. */
+@keyframes stamp-pop {
+  0% { transform: scale(0) rotate(-8deg); }
+  60% { transform: scale(1.15) rotate(3deg); }
+  100% { transform: scale(1) rotate(-3deg); }
+}
+.stamp-pop { animation: stamp-pop 550ms ease-out both; }
+
+/* One soft full-screen flash (opacity only — never a shake). */
+@keyframes stamp-flash {
+  0% { opacity: 0; }
+  50% { opacity: 0.28; }
+  100% { opacity: 0; }
+}
+.stamp-flash { animation: stamp-flash 500ms ease-out both; }
+
+:root[data-motion="reduce"] .page-enter,
+:root[data-motion="reduce"] .stamp-pop,
+:root[data-motion="reduce"] .stamp-flash {
   animation: none;
 }
 
@@ -358,4 +436,36 @@ h1, h2, .font-display {
 :root[data-motion="reduce"] .aurora,
 :root[data-motion="reduce"] .backdrop-glyph {
   animation: none;
+}
+
+/* ============================================================================
+   OS reduced-motion fallback. Everything above keys off `[data-motion="reduce"]`, which the
+   pre-paint script sets from localStorage + matchMedia — but that script's single try/catch
+   also covers the storage read, so a browser that blocks site data (Safari private mode with
+   storage disabled, a strict content setting) never applied the OS preference at all and every
+   drift/marquee/wobble kept running. This block mirrors the `data-motion` rules against the
+   media query itself, so the OS preference holds with no JavaScript; an explicit in-app "full"
+   choice (`data-motion="full"`) still wins.
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) .pressable,
+  :root:not([data-motion="full"]) .btn-primary,
+  :root:not([data-motion="full"]) .btn-secondary,
+  :root:not([data-motion="full"]) .wobble-hover {
+    transition: none;
+  }
+  :root:not([data-motion="full"]) .wobble-hover:hover {
+    transform: rotate(var(--tilt, 0deg));
+  }
+  :root:not([data-motion="full"]) .idle-wobble,
+  :root:not([data-motion="full"]) .marquee-track,
+  :root:not([data-motion="full"]) .rank-reveal,
+  :root:not([data-motion="full"]) .page-enter,
+  :root:not([data-motion="full"]) .stamp-pop,
+  :root:not([data-motion="full"]) .stamp-flash,
+  :root:not([data-motion="full"]) .aurora,
+  :root:not([data-motion="full"]) .backdrop-glyph,
+  :root:not([data-motion="full"]) .animate-spin {
+    animation: none;
+  }
 }

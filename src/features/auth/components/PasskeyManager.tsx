@@ -29,7 +29,7 @@ export function PasskeyManager() {
   if (!session) {
     return (
       <p className="text-ink-soft">
-        <Link href="/signin" className="text-grape hover:underline">
+        <Link href="/signin" className="text-grape underline">
           Sign in
         </Link>{' '}
         to manage your passkeys.
@@ -74,7 +74,7 @@ export function PasskeyManager() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name (optional, e.g. MacBook)"
-          className="flex-1 px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-butterscotch"
+          className="flex-1 px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-grape"
         />
         <button type="button" onClick={handleAdd} disabled={busy} className="btn-primary">
           🔑 Add a passkey
@@ -99,11 +99,12 @@ export function PasskeyManager() {
               <span className="text-ink">
                 <span className="font-semibold">{pk.name || 'Passkey'}</span>{' '}
                 <span className="text-ink-soft text-xs">
-                  added {new Date(pk.createdAt).toLocaleDateString()}
+                  added {new Date(pk.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </span>
               <button
                 type="button"
+                aria-label={`Remove ${pk.name || 'passkey'}`}
                 onClick={() => handleRemove(pk.id)}
                 disabled={busy}
                 className="text-cherry text-sm hover:underline disabled:opacity-50"

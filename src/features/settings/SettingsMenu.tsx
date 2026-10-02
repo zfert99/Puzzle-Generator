@@ -155,7 +155,7 @@ function Choice({ active, onClick, children }: { active: boolean; onClick: () =>
       onClick={onClick}
       aria-pressed={active}
       className={`px-2.5 py-1.5 rounded-lg text-sm border-2 border-ink transition-colors ${
-        active ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+        active ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper hover:bg-paper-2'
       }`}
     >
       {children}

@@ -53,6 +53,9 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
   const handleGoogle = async () => {
     setError('');
     setBusy(true);
+    // Redirects the browser to Google on success, so `busy` is only ever reset on failure —
+    // without this every button stayed disabled after a declined/failed social sign-in.
+    try {
     // Redirects the browser to Google; no local navigation needed on success.
     // better-auth resolves a social `callbackURL` against the auth origin, NOT Next's
     // router — so unlike `router.push()` in `done()`, it does NOT prepend Next's
@@ -63,7 +66,15 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
     const basePath = '/puzzles';
     const hasBasePath = callbackURL === basePath || callbackURL.startsWith(`${basePath}/`);
     const socialCallbackURL = hasBasePath ? callbackURL : `${basePath}${callbackURL}`;
-    await signIn.social({ provider: 'google', callbackURL: socialCallbackURL });
+      const res = await signIn.social({ provider: 'google', callbackURL: socialCallbackURL });
+      if (res?.error) {
+        setError(res.error.message || 'Google sign-in failed');
+        setBusy(false);
+      }
+    } catch {
+      setError('Google sign-in failed');
+      setBusy(false);
+    }
   };
 
   return (
@@ -91,38 +102,60 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
       </button>
 
       <div className="flex items-center gap-3 mb-5 text-xs text-ink-soft">
-        <span className="h-px flex-1 bg-gray-300 dark:bg-paper" /> or email{' '}
-        <span className="h-px flex-1 bg-gray-300 dark:bg-paper" />
+        <span className="h-px flex-1 bg-ink-soft/40" /> or email{' '}
+        <span className="h-px flex-1 bg-ink-soft/40" />
       </div>
 
-      <form onSubmit={handleEmail} className="space-y-3">
+      {/* Real labels (visually hidden), not placeholders alone: a placeholder vanishes as soon as
+          the field has a value and is not a label to assistive tech (WCAG 1.3.1 / 3.3.2). The
+          autocomplete tokens (1.3.5) let password managers fill the right field, and
+          `username webauthn` on the email field enables passkey conditional UI — the browser can
+          offer a stored passkey from the autofill dropdown. */}
+      <form onSubmit={handleEmail} className="space-y-3" aria-describedby={error ? 'auth-error' : undefined}>
         {mode === 'signup' && (
-          <input
-            type="text"
-            placeholder="Display name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          <div>
+            <label htmlFor="auth-name" className="sr-only">Display name</label>
+            <input
+              id="auth-name"
+              type="text"
+              autoComplete="nickname"
+              placeholder="Display name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-grape"
+            />
+          </div>
         )}
-        <input
-          type="email"
-          required
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <input
-          type="password"
-          required
-          minLength={8}
-          placeholder="Password (8+ characters)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        {error && <p className="text-cherry text-sm text-center">{error}</p>}
+        <div>
+          <label htmlFor="auth-email" className="sr-only">Email</label>
+          <input
+            id="auth-email"
+            type="email"
+            required
+            autoComplete="username webauthn"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-grape"
+          />
+        </div>
+        <div>
+          <label htmlFor="auth-password" className="sr-only">
+            {mode === 'signin' ? 'Password' : 'Password (8+ characters)'}
+          </label>
+          <input
+            id="auth-password"
+            type="password"
+            required
+            minLength={8}
+            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+            placeholder="Password (8+ characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-paper border border-ink-soft focus:outline-none focus:ring-2 focus:ring-grape"
+          />
+        </div>
+        {error && <p id="auth-error" role="alert" className="text-cherry text-sm text-center">{error}</p>}
         <button type="submit" disabled={busy} className="btn-primary w-full">
           {busy ? '…' : mode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
@@ -136,7 +169,7 @@ export function AuthPanel({ callbackURL = '/daily' }: { callbackURL?: string }) 
             setMode(mode === 'signin' ? 'signup' : 'signin');
             setError('');
           }}
-          className="text-grape hover:underline"
+          className="text-grape underline"
         >
           {mode === 'signin' ? 'Create one' : 'Sign in'}
         </button>

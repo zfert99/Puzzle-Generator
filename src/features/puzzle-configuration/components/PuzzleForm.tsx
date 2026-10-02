@@ -70,8 +70,8 @@ export default function PuzzleForm() {
 
       {/* Puzzle type toggle. role=group + aria-pressed (QA F10): selection must be announced,
           not carried by background colour alone. */}
-      {/* Five equal columns: a wrapping flex row would strand the fifth label on its own full-width line. */}
-      <div role="group" aria-label="Puzzle type" className="grid grid-cols-5 gap-2 mb-6">
+      {/* Natural-width pills that wrap (see PlayExperience for the phone-width overlap this fixes). */}
+      <div role="group" aria-label="Puzzle type" className="flex flex-wrap justify-center gap-2 mb-6">
         {(['classic', 'killer', 'calc', 'kakuro', 'skyscrapers'] as const).map((v) => (
           <button
             key={v}
@@ -79,7 +79,7 @@ export default function PuzzleForm() {
             aria-pressed={variant === v}
             onClick={() => setVariant(v)}
             className={`px-2 py-2 rounded-lg text-sm font-medium border-2 border-ink transition-all ${
-              variant === v ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+              variant === v ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper hover:bg-paper-2'
             }`}
           >
             {v === 'classic' ? 'Sudoku' : v === 'killer' ? 'Killer' : v === 'calc' ? 'Keisan' : v === 'kakuro' ? 'Kakuro' : 'Skyscrapers'}
@@ -107,7 +107,7 @@ export default function PuzzleForm() {
             aria-checked={mystery}
             onClick={() => setMystery((m) => !m)}
             className={`w-full flex items-center justify-between px-3 py-2 mb-6 rounded-lg border-2 border-ink transition-all ${
-              mystery ? 'bg-butterscotch text-ink' : 'bg-paper hover:bg-paper-2'
+              mystery ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper hover:bg-paper-2'
             }`}
           >
             <span className="text-sm font-medium">🔮 Mystery mode — hide operators</span>
@@ -144,7 +144,7 @@ export default function PuzzleForm() {
         difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : isKakuro ? [...KAKURO_LADDER] : isSkyscrapers ? [...SKYSCRAPERS_TIERS_BY_SIZE[skySize]] : undefined}
       />
 
-      {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
+      {error && <p role="alert" className="text-cherry text-sm mb-4 text-center">{error}</p>}
 
       <button
         onClick={handleGenerate}

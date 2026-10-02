@@ -181,7 +181,7 @@ export function Calendar({
               }
               className={`aspect-square rounded-md text-sm transition-colors flex flex-col items-center justify-center gap-0.5 ${
                 selected
-                  ? 'bg-butterscotch text-ink border-2 border-ink font-semibold'
+                  ? 'bg-butterscotch text-on-butterscotch border-2 border-ink font-semibold'
                   : disabled
                     ? 'opacity-25 cursor-not-allowed'
                     : 'hover:bg-paper-2 border border-transparent'

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { motion } from 'motion/react';
 import { useReducedMotion } from './useReducedMotion';
 import { fireConfetti } from './confetti';
 import { WobbleFrame } from '@/features/chaos/Wobble';
@@ -9,11 +8,14 @@ import { WobbleFrame } from '@/features/chaos/Wobble';
 /**
  * The completion "stamp" — the design system's win moment (§4): a chunky rounded badge that
  * scales in `0 → 1.15 → 1` with a squash/rotate, fires a one-off confetti burst, and flashes
- * the screen once (opacity only, never a shake). Replaces the old `celebrate`/`rank-reveal`
- * CSS. Reserved for genuine completions — mounted only when a puzzle is actually solved.
+ * the screen once (opacity only, never a shake). Reserved for genuine completions — mounted
+ * only when a puzzle is actually solved.
  *
- * Reduced motion: renders the badge instantly with no animation, no confetti, no flash —
- * gated on the single `useReducedMotion` switch.
+ * The animations are CSS keyframes (`.stamp-pop` / `.stamp-flash` in `globals.css`), not the
+ * `motion` library: this was the last consumer of that ~39 KB runtime, and a two-keyframe pop
+ * does not justify shipping it. Reduced motion: renders the badge instantly with no animation,
+ * no confetti, no flash — the CSS side keys off `[data-motion="reduce"]`, the confetti off the
+ * single `useReducedMotion` switch, so both agree with the pre-paint attribute.
  */
 export function SolvedStamp({ label }: { label: string }) {
   const reduced = useReducedMotion();
@@ -25,29 +27,16 @@ export function SolvedStamp({ label }: { label: string }) {
   return (
     <div className="relative flex justify-center mb-3">
       {/* Single soft screen-flash (opacity, not shake). */}
-      {!reduced && (
-        <motion.div
-          aria-hidden
-          className="fixed inset-0 z-40 bg-paper pointer-events-none"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.28, 0] }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-        />
-      )}
+      {!reduced && <div aria-hidden className="fixed inset-0 z-40 bg-paper pointer-events-none stamp-flash" />}
 
-      <motion.div
-        initial={reduced ? false : { scale: 0, rotate: -8 }}
-        animate={reduced ? {} : { scale: [0, 1.15, 1], rotate: [-8, 3, -3] }}
-        transition={{ duration: 0.55, ease: 'easeOut', times: [0, 0.6, 1] }}
-        className="-rotate-3"
-      >
+      <div className="-rotate-3 stamp-pop">
         {/* The stamp's outline is a hand-inked wobble frame (chaos §8), not a crisp border. */}
         <WobbleFrame className="p-2">
           <div className="bg-butterscotch rounded-md px-6 py-2">
-            <span className="font-display text-2xl sm:text-3xl text-ink">{label}</span>
+            <span className="font-display text-2xl sm:text-3xl text-on-butterscotch">{label}</span>
           </div>
         </WobbleFrame>
-      </motion.div>
+      </div>
 
       {/* A scrawled Caveat aside (decorative). */}
       <span

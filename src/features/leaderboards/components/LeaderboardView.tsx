@@ -64,7 +64,7 @@ export function LeaderboardView({
    */
   onSlotsLoaded?: (slots: DailySlotInfo[]) => void;
 } = {}) {
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
   const [internalDifficulty, setInternalDifficulty] = useState<DailyDifficulty>(initialDifficulty ?? 'easy');
   const difficulty = controlledDifficulty ?? internalDifficulty;
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -73,10 +73,24 @@ export function LeaderboardView({
   const shownStreak = useCountUp(streak); // rolls up from 0 when the streak loads
   const [bests, setBests] = useState<{ difficulty: string; variant: string; gridSize: number; bestMs: number }[]>([]);
   const [slots, setSlots] = useState<DailySlotInfo[]>([]);
+  /**
+   * The date whose slots have settled (`undefined` = today's). The board fetch waits for it: the
+   * tabs are rolled per day, so the initial `'easy'` (or a key carried over from another date)
+   * may not exist for this date, and fetching it first produced a wasted request plus a flash of
+   * "No solves yet today" before the slots reconciled the tab and fetched again.
+   */
+  const [slotsSettledFor, setSlotsSettledFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const slotsSettled = slotsSettledFor === (date ?? '');
+
   useEffect(() => {
+    // Hold until (a) the day's boards are known, so the tab is a real board, and (b) the session
+    // has resolved, since `isMe` is baked into the payload by the server — fetching while the
+    // session was still pending meant every signed-in viewer loaded the board twice (once
+    // anonymous, once as themselves).
+    if (!slotsSettled || sessionPending) return;
     let active = true;
     fetch(apiPath(`/api/leaderboard?difficulty=${difficulty}${date ? `&date=${date}` : ''}`))
       .then(async (res) => {
@@ -111,7 +125,7 @@ export function LeaderboardView({
     // re-renders Server Components but does not re-run a client effect) would leave the previous
     // viewer's row highlighted and labelled "(you)" until a tab switch or reload. Keyed on the id
     // rather than the `session` object so a new object identity alone can't trigger a refetch.
-  }, [difficulty, date, session?.user.id]);
+  }, [difficulty, date, session?.user.id, slotsSettled, sessionPending]);
 
   // Streak + personal bests, only when signed in and viewing TODAY (they're today-relative,
   // meaningless for an archived board). Render gates on `session`, so no synchronous reset.
@@ -151,16 +165,21 @@ export function LeaderboardView({
         // none before the roller ran, and CI has no database at all. A parent rendering a
         // placeholder until this fires would show it forever in every one of those cases.
         onSlotsLoaded?.(loaded);
-        if (!loaded.length) return; // internal state unchanged for an empty day, as before
-        setSlots(loaded);
-        if (!onDifficultyChange) {
-          setInternalDifficulty((cur) => reconcileSelectedKey(loaded, cur));
+        if (loaded.length) {
+          setSlots(loaded);
+          if (!onDifficultyChange) {
+            setInternalDifficulty((cur) => reconcileSelectedKey(loaded, cur));
+          }
         }
+        // Settled either way (boards or none) — the board fetch may proceed.
+        setSlotsSettledFor(date ?? '');
       })
       .catch(() => {
         // Network error is also a settled outcome. Silently swallowing it is what left the
         // placeholder up forever.
-        if (active) onSlotsLoaded?.([]);
+        if (!active) return;
+        onSlotsLoaded?.([]);
+        setSlotsSettledFor(date ?? '');
       });
     return () => {
       active = false;
@@ -241,9 +260,10 @@ export function LeaderboardView({
               <button
                 key={s.key}
                 type="button"
+                aria-pressed={difficulty === s.key}
                 onClick={() => selectDifficulty(s.key)}
                 className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
-                  difficulty === s.key ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
+                  difficulty === s.key ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper border-2 border-ink hover:bg-paper-2'
                 }`}
               >
                 {slotLabel(s)}
@@ -272,20 +292,27 @@ export function LeaderboardView({
       )}
 
       {loading ? (
-        <p className="text-center text-ink-soft py-8">Loading…</p>
+        <p role="status" aria-busy="true" className="text-center text-ink-soft py-8">Loading…</p>
       ) : error ? (
-        <p className="text-center text-cherry py-8">{error}</p>
+        <p role="alert" className="text-center text-cherry py-8">{error}</p>
       ) : entries.length === 0 ? (
-        <p className="text-center text-ink-soft py-8">
+        <p role="status" className="text-center text-ink-soft py-8">
           {date ? 'No solves were recorded for this day.' : 'No solves yet today — be the first!'}
         </p>
       ) : (
         <table className="w-full text-sm">
+          <caption className="sr-only">
+            {date ? `Leaderboard for ${date}, ${formatDailyKey(difficulty)}` : `Today's leaderboard, ${formatDailyKey(difficulty)}`}
+          </caption>
           <thead>
             <tr className="text-ink-soft text-left">
-              <th className="py-2 w-10">#</th>
-              <th className="py-2">Player</th>
-              <th className="py-2 text-right">Time</th>
+              {/* "#" alone is announced as "number sign"; the column is Rank. */}
+              <th scope="col" className="py-2 w-10">
+                <span aria-hidden="true">#</span>
+                <span className="sr-only">Rank</span>
+              </th>
+              <th scope="col" className="py-2">Player</th>
+              <th scope="col" className="py-2 text-right">Time</th>
             </tr>
           </thead>
           <tbody>
@@ -299,14 +326,14 @@ export function LeaderboardView({
             {entries.map((e) => (
               <tr
                 key={e.rank}
-                className={`border-t border-white/5 ${e.isMe ? 'bg-butterscotch/25 font-semibold' : ''}`}
+                className={`border-t border-ink/10 ${e.isMe ? 'bg-butterscotch/25 font-semibold' : ''}`}
               >
                 <td className="py-2">{e.rank}</td>
                 <td className="py-2">
                   {e.isBot && <span aria-hidden="true">🤖 </span>}
                   {e.name}
                   {e.isBot && <span className="text-ink-soft text-xs"> (bot — beat it!)</span>}
-                  {e.isMe && <span className="text-grape"> (you)</span>}
+                  {e.isMe && <span> (you)</span>}
                 </td>
                 <td className="py-2 text-right tabular-nums">{formatMs(e.timeMs)}</td>
               </tr>

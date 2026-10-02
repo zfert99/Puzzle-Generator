@@ -2,7 +2,10 @@ import ArchiveExperience from '@/features/dailies/components/ArchiveExperience';
 import type { Metadata } from 'next';
 
 // Per-page title (QA F8) — composed with the root layout's `%s · Puzzle Lab` template.
-export const metadata: Metadata = { title: 'Archive' };
+export const metadata: Metadata = {
+  title: 'Archive',
+  description: 'Every past daily puzzle — replay any day as practice and see its final leaderboard.',
+};
 
 /**
  * /archive — browse and replay past daily puzzles and view their final leaderboards.
@@ -13,7 +16,7 @@ export const metadata: Metadata = { title: 'Archive' };
  */
 export default function ArchivePage() {
   return (
-    <main className="flex-1 flex flex-col items-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
+    <main id="main" className="flex-1 flex flex-col items-center p-8 bg-[image:var(--bg-pattern)] bg-cover bg-center">
       <div className="text-center mb-8 mt-4">
         <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-ink">Puzzle Archive</h1>
       </div>

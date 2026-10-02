@@ -51,10 +51,19 @@ export function motionReduced(settings: Settings): boolean {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-/** Apply the current settings to `<html>` as `data-motion` / `data-colorblind`. Client-only. */
+/**
+ * Apply the current settings to `<html>` as `data-motion` / `data-colorblind`. Client-only.
+ *
+ * `data-motion` is `"reduce"` when motion is effectively reduced, `"full"` when the player has
+ * explicitly overridden the OS, and absent for `'system'` + OS-doesn't-reduce. The explicit
+ * `"full"` matters to CSS: `globals.css` also honours the OS `prefers-reduced-motion` query
+ * directly (so the preference holds even when this script never ran, e.g. storage blocked), and
+ * `:not([data-motion="full"])` is how an in-app "full" choice still wins over it.
+ */
 export function applySettings(settings: Settings = getSettings()): void {
   const el = document.documentElement;
   if (motionReduced(settings)) el.setAttribute('data-motion', 'reduce');
+  else if (settings.motion === 'full') el.setAttribute('data-motion', 'full');
   else el.removeAttribute('data-motion');
   if (settings.colorblind) el.setAttribute('data-colorblind', 'true');
   else el.removeAttribute('data-colorblind');
@@ -95,4 +104,4 @@ export function subscribeSettings(onChange: () => void): () => void {
  * from localStorage before first paint, so there is no flash and no hydration mismatch.
  * Mirrors the effective-value logic of `applySettings`/`motionReduced` in plain JS.
  */
-export const SETTINGS_PRE_PAINT_SCRIPT = `(function(){try{var s=JSON.parse(localStorage.getItem('${SETTINGS_STORAGE_KEY}')||'{}');var m=(s.motion==='reduce'||s.motion==='full')?s.motion:'system';var reduce=m==='reduce'||(m!=='full'&&matchMedia('(prefers-reduced-motion: reduce)').matches);var el=document.documentElement;if(reduce)el.setAttribute('data-motion','reduce');if(s.colorblind===true)el.setAttribute('data-colorblind','true');}catch(e){}})();`;
+export const SETTINGS_PRE_PAINT_SCRIPT = `(function(){try{var s=JSON.parse(localStorage.getItem('${SETTINGS_STORAGE_KEY}')||'{}');var m=(s.motion==='reduce'||s.motion==='full')?s.motion:'system';var reduce=m==='reduce'||(m!=='full'&&matchMedia('(prefers-reduced-motion: reduce)').matches);var el=document.documentElement;if(reduce)el.setAttribute('data-motion','reduce');else if(m==='full')el.setAttribute('data-motion','full');if(s.colorblind===true)el.setAttribute('data-colorblind','true');}catch(e){}})();`;

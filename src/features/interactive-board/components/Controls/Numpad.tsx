@@ -71,7 +71,7 @@ export function Numpad({ showHint = true }: { showHint?: boolean }) {
           aria-pressed={pencilMode}
           onClick={() => togglePencilMode()}
           className={`py-2 rounded-lg text-sm transition-colors ${
-            pencilMode ? 'bg-butterscotch text-ink' : 'bg-paper border-2 border-ink hover:bg-paper-2'
+            pencilMode ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper border-2 border-ink hover:bg-paper-2'
           }`}
         >
           ✏️

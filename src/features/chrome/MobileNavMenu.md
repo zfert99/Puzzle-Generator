@@ -24,5 +24,19 @@ on one page would still be open on the next. The panel's click handler closes th
 before `Link` navigates — which is the only reason this leaf is a client component while
 `AppHeader` stays a Server Component. Pinned by a test.
 
+**Escape and outside-click close it (October 2026).** A native `<details>` does neither on its
+own, so an opened menu stayed open until its summary was clicked again — not how a menu is
+expected to behave. One mount effect adds two document listeners (removed on unmount):
+
+```text
+keydown Escape while open      -> close, and return focus to the <summary>
+                                  (focus would otherwise be left inside a hidden panel)
+pointerdown outside <details>  -> close
+```
+
+`pointerdown` rather than `click` so the menu closes as the press starts, before whatever was
+pressed handles it. Both listeners check `details.open` first, so they cost nothing while the
+menu is shut.
+
 The "▾" glyph is `aria-hidden` so the disclosure's accessible name is just "More"
 (September 2026 review nit).

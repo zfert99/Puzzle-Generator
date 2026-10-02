@@ -28,6 +28,12 @@ for those two only (Fredoka/Manrope/Space Mono still preload — they're used ne
 on first paint) drops the noise without touching the self-hosted, no-layout-shift loading
 this section already covers.
 
+**Space Mono joined them (October 2026):** Space Mono is only drawn once a board, timer or stat
+is on screen — never above the fold of the hub, leaderboard, sign-in or print pages — so those
+routes were paying ~19 KB of preload for nothing. Only Fredoka and Manrope (first-paint display
+and body text everywhere) still preload. Board routes fetch Space Mono on first use; the
+self-hosted `@font-face` + `size-adjust` fallback still prevents layout shift.
+
 ## Pre-paint theme script (why it must run first)
 
 **Why:** The theme is a `data-theme` attribute on `<html>`. If it were set after React
@@ -40,9 +46,18 @@ string lives in `@/features/theme/theme` (`THEME_PRE_PAINT_SCRIPT`).
 <html class="{font vars} antialiased">
   <body>
     <script> apply data-theme before paint </script>
+    <a href="#main" class="skip-link">Skip to content</a>
     <AppHeader/>          # global grape nav bar (5.2) — nav, theme toggle, account
-    {children}            # each page renders a flex-1 main below the header
+    {children}            # each page renders a flex-1 <main id="main"> below the header
 ```
+
+## Skip link (October 2026, WCAG 2.4.1)
+
+**Why:** the header's seven controls precede every page's content, so a keyboard user had to
+Tab through all of them on every route before reaching the puzzle. A "Skip to content" anchor
+is now the first focusable element in `<body>` (after the pre-paint scripts), visually hidden
+until focused (`.skip-link` in `globals.css`). It targets `#main`, so **every page's `<main>`
+must carry `id="main"`** — a new route that forgets it ships a skip link that goes nowhere.
 
 ## `metadataBase` + per-page canonical (Phase 3 multi-zone)
 
@@ -92,3 +107,26 @@ each route exports a short `metadata.title` string and the template appends the 
 (`/`) uses the bare default. Deliberately untouched: the passkey `rpName` in `auth.ts` also says
 "Puzzle Generator", but that string is stored auth config shown in credential pickers — renaming
 it is a separate, auth-scoped change, not a document-title fix.
+
+## Social cards + browser chrome colour (October 2026)
+
+**Why `openGraph` / `twitter`:** a shared daily link used to unfurl with no title, description
+or site name. The root metadata now declares `openGraph` with `siteName: 'Puzzle Lab'`, the same
+`{ default, template }` title pair as the document title, a default description, `locale: en_GB`,
+and `url: './'` — which resolves per route exactly like the canonical above, so no page needs its
+own OG block. Each route's own `metadata.description` flows into the card. `twitter.card` is
+`summary` (small card) because there is no image asset yet — an `opengraph-image` is a design
+task, deliberately not faked here.
+
+**Why a separate `viewport` export:** in this Next.js version `themeColor` is no longer accepted
+on `metadata`; it lives on the `Viewport` export. The colour follows the header's grape
+(`#5A3E96` light, `#9B7FD4` dark) via a `prefers-color-scheme` media split. The real theme is
+the `data-theme` attribute (`theme.ts`), which defaults to the OS preference — so the media split
+matches first paint in the common case, and only a user who overrode the OS theme sees a
+mismatched browser bar.
+
+```text
+viewport.themeColor:
+  (prefers-color-scheme: light) -> #5A3E96
+  (prefers-color-scheme: dark)  -> #9B7FD4
+```

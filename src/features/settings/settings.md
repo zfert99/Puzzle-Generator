@@ -18,6 +18,22 @@ when motion should be reduced — so **`'full'` keeps animation even when the OS
 it** (a player who wants the cell shake regardless). All CSS motion rules were converted from
 `@media (prefers-reduced-motion: reduce)` to `:root[data-motion="reduce"]` for this reason.
 
+### `data-motion="full"` for an explicit full choice (October 2026)
+
+**Why:** `globals.css` now *also* honours the OS `prefers-reduced-motion` query directly, as a
+fallback for when the pre-paint script never ran or could not read storage (blocked storage, a
+script failure) — otherwise a user who asked their OS for less motion would get the full
+animation. That media block would then override an in-app "full" choice too, so it is written as
+`:root:not([data-motion="full"]) …`, and both `applySettings` and the pre-paint script now set
+`data-motion="full"` when the player explicitly chose full. The attribute is absent only for
+`'system'` when the OS does not ask to reduce.
+
+```text
+effective reduce        -> data-motion="reduce"
+explicit 'full'         -> data-motion="full"     (beats the CSS media-query fallback)
+'system', OS not reduce -> no attribute
+```
+
 ## `matchMedia` guards
 
 `motionReduced`/`subscribeSettings` guard `typeof window.matchMedia === 'function'` so they run
