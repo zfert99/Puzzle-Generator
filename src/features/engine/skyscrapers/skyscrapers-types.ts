@@ -9,6 +9,7 @@
  * behind the storage decisions (D2, D3) and for why the display helpers live here (L2).
  */
 
+import { isLatinSquare } from '../grid-utils';
 import type { GridConfig, GridSize } from '../sudoku';
 
 export type SkyscrapersDifficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme' | 'unrated';
@@ -121,7 +122,6 @@ export function visibleCount(line: readonly number[]): number {
  * The line a clue on `side` at `index` reads, in reading order (first element nearest the clue).
  */
 export function lineFor(grid: readonly (readonly number[])[], side: GutterSide, index: number): number[] {
-  const size = grid.length;
   switch (side) {
     case 'left':
       return [...grid[index]];
@@ -129,12 +129,26 @@ export function lineFor(grid: readonly (readonly number[])[], side: GutterSide, 
       return [...grid[index]].reverse();
     case 'top':
       return grid.map((row) => row[index]);
-    case 'bottom': {
-      const column: number[] = [];
-      for (let r = size - 1; r >= 0; r--) column.push(grid[r][index]);
-      return column;
-    }
+    case 'bottom':
+      return grid.map((row) => row[index]).reverse();
   }
+}
+
+/**
+ * The clue on `side` at `index`, or 0 when it is blank **or absent**. The validator is the
+ * boundary that rejects a short or missing clue array; a renderer reading through this helper
+ * treats absence as blank on purpose, so a malformed puzzle degrades to empty gutter cells
+ * instead of a crash in a Server Component.
+ */
+export function clueAt(clues: SkyscraperClues, side: GutterSide, index: number): number {
+  return clues[side]?.[index] ?? 0;
+}
+
+/** How many of the 4N clues are present (non-zero) — the blank-clue lever, read the same way everywhere. */
+export function presentClueCount(clues: SkyscraperClues): number {
+  let present = 0;
+  for (const side of GUTTER_SIDES) for (const clue of clues[side]) if (clue > 0) present += 1;
+  return present;
 }
 
 /** Every one of the 4N clues a solved square implies — the generator's starting point (E4). */
@@ -143,26 +157,6 @@ export function deriveClues(solution: readonly (readonly number[])[]): Skyscrape
   const sideClues = (side: GutterSide) =>
     Array.from({ length: size }, (_, index) => visibleCount(lineFor(solution, side, index)));
   return { top: sideClues('top'), bottom: sideClues('bottom'), left: sideClues('left'), right: sideClues('right') };
-}
-
-/** Does `grid` hold every height 1..N exactly once in every row and every column? */
-export function isLatinSquare(grid: readonly (readonly number[])[]): boolean {
-  const size = grid.length;
-  const full = (1 << (size + 1)) - 2; // bits 1..N set
-  for (let i = 0; i < size; i++) {
-    let rowMask = 0;
-    let colMask = 0;
-    if (grid[i].length !== size) return false;
-    for (let j = 0; j < size; j++) {
-      const r = grid[i][j];
-      const c = grid[j][i];
-      if (r < 1 || r > size || c < 1 || c > size) return false;
-      rowMask |= 1 << r;
-      colMask |= 1 << c;
-    }
-    if (rowMask !== full || colMask !== full) return false;
-  }
-  return true;
 }
 
 /**
@@ -181,7 +175,7 @@ export function validateSkyscrapers(puzzle: SkyscrapersPuzzle): string[] {
   const errors: string[] = [];
 
   if (solution.length !== size) errors.push(`solution has ${solution.length} rows, expected ${size}`);
-  if (!isLatinSquare(solution)) errors.push('solution is not a Latin square of 1..N');
+  else if (!isLatinSquare(solution, size)) errors.push('solution is not a Latin square of 1..N');
 
   if (grid.length !== size || grid.some((row) => row.length !== size)) {
     errors.push(`grid is not ${size}×${size}`);

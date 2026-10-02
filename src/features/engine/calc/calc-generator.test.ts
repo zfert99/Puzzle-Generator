@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
+import { isLatinSquare } from '../grid-utils';
 import {
   generateUniqueCalc,
   generateCalcCageShapes,
@@ -25,16 +26,6 @@ function seededRng(seed: number): () => number {
     s = (s * 1664525 + 1013904223) >>> 0;
     return s / 0x100000000;
   };
-}
-
-function isLatinSquare(grid: number[][], size: number): boolean {
-  const expected = Array.from({ length: size }, (_, i) => i + 1).join(',');
-  const sorted = (nums: number[]) => [...nums].sort((a, b) => a - b).join(',');
-  for (let i = 0; i < size; i++) {
-    if (sorted(grid[i]) !== expected) return false;
-    if (sorted(grid.map((row) => row[i])) !== expected) return false;
-  }
-  return true;
 }
 
 function cagesPartitionGrid(cages: CalcCage[], size: number): boolean {

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { isLatinSquare } from '../grid-utils';
 import {
   buildDisplayCells,
+  clueAt,
   deriveClues,
-  isLatinSquare,
   lineFor,
+  presentClueCount,
   skyscrapersGridConfig,
   skyscrapersTracks,
   validateSkyscrapers,
@@ -121,12 +123,17 @@ describe('deriveClues', () => {
   });
 });
 
-describe('isLatinSquare', () => {
-  it('accepts a Latin square and rejects a repeat, an out-of-range height, and a ragged grid', () => {
-    expect(isLatinSquare(SQUARE)).toBe(true);
-    expect(isLatinSquare([[1, 2], [1, 2]])).toBe(false);
-    expect(isLatinSquare([[1, 3], [3, 1]])).toBe(false);
-    expect(isLatinSquare([[1, 2], [2]])).toBe(false);
+describe('clueAt / presentClueCount', () => {
+  it('reads a clue, treats blank and absent alike, and counts the present ones', () => {
+    const clues = deriveClues(SQUARE);
+    clues.top[1] = 0;
+    clues.right = [0, 2];
+
+    expect(clueAt(clues, 'top', 0)).toBe(4);
+    expect(clueAt(clues, 'top', 1)).toBe(0);
+    expect(clueAt(clues, 'right', 3)).toBe(0);
+    expect(clueAt({ ...clues, left: undefined as unknown as number[] }, 'left', 0)).toBe(0);
+    expect(presentClueCount(clues)).toBe(4 + 4 + 3 + 1);
   });
 });
 

@@ -7,7 +7,8 @@ import {
   SKYSCRAPERS_NONUNIQUE_4X4,
   parseSkyscrapersFixture,
 } from './skyscrapers-fixtures';
-import { deriveClues, isLatinSquare, validateSkyscrapers, type SkyscraperClues } from './skyscrapers-types';
+import { isLatinSquare } from '../grid-utils';
+import { deriveClues, presentClueCount, validateSkyscrapers } from './skyscrapers-types';
 
 const SQUARE = ['1234', '2143', '3412', '4321'];
 const ALL = { top: 'xxxx', bottom: 'xxxx', left: 'xxxx', right: 'xxxx' };
@@ -34,6 +35,20 @@ describe('parseSkyscrapersFixture', () => {
     expect(() => parseSkyscrapersFixture(['12.4', '2143', '3412', '4321'], ALL)).toThrow('unexpected "."');
   });
 
+  it('refuses a row count that is not a supported grid size', () => {
+    expect(() => parseSkyscrapersFixture(['123', '231', '312'], { top: 'xxx', bottom: 'xxx', left: 'xxx', right: 'xxx' })).toThrow(
+      '3 rows is not a supported grid size'
+    );
+    const eight = Array.from({ length: 8 }, (_, r) => Array.from({ length: 8 }, (_, c) => ((r + c) % 8) + 1).join(''));
+    const all8 = { top: 'x'.repeat(8), bottom: 'x'.repeat(8), left: 'x'.repeat(8), right: 'x'.repeat(8) };
+    expect(() => parseSkyscrapersFixture(eight, all8)).toThrow('8 rows is not a supported grid size');
+  });
+
+  it('refuses a ragged row and names it', () => {
+    expect(() => parseSkyscrapersFixture(['1234', '214', '3412', '4321'], ALL)).toThrow('row 1 has 3 cells, expected 4');
+    expect(() => parseSkyscrapersFixture(['1234', '21433', '3412', '4321'], ALL)).toThrow('row 1 has 5 cells, expected 4');
+  });
+
   it('refuses a square that is not Latin', () => {
     expect(() => parseSkyscrapersFixture(['1234', '2143', '3412', '4312'], ALL)).toThrow('not a Latin square');
   });
@@ -56,12 +71,10 @@ describe('baked fixtures', () => {
   );
 
   it('covers the three planned sizes, each with blank clues', () => {
-    const present = (clues: SkyscraperClues) => Object.values(clues).flat().filter((clue) => clue > 0).length;
-
     expect(SKYSCRAPERS_FIXTURES.map((puzzle) => puzzle.gridSize)).toEqual([5, 6, 7]);
-    expect(present(SKYSCRAPERS_FIXTURE_5X5.clues)).toBe(5);
-    expect(present(SKYSCRAPERS_FIXTURE_6X6.clues)).toBe(15);
-    expect(present(SKYSCRAPERS_FIXTURE_7X7.clues)).toBe(14);
+    expect(presentClueCount(SKYSCRAPERS_FIXTURE_5X5.clues)).toBe(5);
+    expect(presentClueCount(SKYSCRAPERS_FIXTURE_6X6.clues)).toBe(15);
+    expect(presentClueCount(SKYSCRAPERS_FIXTURE_7X7.clues)).toBe(14);
   });
 });
 

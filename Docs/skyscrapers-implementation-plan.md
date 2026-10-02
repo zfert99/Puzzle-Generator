@@ -309,6 +309,16 @@ digits for all three fixtures.
 - *Learnings:* (1) repair-not-retry (Kakuro L7/L15) holds here from the very first fixture —
   recorded as L6. (2) The counter's design is settled by this slice: line-filter + propagation
   is the only one of three throwaway counters that finished a 7×7 (L7).
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 6 findings, all fixed
+  before merge):* (1) the fixture parser **cast** its row count to `GridSize` — a 3×3 or 8×8
+  fixture would have parsed with a size the union forbids; `sudoku.ts` gained `GRID_SIZES` +
+  `isGridSize` and the parser guards with it (tests for 3 and 8). (2) The board read
+  `clues[side][index]` raw, so a short or missing array rendered silent blanks; `clueAt` now
+  makes blank-by-absence explicit and documented. (3) `isLatinSquare` was generic and three
+  Keisan test files hand-rolled it — moved to `grid-utils.ts`, the four copies deleted.
+  (4) `lineFor`'s bottom branch is `top` reversed. (5) `presentClueCount` replaces the route's
+  inline count. (6) A ragged fixture row now fails with its row named, not "not a Latin
+  square"; tested.
 - *Blockers:* none. **Owed to E1:** the repo proves nothing unique yet — only the throwaway
   counter did; E1 adds that test over the three fixtures and the 4×4 pair.
 

@@ -46,6 +46,34 @@ export function maskToDigits(mask: number): number[] {
   return digits;
 }
 
+/**
+ * Does `grid` hold every height 1..N exactly once in every row and every column, for
+ * N = `size` (default: the grid's own row count)? The Latin-square property is what `fillGrid`
+ * produces on a boxless config and what Keisan and Skyscrapers both rest on, so the check lives
+ * here rather than in either engine (or in each test file that used to hand-roll it).
+ *
+ * Bitmask per line: a line is complete exactly when its mask has bits 1..N set and nothing
+ * else, which also catches a value outside 1..N, a ragged row, and a non-square grid.
+ */
+export function isLatinSquare(grid: readonly (readonly number[])[], size: number = grid.length): boolean {
+  if (grid.length !== size) return false;
+  const full = (1 << (size + 1)) - 2; // bits 1..N
+  for (let i = 0; i < size; i++) {
+    if (grid[i].length !== size) return false;
+    let rowMask = 0;
+    let colMask = 0;
+    for (let j = 0; j < size; j++) {
+      const r = grid[i][j];
+      const c = grid[j][i];
+      if (!(r >= 1 && r <= size) || !(c >= 1 && c <= size)) return false;
+      rowMask |= 1 << r;
+      colMask |= 1 << c;
+    }
+    if (rowMask !== full || colMask !== full) return false;
+  }
+  return true;
+}
+
 export function createEmptyGrid(size: number): number[][] {
   // Inline bound (see MAX_GRID_SIZE) — defense-in-depth against a resource-exhaustion allocation.
   if (!Number.isInteger(size) || size < 1 || size > MAX_GRID_SIZE) {

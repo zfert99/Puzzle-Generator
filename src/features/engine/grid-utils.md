@@ -106,3 +106,25 @@ The one shared mask→digits helper: walks the set bits of a candidate bitmask (
 digit `d`) from lowest to highest and returns the digits ascending. The board's `board-utils`
 re-exports it and the Kakuro solvers use it for explanations — added when a fourth private copy
 of the same loop was about to be written (a review finding).
+
+## `isLatinSquare(grid, size = grid.length)` (October 2026)
+
+Does the grid hold every value 1..N exactly once in every row and every column? The
+Latin-square property is what `fillGrid` produces on a boxless config and what Keisan and
+Skyscrapers both rest on, so the check lives here — three Keisan test files and the Skyscrapers
+types module each used to carry their own copy (Skyscrapers V1 review finding).
+
+One bitmask per line: a line is complete exactly when its mask has bits 1..N set and nothing
+else. That single comparison also rejects a value outside 1..N, a ragged row, a non-square grid,
+and a grid whose row count is not `size` — there is no separate branch per failure mode.
+
+```text
+if grid has a different number of rows than size → false
+full = bits 1..N
+for each index i:
+    row i must have size cells
+    OR every row-i value into rowMask, every column-i value into colMask
+      (a value outside 1..N → false immediately)
+    rowMask and colMask must both equal full
+true
+```

@@ -10,7 +10,7 @@
  * uniqueness-preserving removal with a counting solver) and what E1 still owes them.
  */
 
-import type { GridSize } from '../sudoku';
+import { isGridSize } from '../sudoku';
 import {
   GUTTER_SIDES,
   deriveClues,
@@ -33,24 +33,31 @@ const BLANK = '.';
  * `difficulty` is a label the caller vouches for — `'unrated'` until the classifier (E2)
  * assigns one, so no fixture ever carries a grade the solver did not give it (D7).
  *
- * @throws if a row contains anything but the digits `1`–`N`, if a mask has the wrong length or
- * an unknown character, or if the validator reports a problem — the message lists every one.
+ * @throws if the row count is not a supported `GridSize`, if a row has the wrong length or
+ * contains anything but the digits `1`–`N`, if a mask has the wrong length or an unknown
+ * character, or if the validator reports a problem — the message lists every one.
  */
 export function parseSkyscrapersFixture(
   rows: readonly string[],
   mask: ClueMask,
   difficulty: SkyscrapersDifficulty = 'unrated'
 ): SkyscrapersPuzzle {
-  const size = rows.length as GridSize;
-  const solution = rows.map((row, r) =>
-    [...row].map((char, c) => {
+  const size = rows.length;
+  if (!isGridSize(size)) {
+    throw new Error(`skyscrapers fixture: ${size} rows is not a supported grid size`);
+  }
+  const solution = rows.map((row, r) => {
+    if (row.length !== size) {
+      throw new Error(`skyscrapers fixture: row ${r} has ${row.length} cells, expected ${size}`);
+    }
+    return [...row].map((char, c) => {
       const digit = Number(char);
       if (!/^[1-9]$/.test(char) || digit > size) {
         throw new Error(`skyscrapers fixture: unexpected "${char}" at row ${r}, column ${c}`);
       }
       return digit;
-    })
-  );
+    });
+  });
 
   const all = deriveClues(solution);
   const clues = { top: [], bottom: [], left: [], right: [] } as SkyscraperClues;

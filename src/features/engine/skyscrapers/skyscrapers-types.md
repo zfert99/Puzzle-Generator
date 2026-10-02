@@ -61,8 +61,18 @@ return seen
 ```
 
 `lineFor` returns the cells a clue reads, in reading order (first element nearest the clue):
-`left` is the row as stored, `right` the row reversed, `top` the column downward, `bottom` the
-column upward.
+`left` is the row as stored, `right` the row reversed, `top` the column downward, `bottom` is
+`top` reversed — two pairs, not four cases.
+
+## `clueAt(clues, side, index)` and `presentClueCount(clues)`
+
+`clueAt` reads one clue and returns 0 for blank **and** for absent (a short or missing side
+array). The validator is the boundary that rejects a malformed clue set; a renderer reading
+through `clueAt` degrades to empty gutter cells on purpose instead of crashing a Server
+Component on `undefined[index]`. `presentClueCount` is the number of non-zero clues — the
+blank-clue difficulty lever (research §3) read the same way by the workbench, the fixtures'
+tests, and later E3/E4 instrumentation and E5 bands, so no two consumers can count it
+differently.
 
 ## `deriveClues(solution)`
 
@@ -70,9 +80,10 @@ All 4N clues a solved square implies — `visibleCount(lineFor(solution, side, i
 and index. The generator's starting point (E4) and the one source of truth for fixtures: a
 fixture's kept clues are derived from its square, never typed.
 
-## `isLatinSquare(grid)` and `validateSkyscrapers(puzzle)`
+## `validateSkyscrapers(puzzle)`
 
-The validator returns every problem at once as readable strings (empty = valid), the same choice
+The Latin-square check itself is `grid-utils.isLatinSquare` (shared with Keisan). The validator
+returns every problem at once as readable strings (empty = valid), the same choice
 `validateKillerCages` and `validateKakuroRuns` make, for the same debugging reason. It checks the
 solution is an N×N Latin square with N = `gridSize`, that `grid` is N×N and any non-zero entry
 agrees with the solution (there are no givens in v1, but a wrong one must not pass), that each

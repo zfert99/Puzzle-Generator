@@ -108,11 +108,18 @@ the session scratchpad by design (the fixtures doc says how they worked).
 | markdownlint (`**/*.md`) | exit 0 |
 | `npm run lint` | clean |
 | `npx tsc --noEmit` · `npm run build` | clean · clean (`/skyscrapers` prerendered) — one TS error in a test helper's parameter type caught by `tsc`, fixed before this entry |
-| `npx vitest run` | **86 files / 803 tests green** (24 new); no entry from the Known flaky tests table fired |
+| `npx vitest run` | **86 files / 806 tests green** (27 new); no entry from the Known flaky tests table fired |
 | Benchmarks | n/a — no solver code yet. The slice's measurement is in Findings |
 
 ### Findings
 
+- **`/code-review high` (owner-run, on the branch): 6 findings, all fixed in-PR.** The one with
+  teeth: the fixture parser cast its row count to `GridSize`, so a 3×3 or 8×8 fixture would have
+  carried a size the union forbids into every consumer typed on it — `sudoku.ts` now exports
+  `GRID_SIZES` + `isGridSize` and the parser guards (tested at 3 and 8). Also: `clueAt` makes
+  blank-by-absence explicit on the board; `isLatinSquare` moved to `grid-utils.ts` and replaced
+  four hand-rolled copies (three Keisan tests + Skyscrapers); `lineFor` bottom = top reversed;
+  `presentClueCount` replaces an inline count; a ragged fixture row is now named in its error.
 - **The slice's real output is a measurement that overturns a plan assumption.** Obtaining a
   7×7 fixture by "random Latin square + all 28 clues, reject unless unique" **never succeeded:
   0 of 94,962 squares** (each count 1–3 ms; both solutions of a sample verified independently).
@@ -160,10 +167,14 @@ live hit (plan E4) amended in place with the original struck through.
 ### Review statements
 
 - `/security-review`: **not run** — no auth, data or route logic (a static noindex page).
-- `/code-review`: **NOT run** — user-triggered and billed; an agent cannot launch it.
+- `/code-review`: **run by the owner** (`/code-review high`, in-session) — 6 findings, all fixed
+  before merge (above).
 
 ### Lesson
 
+- **Never `as GridSize` a number that came from data.** The union is a promise every consumer
+  relies on; a cast makes it without checking. `isGridSize` is the guard — reach for it at
+  every boundary where a size arrives (fixture, request, saved game).
 - **A fixture slice is a measurement slice in disguise.** Making one honest fixture per size
   forced the first real yield numbers (P(unique) ≈ 50% / 7% / 0 at 5 / 6 / 7) three slices
   before E3 was scheduled to measure them — and overturned an E4 design choice while it was still

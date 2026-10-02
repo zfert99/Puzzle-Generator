@@ -37,7 +37,10 @@
   5×5, ≈ 7% at 6×6 and 0 times in 94,962 at 7×7** — G4 answered early, in the direction the
   research feared; `[decision]` E4 amended from "reject the square" to **repair by intercalate
   swaps** (unique 7×7 in 38 steps / 192 ms); E3 (a) now measures the repair, not P(unique).
-  `[learning]` L6, L7.
+  `[learning]` L6, L7. Owner ran `/code-review high` on the branch: **6 findings, all fixed
+  in-PR** (table in the plan under V1) — the one with teeth was the fixture parser casting its
+  row count to `GridSize`; `isGridSize` now exists in `sudoku.ts` and `isLatinSquare` moved to
+  `grid-utils.ts` for every engine.
 - **2026-10-01 (V0)** Plan PR merged ([#127](https://github.com/zfert99/Puzzle-Generator/pull/127)).
   `[decision]` **D4 planned at the recommendation** by the owner ("plan for recommended but still
   measure"): V0–V2 build and show 5×5 / 6×6 / 7×7; E3 keeps the power to overturn any of the

@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import {
   buildDisplayCells,
+  clueAt,
   type GutterSide,
   type SkyscrapersPuzzle,
 } from '@/features/engine/skyscrapers/skyscrapers-types';
@@ -59,7 +60,7 @@ export function SkyscrapersBoard({ puzzle }: { puzzle: SkyscrapersPuzzle }) {
               return <div key={c} role="gridcell" aria-readonly="true" aria-colindex={c + 1} />;
             }
             if (cell.kind === 'gutter') {
-              const clue = clues[cell.side][cell.index];
+              const clue = clueAt(clues, cell.side, cell.index);
               return (
                 <div
                   key={c}

@@ -16,7 +16,9 @@ difficulty lever of this puzzle (research §3).
 
 ```text
 parseSkyscrapersFixture(rows, mask, difficulty = 'unrated'):
-    solution = each row's characters as digits; refuse anything but 1..N
+    refuse a row count that is not a GridSize (isGridSize — never a cast)
+    solution = each row's characters as digits; refuse a row of the wrong length (named),
+               and anything but 1..N
     all      = deriveClues(solution)
     for each side: clues[side][i] = all[side][i] if mask[side][i] is 'x', else 0;
                    refuse a mask of the wrong length or with another character

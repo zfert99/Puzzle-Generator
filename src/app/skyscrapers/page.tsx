@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SKYSCRAPERS_FIXTURES } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
+import { presentClueCount } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { SkyscrapersBoard } from '@/features/interactive-board/components/SkyscrapersBoard/SkyscrapersBoard';
 
 // A build workbench, not a product page: kept out of search results and the sitemap until
@@ -32,7 +33,7 @@ export default function SkyscrapersPage() {
 
       <div className="flex flex-wrap items-start justify-center gap-10">
         {SKYSCRAPERS_FIXTURES.map((puzzle) => {
-          const present = Object.values(puzzle.clues).flat().filter((clue) => clue > 0).length;
+          const present = presentClueCount(puzzle.clues);
           return (
             <section key={puzzle.gridSize} className="flex flex-col items-center gap-3">
               <h2 className="text-xl font-bold text-ink">
