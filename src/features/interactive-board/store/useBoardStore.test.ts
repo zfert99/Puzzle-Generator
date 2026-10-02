@@ -432,4 +432,34 @@ describe('Skyscrapers', () => {
     expect(useBoardStore.getState().doneClues).toEqual([]);
     expect(useBoardStore.getState().edgeClues).toBeNull();
   });
+
+  it('hints a cell the exact solver forces rather than the first empty cell (E1)', () => {
+    // Top clue 4 on column 0 forces 1,2,3,4 down it; top clue 1 on column 3 puts the 4 at (0,3).
+    // Every cell of row 0 is forced, so the hint fills (0,0) with 1 — the solver's and the
+    // reveal's first cell coincide here; the next test separates them.
+    useBoardStore.getState().hint();
+    const s = useBoardStore.getState();
+    expect(s.grid[0][0]).toBe(1);
+    expect(s.lastHint?.technique).toBeNull();
+    expect(s.lastHint?.explanation).toMatch(/forced by the clues/i);
+  });
+
+  it('hints the selected cell when the solver forces it, else the first forced cell', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(2, 0); // forced to 3 by the top clue 4
+    store.hint();
+    expect(useBoardStore.getState().grid[2][0]).toBe(3);
+    expect(useBoardStore.getState().grid[0][0]).toBe(0);
+  });
+
+  it('falls back to the answer when the board holds a mistake the solver cannot see past', () => {
+    const store = useBoardStore.getState();
+    store.selectCell(0, 0);
+    store.inputDigit(4); // under a top clue of 4, impossible — propagation reports a contradiction
+    store.selectCell(3, 3);
+    store.hint();
+    const s = useBoardStore.getState();
+    expect(s.grid[3][3]).toBe(1); // the selected empty cell, revealed from the solution
+    expect(s.lastHint?.explanation).toMatch(/^Revealed/);
+  });
 });

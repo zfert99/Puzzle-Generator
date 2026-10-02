@@ -13,6 +13,7 @@ import { deduceKakuro } from '@/features/engine/kakuro/kakuro-solver';
 import { explainKakuroHint, type KakuroTechnique } from '@/features/engine/kakuro/kakuro-logical-solver';
 import type { SkyscraperClues, SkyscrapersPuzzle, GutterSide } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { GUTTER_SIDES, clueFlatIndex, skyscrapersGridConfig } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { deduceSkyscrapers } from '@/features/engine/skyscrapers/skyscrapers-solver';
 import { computePeers, toggleBit } from '../board-utils';
 import { buildBlocked, buildCellToRuns, buildClues, computeRunPeers, type BoardClue } from '../kakuro-board';
 
@@ -419,7 +420,7 @@ export const useBoardStore = create<BoardState>()(
       },
 
       hint: () => {
-        const { status, grid, solution, givens, selectedCell, candidates, peers, config, runs, variant } = get();
+        const { status, grid, solution, givens, selectedCell, candidates, peers, config, runs, variant, edgeClues } = get();
         if (status !== 'playing') return;
 
         const isEditableEmpty = (r: number, c: number) => grid[r][c] === 0 && !givens[r][c];
@@ -455,6 +456,23 @@ export const useBoardStore = create<BoardState>()(
                 target = { r: Math.floor(pick.cell / config.size), c: pick.cell % config.size };
                 note = { ...pick, technique: null, explanation: 'Forced by the runs it sits in (no single named step)', leadUp: [] };
               }
+            }
+          }
+        }
+
+        // Skyscrapers (plan slice E1): the exact solver's propagation — the selected cell if it is
+        // forced, else the first forced cell — accepted only if it agrees with the solution (L9: a
+        // board holding a mistake can force a height that is consistent with the mistake). The
+        // logical solver (E2) adds the named technique and the reason; until then the note says
+        // the height is forced, without a single named step.
+        if (variant === 'skyscrapers' && edgeClues) {
+          const selectedIndex = selectedCell ? selectedCell.r * config.size + selectedCell.c : -1;
+          const { forced, contradiction } = deduceSkyscrapers({ gridSize: config.size, clues: edgeClues }, grid);
+          if (!contradiction) {
+            const pick = forced.find((f) => f.cell === selectedIndex && agrees(f)) ?? forced.find(agrees);
+            if (pick) {
+              target = { r: Math.floor(pick.cell / config.size), c: pick.cell % config.size };
+              note = { ...pick, technique: null, explanation: 'Forced by the clues and the row and column it sits in (no single named step)', leadUp: [] };
             }
           }
         }

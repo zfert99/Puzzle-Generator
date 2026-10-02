@@ -29,6 +29,13 @@
 
 ## Journal
 
+- **2026-10-02 (E1)** V3 merged ([#131](https://github.com/zfert99/Puzzle-Generator/pull/131)).
+  **E1 built** on `feature/skyscrapers-e1`: the per-size permutation table (`skyscrapers-visibility.ts`)
+  and the line-filter exact solver (`skyscrapers-solver.ts`, the Kakuro contract); the Hint
+  button deduces; a dev badge reads "unique ✓ · n nodes". `[measure]` verify 0.07 / 0.40 / 1.1 ms
+  at 5 / 6 / 7 — the 50 ms gate by 45×; propagation alone solves the 5-clue 5×5. **Every fixture
+  is now proven unique in-repo**, the 4×4 pair proven non-unique, the 204/576 ambiguity and the
+  G5 4×4 facts reproduced as tests (L3 closed). `[learning]` L10.
 - **2026-10-02 (V3)** V2 merged ([#130](https://github.com/zfert99/Puzzle-Generator/pull/130))
   on the owner's visual verdict. **V3 built** on `feature/skyscrapers-v3`: `drawSkyscrapersGrid` +
   `generateSkyscrapersPDF` on the shared nav helpers (G9's print numbers applied: clue digits
@@ -139,6 +146,7 @@
 |---|---|---|
 | L1 | **Reuse a Latin technique only after checking the house property it rests on — and write the answer down.** Kakuro needed a `required` guard because a run need not contain every digit; Skyscrapers rows and columns are full permutations, so hidden singles / pairs / fish are sound unchanged. E2 asserts this in a test so the question is answered on record rather than re-asked per technique | Plan authoring, 2026-10-01 (Kakuro L12 applied in reverse) |
 | L2 | **Put display-coordinate helpers in the engine's types module from day one when two consumers are already in the plan.** Kakuro's clue picture lived in board code until the PDF became a second consumer and had to move (its V3 step-log); Skyscrapers' gutter indexing has the board *and* the PDF as known consumers before V0 | Kakuro V3 step-log, applied 2026-10-01 |
+| L10 | **Pick a test instance from the measurement, not from memory.** Three of E1's first five tests failed because the "obvious" 4×4 Latin square is the research's own non-unique counterexample — the one square that cannot carry a uniqueness claim. When a measurement has already sorted instances into classes, draw the test instance from the class the assertion needs | E1, 2026-10-02 |
 | L9 | **A helper moved into the engine "for the second consumer" is only reused if the second consumer calls it.** V0's review put `buildDisplayCells` in the engine because the PDF was coming; V3's first draft then wrote its own side→row/column mapping anyway. When a slice is the consumer a helper was moved for, start from that helper, and let a test or review catch a second mapping as a defect, not a style choice | V3 review, 2026-10-02 |
 | L8 | **A focusable control inside a widget with its own key handler must decide where focus goes after a click.** `tabIndex -1` makes an element reachable by keyboard only in theory — a mouse click focuses it too — so a click on a gutter clue silently switched the board into gutter mode and swallowed the next digits. Any control that is "keyboard-only" by design needs its click handler to hand focus back explicitly | V2 review, 2026-10-02 |
 | L7 | **Count solutions by line, not by cell.** Three throwaway counters were written for the V1 fixtures: a cell-by-cell backtracker with prefix checks never finished one 7×7 count; a row-permutation DFS with top-clue pruning stalled once clues were sparse; the research's design — per-line permutation buckets filtered against cell masks, propagated to a fixpoint, then MRV — counted any 7×7 in 1–3 ms. E1 builds the third, and only the third | V1, 2026-10-02 |
@@ -151,6 +159,7 @@
 
 | Date | Commit | What | Numbers |
 |---|---|---|---|
+| 2026-10-02 | E1 | **Exact solver on the fixtures** (`tsx` script, Node 24, warm, 200 runs each) | **Table build:** 5: 1.2 ms · 6: 3.5 ms · 7: 9.7 ms · 9: 205 ms (lazy, once per session). **Uniqueness verify:** 5×5 **0.07 ms** / 1 node · 6×6 **0.40 ms** / 7 nodes · 7×7 **1.1 ms** / 3 nodes (gate 50 ms). **Propagation from empty:** 25/25 · 5/36 · 8/49 cells forced. In-repo now: 204/576 4×4 squares not all-clue unique; the 4×4 pair → 2 solutions |
 | 2026-10-02 | V1 (throwaway script, not committed) | **All-clue uniqueness of random Latin squares** — random backtracking fill, all 4N clues, line-filter counter capped at 2 solutions; and **repair** by random intercalate swaps accepted when the count (cap 60) does not rise, then greedy clue removal while unique | **P(unique):** 5×5 2/2 tries · 6×6 1/15 · **7×7 0/94,962** (1–3 ms per count; both solutions of a sample verified independently). **Repair 7×7:** unique after **38 swaps / 192 ms**; removal then kept **14/28** clues (255 ms total). Fixtures kept: 5×5 **5/20**, 6×6 **15/24** |
 | 2026-10-01 | plan (no code) | **Minimum clue count at 4×4 (G5)** — every non-empty subset of the 16 edge clues (65,535) against all 576 Latin squares; a square is "determined" by a subset if no other square shares its masked clue vector; throwaway Node script, 9.7 s | **Smallest determining subset: 3 clues** (416 of 560 three-clue subsets determine ≥ 1 square); **no 2-clue subset determines any square**. Fewest clues per square: 3 → 208 squares, 4 → 142, 5 → 22, undetermined by all 16 → 204. Consistent with Nakamura's N−1 conjecture |
 | 2026-10-01 | plan (no code) | **All-clue ambiguity** — exhaustive enumeration of every Latin square at N = 4 and 5, grouping by the full 4N-clue signature; the research's own measurement, replicated independently in-session with a second throwaway script (Node, 1.9 s total) | **4×4:** 576 squares → 438 signatures; **204 (35.42%) not unique**; multiplicities {1: 372, 2: 34, 4: 28, 6: 4}. **5×5:** 161,280 squares → 102,398 signatures; **92,912 (57.61%) not unique**; multiplicities up to 20 (4 signatures shared by 20 squares). N ≥ 6 unmeasured (G4) |

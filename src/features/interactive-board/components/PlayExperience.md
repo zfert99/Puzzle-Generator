@@ -122,7 +122,12 @@ Same F10 treatment as `PuzzleForm`: the type toggle is a labelled `role="group"`
 `aria-pressed` buttons, and the Difficulty heading became a `span` + `aria-labelledby` over its
 group (size buttons get theirs from the shared `GridSizeSelector`).
 
-## Development-only solver badge (October 2026, Kakuro E1)
+## Development-only solver badge (October 2026, Kakuro E1; Skyscrapers E1)
+
+Skyscrapers has its own badge (`SkyscrapersDevBadge`: unique? · nodes · clue count), gated the
+same way on `NODE_ENV === 'development'` and `boardVariant === 'skyscrapers'`.
+
+### Kakuro
 
 Under a Kakuro board, and only when `NODE_ENV === 'development'`, the game view renders
 `KakuroDevBadge` — the exact solver's uniqueness verdict and node count. It reads the *board's*

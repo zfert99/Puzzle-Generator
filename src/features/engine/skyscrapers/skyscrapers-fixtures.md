@@ -53,8 +53,9 @@ from the plan's "reject the square is cheap at N ≤ 7".
 | 6×6 | 15 of 24 | rejected 14 non-unique squares first |
 | 7×7 | 14 of 28 | square repaired into uniqueness by intercalate swaps |
 
-**Owed to E1:** the repo does not yet prove these unique — only the throwaway counter did. E1's
-solver adds that test, and the counter's claim is the thing it checks.
+**Proven in-repo since E1:** `skyscrapers-solver.test.ts` counts every fixture's solutions (exactly
+one, and the solver's solution equals the square) and the 4×4 pair's (exactly two); the
+throwaway counter's claim is now a test.
 
 ## `SKYSCRAPERS_NONUNIQUE_4X4`
 
