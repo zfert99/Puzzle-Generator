@@ -1,16 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { popcount, createEmptyGrid, copyGrid, isValid, shuffle, fillGrid } from './grid-utils';
+import { copyGrid, createEmptyGrid, fillGrid, isLatinSquare, isValid, popcount, shuffle } from './grid-utils';
 import { getGridConfig, GridSize } from './sudoku';
 
 /** Rows and columns only — the boxless (Latin-square) invariant for KenKen sizes 5/7. */
 function assertLatinSquare(grid: number[][], size: GridSize) {
-  const expected = Array.from({ length: size }, (_, i) => i + 1).join(',');
-  const sorted = (nums: number[]) => [...nums].sort((a, b) => a - b).join(',');
-  for (let i = 0; i < size; i++) {
-    expect(sorted(grid[i])).toBe(expected);
-    expect(sorted(grid.map((row) => row[i]))).toBe(expected);
-  }
+  expect(isLatinSquare(grid, size)).toBe(true);
 }
 
 function assertCompleteValidSolution(grid: number[][], size: GridSize) {
@@ -153,5 +148,24 @@ describe('isValid (boxless)', () => {
     expect(isValid(grid, 0, 4, 3, config)).toBe(false); // same row
     expect(isValid(grid, 4, 0, 3, config)).toBe(false); // same column
     expect(isValid(grid, 2, 3, 3, config)).toBe(true); // different row AND column → legal
+  });
+});
+
+describe('isLatinSquare', () => {
+  it('accepts a Latin square and rejects a repeat, an out-of-range value, a ragged row, and a size mismatch', () => {
+    const square = [
+      [1, 2, 3, 4],
+      [2, 1, 4, 3],
+      [3, 4, 1, 2],
+      [4, 3, 2, 1],
+    ];
+    expect(isLatinSquare(square)).toBe(true);
+    expect(isLatinSquare(square, 4)).toBe(true);
+    expect(isLatinSquare(square, 5)).toBe(false);
+    expect(isLatinSquare([[1, 2], [1, 2]])).toBe(false);
+    expect(isLatinSquare([[1, 3], [3, 1]])).toBe(false);
+    expect(isLatinSquare([[1, 0], [0, 1]])).toBe(false);
+    expect(isLatinSquare([[1, 2], [2]])).toBe(false);
+    expect(isLatinSquare([[1, 2, 3], [2, 3, 1]])).toBe(false);
   });
 });

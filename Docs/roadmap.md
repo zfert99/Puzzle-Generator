@@ -653,8 +653,11 @@ revisited under the same rule later.
 > **Tracks:** 🧮 Engine, then 🎨 Frontend + 🗄️ Infrastructure
 > **Branch:** fresh (`feature/skyscrapers`), then one branch per slice off `main`
 > **Status:** 🚧 In Progress — plan written 2026-10-01 ([#127](https://github.com/zfert99/Puzzle-Generator/pull/127)); build started
-> 2026-10-01 with **V0** (a looks-only board at the three planned sizes, `/skyscrapers`); D4 sizes
-> planned at the recommendation (5/6/7) and still measured by E3. Full plan:
+> 2026-10-01 with **V0** (a looks-only board at the three planned sizes, `/skyscrapers`; merged
+> 2026-10-02) and **V1** (types, three baked fixtures, clue digits on the board — and the first
+> measurement: random 7×7 squares are never unique with all clues, so the generator repairs
+> instead of rejecting); D4 sizes planned at the recommendation (5/6/7) and still measured by E3.
+> Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;

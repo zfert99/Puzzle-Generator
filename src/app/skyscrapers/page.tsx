@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { SKYSCRAPERS_FIXTURES } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
+import { presentClueCount } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { SkyscrapersBoard } from '@/features/interactive-board/components/SkyscrapersBoard/SkyscrapersBoard';
 
 // A build workbench, not a product page: kept out of search results and the sitemap until
@@ -6,23 +8,19 @@ import { SkyscrapersBoard } from '@/features/interactive-board/components/Skyscr
 export const metadata: Metadata = { title: 'Skyscrapers', robots: { index: false } };
 
 /**
- * The three candidate sizes from the plan's decision D4 (research recommendation: mini 5×5,
- * standard 6×6, large 7×7), shown side by side so the size question is judged on screen while
- * E3 measures it. Not a product size list — `PlayExperience`'s per-type table is, from V2.
+ * The role each fixture size plays under the plan's decision D4 (planned at the research
+ * recommendation while E3 measures). Not a product size list — `PlayExperience`'s per-type
+ * table is, from V2.
  */
-const SIZES = [
-  { size: 5, role: 'mini' },
-  { size: 6, role: 'standard' },
-  { size: 7, role: 'large' },
-] as const;
+const ROLE: Record<number, string> = { 5: 'mini', 6: 'standard', 7: 'large' };
 
 /**
- * /skyscrapers — the Skyscrapers workbench route (plan slice V0).
+ * /skyscrapers — the Skyscrapers workbench route (plan slices V0–V1).
  *
- * Shows a static, looks-only board at each candidate size so the visual design — the
- * four-sided clue gutter and the framed play area — can be settled before any puzzle logic
- * exists. A Server Component with no client boundary at all: nothing here is interactive and
- * the sizes are static data. When the board becomes playable (V2) it moves to
+ * Shows every hand-baked fixture as a static board, so the visual design — the four-sided clue
+ * gutter, the clue digits and the framed play area — can be judged at each size before the
+ * board is interactive. A Server Component with no client boundary at all: nothing here is
+ * interactive and the fixtures are static data. When the board becomes playable (V2) it moves to
  * `/play?variant=skyscrapers` and this route goes away.
  */
 export default function SkyscrapersPage() {
@@ -34,14 +32,20 @@ export default function SkyscrapersPage() {
       </div>
 
       <div className="flex flex-wrap items-start justify-center gap-10">
-        {SIZES.map(({ size, role }) => (
-          <section key={size} className="flex flex-col items-center gap-3">
-            <h2 className="text-xl font-bold text-ink">
-              {size}×{size} <span className="text-ink-soft font-normal">· {role}</span>
-            </h2>
-            <SkyscrapersBoard size={size} />
-          </section>
-        ))}
+        {SKYSCRAPERS_FIXTURES.map((puzzle) => {
+          const present = presentClueCount(puzzle.clues);
+          return (
+            <section key={puzzle.gridSize} className="flex flex-col items-center gap-3">
+              <h2 className="text-xl font-bold text-ink">
+                {puzzle.gridSize}×{puzzle.gridSize}{' '}
+                <span className="text-ink-soft font-normal">
+                  · {ROLE[puzzle.gridSize] ?? 'extra'} · {present} of {4 * puzzle.gridSize} clues
+                </span>
+              </h2>
+              <SkyscrapersBoard puzzle={puzzle} />
+            </section>
+          );
+        })}
       </div>
     </main>
   );

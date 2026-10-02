@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
+import { isLatinSquare } from '../grid-utils';
 import { CalcSolver } from './calc-solver';
 import { computeTarget, type CalcCage } from './calc-types';
 import type { GridSize } from '../sudoku';
@@ -20,16 +21,6 @@ function cagesSatisfied(cages: CalcCage[], grid: number[][], size: number): bool
     const digits = cage.cells.map((cell) => grid[Math.floor(cell / size)][cell % size]);
     return computeTarget(cage.op, digits) === cage.target;
   });
-}
-
-function isLatinSquare(grid: number[][], size: number): boolean {
-  const expected = Array.from({ length: size }, (_, i) => i + 1).join(',');
-  const sorted = (nums: number[]) => [...nums].sort((a, b) => a - b).join(',');
-  for (let i = 0; i < size; i++) {
-    if (sorted(grid[i]) !== expected) return false;
-    if (sorted(grid.map((row) => row[i])) !== expected) return false;
-  }
-  return true;
 }
 
 /** Build all-single-cell cages (every cell a given) from a solution — a fully-determined puzzle. */

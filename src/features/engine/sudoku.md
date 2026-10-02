@@ -186,3 +186,12 @@ no classic digger and fall back to a safe default, since classic puzzles can't e
    - If it does, return immediately (success).
    - If not, retry with a fresh grid.
 3. If all retries are exhausted, keep the last puzzle as a graceful degradation.
+
+## `GRID_SIZES` and `isGridSize(value)` (October 2026)
+
+`GridSize` is a type and vanishes at runtime; `GRID_SIZES` is the same list as a value and
+`isGridSize` is the type guard built on it. Use the guard wherever a size arrives from *data* — a
+fixture's row count, a request body, a saved game — instead of `as GridSize`: a cast lets a 3 or
+an 8 through with the union's blessing, and every consumer typed on `GridSize` then trusts it
+(Skyscrapers V1 review finding). The API routes still carry per-variant allow-lists because each
+variant ships a *subset* of `GRID_SIZES`; the guard is the floor they all share.

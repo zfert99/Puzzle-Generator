@@ -18,6 +18,18 @@ export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'extreme';
  */
 export type GridSize = 4 | 5 | 6 | 7 | 9;
 
+/** Every size the engine knows, as a value — the runtime twin of `GridSize`. */
+export const GRID_SIZES: readonly GridSize[] = [4, 5, 6, 7, 9];
+
+/**
+ * Runtime guard for `GridSize`. Use it wherever a size arrives from data (a fixture's row count,
+ * a request body, a saved game) instead of casting — a cast lets a 3 or an 8 through with the
+ * union's blessing, and every consumer typed on `GridSize` then trusts it.
+ */
+export function isGridSize(value: unknown): value is GridSize {
+  return typeof value === 'number' && (GRID_SIZES as readonly number[]).includes(value);
+}
+
 /**
  * Configuration derived from a grid size — box dimensions and total cells.
  *

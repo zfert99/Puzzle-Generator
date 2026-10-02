@@ -1,7 +1,8 @@
 # Skyscrapers (Towers) — Implementation Plan
 
-> **Status:** 🚧 In progress (plan written 2026-10-01; build started 2026-10-01 — V0 built, owner's
-> visual verdict pending). · **Branch:** one per slice off
+> **Status:** 🚧 In progress (plan written 2026-10-01; build started 2026-10-01 — V0
+> [#128](https://github.com/zfert99/Puzzle-Generator/pull/128) merged 2026-10-02 on the owner's
+> visual verdict; V1 built 2026-10-02). · **Branch:** one per slice off
 > `main` (`feature/skyscrapers`, then `-v1`, `-v2`, … as Kakuro did; never stacked — V1's step-log
 > in the Kakuro plan says why) · **Roadmap:** Phase 11 in [roadmap.md](roadmap.md)
 > **Running log (decisions · gaps · bugs · learnings · measurements):**
@@ -188,8 +189,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 
 | Order | Slice | What becomes visible |
 |---|---|---|
-| 0 | V0 — Looks-only static board 🚧 | Empty 5×5 / 6×6 / 7×7 boards with a four-sided clue gutter at `/skyscrapers` — no digits, no input |
-| 1 | V1 — Types + baked fixtures | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
+| 0 | V0 — Looks-only static board ✅ | Empty 5×5 / 6×6 / 7×7 boards with a four-sided clue gutter at `/skyscrapers` — no digits, no input |
+| 1 | V1 — Types + baked fixtures 🚧 | Real clue digits on the static board (5×5, 6×6, 7×7 fixtures) |
 | 2 | V2 — Board on the baked puzzle | A playable Skyscrapers at `/play?variant=skyscrapers`, clue states, "mark done" |
 | 3 | V3 — PDF on the baked puzzle | A printable Skyscrapers page in the booklet |
 | 4 | E1 — Visibility table + exact solver + uniqueness | Hint button backed by a real solver; "unique ✓" on the fixtures; the 4×4/5×5 ambiguity numbers as tests |
@@ -199,7 +200,7 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
 | 9 | R1 — Daily rotation (5 types) | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
 
-### V0 — Looks-only static board 🚧
+### V0 — Looks-only static board ✅
 
 Before any types or store work, a page that only **looks** like a Skyscrapers, so the four-sided
 gutter is designed once and everything after lands on something visible (D8).
@@ -248,12 +249,13 @@ the recommended sizes; 9×9 + gutter = 11 tracks would be, and is why 9×9 is th
   (5) Dead CSS (per-side and corner `transparent` rules) deleted. (6) The test-only `data-size`
   attribute and the grid-level `aria-readonly` (false in V2) dropped; `aria-readonly` stays on
   the gutter and corner cells.
-- *Blockers:* none. **Gate pending:** the owner's visual verdict in both themes and at 360 px.
+- *Blockers:* none. **Gate passed:** the owner approved the boards visually and merged
+  ([#128](https://github.com/zfert99/Puzzle-Generator/pull/128), 2026-10-02).
 - *Carried into V1:* `skyscrapers-types.ts` gains the puzzle shape, clue arrays and
   `visibleCount`; `gutterLabel` gains the clue digit; the route gains real clue digits from the
   fixtures.
 
-### V1 — Types + baked fixtures ⏳
+### V1 — Types + baked fixtures 🚧
 
 - `skyscrapers-types.ts`: `SkyscrapersPuzzle { variant: 'skyscrapers'; gridSize; grid; solution;
   clues: SkyscraperClues; difficulty }`, `SkyscraperClues { top: number[]; bottom: number[]; left:
@@ -276,6 +278,49 @@ the recommended sizes; 9×9 + gutter = 11 tracks would be, and is why 9×9 is th
 
 **Gate:** fixtures valid by test; mirrored `.md` files in place; the static board shows real clue
 digits for all three fixtures.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-v1`):**
+
+- *Process:* `skyscrapers-types.ts` grew the spec's shapes — `SkyscrapersPuzzle`,
+  `SkyscraperClues` (four length-N arrays, 0 = blank), `SKYSCRAPERS_LADDER` / `SkyscrapersLevel`,
+  `SkyscrapersDifficulty` (+ `'unrated'`), `skyscrapersGridConfig` (boxless at every size,
+  `maxNum = N`), `visibleCount`, `lineFor`, `deriveClues`, `isLatinSquare`,
+  `validateSkyscrapers` (all problems at once) — 17 tests incl. a 300-line brute-force check of
+  `visibleCount`. `skyscrapers-fixtures.ts`: `parseSkyscrapersFixture(rows, mask)` — a solved
+  square plus a per-side `x`/`.` mask, clues derived never typed — three served fixtures (5×5
+  keeps 5/20, 6×6 15/24, 7×7 14/28) and the research's 4×4 non-unique pair as
+  `SKYSCRAPERS_NONUNIQUE_4X4`; 10 tests. `SkyscrapersBoard` now takes a `puzzle` and draws the
+  clue digits; `gutterLabel` names the digit ("Clue 3, looking down from the top of column 2");
+  the route renders the fixtures with "k of 4N clues". All labels `'unrated'` (D7). Mirrored docs
+  for all four files.
+- *Divergence from the spec, and why:* the spec asked for "at least one fixture with blank clues,
+  one fully clued". **No 7×7 can be fully clued and unique by random fill** — see the
+  measurement below — so every fixture carries blanks and the fully-clued case is represented by
+  the generator's own tests later (E4), not by a fixture.
+- *Measured (the slice's real output — log Measurements, G4):* with a throwaway counter built on
+  the E1 design (per-line permutation buckets filtered against cell masks, fixpoint propagation,
+  MRV), **P(all-clue unique) for a random Latin square ≈ 50% at 5×5 (2 tries), ≈ 7% at 6×6
+  (15 tries), and 0 of 94,962 at 7×7** (each count 1–3 ms). A cell-by-cell backtracker — the
+  first draft — never finished a single 7×7 count. **Repair works:** random intercalate swaps
+  (keep the square Latin), accepted when the capped solution count does not rise, reached a
+  unique 7×7 in 38 steps / 192 ms. This **overturns E4's "reject the square — cheap at N ≤ 7"**
+  and answers E3 (a) early in the direction the research feared; E3 now quantifies the repair
+  (steps, ms, yield per size) instead of P(unique). Plan E4 amended below.
+- *Learnings:* (1) repair-not-retry (Kakuro L7/L15) holds here from the very first fixture —
+  recorded as L6. (2) The counter's design is settled by this slice: line-filter + propagation
+  is the only one of three throwaway counters that finished a 7×7 (L7).
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 6 findings, all fixed
+  before merge):* (1) the fixture parser **cast** its row count to `GridSize` — a 3×3 or 8×8
+  fixture would have parsed with a size the union forbids; `sudoku.ts` gained `GRID_SIZES` +
+  `isGridSize` and the parser guards with it (tests for 3 and 8). (2) The board read
+  `clues[side][index]` raw, so a short or missing array rendered silent blanks; `clueAt` now
+  makes blank-by-absence explicit and documented. (3) `isLatinSquare` was generic and three
+  Keisan test files hand-rolled it — moved to `grid-utils.ts`, the four copies deleted.
+  (4) `lineFor`'s bottom branch is `top` reversed. (5) `presentClueCount` replaces the route's
+  inline count. (6) A ragged fixture row now fails with its row named, not "not a Latin
+  square"; tested.
+- *Blockers:* none. **Owed to E1:** the repo proves nothing unique yet — only the throwaway
+  counter did; E1 adds that test over the three fixtures and the 4×4 pair.
 
 ### V2 — Board on the baked puzzle ⏳
 
@@ -425,8 +470,11 @@ The research's hard warnings are about **yield and sizes** — all-clue ambiguit
 no published per-tier yield, no published clue-survival counts, and Tatham's unbounded retry
 loop. Before E4, a bounded session on a throwaway script under the scratchpad (not committed):
 
-- For **N = 4, 5, 6, 7, 9**: (a) **P(all-clue unique)** over ≥ 1,000 unbiased Latin fills per N
-  (shuffle rows, columns and symbols — no cyclic-shift sampler) — answers G4 at N ≥ 6;
+- For **N = 4, 5, 6, 7, 9**: (a) ~~**P(all-clue unique)** over ≥ 1,000 unbiased Latin fills per N~~
+  **answered early by V1 (G4): ≈ 50% / 7% / 0 of 94,962 at 5 / 6 / 7 — random fills are not
+  unique above 6×6.** Measure instead the **repair** (intercalate swaps toward a unique square):
+  steps, ms and success rate per N, with the capped-count objective (Kakuro L23: calibrate the cap
+  on identical seeded inputs);
   (b) **clue survival** — greedy uniqueness-preserving removal in random order, recording how
   many of 4N clues survive and the E2 tier of the result, ≥ 200 per N — answers G3/G5;
   (c) **tier reachability** — tier-bounded removal toward each of the five tiers, yield and
@@ -447,10 +495,11 @@ ladder, two-line interactions, or givens as a lever) before E4 rather than tunin
 ### E4 — Clue-removal generator ⏳
 
 - `skyscrapers-generator.ts`: `generateUniqueSkyscrapers(N, opts)` = **fill** (`fillGrid` on the
-  boxless config, then shuffle rows/columns/symbols) → **derive all 4N clues** → **uniqueness
-  check** (E1; on failure **reject the square** — the cheap option at N ≤ 7; Kolijn's
-  fix-one-differing-cell repair is recorded as the alternative if a `givens` lever is ever wanted)
-  → **remove clues** in a tier-biased order (keep 1s/Ns for Easy; remove them first for Hard+),
+  boxless config, then shuffle rows/columns/symbols) → **derive all 4N clues** → **repair to
+  unique** (~~reject the square — the cheap option at N ≤ 7~~ **V1 measured 0 unique in 94,962
+  random 7×7 squares**; instead: random **intercalate swaps**, each kept when the capped solution
+  count does not rise — 38 steps / 192 ms on the fixture; Kolijn's fix-one-differing-cell is the
+  givens-based alternative, unused under D3) → **remove clues** in a tier-biased order (keep 1s/Ns for Easy; remove them first for Hard+),
   each removal kept only if the puzzle stays **unique and solvable at ≤ the target tier** (Tatham's
   bound) → **re-add on overshoot** (restore the last clue instead of discarding the square — the
   yield lever Tatham lacks). Expose the removal-order and target-tier knobs E5 biases with.

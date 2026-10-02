@@ -92,6 +92,95 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-02 — Skyscrapers V1: types, baked fixtures, clue digits on `/skyscrapers`
+
+Branch `feature/skyscrapers-v1` on `0c10f5f`. Diff: `skyscrapers-types.ts` grows the puzzle
+shapes, config, `visibleCount` / `deriveClues` / validator; new `skyscrapers-fixtures.ts`
+(three served fixtures + the 4×4 non-unique pair); `SkyscrapersBoard` takes a puzzle and draws
+clue digits; the route renders the fixtures; four mirrored docs; plan/log/roadmap/index/status.
+**~330 LOC of source**, inside the slice budget. Throwaway fixture-generation scripts stayed in
+the session scratchpad by design (the fixtures doc says how they worked).
+
+### Mechanical
+
+| Check | Result |
+|---|---|
+| markdownlint (`**/*.md`) | exit 0 |
+| `npm run lint` | clean |
+| `npx tsc --noEmit` · `npm run build` | clean · clean (`/skyscrapers` prerendered) — one TS error in a test helper's parameter type caught by `tsc`, fixed before this entry |
+| `npx vitest run` | **86 files / 806 tests green** (27 new); no entry from the Known flaky tests table fired |
+| Benchmarks | n/a — no solver code yet. The slice's measurement is in Findings |
+
+### Findings
+
+- **`/code-review high` (owner-run, on the branch): 6 findings, all fixed in-PR.** The one with
+  teeth: the fixture parser cast its row count to `GridSize`, so a 3×3 or 8×8 fixture would have
+  carried a size the union forbids into every consumer typed on it — `sudoku.ts` now exports
+  `GRID_SIZES` + `isGridSize` and the parser guards (tested at 3 and 8). Also: `clueAt` makes
+  blank-by-absence explicit on the board; `isLatinSquare` moved to `grid-utils.ts` and replaced
+  four hand-rolled copies (three Keisan tests + Skyscrapers); `lineFor` bottom = top reversed;
+  `presentClueCount` replaces an inline count; a ragged fixture row is now named in its error.
+- **The slice's real output is a measurement that overturns a plan assumption.** Obtaining a
+  7×7 fixture by "random Latin square + all 28 clues, reject unless unique" **never succeeded:
+  0 of 94,962 squares** (each count 1–3 ms; both solutions of a sample verified independently).
+  At 5×5 it took 2 squares, at 6×6 15. Plan E4 said reject-the-square is "cheap at N ≤ 7"; it
+  is impossible at 7. **Repair by random intercalate swaps** (accepted when the capped solution
+  count does not rise) reached a unique 7×7 in 38 steps / 192 ms. E4 amended to repair, E3 (a)
+  re-pointed at the repair's cost per N, G4 resolved, L6/L7 in the log. Recorded in the plan and
+  log rather than a separate research doc because the finding has a known remedy with an in-repo
+  precedent (Kakuro L7/L15) and E3 is the designated measurement slice; the E3 findings doc will
+  be the formal record.
+- **Three throwaway counters were needed before one finished a 7×7** — a cell-by-cell
+  backtracker never did, a row-permutation DFS stalled on sparse clues, and the research's
+  line-filter design counted any 7×7 in milliseconds. That settles E1's design (L7).
+- No fixture is fully clued (the spec asked for one): no random 7×7 can be, and the fully-clued
+  case is the generator's own starting state (E4), so it is not worth a hand fixture.
+
+### Invariants checked
+
+- Every fixture's clues are **derived** from its square by `deriveClues` and filtered by a mask;
+  a typed clue cannot disagree with its solution. `validateSkyscrapers` rejects a non-Latin
+  square, a clue outside 1..N, a clue that disagrees, a wrong-length clue array, and a given that
+  disagrees — each with a test that proves it bites.
+- `skyscrapersGridConfig` is boxless at **every** size (a 6×6 Skyscrapers has no 2×3 boxes) and
+  `maxNum = N`; asserted.
+- The 4×4 non-unique pair really is two different Latin squares with identical full clue sets
+  (test), so E1's counter has a canonical case that must report two.
+- Labels are all `'unrated'` (D7) — asserted; no fixture carries a grade the classifier did not
+  give it.
+
+### Docs sweep
+
+New: `skyscrapers-fixtures.md`. Updated: `skyscrapers-types.md` (full rewrite for the V1
+contents), `SkyscrapersBoard.md`, `page.md`, plan (V0 ✅ with the owner's verdict, V1 step-log,
+E3 (a) and E4 amended), log (journal, G4 resolved, L6/L7, a measurement row), roadmap,
+Docs index, project-status. Reverse sweep for "reject the square" / "cheap at N ≤ 7": the one
+live hit (plan E4) amended in place with the original struck through.
+
+### Verified vs read
+
+- **Verified:** tests, lint, tsc, build, markdownlint; the page renders all three fixtures with
+  their clue digits and no console errors on a fresh load (dev server).
+- **Read only:** the fixtures' **uniqueness** rests on the throwaway counter, not on anything in
+  the repo — owed to E1, stated in the fixtures doc and the plan.
+
+### Review statements
+
+- `/security-review`: **not run** — no auth, data or route logic (a static noindex page).
+- `/code-review`: **run by the owner** (`/code-review high`, in-session) — 6 findings, all fixed
+  before merge (above).
+
+### Lesson
+
+- **Never `as GridSize` a number that came from data.** The union is a promise every consumer
+  relies on; a cast makes it without checking. `isGridSize` is the guard — reach for it at
+  every boundary where a size arrives (fixture, request, saved game).
+- **A fixture slice is a measurement slice in disguise.** Making one honest fixture per size
+  forced the first real yield numbers (P(unique) ≈ 50% / 7% / 0 at 5 / 6 / 7) three slices
+  before E3 was scheduled to measure them — and overturned an E4 design choice while it was still
+  a sentence in a plan. Treat "author a fixture by the generator's intended method" as the
+  cheapest de-risk available, and read its failures as findings.
+
 ## 2026-10-01 — Skyscrapers V0: looks-only board at 5×5 / 6×6 / 7×7 on `/skyscrapers`
 
 Branch `feature/skyscrapers-v0` on `5b6cac5`. Diff: 1 route (`src/app/skyscrapers/page.tsx`),
