@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GridSizeSelector, type SelectableSize } from '@/features/puzzle-configuration/components/GridSizeSelector';
+import { SKYSCRAPERS_SIZES, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
 import { useSavedGame, formatElapsed } from '../store/useSavedGame';
@@ -65,13 +66,25 @@ function parseVariant(value: string | null): PlayVariant {
 }
 
 /**
- * Expert and Extreme are 9×9-only for the Sudoku family; Kakuro and Skyscrapers ship their full
- * ladder at every size (Skyscrapers' tiers are calibrated within a size — plan D6; until E5 the
- * picker is shown but a hand-made fixture is served). The one rule every lock decision uses (the
- * picker, and the clamps on switching type or size), so a new size or type changes it in one place.
+ * The tiers a type offers at a size — the one rule every lock decision uses (the picker, and the
+ * clamps on switching type or size), so a new size or type changes it in one place. Expert and
+ * Extreme are 9×9-only for the Sudoku family; Kakuro ships its full ladder at every size;
+ * Skyscrapers' sets are the engine's own (`SKYSCRAPERS_TIERS_BY_SIZE`, plan D12: the 5×5 mini tops
+ * out at hard, the 7×7 large starts at medium — the sizes offer what they can produce).
  */
-function topTiersLockedFor(variant: PlayVariant, size: SelectableSize): boolean {
-  return size !== 9 && variant !== 'kakuro' && variant !== 'skyscrapers';
+function tiersFor(variant: PlayVariant, size: SelectableSize): readonly Difficulty[] {
+  // A size Skyscrapers never offers cannot reach here (the size clamp runs first); the smallest
+  // size's list is the conservative answer if it ever did, not the full ladder.
+  if (variant === 'skyscrapers') return SKYSCRAPERS_TIERS_BY_SIZE[isSkyscrapersSize(size) ? size : SKYSCRAPERS_SIZES[0]];
+  if (variant === 'kakuro' || size === 9) return ALL_DIFFICULTIES;
+  return ALL_DIFFICULTIES.slice(0, 3);
+}
+
+/** The picked tier if the type offers it at this size, else the nearest one it does (lower wins a tie). */
+function clampDifficulty(difficulty: Difficulty, tiers: readonly Difficulty[]): Difficulty {
+  if (tiers.includes(difficulty)) return difficulty;
+  const wanted = ALL_DIFFICULTIES.indexOf(difficulty);
+  return [...tiers].sort((a, b) => Math.abs(ALL_DIFFICULTIES.indexOf(a) - wanted) - Math.abs(ALL_DIFFICULTIES.indexOf(b) - wanted))[0];
 }
 
 export default function PlayExperience() {
@@ -98,8 +111,8 @@ export default function PlayExperience() {
   // Kakuro is generated server-side since E4 and graded by the logical solver (easy…hard by
   // technique tier, expert/extreme by forcing-chain length); the label is the solver's.
   const isKakuro = variant === 'kakuro';
-  // Skyscrapers generates fresh puzzles since E4; the picker's tier bounds the clue removal and the
-  // board shows the classifier's grade for what came out (exactly-the-requested-tier is E5).
+  // Skyscrapers generates fresh puzzles at exactly the picked tier (E5); each size offers the tiers
+  // it can produce (D12) and the picker greys out the rest.
   const isSkyscrapers = variant === 'skyscrapers';
   const wantsResume = searchParams.get('resume') === '1';
 
@@ -134,21 +147,21 @@ export default function PlayExperience() {
   }, [view, status, tick]);
 
   const miniGrid = gridSize !== 9;
-  const topTiersLocked = topTiersLockedFor(variant, gridSize);
+  const offeredTiers = tiersFor(variant, gridSize);
 
   const handleGridSizeChange = (size: SelectableSize) => {
     setGridSize(size);
-    if (topTiersLockedFor(variant, size) && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    setDifficulty(clampDifficulty(difficulty, tiersFor(variant, size)));
   };
 
   const handleVariantChange = (v: PlayVariant) => {
     setVariant(v);
     // A size the new type doesn't offer falls back to the type's first (smallest) size — Killer
-    // has no 4×4, the Sudoku family has no 7×7. Expert and Extreme are 9×9-only for EVERY
-    // variant, so the guard is uniform: clamp them off any non-9 grid.
+    // has no 4×4, the Sudoku family has no 7×7 — and a tier it doesn't offer there to the nearest
+    // one it does (expert on a mini → hard; easy on a 7×7 Skyscrapers → medium).
     const nextSize = SIZES[v].includes(gridSize) ? gridSize : SIZES[v][0];
     if (nextSize !== gridSize) setGridSize(nextSize);
-    if (topTiersLockedFor(v, nextSize) && (difficulty === 'expert' || difficulty === 'extreme')) setDifficulty('hard');
+    setDifficulty(clampDifficulty(difficulty, tiersFor(v, nextSize)));
   };
 
   const startFresh = async () => {
@@ -240,7 +253,7 @@ export default function PlayExperience() {
           </span>
           <div role="group" aria-labelledby="play-difficulty-label" className="flex flex-wrap justify-center gap-2">
             {ALL_DIFFICULTIES.map((d) => {
-              const disabled = topTiersLocked && (d === 'expert' || d === 'extreme');
+              const disabled = !offeredTiers.includes(d);
               return (
                 <button
                   key={d}
@@ -263,7 +276,7 @@ export default function PlayExperience() {
             </p>
           ) : isSkyscrapers ? (
             <p className="text-xs text-ink-soft text-center mt-2">
-              Skyscrapers is being built: every puzzle is fresh and unique, graded by the solver — the grade may land below the one you picked until the tiers are calibrated.
+              Skyscrapers is new: every puzzle is fresh, unique and graded by the solver — logic only, no guessing. The 5×5 tops out at hard; the 7×7 starts at medium.
             </p>
           ) : (
             miniGrid && (

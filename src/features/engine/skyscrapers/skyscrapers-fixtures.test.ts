@@ -6,7 +6,6 @@ import {
   SKYSCRAPERS_FIXTURE_7X7,
   SKYSCRAPERS_NONUNIQUE_4X4,
   parseSkyscrapersFixture,
-  selectSkyscrapersBatch,
 } from './skyscrapers-fixtures';
 import { classifySkyscrapers } from './skyscrapers-logical-solver';
 import { isLatinSquare } from '../grid-utils';
@@ -93,16 +92,3 @@ describe('SKYSCRAPERS_NONUNIQUE_4X4', () => {
   });
 });
 
-describe('selectSkyscrapersBatch (V3)', () => {
-  it('returns the one fixture for the size when exactly one puzzle is asked for, whatever the level', () => {
-    expect(selectSkyscrapersBatch({ easy: 1 }, { gridSize: 5 })).toEqual([SKYSCRAPERS_FIXTURE_5X5]);
-    expect(selectSkyscrapersBatch({ extreme: 1 }, { gridSize: 7 })).toEqual([SKYSCRAPERS_FIXTURE_7X7]);
-    expect(selectSkyscrapersBatch({ hard: 1 })).toEqual([SKYSCRAPERS_FIXTURE_6X6]);
-  });
-
-  it('refuses any other total, and a size with no fixture', () => {
-    expect(() => selectSkyscrapersBatch({ easy: 1, medium: 1 }, { gridSize: 6 })).toThrow('2 requested');
-    expect(() => selectSkyscrapersBatch({}, { gridSize: 6 })).toThrow('0 requested');
-    expect(() => selectSkyscrapersBatch({ easy: 1 }, { gridSize: 9 })).toThrow('no fixture at 9×9');
-  });
-});

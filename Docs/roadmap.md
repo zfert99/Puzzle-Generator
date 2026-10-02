@@ -671,7 +671,10 @@ revisited under the same rule later.
 > 5/6 — `research/skyscrapers-feasibility-findings.md` and its addendum; merged 2026-10-02) and
 > **E4** (the generator: fill → repair-with-restart → tier-bounded clue removal; "New puzzle" is
 > fresh and unique at 5/6/7 behind `/api/puzzle`, 0 failures in the gate run, 6×6 in 30–50 ms;
-> the 7×7 easy question goes to E5's per-size tier sets). Full plan:
+> the 7×7 easy question goes to E5's per-size tier sets; merged 2026-10-02) and **E5** (every
+> puzzle at exactly the requested tier; per-size tier sets — 5×5 easy–hard, 6×6 all, 7×7
+> medium–extreme; `/api/generate` generates; the **hub card is live**; `benchmark-skyscrapers.ts`,
+> every cell under a second; 1,500-puzzle fuzz clean). R1 (the daily) remains. Full plan:
 > [skyscrapers-implementation-plan.md](skyscrapers-implementation-plan.md) · running log
 > (decisions, research gaps, bugs, learnings, measurements): [skyscrapers-log.md](skyscrapers-log.md)
 > **Research:** [skyscrapers.md](research/skyscrapers.md) (four-stream deep research, 2026-10-01;

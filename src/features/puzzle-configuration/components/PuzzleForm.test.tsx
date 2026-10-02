@@ -104,7 +104,7 @@ describe('PuzzleForm Component', () => {
     }));
   });
 
-  it('offers Skyscrapers at 5×5 / 6×6 / 7×7 with no difficulty counts, and submits one puzzle', async () => {
+  it('offers Skyscrapers at 5×5 / 6×6 / 7×7 with each size\'s own tiers, and submits the counts for those tiers', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       blob: async () => new Blob(['%PDF'], { type: 'application/pdf' }),
@@ -122,15 +122,19 @@ describe('PuzzleForm Component', () => {
     expect(within(sizeGroup).getByRole('button', { name: '6×6' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(sizeGroup).getByRole('button', { name: '5×5' })).toBeInTheDocument();
     expect(within(sizeGroup).queryByRole('button', { name: '9×9' })).not.toBeInTheDocument();
-    // One hand-made, ungraded fixture per size until the generator lands: no counts to configure.
-    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
-    expect(screen.getByText(/one hand-made/i)).toBeInTheDocument();
+    // The 6×6 standard offers the full ladder (E5, D12): five live counts to configure.
+    expect(screen.getAllByRole('spinbutton')).toHaveLength(5);
+    expect(screen.getByLabelText(/extreme/i)).toBeEnabled();
 
+    // The 7×7 large starts at medium: the easy count is locked (and says so), and the submitted
+    // easy count is zero even though the shared counts state still holds the default 2 for it.
     await user.click(within(sizeGroup).getByRole('button', { name: '7×7' }));
+    expect(screen.getByLabelText(/easy/i)).toBeDisabled();
+    expect(screen.getByText(/7×7 Skyscrapers offers medium, hard, expert, extreme/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /generate pdf/i }));
 
     expect(fetchMock).toHaveBeenCalledWith('/puzzles/api/generate', expect.objectContaining({
-      body: JSON.stringify({ variant: 'skyscrapers', gridSize: 7, easy: 1, medium: 0, hard: 0, expert: 0, extreme: 0 }),
+      body: JSON.stringify({ variant: 'skyscrapers', gridSize: 7, easy: 0, medium: 2, hard: 2, expert: 0, extreme: 0 }),
     }));
   });
 

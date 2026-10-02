@@ -216,3 +216,15 @@
 | 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Hard (10x) | 364.50 ms | max 2148 ms |
 | 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Expert (10x) | 191.12 ms | max 774 ms |
 | 2026-10-01T22:37:36.127Z | `cd61715` | Kakuro Gen 9×9 Extreme (10x) | 772.97 ms | max 2457 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 5×5 Easy (10x) | 11.03 ms | max 25 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 5×5 Medium (10x) | 8.81 ms | max 18 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 5×5 Hard (10x) | 43.30 ms | max 72 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 6×6 Easy (10x) | 56.61 ms | max 131 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 6×6 Medium (10x) | 31.75 ms | max 81 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 6×6 Hard (10x) | 39.68 ms | max 107 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 6×6 Expert (10x) | 201.05 ms | max 774 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 6×6 Extreme (10x) | 52.01 ms | max 93 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 7×7 Medium (10x) | 459.43 ms | max 1113 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 7×7 Hard (10x) | 297.10 ms | max 810 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 7×7 Expert (10x) | 704.11 ms | max 1619 ms |
+| 2026-10-02T18:53:33.785Z | `93056d5` | Skyscrapers Gen 7×7 Extreme (10x) | 311.20 ms | max 628 ms |

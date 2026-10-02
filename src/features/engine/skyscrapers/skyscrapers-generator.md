@@ -80,6 +80,8 @@ for each round while the budget lasts:
     not unique → next round
     removed  = removeClues(repaired.solution, { targetTier, order })
     target set and the square's floor was above it (maxFloorMisses of them → give up) → next round
+    exactTier set and the result landed below the target → next round (E5: a fresh square is the
+      cheapest way to a different landing)
     → { puzzle (grid all zeros — no givens, D3; difficulty = removed.difficulty), stats }
 budget or rounds out → null
 ```
@@ -93,11 +95,11 @@ the identical call a final verify would make — so the uniqueness of what is re
 the exact solver's word (the E4 review's finding; Kakuro verifies again because its removal
 counted with a smaller budget).
 
-**With a target the puzzle may land *below* it** — a medium request can come back easy when the
-removal order never needed a medium step. Serving exactly the requested tier is E5's job, as it
-was Kakuro's: this slice exposes the knobs E5 biases with (`targetTier`, `order`, the repair
-caps) and labels honestly. The serving *policy* — bounded attempt, then an unbounded fallback —
-lives in `skyscrapers.ts` (`generateSkyscrapers`), not here and not in the route.
+**With a target alone the puzzle may land *below* it** — a medium request can come back easy when
+the removal order never needed a medium step; **with `exactTier`** (E5) such a round is discarded
+and the next square tried, so the result's tier is the target by construction. Which tiers a size
+offers, and the budgets, live in `skyscrapers.ts` (`generateSkyscrapers`), not here and not in the
+route.
 
 ## `tierOf(level)`
 

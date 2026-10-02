@@ -129,15 +129,15 @@ follow-up 5).
    - If `loading` is true, disable the button and show a spinning SVG icon along with "Generating...".
    - If `loading` is false, make the button clickable and show "Generate PDF".
 
-## Skyscrapers toggle (October 2026, plan slice V3)
+## Skyscrapers toggle (October 2026, plan slices V3 → E5)
 
 A fifth toggle — the type row is a five-column grid now, because a wrapping flex row stranded the
-fifth label alone on a full-width line (V3 review). Sizes come from the plan's D4 — 5 / 6 / 7, default 6 —
-through `GridSizeSelector`. Until the generator lands (E5) there is one hand-made fixture per
-size (graded by the classifier since E2), so the form shows **no `DifficultyConfigurator`** for Skyscrapers (there are no
-counts to configure) and `handleGenerate` sends exactly one puzzle (`easy: 1`, the others 0) —
-the route prints the size's fixture whatever level the count names. E5 gives Skyscrapers the
-configurator back, with its own ladder, the way Kakuro's E5 did.
+fifth label alone on a full-width line (V3 review). Sizes come from the plan's D4 — 5 / 6 / 7,
+default 6 — through `GridSizeSelector`. Since E5 the `DifficultyConfigurator` shows **the size's
+own tiers** (`SKYSCRAPERS_TIERS_BY_SIZE`, D12: easy–hard at 5×5, the full ladder at 6×6,
+medium–extreme at 7×7) and `handleGenerate` sends the shared counts **zeroed for the tiers the
+size does not offer** — the counts state still holds a default for easy, and a 7×7 request must
+not carry it. From V3 to E4 the form sent exactly one puzzle and showed no configurator.
 
 ## Toggle groups announce selection (September 2026, QA F10)
 

@@ -14,7 +14,11 @@ each present edge clue equals the number of towers **visible** from that edge, a
 hiding every shorter one behind it. `SkyscrapersDifficulty` is the five published tiers plus
 `'unrated'` — a puzzle the classifier has not graded. The label comes from the classifier or not
 at all (D7); `SKYSCRAPERS_SIZES` (5 / 6 / 7 — D4, settled by E3's measurement: 9×9 failed both
-gates, 4×4 has no expert tier) is the one list of served sizes the route and the pickers read;
+gates, 4×4 has no expert tier) is the one list of served sizes the route and the pickers read,
+`isSkyscrapersSize` its type guard, and **`SKYSCRAPERS_TIERS_BY_SIZE`** / `isSkyscrapersLevelOffered`
+(D12: 5×5 easy–hard, 6×6 all five, 7×7 medium–extreme) the tiers each size offers — kept here
+rather than in the entry point because the client-side pickers read them and must not pull the
+generator along (E5 review);
 `SKYSCRAPERS_LADDER` is the five tiers as a value, in order, the one list every
 form, route and fixture iterates.
 

@@ -38,8 +38,9 @@ function GroupHeading({ children }: { children: ReactNode }) {
  * different constraint model — no boxes — plus four operators and the optional mystery mode)
  * → Kakuro (no grid rule at all: black cells, runs, and sums — a different game that happens to
  * use digits). It also matches the order the `/play` picker already uses (`classic, killer,
- * calc, kakuro`), so the hub and the picker agree. The Kakuro card went live with its generator
- * (plan D12: no card for a one-puzzle type), and the `new!` sticker moved to it from Keisan.
+ * calc, kakuro, skyscrapers`), so the hub and the picker agree. Each card goes live with its
+ * generator (Kakuro D12 / Skyscrapers D8: no card for a one-puzzle type), and the `new!` sticker
+ * moves to the newest — Keisan → Kakuro → Skyscrapers (October 2026, plan slice E5).
  *
  * **Why one grid, not one per group.** A grid per group would size cards independently, so a
  * one-card group (Print) would stretch that card across the full row. Sharing a single grid and
@@ -81,12 +82,13 @@ export function PuzzleHub() {
           desc="Math cages — + − × ÷ are the clue"
           tilt="tilt-c"
         />
+        <PuzzleCard href="/play?variant=kakuro" emoji="➕" title="Kakuro" desc="Cross sums — runs that add up" tilt="tilt-d" />
         <PuzzleCard
-          href="/play?variant=kakuro"
-          emoji="➕"
-          title="Kakuro"
-          desc="Cross sums — runs that add up"
-          tilt="tilt-d"
+          href="/play?variant=skyscrapers"
+          emoji="🏢"
+          title="Skyscrapers"
+          desc="Towers — count what each edge sees"
+          tilt="tilt-a"
           sticker={
             <Sticker color="lime" rotate={10} className="absolute -top-3 -right-2 z-10">
               new!

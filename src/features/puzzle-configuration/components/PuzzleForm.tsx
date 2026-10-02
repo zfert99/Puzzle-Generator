@@ -5,6 +5,7 @@ import { usePuzzleGeneration } from '../hooks/usePuzzleGeneration';
 import { GridSizeSelector } from './GridSizeSelector';
 import { DifficultyConfigurator } from './DifficultyConfigurator';
 import { KAKURO_LADDER } from '@/features/engine/kakuro/kakuro-types';
+import { SKYSCRAPERS_TIERS_BY_SIZE } from '@/features/engine/skyscrapers/skyscrapers-types';
 
 const KILLER_DIFFICULTIES = ['easy', 'medium', 'hard', 'expert', 'extreme'];
 const CALC_DIFFICULTIES = ['easy', 'medium', 'hard']; // 9×9 adds 'expert' (see the calc size branch)
@@ -14,7 +15,7 @@ export default function PuzzleForm() {
   const [killerSize, setKillerSize] = useState<6 | 9>(9);
   const [calcSize, setCalcSize] = useState<4 | 6 | 9>(6);
   const [kakuroSize, setKakuroSize] = useState<6 | 7 | 9>(7); // Kakuro's own sizes (D11): the 6×6 mini, 7×7, the 9×9 standard
-  const [skySize, setSkySize] = useState<5 | 6 | 7>(6); // Skyscrapers' planned sizes (D4): 5×5 mini, 6×6 standard, 7×7 large
+  const [skySize, setSkySize] = useState<5 | 6 | 7>(6); // Skyscrapers' sizes (D4, settled by E3): 5×5 mini, 6×6 standard, 7×7 large
   const [mystery, setMystery] = useState(false); // Keisan Mystery (no-op) toggle
   const [gridSize, setGridSize] = useState<4 | 6 | 9>(9);
   const [counts, setCounts] = useState({
@@ -25,8 +26,9 @@ export default function PuzzleForm() {
   const isKiller = variant === 'killer';
   const isCalc = variant === 'calc';
   const isKakuro = variant === 'kakuro';
-  // Skyscrapers prints one hand-made fixture per size (graded by the classifier, E2) until its
-  // generator lands (plan E5), so it has no difficulty counts to configure — the form sends exactly one puzzle.
+  // Skyscrapers generates every puzzle at exactly the requested tier (E5); each size offers the
+  // tiers it can produce (D12), so the configurator shows that size's list and the form sends the
+  // counts for those tiers only.
   const isSkyscrapers = variant === 'skyscrapers';
   const title = isKiller ? 'Killer Sudoku' : isCalc ? 'Keisan' : isKakuro ? 'Kakuro' : isSkyscrapers ? 'Skyscrapers' : 'Sudoku';
   // The size the configurator reasons about is the active variant's, not classic's.
@@ -52,7 +54,9 @@ export default function PuzzleForm() {
     } else if (isKakuro) {
       await generate({ variant: 'kakuro', gridSize: kakuroSize, ...counts });
     } else if (isSkyscrapers) {
-      await generate({ variant: 'skyscrapers', gridSize: skySize, easy: 1, medium: 0, hard: 0, expert: 0, extreme: 0 });
+      const offered = SKYSCRAPERS_TIERS_BY_SIZE[skySize];
+      const only = (level: keyof typeof counts) => (offered.includes(level) ? counts[level] : 0);
+      await generate({ variant: 'skyscrapers', gridSize: skySize, easy: only('easy'), medium: only('medium'), hard: only('hard'), expert: only('expert'), extreme: only('extreme') });
     } else {
       await generate({ ...counts, gridSize });
     }
@@ -123,24 +127,22 @@ export default function PuzzleForm() {
         <>
           <GridSizeSelector value={skySize} onChange={setSkySize} sizes={[5, 6, 7]} />
           <p className="text-xs text-ink-soft text-center mb-6">
-            Towers — a clue counts the buildings visible from that edge. Skyscrapers is being built: one
-            hand-made puzzle per size, graded by the solver, until the generator lands.
+            Towers — a clue counts the buildings visible from that edge. Every puzzle is graded by the solver;
+            the 5×5 offers easy to hard, the 7×7 medium to extreme.
           </p>
         </>
       ) : (
         <GridSizeSelector value={gridSize} onChange={handleGridSizeChange} />
       )}
 
-      {!isSkyscrapers && (
       <DifficultyConfigurator
         gridSize={activeSize}
         counts={counts}
         onChange={handleDifficultyChange}
         variant={variant}
         mystery={isCalc && mystery}
-        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : isKakuro ? [...KAKURO_LADDER] : undefined}
+        difficulties={isKiller ? (killerSize === 6 ? KILLER_DIFFICULTIES.slice(0, 3) : KILLER_DIFFICULTIES) : isCalc ? (calcSize === 9 ? [...CALC_DIFFICULTIES, 'expert', 'extreme'] : CALC_DIFFICULTIES) : isKakuro ? [...KAKURO_LADDER] : isSkyscrapers ? [...SKYSCRAPERS_TIERS_BY_SIZE[skySize]] : undefined}
       />
-      )}
 
       {error && <p className="text-cherry text-sm mb-4 text-center">{error}</p>}
 

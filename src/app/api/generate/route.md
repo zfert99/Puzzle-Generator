@@ -73,27 +73,26 @@ test data only.
 
 ---
 
-## 1d. Skyscrapers branch (plan slice V3 → E5)
+## 1d. Skyscrapers branch (plan slices V3 → E5)
 
-**Goal:** When `variant === 'skyscrapers'`, render a Skyscrapers booklet. Until the generator
-lands (E5) there is exactly **one** hand-made fixture per size (graded by the classifier since
-E2), so the branch prints
-that fixture once per request and refuses anything else with the reason.
+**Goal:** When `variant === 'skyscrapers'`, render a booklet of **generated** Skyscrapers at exactly
+the requested tiers (E5), the Kakuro contract.
 **Steps:**
 
-1. Validate the body with a **Zod schema** (`skyscrapersRequestSchema`): `gridSize` is
-   `5 | 6 | 7` (Skyscrapers' planned sizes, D4 — a 9 is rejected, default 6), each level count a
-   non-negative integer.
-2. All counts zero → `400`; a total above one → `400` ("one hand-made Skyscrapers per size until
-   the generator lands") — the fixture would otherwise print twice. This total check is the V3
-   cap to delete with `generateSkyscrapersBatch`; the route owns the HTTP wording and the
-   selector keeps the invariant behind it (one rule, two owners — not a third `max(1)` in the
-   schema, which could not express a *total* anyway).
-3. `selectSkyscrapersBatch(counts, { gridSize })` (beside the fixtures, so the route stays a
-   controller — the Kakuro review-4 lesson) → `generateSkyscrapersPDF` → `Skyscrapers.pdf`. The
-   log line carries the counts and the size like the other branches.
+1. Validate the body with a **Zod schema** (`skyscrapersRequestSchema`): `gridSize` is `5 | 6 | 7`
+   (Skyscrapers' sizes, D4 — a 9 is rejected, default 6), each level count a non-negative integer.
+2. All counts zero → `400`; a total above `MAX_PUZZLES` (50) → `400`; more than `MAX_EXTREME` (5)
+   extreme → `400` (the shared cap every generated variant applies — extreme Skyscrapers is cheap,
+   but one policy beats two); a count on a level **the size does not offer** (`SKYSCRAPERS_TIERS_BY_SIZE`, D12 — the 5×5 mini tops out at hard, the 7×7
+   large starts at medium) → `400` naming the offered list, never a silently substituted puzzle.
+3. `generateSkyscrapersBatch(counts, { gridSize })` under one 45 s budget (inside `maxDuration = 60`
+   with the PDF render to spare); its budget error is answered with a `503` + `Retry-After` that
+   says how many puzzles were done — a request too large for the budget, not a fault — then
+   `generateSkyscrapersPDF` → `Skyscrapers.pdf`. The log line carries the counts and the size like
+   the other branches.
 
-E5 replaces step 3 with the generator and lifts the caps, exactly as Kakuro's E5 did.
+The V3 one-puzzle cap and `selectSkyscrapersBatch` are gone; the fixtures are test data (and the
+sample booklet's content, via `preview-skyscrapers.ts`).
 
 ## 2. Input Validation
 

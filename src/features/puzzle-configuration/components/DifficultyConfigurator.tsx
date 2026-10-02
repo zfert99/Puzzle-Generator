@@ -61,7 +61,7 @@ function slowGenerationWarning(
   }
 
   if (variant === 'kakuro') return null; // every Kakuro tier generates in well under a second
-  if (variant === 'skyscrapers') return null; // a baked fixture until E5; nothing is generated
+  if (variant === 'skyscrapers') return null; // every offered Skyscrapers tier generates in under a second (E5 benchmark)
 
   // classic — kept verbatim (extreme-gated); other tiers generate quickly.
   if (hasExtreme) {
@@ -73,7 +73,6 @@ function slowGenerationWarning(
 export function DifficultyConfigurator({ gridSize, counts, onChange, difficulties, variant = 'classic', mystery = false }: Props) {
   const availableDifficulties = difficulties ?? DIFFICULTIES_BY_SIZE[gridSize];
   const warning = slowGenerationWarning(variant, counts, mystery);
-  const topTiersLocked = !availableDifficulties.includes('expert');
 
   return (
     <div className="space-y-4 mb-8">
@@ -103,9 +102,11 @@ export function DifficultyConfigurator({ gridSize, counts, onChange, difficultie
         );
       })}
       <p className="text-sm text-ink-soft text-center mt-2">You can generate 1–50 puzzles total per request.</p>
-      {topTiersLocked && (
+      {availableDifficulties.length < 5 && (
         <p className="text-sm text-ink-soft text-center">
-          Expert and Extreme are only available for 9×9 grids.
+          {variant === 'skyscrapers'
+            ? `${gridSize}×${gridSize} Skyscrapers offers ${availableDifficulties.join(', ')}.`
+            : 'Expert and Extreme are only available for 9×9 grids.'}
         </p>
       )}
       {warning && (

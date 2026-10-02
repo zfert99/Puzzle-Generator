@@ -196,6 +196,14 @@ test.describe('Interactive play', () => {
     await expect(page.getByRole('button', { name: /^skyscrapers$/i })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: '6×6', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'extreme', exact: true })).toBeEnabled();
+
+    // Each size offers the tiers it can produce (D12): the 7×7 starts at medium, so the default
+    // easy pick clamps to the nearest offered tier and the easy button greys out; 6×6 restores it.
+    await page.getByRole('button', { name: '7×7', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'easy', exact: true })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'medium', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: '6×6', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'easy', exact: true })).toBeEnabled();
     await page.getByRole('button', { name: /^Play$/ }).click();
 
     const grid = page.getByRole('grid', { name: /skyscrapers board/i });

@@ -5,8 +5,8 @@ import { generateCalcSudoku } from '@/features/engine/calc/calc-sudoku';
 import type { CalcDifficulty } from '@/features/engine/calc/calc-types';
 import { generateKakuro, KAKURO_SIZES, type KakuroSize } from '@/features/engine/kakuro/kakuro';
 import { KAKURO_LADDER, type KakuroLevel } from '@/features/engine/kakuro/kakuro-types';
-import { generateSkyscrapers } from '@/features/engine/skyscrapers/skyscrapers';
-import { SKYSCRAPERS_LADDER, SKYSCRAPERS_SIZES, type SkyscrapersLevel, type SkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
+import { generateSkyscrapersDetailed } from '@/features/engine/skyscrapers/skyscrapers';
+import { SKYSCRAPERS_LADDER, SKYSCRAPERS_SIZES, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersLevelOffered, type SkyscrapersLevel, type SkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import { Difficulty, GridSize } from '@/features/engine/sudoku';
 import { logger } from '@/lib/logger';
 import { rateLimit, clientIp } from '@/lib/rate-limit';
@@ -126,17 +126,24 @@ export async function POST(req: NextRequest) {
       if (!(SKYSCRAPERS_SIZES as readonly number[]).includes(gridSize)) {
         return NextResponse.json({ error: 'Skyscrapers grid size must be 5, 6, or 7' }, { status: 400 });
       }
-      // E4: fresh and unique, no harder than the request — the puzzle may land *below* it, and
-      // a size with no square at that tier is served unbounded (`fallback`); the label is the
-      // classifier's own (D7). The policy lives in `skyscrapers.ts`; `served` and `fallback` are
-      // logged beside the request so the gap E5 closes stays measured. A throw (both attempts out
-      // of budget — 0 in the gate run) goes to the generic 500 like the other variants.
-      const served = generateSkyscrapers(difficulty as SkyscrapersLevel, { gridSize: gridSize as SkyscrapersSize });
+      const skySize = gridSize as SkyscrapersSize;
+      const skyLevel = difficulty as SkyscrapersLevel;
+      // Each size offers the tiers it can produce (D12: the 5×5 mini tops out at hard, the 7×7
+      // large starts at medium) — a level outside them is refused here, never served as something
+      // else.
+      if (!isSkyscrapersLevelOffered(skySize, skyLevel)) {
+        return NextResponse.json({ error: `${skySize}×${skySize} Skyscrapers offers ${SKYSCRAPERS_TIERS_BY_SIZE[skySize].join(', ')}` }, { status: 400 });
+      }
+      // E5: fresh, unique and at exactly the requested tier (the classifier in the generator's
+      // objective); the label is still the classifier's own, so `served` is logged beside the
+      // request as a standing check that they agree. A throw (out of budget — 0 in the gate run)
+      // goes to the generic 500 like the other variants.
+      const { puzzle, stats } = generateSkyscrapersDetailed(skyLevel, { gridSize: skySize });
       logger.info(
-        { event: 'puzzle_success', variant: 'skyscrapers', difficulty, served: served.puzzle.difficulty, fallback: served.fallback, gridSize, ...served.stats, durationMs: Math.round(performance.now() - startTime) },
+        { event: 'puzzle_success', variant: 'skyscrapers', difficulty, served: puzzle.difficulty, gridSize, ...stats, durationMs: Math.round(performance.now() - startTime) },
         'Generated interactive Skyscrapers puzzle',
       );
-      return NextResponse.json(served.puzzle, { status: 200 });
+      return NextResponse.json(puzzle, { status: 200 });
     }
 
     // ==========================================

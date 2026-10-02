@@ -179,7 +179,7 @@ the visibility constraint, a four-sided gutter, and the clue-removal generator.
 | D9 | **Clue UX:** four-sided gutter of plain digits (no arrows); a violated clue turns the error colour **as soon as the violation is provable from the filled prefix** (Tatham's rule — O(N), zero false positives); "satisfied" is an opt-in muted state, off by default; a manual **"mark clue done"** toggle ships in V2, **undo-able and persisted**, drawn error > done > normal — it doubles as the a11y progress tracker; a "which towers this clue sees" highlight on clue focus is a later teaching aid | Proposed (research §6), **amended by G10** |
 | D10 | Roadmap **Phase 11**, engine-first like Phases 6/8/10 | Applied (this PR) |
 | D11 | **Sizes are per puzzle type** (Kakuro D11, owner 2026-09-11) — applies here from day one | Locked (inherited) |
-| D12 | **Mini tiers:** the mini ships easy/medium/hard only if E3/E5 prove Hard separable from Medium at the chosen mini size (research: attested at 5×5 via Tatham's 5×5 Hard, *not* at 4×4); otherwise fewer tiers (the Killer-4×4-easy-only precedent) | **Settled conditionally by E3 (2026-10-02): easy / medium / hard at 5×5** — three tiers at guess count 0 with distinct hardest-rung signatures; the bands are populated (≈ 10% / 80% / small at the all-clue floor) only after the line-filter re-tier of [findings §3c](research/skyscrapers-feasibility-findings.md); E5 verifies |
+| D12 | **Mini tiers:** the mini ships easy/medium/hard only if E3/E5 prove Hard separable from Medium at the chosen mini size (research: attested at 5×5 via Tatham's 5×5 Hard, *not* at 4×4); otherwise fewer tiers (the Killer-4×4-easy-only precedent) | **Settled by E5 (2026-10-02): 5×5 easy / medium / hard; 6×6 all five; 7×7 medium–extreme** (`SKYSCRAPERS_TIERS_BY_SIZE`, enforced by the picker, both routes and the entry point) |
 
 ## 4. Slices — visual first, then the engine underneath
 
@@ -200,8 +200,8 @@ file. Slice prefixes: **V** = visual surface on baked content · **E** = engine 
 | 5 | E2 — Logical solver (rungs 0–9) + classifier + scorer ✅ | Easy→extreme graded by the solver; hints that name their technique ("clue 2 opposite 1: the 5 goes next to it") |
 | 6 | E3 — Yield measurement spike ✅ | Numbers in the log and `research/skyscrapers-feasibility-findings.md`; D4 and D12 settled |
 | 6b | E3b — Line-scan re-tier ✅ | The 5×5 fixture reads **easy**; easy/medium 6×6 exist (all-clue floor 25% / 61%); every tier reachable by removal at 5/6/7 |
-| 7 | E4 — Clue-removal generator 🚧 | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
-| 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
+| 7 | E4 — Clue-removal generator ✅ | "New puzzle" produces a fresh, unique, solver-graded board at the chosen sizes |
+| 8 | E5 — Difficulty targeting + `generateSkyscrapers` + benchmark 🚧 | Every puzzle fresh at exactly the requested tier; pickers and hub card live; fixtures test data only |
 | 9 | R1 — Daily rotation (5 types) | Skyscrapers in the daily: 5 standard + 3 minis = 8 boards/day |
 
 ### V0 — Looks-only static board ✅
@@ -844,7 +844,7 @@ longer hard-dominated; classify still < 20 ms at 7×7.
   a boolean.
 - *Blockers:* none. Merged 2026-10-02 ([#135](https://github.com/zfert99/Puzzle-Generator/pull/135)).
 
-### E4 — Clue-removal generator 🚧
+### E4 — Clue-removal generator ✅
 
 - `skyscrapers-generator.ts`: `generateUniqueSkyscrapers(N, opts)` = **fill** (`fillGrid` on the
   boxless config, then shuffle rows/columns/symbols) → **derive all 4N clues** → **repair to
@@ -942,8 +942,9 @@ longer hard-dominated; classify still < 20 ms at 7×7.
 - *Blockers:* none. The e2e Skyscrapers spec was updated but **not run** this slice: the only dev
   server on port 3000 belongs to another session and may not serve this branch (Next 16 refuses a
   second `next dev` from one checkout); CI's Playwright job runs it against a production build.
+  Merged 2026-10-02 ([#136](https://github.com/zfert99/Puzzle-Generator/pull/136)).
 
-### E5 — Difficulty configs + `generateSkyscrapers(difficulty, { gridSize })` + benchmark ⏳
+### E5 — Difficulty configs + `generateSkyscrapers(difficulty, { gridSize })` + benchmark 🚧
 
 - `skyscrapers.ts`: per-size `DIFFICULTY_CONFIG` for the three D4 sizes — removal-order bias,
   target rung, score bands from **measured** per-size distributions (never reuse cuts across
@@ -965,6 +966,72 @@ longer hard-dominated; classify still < 20 ms at 7×7.
 **Gate:** bands disjoint per size; easy/medium/hard at the standard size < 200 ms avg;
 expert/extreme allowed to be slower but inside the cron budget; 0 generation failures in 20 per
 tier and size; T4 and T5 **populated** at the standard size.
+
+**Step-log (2026-10-02 — branch `feature/skyscrapers-e5`):**
+
+- *Process:* `skyscrapers.ts` in its final form — `SKYSCRAPERS_TIERS_BY_SIZE` (D12: 5×5 easy /
+  medium / hard; 6×6 all five; 7×7 medium / hard / expert / extreme), `isSkyscrapersLevelOffered`,
+  `generateSkyscrapers(level, { gridSize, rng, timeBudgetMs })` at **exactly** the requested tier
+  (the generator's new `exactTier`: a round whose result lands below the target is discarded and
+  the next square tried — a fresh square is the cheapest way to a different landing), throwing on
+  a level the size does not offer or a spent budget; `generateSkyscrapersBatch` with the Kakuro
+  budget-error contract (`SKYSCRAPERS_BUDGET_ERROR`, fair shares, 45 s). E4's unbounded fallback is
+  gone. **Visible everywhere:** `/api/puzzle` refuses a level the size does not offer (400 with the
+  offered list) and serves exactly the request; `/api/generate` switched from the fixture cap to
+  `generateSkyscrapersBatch` (Zod sizes 5|6|7, counts ≤ 50, offered-tier check, 503 on the budget
+  error) — `selectSkyscrapersBatch` deleted; the `/play` picker reads per-cell tier sets
+  (`tiersFor(variant, size)` generalises the old 9×9-only boolean, since Skyscrapers locks the
+  *bottom* of the ladder at 7×7) and clamps a pick to the nearest offered tier; the print form
+  shows the size's tiers and zeroes the others on submit, with a size-aware lock note; **the hub
+  card is live** (🏢 Skyscrapers, "Towers — count what each edge sees", `new!` moved off Kakuro —
+  D8); `benchmark-skyscrapers.ts` appends 12 rows. Tests (10 new, 7 rewritten): tier sets; exactly
+  the requested tier at every offered cell, unique, valid, label re-derived; not-offered throws;
+  spent budget throws; batch order and counts; budget error vs plain error; both routes' refusals
+  and generated outputs (5-page PDF for two puzzles); the form's live/locked counts and zeroed
+  submit; the hub e2e asserts the card.
+- *Measured (`benchmark-skyscrapers.ts`, 10 per cell, dev machine; rows in `benchmark-logs.md`):*
+
+  | size | easy | medium | hard | expert | extreme |
+  |---|---|---|---|---|---|
+  | 5×5 | 11 ms | 9 ms | 43 ms | — | — |
+  | 6×6 | 57 ms | 32 ms | 40 ms | 201 ms | 52 ms |
+  | 7×7 | — | 459 ms | 297 ms | 704 ms | 311 ms |
+
+  (maxima 25 / 18 / 72; 131 / 81 / 107 / 774 / 93; 1,113 / 810 / 1,619 / 628). **Soundness fuzz
+  over 500 generated puzzles per size (1,500 total): 0 unsound placements, 0 non-unique, 0 label
+  mismatches, 0 contradictions**; unbounded output is extreme-heavy (31 / 54 / 67%), `unrated`
+  3 / 5 / 14% (unique puzzles the 200-step chain cannot finish — never served, since every served
+  puzzle is at a requested tier).
+- *Gate:* **easy / medium / hard at 6×6 < 200 ms ✅** (32–57 ms); **expert / extreme inside the
+  cron budget ✅** (201 / 52 ms at 6×6, 704 / 311 ms at 7×7); **0 failures ✅** (every offered cell
+  in the benchmark and the entry-point test); **T4 and T5 populated at the standard size ✅**;
+  "bands disjoint per size" — **not applicable**: tiers are the solver's ordinal levels, there are
+  no bands (below).
+- *Divergence from the spec:* (1) no per-size `DIFFICULTY_CONFIG`, score bands or tier-flip pass —
+  as for Kakuro's E5, the tiers are ordinal technique levels (D6), the removal-order bias already
+  lives in `removeClues`' defaults, and the Stage-4 flip rules *are* the classifier's definition
+  (hardest rung needed; no guessing tier). (2) Exact targeting is **rejection over squares**, not
+  Kakuro's fill walk: a square's ladder tier is a step function of which clues are blank, so there
+  is no gradient to climb; E4's per-round exact-hit rates (6–100% by cell) make rejection cheap.
+  (3) D12 as shipped: 5×5 easy / medium / hard (hard rare but 43 ms), **7×7 without easy** (one
+  square in fifty; E4's fallback showed 3.5 s per puzzle) — the picker and both routes enforce it.
+- *Learnings:* L20 — when the quantity you target is a step function of the search state, a
+  rejection loop over fresh starts is the honest optimiser; measure the per-round hit rate before
+  building a walk that has nothing to climb.
+- *Review (in-PR, `/code-review high` run by the owner on the branch — 7 findings, all fixed
+  before merge):* (1) **the client-rendered menu and form imported the tier table from the entry
+  point**, which carries the generator and both solvers into the client bundle — the table and its
+  guard live in `skyscrapers-types.ts` now (re-exported), with `isSkyscrapersSize` replacing the
+  picker's cast and all-tiers fallback (5). (2) The batch told a not-offered error from a budget
+  miss by message substring — it is a typed error (`SKYSCRAPERS_LEVEL_NOT_OFFERED_ERROR`) now. (3)
+  E4's generation `stats` were gone from the route's log — `generateSkyscrapersDetailed` returns
+  them and the route spreads them. (4) The 7×7 easy lock and the nearest-tier clamp had no test —
+  the e2e Skyscrapers spec switches to 7×7, asserts easy disabled and medium pressed, then back.
+  (6) The shared `MAX_EXTREME` cap applies to the Skyscrapers batch too (tested). (7) The batch's
+  fair-share retry path is tested through a `generateOne` seam (a stand-in that misses one share;
+  one that throws not-offered is never retried).
+- *Blockers:* none. The e2e hub/play specs were updated but **not run locally** (the port-3000
+  server belongs to another session); CI runs them.
 
 ### R1 — Daily rotation (5 types) ⏳
 

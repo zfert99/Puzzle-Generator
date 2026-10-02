@@ -236,8 +236,10 @@ export function removeClues(solution: readonly number[][], options: RemovalOptio
 export interface GenerateUniqueOptions {
   gridSize: GridSize;
   rng?: () => number;
-  /** Removal never exceeds this tier; the result may land below it (E5 rejects that — not E4). */
+  /** Removal never exceeds this tier; the result may land below it unless `exactTier` is set. */
   targetTier?: SkyscrapersTier;
+  /** With `targetTier`: accept only a puzzle whose classifier tier is exactly the target (E5); a round that lands below it is another round. */
+  exactTier?: boolean;
   /** Fill+repair+remove rounds before giving up. */
   maxRounds?: number;
   /**
@@ -276,7 +278,7 @@ export interface GeneratedSkyscrapers {
  * `null` when the rounds or the budget run out.
  */
 export function generateUniqueSkyscrapers(options: GenerateUniqueOptions): GeneratedSkyscrapers | null {
-  const { gridSize, rng = Math.random, targetTier, maxRounds = 30, maxFloorMisses = Infinity, timeBudgetMs = Infinity, repair, order } = options;
+  const { gridSize, rng = Math.random, targetTier, exactTier = false, maxRounds = 30, maxFloorMisses = Infinity, timeBudgetMs = Infinity, repair, order } = options;
   const started = performance.now();
   let floorMisses = 0;
   for (let round = 1; round <= maxRounds; round++) {
@@ -290,6 +292,9 @@ export function generateUniqueSkyscrapers(options: GenerateUniqueOptions): Gener
       if (++floorMisses >= maxFloorMisses) break;
       continue;
     }
+    // Landing below the target is honest but not exact: E5 asks for the tier itself, and the next
+    // square (another floor, another removal order) is the cheapest way to a different landing.
+    if (exactTier && targetTier !== undefined && removed.tier !== targetTier) continue;
     return {
       puzzle: {
         variant: 'skyscrapers',
