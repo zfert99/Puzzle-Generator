@@ -92,6 +92,38 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — AIC on a numeric graph with a typed-array queue (item 4e)
+
+Branch `perf/aic-numeric-graph` on `7d17a3f`. Diff: `strategies/extreme.ts` `applyAIC` — integer
+node ids, per-node adjacency built in the Map version's exact insertion order, a typed-array queue
+with parent pointers (ancestry walked, never copied), a stamped `Int32Array` visited set; `.md`;
+a seeded test pinning eight full Extreme solves (final grid + flags) captured from the string
+version. **~130 LOC of source, net smaller.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 989 tests** (1 new); no Known-flaky entry fired |
+| Equivalence | 40 seeded expert/extreme puzzles solved at the extreme tier before and after: **identical grids, candidates and flags**; Killer's 40 seeded puzzles graded identically through it |
+| `benchmark-killer.ts` (seeded; #149's rows are the before) | Extreme avg **4998 → 2679 ms**, p50 4806 → 2684, p90 7024 → 3806 (2.1× against the pass's original 5752); Hard 323 → 311; Expert 357 → 318 |
+| `benchmark-human-solver.ts` | Extreme p50 6.85 → 6.45 ms, p90 60 → 55 — modest, because ALS-XZ dominates that row (item 4f) |
+| `benchmark.ts` | Extreme 75.9 → 79.8 ms avg — within noise; same reason |
+| markdownlint | clean |
+
+### Findings
+
+- **Order is the contract.** Rebuilding adjacency in the old Map's insertion order (same-cell
+  pairs, then house pairs digit by digit, then strong links appended to the weak lists in
+  first-insertion order) is what made the BFS find the same first elimination; a "cleaner" order
+  would have been a different solver and a different grade. Rule: **when replacing a search's
+  data structures, reproduce its iteration order, then prove it with a full-solve capture.**
+- The AIC was Killer extreme's cost, not classic's: the classic row did not move. 4f is the one
+  that reaches the HumanSolver Extreme row.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — Killer Rule-of-45 geometry computed once (item 4d)
 
 Branch `perf/killer-static-geometry` on `f017c54`. Diff: `killer-logical-solver.ts` —

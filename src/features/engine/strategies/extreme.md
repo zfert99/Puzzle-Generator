@@ -108,12 +108,27 @@ it again — an accident of the search, not a guarantee. The branch was removed 
 
 Max chain depth is capped at 12 nodes to prevent unbounded search.
 
+**Numeric graph (October 2026).** The search is the same; its data structures are not. Nodes
+were `"r,c,num"` strings: every dequeue parsed one (`split` + `map(Number)`), every neighbour
+list was a `Map` lookup, every enqueue copied the whole `path` array and every candidate neighbour
+ran `path.includes`, and the queue was `shift()` (O(n) per dequeue). Profiled at 23 % of Killer
+extreme generation, plus its closures. A node is now the integer `(r·size + c)·size + (num − 1)`;
+adjacency is one array per node, filled in **exactly the order the Map version inserted** (same
+cell pairs, then house pairs digit by digit, then every strong link appended to the weak lists in
+first-insertion order); the queue is an index over typed arrays with a **parent pointer** per
+entry, so "is this node already on the path?" walks ≤ 12 ancestors instead of copying; and
+`visited` is a stamped `Int32Array` over (node, link-type) states. Because insertion order,
+dequeue order and the visited rule are unchanged, the BFS finds the *same first elimination*: 40
+seeded expert/extreme puzzles solved to the same grids and flags before and after, and Killer's
+40 graded identically through it. `extreme.test.ts` pins eight of those solves.
+
 ```text
 MAX_CHAIN_DEPTH = 12
 
 // ---- BUILD THE INFERENCE GRAPH ----
 
-Each node = "r,c,num" (a specific candidate in a specific cell)
+Each node = (r·size + c)·size + (num − 1)   (an integer id for a candidate in a cell;
+                                             it used to be the string "r,c,num")
 
 Collect active nodes AND Weak links Type A (same cell, different candidates):
     FOR each empty cell:
