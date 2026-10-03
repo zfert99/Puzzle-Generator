@@ -85,3 +85,13 @@ order of scope:
 
 If either gets picked up, start from this component rather than replacing it — the arithmetic
 core (`compute`, the operator-chaining logic) stays the same either way.
+
+## On the native `Modal` shell (October 2026)
+
+**Why:** this dialog was a hand-rolled `aria-modal` overlay (or, for the rules dialog, its own
+`<dialog>` wiring). It now renders through the shared [`Modal`](../../chrome/Modal.md) —
+`<dialog>.showModal()` — which gives what the overlay never could: a real focus trap and an inert
+page behind it. The shell owns open/close, the deterministic initial focus (`initialFocusRef`),
+Escape (`cancel`) and backdrop-click dismissal, and handing focus back to the opener. The former
+`useDialogFocus` hook (focus-in + restore, explicitly not a trap) is retired. Behaviour this
+component still decides: what "dismiss" means for it (see `onDismiss`).

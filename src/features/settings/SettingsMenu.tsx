@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
+import { Modal } from '@/features/chrome/Modal';
 import { getAppliedTheme, setTheme, type Theme } from '@/features/theme/theme';
 import { setSetting } from './settings';
 import { useSetting } from './useSettings';
@@ -23,15 +24,15 @@ function useAppliedTheme(): Theme | null {
  * The app-wide Settings control: a gear button in the header that opens an accessible dialog
  * with theme + accessibility toggles. Reachable from every page (rendered in `AppHeader`).
  *
- * The dialog follows the a11y modal pattern from `Docs/research/accessibility-responsive-qa.md`
- * — `role="dialog"` + `aria-modal`, focus moved in on open and RETURNED to the gear on close,
- * `Esc` to close, and a click-outside scrim — because a settings panel is exactly the kind of
- * surface where we should practice what the accessibility work preaches.
+ * The panel is the shared native `Modal` (`features/chrome/Modal.tsx`): a real focus trap and an
+ * inert page behind it, focus moved onto the first control on open and returned to the gear on
+ * close, Escape and a backdrop click to dismiss — because a settings panel is exactly the kind of
+ * surface where we should practice what the accessibility work preaches. It used to be a
+ * hand-rolled `aria-modal` div, which could not stop Tab leaving it (October 2026).
  */
 export function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const gearRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const motion = useSetting('motion');
   const colorblind = useSetting('colorblind');
@@ -39,25 +40,7 @@ export function SettingsMenu() {
   // Theme lives in its own module; read/write it directly so the panel is its single control.
   const theme = useAppliedTheme();
 
-  // Focus into the panel on open; restore focus to the gear on close.
-  useEffect(() => {
-    if (!open) return;
-    const first = panelRef.current?.querySelector<HTMLElement>('button, [href], input, select');
-    first?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        gearRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
-
-  const close = () => {
-    setOpen(false);
-    gearRef.current?.focus();
-  };
+  const close = () => setOpen(false); // the shell hands focus back to the gear
 
   const applyTheme = (t: Theme) => {
     setTheme(t);
@@ -79,26 +62,18 @@ export function SettingsMenu() {
         ⚙️
       </button>
 
-      {open && (
-        // Fixed + viewport-centered (not anchored to the gear button via `absolute right-0`):
-        // that anchoring broke on mobile, where the gear sits mid-header rather than at the
-        // screen's right edge, so a fixed-width panel opening "left from the anchor" ran off
-        // the left edge of the viewport. Matches ConfirmModal's centered-overlay pattern.
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={close}
-        >
-          <div
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Settings"
-            className="w-72 max-w-full rounded-xl border-[3px] border-ink bg-paper text-ink shadow-chunky p-4 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* Viewport-centered by the shell (never anchored to the gear: that ran off the left edge
+          of a phone, where the gear sits mid-header). */}
+      <Modal
+        open={open}
+        onDismiss={close}
+        ariaLabel="Settings"
+        className="w-72 max-w-[calc(100%-2rem)]"
+        cardClassName="rounded-xl border-[3px] border-ink bg-paper text-ink shadow-chunky p-4 space-y-4 text-left"
+      >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg">Settings</h2>
-              <button type="button" onClick={close} aria-label="Close settings" className="text-ink-soft hover:text-ink text-lg leading-none">
+              <button type="button" onClick={close} aria-label="Close settings" className="text-ink-soft hover:text-ink text-lg leading-none min-w-6 min-h-6">
                 ✕
               </button>
             </div>
@@ -131,9 +106,7 @@ export function SettingsMenu() {
               checked={errorHighlight}
               onChange={(v) => setSetting('errorHighlight', v)}
             />
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

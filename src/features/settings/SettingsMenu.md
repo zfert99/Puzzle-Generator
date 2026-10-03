@@ -26,3 +26,13 @@ where the gear button ends up in the header's flex layout.
 
 An active `Choice` button's text is `text-on-butterscotch`, not `text-ink`: `--ink` turns cream in the dark theme, about 1.5:1 against the butterscotch fill; butterscotch is
 mid-light in both themes, so the text on it stays dark ink in both (`globals.css`).
+
+## On the native `Modal` shell (October 2026)
+
+**Why:** this dialog was a hand-rolled `aria-modal` overlay (or, for the rules dialog, its own
+`<dialog>` wiring). It now renders through the shared [`Modal`](../chrome/Modal.md) —
+`<dialog>.showModal()` — which gives what the overlay never could: a real focus trap and an inert
+page behind it. The shell owns open/close, the deterministic initial focus (`initialFocusRef`),
+Escape (`cancel`) and backdrop-click dismissal, and handing focus back to the opener. The former
+`useDialogFocus` hook (focus-in + restore, explicitly not a trap) is retired. Behaviour this
+component still decides: what "dismiss" means for it (see `onDismiss`).

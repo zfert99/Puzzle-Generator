@@ -252,9 +252,11 @@ Grouped by the kind of follow-up each needs.
 
 ### Accessibility slices
 
-- A12 — move `ConfirmModal`, `SolvedDialog`, `ReviewDialog`, `SettingsMenu` and `Calculator`
-  onto native `<dialog>.showModal()` (focus trap + inert background), the pattern `RulesDialog`
-  already uses.
+- ~~A12 — move `ConfirmModal`, `SolvedDialog`, `ReviewDialog`, `SettingsMenu` and `Calculator`
+  onto native `<dialog>.showModal()`~~ **Done 2026-10-03:** one shared `Modal` shell
+  (`features/chrome/Modal.tsx`) on `showModal()` — focus trap, inert page, Escape/backdrop
+  dismissal, focus returned to the opener; all six dialogs (the rules dialog included) use it and
+  `useDialogFocus` is retired. Proved in Playwright: fifteen Tabs never leave the Settings dialog.
 - A13 / G5–G9 in `mobile-a11y-audit.md`: coarse-pointer targets, hover gating, board sizing by
   height, marquee pause control, PWA manifest + icons, `jsx-a11y` strict.
 - An `opengraph-image` asset; a live screen-reader session (owed since Phase 11 G8).

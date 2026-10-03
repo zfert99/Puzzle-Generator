@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Modal } from '@/features/chrome/Modal';
 
 type Op = '+' | '−' | '×' | '÷';
 
@@ -26,8 +27,8 @@ const OP_CLASS =
  * A small floating four-function calculator — a trigger button plus a popup, entirely local
  * state (no board-store involvement). Killer's cage sums are arithmetic the player has to do
  * in their head; this just gives them somewhere to check the addition/subtraction without
- * leaving the puzzle. Reuses the app's standard dialog shell (backdrop, `role="dialog"`,
- * Escape-to-close, click-outside-to-close, focus-on-open) — see `ConfirmModal.tsx`.
+ * leaving the puzzle. Sits on the shared native `Modal` shell (focus trap, inert page behind,
+ * Escape and backdrop to close, focus handed back to the trigger) — see `features/chrome/Modal.md`.
  */
 export function Calculator() {
   const [open, setOpen] = useState(false);
@@ -92,9 +93,6 @@ export function Calculator() {
   // keyboard effect below, whose dependencies (the memoised handlers) change with every digit
   // typed — so every keystroke re-ran it and yanked focus back to the Close button, which for a
   // keyboard user tabbing across the keypad meant being pulled off the key they had reached.
-  useEffect(() => {
-    if (open) closeRef.current?.focus();
-  }, [open]);
 
   // Keyboard entry — every button has a key equivalent, so this can be operated without a
   // mouse/touch once open. Re-attaches whenever a handler's closure changes (they're
@@ -168,18 +166,14 @@ export function Calculator() {
         🧮
       </button>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Calculator"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="rounded-2xl border-[3px] border-ink bg-paper-2 p-4 w-full max-w-[280px] shadow-chunky"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        open={open}
+        onDismiss={() => setOpen(false)}
+        ariaLabel="Calculator"
+        initialFocusRef={closeRef}
+        className="w-[calc(100%-2rem)] max-w-[280px]"
+        cardClassName="rounded-2xl border-[3px] border-ink bg-paper-2 text-ink p-4 shadow-chunky"
+      >
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-soft">Calculator</h2>
               <button
@@ -230,9 +224,7 @@ export function Calculator() {
               <button type="button" onClick={inputDecimal} className={KEY_CLASS}>.</button>
               <button type="button" onClick={equals} className={OP_CLASS}>=</button>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

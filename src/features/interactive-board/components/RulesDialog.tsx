@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { Modal } from '@/features/chrome/Modal';
 import type { PuzzleVariant } from '../store/useBoardStore';
 
 /**
@@ -151,11 +152,10 @@ function RulesBody({ variant }: { variant: PuzzleVariant }) {
 }
 
 /**
- * The per-type rules dialog (QA Step 5, owner ask U3). Built on the native `<dialog>` element,
- * deliberately not on the app's hand-rolled overlay shell: `showModal()` supplies the full
- * a11y contract the spec demands — real focus trapping, Esc-to-close (the `close` event keeps
- * React's state in sync), `aria-modal` semantics, and focus restored to the trigger on close —
- * where the shared `useDialogFocus` hook is explicit about not being a focus trap.
+ * The per-type rules dialog (QA Step 5, owner ask U3). The first surface built on the native
+ * `<dialog>` element — `showModal()` supplies the full a11y contract the spec demands (a real
+ * focus trap, Esc-to-close, `aria-modal` semantics, focus restored to the trigger) — and since
+ * October 2026 it sits on the shared `Modal` shell that generalised that choice to every dialog.
  */
 export function RulesDialog({
   variant,
@@ -166,40 +166,16 @@ export function RulesDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const primaryRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) {
-      dialog.showModal();
-      // Deterministic initial focus (September 2026 review): React's `autoFocus` runs `.focus()`
-      // at MOUNT — and this dialog mounts closed — so it never renders an `autofocus` attribute
-      // for the HTML dialog focusing steps to find. Focus landed inside the modal only by
-      // browser fallback; this makes the primary action the target explicitly.
-      primaryRef.current?.focus();
-    } else if (!open && dialog.open) {
-      dialog.close();
-    }
-  }, [open]);
-
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      // Esc: the native close-request path already handles this for real user input, but some
-      // input drivers (and older jsdom) never surface it as a cancel — an explicit handler makes
-      // the behaviour uniform and testable. preventDefault stops the native path double-firing;
-      // onClose is idempotent anyway (setState(false) + an idempotent localStorage write).
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onClose();
-        }
-      }}
-      aria-labelledby="rules-title"
-      className="rounded-2xl border-[3px] border-ink bg-paper-2 text-ink p-6 max-w-md w-[calc(100%-2rem)] shadow-chunky backdrop:bg-black/50 m-auto"
+    <Modal
+      open={open}
+      onDismiss={onClose}
+      ariaLabelledBy="rules-title"
+      initialFocusRef={primaryRef}
+      className="w-[calc(100%-2rem)] max-w-md"
+      cardClassName="rounded-2xl border-[3px] border-ink bg-paper-2 text-ink p-6 shadow-chunky"
     >
       <h2 id="rules-title" className="text-xl font-semibold mb-3">
         {VARIANT_TITLE[variant]}
@@ -212,6 +188,6 @@ export function RulesDialog({
           Got it
         </button>
       </div>
-    </dialog>
+    </Modal>
   );
 }

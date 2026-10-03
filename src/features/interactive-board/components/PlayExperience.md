@@ -116,7 +116,7 @@ gridcell behind the backdrop, so keyboard/screen-reader users were never told an
 into the board. Focus now lands on the primary "New puzzle" button on open and is restored on
 close (best-effort — leaving to the config view unmounts the board, and a detached opener is a
 spec'd no-op). That wiring lives inside the shared [SolvedDialog](SolvedDialog.md), so this
-component no longer touches `useDialogFocus` itself.
+component no longer touches `useDialogFocus` (retired October 2026 — the dialogs sit on the native `Modal` shell now) itself.
 
 ## Config toggles announce selection (September 2026, QA F10)
 

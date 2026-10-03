@@ -94,6 +94,9 @@ a `%s · Puzzle Lab` template (brand reconciled), `aria-pressed` toggle groups.
 **Step 6 completed 2026-09-04** (`fix/board-rows-dialog-focus`): 6b `role="row"` structure and 6c
 dialog focus — the latter generalized into a shared `useDialogFocus` hook because the dialog
 shell is a repeated JSX pattern, so F7 existed once per paste (four dialogs + ConfirmModal).
+*(October 2026: that hook is gone — every dialog now sits on the native `<dialog>` `Modal`
+shell in `features/chrome`, which traps focus and makes the page inert; see
+`site-wide-optimization-qa-pass.md` §5.)*
 
 ---
 
