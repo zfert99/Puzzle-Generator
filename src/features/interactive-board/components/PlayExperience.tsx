@@ -356,7 +356,7 @@ export default function PlayExperience() {
       <GameHeader />
 
       {status === 'paused' ? (
-        <div className="w-[min(92vw,520px)] aspect-square flex items-center justify-center rounded-lg bg-paper text-ink-soft">
+        <div className="w-[var(--board-width)] aspect-square flex items-center justify-center rounded-lg bg-paper text-ink-soft">
           Paused
         </div>
       ) : (

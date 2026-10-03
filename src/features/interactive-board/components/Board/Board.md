@@ -249,3 +249,9 @@ keydown:
                                Escape goes back; any other key is swallowed; done
     otherwise the ordinary handler (arrows, digits 1..maxNum, clear, pencil)
 ```
+
+**`tabIndex={-1}` on the grid (October 2026):** jsx-a11y strict wants an element with the `grid`
+role to be focusable. The roving tabindex keeps the one Tab stop on a cell, so the grid itself
+is programmatically focusable only — never a stop — while owning the keyboard handler. The
+per-cell click handlers (`Cell`, `SkyscraperClueCell`) carry a lint directive for the same
+reason: the grid's single `onKeyDown` is their keyboard path.

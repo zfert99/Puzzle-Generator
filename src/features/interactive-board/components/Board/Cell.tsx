@@ -159,6 +159,9 @@ export const Cell = memo(function Cell({ r, c, isEntry }: CellProps) {
   })();
 
   return (
+    // Keyboard input is handled once, by the grid's `onKeyDown` (WAI-ARIA grid pattern: arrows
+    // move, digits enter) — a per-cell key listener would be 81 copies of it.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
       role="gridcell"
       aria-label={ariaLabel}

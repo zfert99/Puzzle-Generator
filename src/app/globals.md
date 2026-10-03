@@ -120,3 +120,22 @@ marquee and wobbles kept running for a user who had asked for none. The closing 
 mirrors every `data-motion="reduce"` rule under `@media (prefers-reduced-motion: reduce)`,
 scoped to `:root:not([data-motion="full"])` so an explicit in-app **Full** choice (which now
 sets `data-motion="full"`, see `settings.md`) still wins over the OS.
+
+## Touch targets, hover gating and the board footprint (a11y audit G5–G7, October 2026)
+
+- **`.tap-target`** — under `@media (pointer: coarse)` only, `min-height`/`min-width: 44px`.
+  Opt-in on the secondary controls that are 28–40 px as drawn (the game header's
+  Errors/Pause/Rules, the numpad's control row, settings choices, calendar arrows, leaderboard
+  tabs, the dialogs' ✕, the mobile "More" summary). A mouse does not need the room; a finger does
+  (WCAG 2.5.8 and the 44 px guidance), and the desktop layout keeps its density.
+- **`.wobble-hover:hover` sits inside `@media (hover: hover)`** — on touch, a tap left the
+  "hovered" tilt stuck until the next tap elsewhere. Tailwind v4 already gates its own `hover:`
+  utilities the same way (verified in the built CSS), so this was the one ungated hover.
+- **`--board-width`** — `min(92vw, 520px, max(calc(100svh - 21rem), 280px))`: the largest square
+  that fits, capped by width as before AND by the small viewport height less the ~21rem of chrome
+  around the board, with a 280px floor for landscape phones. Measured on a 1280×720 desktop: the
+  board drops from 520 to 384px and the numpad comes most of the way into view (its last row is
+  still ~180px below the fold — the chrome around a 9-digit pad is ~520px tall, and a board that
+  fit entirely would be 200px, too small to play); on an 844×390 landscape phone the floor gives
+  a 280px grid instead of a sliver. Shared by `Board.module.css` and the three "Paused"
+  placeholders, so pausing never changes the layout; the 4×4/6×6 caps intersect with it.

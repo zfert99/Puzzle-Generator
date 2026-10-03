@@ -6,7 +6,10 @@
      without explicit rows, an empty row/column has no digit to give it size and
      collapses (visible on 4×4/6×6, and any empty line on 9×9). */
   grid-template-rows: repeat(var(--size), 1fr);
-  width: min(92vw, 520px);
+  /* The largest square that fits (a11y audit G7) — `--board-width` in globals.css: capped by
+     width as before AND by the small viewport height less the chrome around the board. On a
+     1280×720 desktop the board drops 520 → 384px and most of the numpad comes into view. */
+  width: var(--board-width);
   aspect-ratio: 1 / 1;
   /* All four outer edges — previously only top/left, leaving the right/bottom edge with
      just the thin per-cell grid line since the last row/column's own thick-border flags
@@ -85,10 +88,10 @@
    a little larger than 9×9's ~58px while returning the vertical space. Keyed on the `data-size`
    attribute Board.tsx stamps alongside its `--size` variable. */
 .board[data-size='4'] {
-  width: min(92vw, 320px);
+  width: min(92vw, 320px, max(calc(100svh - 21rem), 280px));
 }
 .board[data-size='6'] {
-  width: min(92vw, 440px);
+  width: min(92vw, 440px, max(calc(100svh - 21rem), 280px));
 }
 
 .cell {

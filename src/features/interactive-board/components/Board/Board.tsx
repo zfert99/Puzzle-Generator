@@ -262,6 +262,10 @@ export const Board = memo(function Board() {
         aria-describedby={isSkyscrapers ? 'skyscrapers-gutter-help' : undefined}
         aria-rowcount={tracks}
         aria-colcount={tracks}
+        // Programmatically focusable, never a Tab stop: the WAI-ARIA grid pattern keeps the one
+        // Tab stop on a cell (roving tabindex), while the grid element itself owns the keyboard
+        // handler below. jsx-a11y's `interactive-supports-focus` wants the grid role focusable.
+        tabIndex={-1}
         className={styles.board}
         data-variant={variant}
         data-size={size}

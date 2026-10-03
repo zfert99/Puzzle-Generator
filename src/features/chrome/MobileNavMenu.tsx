@@ -48,17 +48,14 @@ export function MobileNavMenu() {
 
   return (
     <details ref={detailsRef} className="relative md:hidden">
-      <summary className="list-none cursor-pointer select-none text-paper/90 hover:underline">
+      <summary className="tap-target list-none cursor-pointer select-none text-paper/90 hover:underline inline-flex items-center">
         More <span aria-hidden="true">▾</span>
       </summary>
-      <div
-        className="absolute right-0 mt-2 z-50 flex flex-col gap-2 rounded-lg border-2 border-ink bg-grape p-3 shadow-chunky min-w-28"
-        onClick={() => detailsRef.current?.removeAttribute('open')}
-      >
-        <Link href="/archive" className="text-paper/90 hover:underline sm:hidden">
+      <div className="absolute right-0 mt-2 z-50 flex flex-col gap-2 rounded-lg border-2 border-ink bg-grape p-3 shadow-chunky min-w-28">
+        <Link href="/archive" className="text-paper/90 hover:underline sm:hidden" onClick={() => detailsRef.current?.removeAttribute('open')}>
           Archive
         </Link>
-        <Link href="/generate" className="text-paper/90 hover:underline">
+        <Link href="/generate" className="text-paper/90 hover:underline" onClick={() => detailsRef.current?.removeAttribute('open')}>
           PDF
         </Link>
       </div>

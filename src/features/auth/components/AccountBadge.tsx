@@ -61,22 +61,22 @@ export function AccountBadge() {
 
   if (editing) {
     return (
-      <form
-        onSubmit={saveUsername}
-        className="flex items-center gap-2 text-sm"
-        // Escape backs out of the inline edit the way Cancel does — there was no keyboard exit.
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            setEditing(false);
-            setError('');
-          }
-        }}
-      >
+      <form onSubmit={saveUsername} className="flex items-center gap-2 text-sm">
         <label htmlFor="account-username" className="sr-only">Username</label>
         <input
           id="account-username"
+          // autoFocus is deliberate: the field appears only because the user pressed "Set
+          // username", so moving focus into it is the expected continuation, not a hijack.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           autoComplete="off"
+          // Escape backs out of the inline edit the way Cancel does — there was no keyboard exit.
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setEditing(false);
+              setError('');
+            }
+          }}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder="username"

@@ -112,7 +112,7 @@ export function Calendar({
           onClick={goPrev}
           disabled={!canGoPrev}
           aria-label="Previous month"
-          className={`px-2 py-1 rounded hover:bg-paper-2 ${canGoPrev ? '' : 'opacity-30 cursor-not-allowed'}`}
+          className={`tap-target px-2 py-1 rounded hover:bg-paper-2 ${canGoPrev ? '' : 'opacity-30 cursor-not-allowed'}`}
         >
           ‹
         </button>
@@ -124,7 +124,7 @@ export function Calendar({
           onClick={goNext}
           disabled={!canGoNext}
           aria-label="Next month"
-          className={`px-2 py-1 rounded hover:bg-paper-2 ${canGoNext ? '' : 'opacity-30 cursor-not-allowed'}`}
+          className={`tap-target px-2 py-1 rounded hover:bg-paper-2 ${canGoNext ? '' : 'opacity-30 cursor-not-allowed'}`}
         >
           ›
         </button>

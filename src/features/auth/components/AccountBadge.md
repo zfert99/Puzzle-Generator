@@ -38,3 +38,8 @@ gets a 400.
 - **The error is `role="alert"`**, so a "taken" or pattern failure is announced.
 - **Focus ring on grape**, replacing the butterscotch ring that barely showed on the grape bar's
   paper input, and "Sign out" is `text-paper/90` rather than `/70` so it clears contrast on grape.
+
+**Escape lives on the input, not the form (October 2026):** a `<form>` with a key listener is a
+non-interactive element with an event handler under jsx-a11y strict; the input is the thing the
+key is pressed in. `autoFocus` stays, with its reason stated in a lint directive: the field
+appears only because the user pressed "Set username".

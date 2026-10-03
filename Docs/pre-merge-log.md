@@ -92,6 +92,40 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — a11y audit G5–G9: tap targets, hover gating, board by height, jsx-a11y strict, manifest
+
+Branch `feat/a11y-g5-g9` on `20db7bf`. Diff: `globals.css` (`.tap-target` under
+`@media (pointer: coarse)`, `.wobble-hover:hover` under `@media (hover: hover)`, `--board-width`),
+`Board.module.css` + the three "Paused" placeholders on `--board-width`, `tap-target` on eleven
+secondary controls, `eslint.config.mjs` (jsx-a11y strict rules — nine findings: two refactors,
+one `tabIndex={-1}`, five justified directives), `app/manifest.ts` + `apple-icon.png` +
+`public/icons/*` (sharp-generated from an SVG), docs; the audit banner marks G5–G9 shipped.
+**~120 LOC of source + 4 PNGs.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` (now with jsx-a11y strict) · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 989 tests**; no Known-flaky entry fired |
+| `npm run build` + Playwright on it | **52 passed** (the `/daily` specs skip — it is past 00:00 UTC and today's boards are not rolled yet, the gate those specs carry) |
+| Served under the basePath | `/puzzles/manifest.webmanifest` 200 `application/manifest+json`, `<link rel="manifest">` and `apple-touch-icon` emitted, icons 200 |
+| Measured in the browser | mobile preset: `pointer: coarse` true, Errors / Undo **44 px**; 844×390 landscape: board 280 px (the floor); 1280×720: board 520 → 384 px, numpad mostly in view |
+| markdownlint | clean |
+
+### Findings
+
+- **Tailwind v4 already gates `hover:` behind `@media (hover: hover)`** (verified in the built
+  CSS); G6 was one custom rule, not a sweep. Check the framework before writing the fix.
+- **"Largest square that fits" cannot also mean "numpad above the fold" at 720 px tall**: the
+  chrome around a 9-digit pad is ~520 px, so the honest claim is the measured one, recorded in
+  `globals.md`. The old claim in the CSS comment was corrected before it shipped.
+- jsx-a11y strict's nine findings were two real refactors (a `<div>` click delegating for links;
+  a key listener on a `<form>`) and seven pattern conflicts with the WAI-ARIA grid and the native
+  dialog, each disabled with its reason on the line — the rule stays on so the next one is caught.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — ALS-XZ on cell bitsets with a de-duplicated ALS list (item 4f, the last engine item)
 
 Branch `perf/als-xz-bitsets` on the merged 4e. Diff: `human-solver.ts` `enumerateALS` keeps the
