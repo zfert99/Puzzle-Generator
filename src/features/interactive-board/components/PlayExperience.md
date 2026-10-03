@@ -37,11 +37,16 @@ literal `'unrated'`), so the Continue label and header show it as-is.
 The screen is driven by a LOCAL `view` ('config' | 'playing'), not the store `status`. It
 always opens on the config menu so the player can choose between continuing a saved game and
 starting a new one — matching the daily picker's shape. This decouples "which screen" from
-"is there a parked game", which is what makes one-slot save/continue work.
+"is there a parked game", which is what makes save/continue work.
+
+The surface owns the **free-play slot**: `useBoardSlot('play')` runs in the first client render,
+so the store holds (and persists to) the free-play game and never a parked daily (two-slot save,
+October 2026 — see `store/useBoardStore.md`).
 
 ```text
 Local state: gridSize + difficulty (for the config), view, viewingSolved, warnOpen.
-saved = useSavedGame()  → the one persisted in-progress game, or null.
+useBoardSlot('play')   → the store is on the free-play slot from the first client render.
+saved = useSavedGame()  → the in-progress FREE-PLAY game, or null.
 
 Clock: useGameClock(view === 'playing' AND status === 'playing') ticks each second, and
   stops while the tab is hidden.
@@ -50,12 +55,13 @@ Clock: useGameClock(view === 'playing' AND status === 'playing') ticks each seco
 
 IF view === 'config':
   Render the menu:
-    - If a saved FREE-PLAY game exists (saved.mode === 'play'): a prominent
+    - If a saved game exists: a prominent
       "Continue {size} {difficulty} · M:SS" button (M:SS is <SavedElapsed>) → handleContinue (resume() if paused,
       then view = 'playing'). No re-fetch — the board is already in the store.
     - <GridSizeSelector> + difficulty buttons (Expert/Extreme disabled for mini grids).
-    - Play button: if ANY saved game exists (play OR daily — one slot), open the
-      <ConfirmModal> warning first; otherwise start fresh immediately.
+    - Play button: if a free-play game is parked, open the <ConfirmModal> warning first
+      ("one saved puzzle per mode — your daily is kept separately"); otherwise start fresh.
+      "Keep playing" resumes the parked game.
   startFresh: fetchPuzzle(...); on success startNewGame(puzzle) (mode 'play'), view = 'playing'.
 
 IF view === 'playing':
@@ -69,9 +75,8 @@ persisted store, so a resumed game never causes an SSR/client mismatch.
 ```
 
 > A saved game is one the store reports as `playing`/`paused` (see `useSavedGame.ts`). The
-> board store holds a SINGLE slot shared with `/daily`, so starting any new game erases it —
-> hence the warning. A daily parked in the store never renders here because the board only
-> shows via Continue (gated on `saved.mode === 'play'`) or a fresh play.
+> store holds this surface's slot only, so starting a new free-play game erases the parked
+> free-play game — hence the warning — and never a parked daily (which lives in its own slot).
 >
 > The solved modal is the shared [SolvedDialog](SolvedDialog.md) (September 2026 extraction),
 > which renders the [SolvedStamp](../../juice/SolvedStamp.md) (CSS keyframes since October 2026; chunky stamp badge +

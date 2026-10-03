@@ -4,11 +4,16 @@ The front-door "continue" affordance, shown above the hub's bento grid.
 
 ## What it does
 
-Reads the single saved game via `useSavedGame` and, when one exists, renders a prominent bar
-linking to the surface that owns it — `/daily` or `/play` (by `saved.mode`) — where the
-Continue button resumes it. It renders **nothing** when there's no saved game, which is also
-the SSR/pre-mount default (`useSavedGame` returns null until mounted), so there's no hydration
-flash.
+Reads **both** saved-game slots (`useSavedSlots` in `saved-slots.ts` — a parked daily and a
+parked free-play game live under separate localStorage keys since October 2026) and renders one
+bar per slot that holds a game, daily first, each linking to the surface that owns it
+(`/daily?resume=1` or `/play?resume=1`), where the game resumes. It renders **nothing** when
+neither slot holds a game, which is also the SSR/pre-mount default (the slots read `null` until
+mounted), so there's no hydration flash.
+
+**Why storage, not the store:** the board store holds only the active slot's game, and the hub
+activates none. Reading the keys directly is the only way to show both — and a hub mount is a
+safe moment to do it once (nothing on the hub can change a slot).
 
 ## Why it links to the surface rather than deep-linking into the board
 

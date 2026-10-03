@@ -269,6 +269,40 @@ const toBoardCages = (puzzle: BoardPuzzle, variant: PuzzleVariant): BoardCage[] 
 const initialConfig = getGridConfig(9);
 
 /**
+ * Two saved-game slots (October 2026), one per surface: a daily board and a free-play board
+ * are parked under different localStorage keys, so starting one no longer erases the other.
+ * The store itself still holds ONE game — the slot of the surface that is active — and
+ * `activateSlot` swaps which key it persists to and rehydrates from. Before this, one key
+ * (`sudoku-board`) held whichever game was started last, and the "starting a new puzzle will
+ * erase your saved one" warning fired across surfaces; two tabs could also overwrite each other.
+ */
+export const SLOT_KEYS: Record<BoardMode, string> = { play: 'sudoku-board:play', daily: 'sudoku-board:daily' };
+/** The single key every game used before the slots; migrated once into the slot its `mode` names. */
+const LEGACY_SLOT_KEY = 'sudoku-board';
+/** A scratch key that absorbs the reset write during a slot switch (see `activateSlot`). */
+const VOID_SLOT_KEY = 'sudoku-board:void';
+
+/**
+ * Move a pre-slot saved game into the slot its mode names — once, on the client, before the
+ * store first hydrates (this module runs its side effect at import). A game already in the
+ * target slot wins; the legacy key is removed either way so this never runs twice.
+ */
+function migrateLegacySlot(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(LEGACY_SLOT_KEY);
+    if (raw === null) return;
+    const parsed = JSON.parse(raw) as { state?: { mode?: BoardMode } };
+    const mode: BoardMode = parsed?.state?.mode === 'daily' ? 'daily' : 'play';
+    if (localStorage.getItem(SLOT_KEYS[mode]) === null) localStorage.setItem(SLOT_KEYS[mode], raw);
+    localStorage.removeItem(LEGACY_SLOT_KEY);
+  } catch {
+    // Unreadable storage: nothing to migrate, and the store's own try/catch covers the rest.
+  }
+}
+migrateLegacySlot();
+
+/**
  * The interactive board's single source of truth (Zustand + zundo). Per-cell
  * components subscribe to only their slice via `useShallow`, so an 81-cell grid
  * never re-renders wholesale on a keystroke — the crux of keeping INP low
@@ -588,7 +622,7 @@ export const useBoardStore = create<BoardState>()(
         // Persist the in-progress game to localStorage so a refresh resumes it.
         // Actions are dropped by JSON serialization and re-supplied by the creator;
         // derived fields are recomputed in `merge` below rather than stored.
-        name: 'sudoku-board',
+        name: SLOT_KEYS.play,
         // v6 (Skyscrapers V2): `edgeClues` and `doneClues` joined the persisted shape and
         // `variant` gained `'skyscrapers'`; a v5 game has neither, so a saved Skyscrapers would
         // rehydrate with an empty gutter. v5 (Kakuro V2): `runs` joined the persisted shape and
@@ -651,3 +685,53 @@ export const useBoardStore = create<BoardState>()(
       }
   )
 );
+
+let activeSlot: BoardMode = 'play';
+
+/** Which slot the store currently persists to and holds. */
+export function getActiveSlot(): BoardMode {
+  return activeSlot;
+}
+
+/**
+ * Make `mode`'s slot the one the store holds and persists to. Idempotent; a no-op on the
+ * server. Called by each surface on its first client render (`useBoardSlot`), before anything
+ * reads the saved game, so `/play` never sees a parked daily and vice versa.
+ *
+ * The switch has to avoid two traps. Persist writes the WHOLE state on every `set`, so a plain
+ * reset would overwrite the slot it is still pointed at; and pointing at the target first would
+ * overwrite the target before `rehydrate` could read it. So the reset write is aimed at a scratch
+ * key (`VOID_SLOT_KEY`, deleted afterwards), and only then is the target slot activated and
+ * rehydrated — which leaves the reset state in place when the slot is empty, because persist's
+ * rehydrate changes nothing for a missing key. Undo history belongs to the game that just left.
+ */
+export function activateSlot(mode: BoardMode): void {
+  if (typeof window === 'undefined') return;
+  if (mode === activeSlot && useBoardStore.persist.getOptions().name === SLOT_KEYS[mode]) return;
+  const { persist, temporal } = useBoardStore;
+  persist.setOptions({ name: VOID_SLOT_KEY });
+  useBoardStore.setState(
+    {
+      status: 'configuring',
+      selectedCell: null,
+      pencilMode: false,
+      lastHint: null,
+      errorsRevealed: false,
+      elapsedTime: 0,
+      mistakes: 0,
+      dailyDate: null,
+      mode,
+    },
+    false,
+  );
+  try {
+    localStorage.removeItem(VOID_SLOT_KEY);
+  } catch {
+    // Storage unavailable — the scratch write never happened either.
+  }
+  activeSlot = mode;
+  persist.setOptions({ name: SLOT_KEYS[mode] });
+  temporal.getState().clear();
+  void persist.rehydrate();
+}
+

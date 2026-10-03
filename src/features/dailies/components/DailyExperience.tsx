@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
 import { useSavedGame } from '@/features/interactive-board/store/useSavedGame';
+import { useBoardSlot } from '@/features/interactive-board/store/saved-slots';
 import { SavedElapsed } from '@/features/interactive-board/components/SavedElapsed';
 import { useGameClock } from '@/features/interactive-board/hooks/useGameClock';
 import { useBoardReview } from '@/features/interactive-board/hooks/useBoardReview';
@@ -69,7 +70,9 @@ type SubmitState =
  * erases it. A submit guard ref ensures the solve is posted exactly once per game.
  */
 export default function DailyExperience() {
-  const router = useRouter();
+  // This surface owns the daily slot (shared with archive replays, which are daily-shaped): the
+  // store holds it from the first client render, so a parked free-play game never shows up here.
+  useBoardSlot('daily');
   const searchParams = useSearchParams();
   const mounted = useHasMounted();
   const { data: session } = useSession();
@@ -274,12 +277,10 @@ export default function DailyExperience() {
     setPendingDifficulty(null);
   };
 
-  // "Keep playing" — take the player to their saved game: resume it here if it's a daily,
-  // otherwise go to the surface that owns it (a saved free-play game lives on /play).
+  // "Keep playing" — resume the parked daily (the only game this slot can hold).
   const keepPlaying = () => {
     dismissWarn();
-    if (saved?.mode === 'daily') handleContinue();
-    else if (saved) router.push('/play');
+    if (saved) handleContinue();
   };
 
   // Resume the parked daily — restore its difficulty/date from the store, no re-fetch.
@@ -461,7 +462,7 @@ export default function DailyExperience() {
         <ConfirmModal
           open={warnOpen}
           title="Start a new puzzle?"
-          message="You have a saved puzzle in progress. Starting a new one will erase it — you can only save one puzzle at a time."
+          message="You have a saved daily (or practice) board in progress. Starting a new one will erase it — one saved puzzle per mode (your free-play game is kept separately)."
           confirmLabel="Start new"
           cancelLabel="Keep playing"
           onConfirm={confirmNew}

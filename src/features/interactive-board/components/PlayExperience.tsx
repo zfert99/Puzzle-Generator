@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { GridSizeSelector, type SelectableSize } from '@/features/puzzle-configuration/components/GridSizeSelector';
 import { SKYSCRAPERS_SIZES, SKYSCRAPERS_TIERS_BY_SIZE, isSkyscrapersSize } from '@/features/engine/skyscrapers/skyscrapers-types';
 import type { Difficulty } from '@/features/engine/sudoku';
 import { useBoardStore } from '../store/useBoardStore';
 import { useSavedGame } from '../store/useSavedGame';
+import { useBoardSlot } from '../store/saved-slots';
 import { usePuzzle } from '../hooks/usePuzzle';
 import { useGameClock } from '../hooks/useGameClock';
 import { SavedElapsed } from './SavedElapsed';
@@ -90,7 +91,9 @@ function clampDifficulty(difficulty: Difficulty, tiers: readonly Difficulty[]): 
 }
 
 export default function PlayExperience() {
-  const router = useRouter();
+  // This surface owns the free-play slot: the store holds it (and persists to it) from the first
+  // client render, so a parked daily never shows up here (October 2026, one slot per surface).
+  useBoardSlot('play');
   const searchParams = useSearchParams();
   const mounted = useHasMounted();
   // Deep link from a hub card (`/play?variant=killer|calc|kakuro`): preselect the variant as the
@@ -188,12 +191,10 @@ export default function PlayExperience() {
     setView('playing');
   };
 
-  // "Keep playing" — take the player to their saved game: resume it here if it's a free-play
-  // game, otherwise go to the surface that owns it (a saved daily lives on /daily).
+  // "Keep playing" — resume the saved free-play game (the only game this slot can hold).
   const keepPlaying = () => {
     setWarnOpen(false);
-    if (saved?.mode === 'play') handleContinue();
-    else if (saved) router.push('/daily');
+    if (saved) handleContinue();
   };
 
   // Avoid a hydration mismatch: render a neutral placeholder until mounted.
@@ -329,7 +330,7 @@ export default function PlayExperience() {
         <ConfirmModal
           open={warnOpen}
           title="Start a new puzzle?"
-          message="You have a saved puzzle in progress. Starting a new one will erase it — you can only save one puzzle at a time."
+          message="You have a saved free-play puzzle in progress. Starting a new one will erase it — one saved puzzle per mode (your daily is kept separately)."
           confirmLabel="Start new"
           cancelLabel="Keep playing"
           onConfirm={confirmNew}

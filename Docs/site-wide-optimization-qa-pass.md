@@ -268,12 +268,14 @@ and the Killer grade fixture was re-captured (3 of 40 traces shortened, no tier 
 
 ### Server
 
-- S9: a `lower(username)` unique index (needs a migration and a check for existing
-  case-duplicates first); pagination on `me/attempts`.
+- S9: ~~a `lower(username)` unique index~~ — landed 2026-10-03 (#154; migration 0005, applied
+  by the owner with `npm run db:migrate`; the live table had 6 users and no case-duplicates);
+  pagination on `me/attempts` still open.
 - Better-auth `name` length/charset hook — not needed while `name` is never displayed.
-- The two-tab single-slot overwrite (B5) is narrowed by the visibility-gated clock but not
-  closed; the real fix is the deferred two-slot save
-  (see the `two-slot-save-idea` note in the roadmap backlog).
+- ~~The two-tab single-slot overwrite (B5)~~ — closed 2026-10-03 by the two-slot save: a daily
+  and a free-play game park under separate localStorage keys (`useBoardStore.md` → "Two
+  saved-game slots"), so `/play` and `/daily` tabs no longer share a save. Two tabs on the *same*
+  surface still share that surface's slot, which is the intended behaviour.
 - Time-trust checks A and B from `research/daily-solve-time-trust.md` before any Phase 9 rule
   reads the clock.
 

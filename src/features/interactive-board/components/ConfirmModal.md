@@ -5,8 +5,9 @@ erases your saved one" warning on both the `/play` menu and the `/daily` picker.
 
 ## Why it exists / why these defaults
 
-The board store holds a single saved slot, so any new game destroys the parked one — that
-needs an explicit confirmation, not a silent overwrite. Design choices that matter:
+The board store holds one saved game per slot (a free-play slot and a daily slot since October
+2026 — before that, a single slot shared by every surface), so a new game destroys the one parked
+in that surface's slot — that needs an explicit confirmation, not a silent overwrite. Design choices that matter:
 
 - **Focus is managed by the shared `useDialogFocus` hook** (September 2026, F7) — this modal's
   own focus-in behaviour was extracted into it, and the modal gained the restore half: closing

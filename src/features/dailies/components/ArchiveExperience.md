@@ -9,8 +9,9 @@ The calendar reaches today, so today's leaderboard stays visible beside it — b
 **"Daily {slot} (ranked)"** and **hands off to `/daily`** rather than starting a board.
 
 It used to start an *unranked practice* run of the very board you still had to play ranked. Worse,
-a replay calls `startNewGame`, which overwrites the single saved slot, so it could erase an
-in-progress *ranked* attempt at that same board. Nothing on screen said either thing.
+a replay calls `startNewGame`, which overwrites the saved slot (at the time the only one; since
+October 2026 the *daily* slot, which replays share), so it could erase an in-progress *ranked*
+attempt at that same board. Nothing on screen said either thing.
 
 Rankability stays entirely in `DailyExperience` — it posts `/api/daily/start` on begin and submits
 only when `dailyDate === today`. This surface still has **no `/api/solve` caller**, and
@@ -125,10 +126,13 @@ carries a dot for its combined progress (see `Calendar.md`). Source: `GET /api/m
 
 ## Shared-slot note
 
-The board store holds one game, so starting a replay erases any parked game — hence the same
-`ConfirmModal` warning as the other surfaces. A parked archive replay (mode `daily`, a past
-date) resumes via the normal daily continue path and is shown as expired there (unranked),
-which is consistent with it being practice.
+Replays are daily-shaped boards and share the **daily slot** (`useBoardSlot('daily')` on the
+first client render — two-slot save, October 2026): starting a replay erases a parked daily or
+earlier replay, hence the same `ConfirmModal` warning as `/daily`, whose "Keep playing" sends the
+player to `/daily` (the surface that resumes this slot). A parked free-play game lives in its own
+slot and is never at risk from a replay. A parked archive replay (mode `daily`, a past date)
+resumes via the normal daily continue path and is shown as expired there (unranked), which is
+consistent with it being practice.
 
 ```text
 view 'browse':

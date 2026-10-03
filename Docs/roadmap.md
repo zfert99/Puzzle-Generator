@@ -814,8 +814,9 @@ and a generation time budget on every `/api/generate` variant.
 §5): G5–G9 of the a11y audit (the native `<dialog>` shell for every modal landed 2026-10-03;
 the engine rewrites — seeded benchmarks, Keisan masks, Killer geometry, the AIC graph, ALS-XZ
 bitsets — all landed 2026-10-03 as #147–#151, Killer extreme generation 3× faster); an `opengraph-image`; a `lower(username)` unique
-index + `me/attempts` pagination; the two-slot save (the single slot can still be overwritten
-across two tabs, now only while both are visible). Measured and closed 2026-10-03: rate-limit
+index (landed 2026-10-03, #154) + `me/attempts` pagination (still open); the two-slot save
+(landed 2026-10-03: a daily and a free-play game park under separate keys, so the two surfaces
+never erase each other's game). Measured and closed 2026-10-03: rate-limit
 buckets are per-IP through the hub, and Speed Insights data for `/puzzles/*` lives on the hub
 project's dashboard (doc §5). The classic 9×9 Medium technique gate landed the same day.
 
