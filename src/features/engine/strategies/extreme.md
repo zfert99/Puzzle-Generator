@@ -55,6 +55,21 @@ An Almost Locked Set (ALS) is a group of N cells within a single house containin
 
 Together these took the extreme tier from ~18.7 ms to ~10 ms/solve on a frozen pool (−46%), with an identical solve fingerprint.
 
+**Bitsets and a de-duplicated ALS list (October 2026).** Two more, again without changing which
+elimination is found first. (5) `enumerateALS` emitted the same cell set once per house it lay in —
+every bivalue cell three times, a pair inside one box-row twice — so the O(n²) pair loop was
+inflated by duplicates that could only repeat work; it now keeps the first occurrence of each cell
+set, and because any pair of duplicates has an equal-or-earlier pair of originals in the (i, j)
+order, the first elimination is unchanged. (6) Cell sets are **3 × 32-bit words**: each ALS's
+cells, each ALS's cells per digit, and every cell's peers (built once per call from the box
+geometry). "Do these two ALS overlap", "does every x-cell of A see every x-cell of B" and "does
+this cell see every z-cell of A ∪ B and lie outside both" are each a few ANDs, where they were an
+O(|A|·|B|) nested `some`, an O(|xA|·|xB|) `sees()` loop and a tagged-marker scan. The pair order,
+the digit order and the row-major elimination scan are unchanged; 40 seeded expert/extreme
+puzzles solve to the same grids and flags, Killer's 40 grade identically, and `extreme.test.ts`
+pins eight solves. Measured on the seeded `benchmark-human-solver.ts` Extreme row — see the
+pre-merge log entry.
+
 ```text
 // 1. Enumerate all ALS groups (each carries a candidate bitmask)
 allALS = solver.enumerateALS()

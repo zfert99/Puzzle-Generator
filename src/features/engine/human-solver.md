@@ -289,7 +289,10 @@ it does **not** materialise all C(n, k) subsets per house. Instead it walks the
 subsets as a DFS carrying the running candidate-union as a bitmask, and prunes any
 branch whose union already exceeds `maxSubsetSize + 1` candidates — impossible for a
 valid ALS, and the union only grows. Each returned ALS carries its candidate `mask`
-so `applyALSXZ` can intersect two ALS in O(1).
+so `applyALSXZ` can intersect two ALS in O(1). Since October 2026 the list is **de-duplicated
+by cell set** (a set that shares a row and a box, or a column and a box, was emitted once per
+house — every bivalue cell three times); the first occurrence is kept, so the order, and the
+elimination ALS-XZ finds first, are unchanged.
 
 ```text
 FOR each house (all rows, cols, boxes):

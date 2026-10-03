@@ -238,17 +238,21 @@ Grouped by the kind of follow-up each needs.
   project's dashboard. Decision: leave it; read the data there rather than cross-posting vitals
   to a protected origin.
 
-### Engine performance rewrites (each proven by a named benchmark)
+### Engine performance rewrites — all landed 2026-10-03, each grade-for-grade identical
 
-- AIC: numeric node ids, CSR adjacency, ring-buffer queue, parent pointers, stamped visited —
-  the largest Killer-extreme cost (23 % + closures). Prove with `benchmark-killer.ts` Extreme.
-- ALS-XZ: dedupe `enumerateALS` by cell bitset; bitset overlap / restricted-common checks.
-  Prove with `benchmark-human-solver.ts` Extreme and `benchmark.ts` extreme.
-- Keisan `hiddenPair`/`hiddenSingle` via per-unit position masks (36 % of Keisan extreme);
-  drop `rc()` tuples. Prove with `benchmark-calc.ts` 9×9 Expert/Extreme.
-- Killer Rule-of-45 static geometry computed once in the constructor.
-- Benchmark hygiene: seeded mulberry32 pools, Extreme pool ~50, median + p90, a warm-up pass.
-- Claiming (line → box) is not implemented; adding it re-grades every tier.
+| Item | PR | Seeded result |
+|---|---|---|
+| Benchmark hygiene (seeded pools, warm-up, p50/p90) | #147 | HumanSolver Extreme row became a distribution (p50 6.9 / p90 60 ms over 50 puzzles), not a lottery |
+| Keisan hidden single/pair on position masks | #148 | Expert 224.6 → 121.8 ms, Extreme 2711 → 1370 ms |
+| Killer Rule-of-45 geometry computed once | #149 | Medium 156.7 → 97.2 ms, Hard 449 → 323 ms |
+| AIC on a numeric graph, typed-array queue | #150 | Killer Extreme 4998 → 2679 ms |
+| ALS-XZ on cell bitsets, de-duplicated ALS list | the final engine PR | HumanSolver Extreme 18.1 → 9.1 ms; classic Extreme gen 79.8 → 44.6 ms; Killer Extreme 2679 → 1953 ms |
+
+Net across the three: Killer 9×9 Extreme generation **5752 → 1953 ms** (3.0×), HumanSolver Extreme
+**20.8 → 9.1 ms** (2.3×), classic Extreme generation **884 ms per 5 → 45 ms each**. Method every
+time: capture grades or full solves first, change only data structures, diff (zero differences),
+then benchmark on the seeded rows. Still open: **Claiming** (line → box) is not implemented;
+adding it re-grades every tier.
 
 ### Accessibility slices
 

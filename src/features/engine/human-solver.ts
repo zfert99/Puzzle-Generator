@@ -415,6 +415,12 @@ export class HumanSolver {
     const result: { cells: Cell[]; mask: number }[] = [];
     const maxSubsetSize = 5;
     const candidateCap = maxSubsetSize + 1;
+    // Dedupe by cell set (October 2026): a set of cells that shares a row AND a box (or a column
+    // and a box) is found once per house it lies in — every bivalue cell three times, a pair in
+    // one box-row twice — and each copy multiplied the O(n²) partner loop in ALS-XZ for nothing.
+    // The first occurrence is kept, so the list's order (and therefore which elimination ALS-XZ
+    // finds first) is unchanged: any pair of duplicates has an equal-or-earlier pair of originals.
+    const seen = new Set<string>();
 
     for (const axis of ['row', 'col', 'box'] as const) {
       for (let houseIdx = 0; houseIdx < this.size; houseIdx++) {
@@ -425,7 +431,11 @@ export class HumanSolver {
           if (chosen.length >= 1 && popcount(unionMask) === chosen.length + 1) {
             // An ALS: its candidate set is carried as a bitmask so consumers can
             // intersect two ALS in O(1) with a bitwise AND + popcount.
-            result.push({ cells: [...chosen], mask: unionMask });
+            const key = chosen.map((cell) => cell.r * this.size + cell.c).sort((x, y) => x - y).join(',');
+            if (!seen.has(key)) {
+              seen.add(key);
+              result.push({ cells: [...chosen], mask: unionMask });
+            }
           }
           if (chosen.length === maxSubsetSize) return;
 

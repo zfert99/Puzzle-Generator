@@ -312,3 +312,16 @@
 | 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 9×9 Extreme (5x) | 2678.85 ms | p50 2684.10 ms · p90 3806.13 ms · max 3806 ms (n=5, seeded) |
 | 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 6×6 Hard (20x) | 10.65 ms | p50 11.48 ms · p90 16.86 ms · max 27 ms (n=20, seeded) |
 | 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 4×4 Easy (20x) | 0.43 ms | p50 0.30 ms · p90 0.77 ms · max 2 ms (n=20, seeded) |
+| 2026-10-03T00:46:12.315Z | `cfcd890` | HumanSolver Basic (5000x) | 0.13 ms | 7559 solves/sec · p50 0.10 ms · p90 0.23 ms · max 2 ms (n=5000, seeded) |
+| 2026-10-03T00:46:12.315Z | `cfcd890` | HumanSolver Advanced (5000x) | 0.66 ms | 1513 solves/sec · p50 0.58 ms · p90 1.09 ms · max 6 ms (n=5000, seeded) |
+| 2026-10-03T00:46:12.315Z | `cfcd890` | HumanSolver Extreme (1000x) | 9.11 ms | 110 solves/sec · p50 4.42 ms · p90 25.92 ms · max 55 ms (n=1000, seeded) |
+| 2026-10-03T00:46:35.575Z | `cfcd890` | Pipeline Gen (10x Medium) | 2.54 ms | p50 2.23 ms · p90 4.13 ms · max 6 ms (n=10, seeded) |
+| 2026-10-03T00:46:35.575Z | `cfcd890` | Pipeline Gen (10x Expert) | 39.48 ms | p50 29.28 ms · p90 76.64 ms · max 121 ms (n=10, seeded) |
+| 2026-10-03T00:46:35.575Z | `cfcd890` | Pipeline Gen (5x Extreme) | 44.55 ms | p50 54.32 ms · p90 72.56 ms · max 73 ms (n=5, seeded) |
+| 2026-10-03T00:46:37.094Z | `cfcd890` | Killer Gen 9×9 Easy (20x) | 8.98 ms | p50 5.78 ms · p90 19.21 ms · max 25 ms (n=20, seeded) |
+| 2026-10-03T00:46:37.094Z | `cfcd890` | Killer Gen 9×9 Medium (20x) | 76.46 ms | p50 56.84 ms · p90 179.56 ms · max 194 ms (n=20, seeded) |
+| 2026-10-03T00:46:37.094Z | `cfcd890` | Killer Gen 9×9 Hard (20x) | 256.38 ms | p50 212.74 ms · p90 565.68 ms · max 592 ms (n=20, seeded) |
+| 2026-10-03T00:46:37.094Z | `cfcd890` | Killer Gen 9×9 Expert (10x) | 268.61 ms | p50 269.37 ms · p90 493.43 ms · max 651 ms (n=10, seeded) |
+| 2026-10-03T00:46:37.094Z | `cfcd890` | Killer Gen 9×9 Extreme (5x) | 1952.74 ms | p50 2007.59 ms · p90 2779.45 ms · max 2779 ms (n=5, seeded) |
+| 2026-10-03T00:46:37.094Z | `cfcd890` | Killer Gen 6×6 Hard (20x) | 10.32 ms | p50 11.05 ms · p90 16.79 ms · max 28 ms (n=20, seeded) |
+| 2026-10-03T00:46:37.094Z | `cfcd890` | Killer Gen 4×4 Easy (20x) | 0.21 ms | p50 0.20 ms · p90 0.39 ms · max 1 ms (n=20, seeded) |
