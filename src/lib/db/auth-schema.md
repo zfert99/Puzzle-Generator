@@ -33,6 +33,15 @@ shown. Nullable until the user picks one; unique when set. It's a better-auth
 *additionalField* (see [auth.ts](../../features/auth/auth.md)), settable via `updateUser`;
 the leaderboard shows `username`, else the neutral `'Player'` — never `name`, which for an email sign-up is the email's local part and for Google the legal name (October 2026); Puzzle Bot is labelled from `BOT_NAME` by id.
 
+**Case-insensitive uniqueness (October 2026):** the column's `UNIQUE` is case-sensitive, so
+`Alice` and `alice` could coexist — two leaderboard handles a reader cannot tell apart, the
+impersonation hole next to the one the username validator closed. Migration `0005` adds a
+functional unique index, `user_username_lower_idx` on `lower(username)`. The second spelling now
+fails with a unique-violation, which `UsernamePrompt`/`AccountBadge` already report as "that
+username is taken" (they match on `unique` in the error). Additive and reversible (`DROP INDEX`);
+the live table held six users and no case-duplicates when it was generated. Applied with
+`npm run db:migrate` under the owner's unpooled connection, like every migration here.
+
 ## Note
 
 Do not query these tables directly from feature code — go through the better-auth API in

@@ -92,6 +92,28 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — `lower(username)` unique index (case-insensitive handles)
+
+Branch `fix/username-case-insensitive-unique` on the merged #153. Diff: `auth-schema.ts`
+(a `uniqueIndex` named `user_username_lower_idx` over `lower(username)`), the generated migration
+`0005_username_lower_unique.sql` (one `CREATE UNIQUE INDEX`), `auth-schema.md`, a schema test
+that the index is declared. **~20 LOC.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run src/lib/db` | 59 passed (1 new) |
+| Generated SQL read by hand | additive, reversible (`DROP INDEX`); no data rewrite |
+| Live table (read-only query over `DATABASE_URL`) | 6 users, 5 with a username, **0 case-insensitive duplicates** — the index will apply cleanly |
+| Applied? | **Not yet.** Migrations run separately from the app under the owner's unpooled connection (`npm run db:migrate`), per the repo rule; the PR asks for that step |
+| markdownlint | clean |
+
+Findings: none. The client already reports a unique-violation as "that username is taken" by
+matching `unique` in the error text, and Postgres names the index in that text. Hosted
+`/code-review` not run.
+
+---
+
 ## 2026-10-03 — Claiming (box-line reduction, line → box) joins the basic ladder
 
 Branch `feat/claiming-box-line` on the merged #152. Diff: `strategies/basic.ts` `applyClaiming`
