@@ -144,3 +144,23 @@ The 1-based digit of a single-bit candidate mask — `32 − clz32(bit)`, the in
 `1 << (digit − 1)`. The Kakuro and Skyscrapers exact solvers each carried their own copy
 (Skyscrapers E1 review finding); it lives here with `popcount` and `maskToDigits`, the rest of the
 bitmask vocabulary.
+
+## `solvableBySinglesAlone(grid, config)` (October 2026)
+
+**Why:** "can naked singles alone finish this grid?" is a finer question than the HumanSolver's
+basic tier answers — that tier bundles hidden singles, pairs and pointing pairs with naked
+singles, so "solvable at basic" cannot distinguish a puzzle needing none of them. The classic
+**Medium** gate (`diggers.md`) needs the finer answer, and so does the difficulty-separation
+report's `T0` bucket; both share this one implementation.
+
+```text
+copy the grid
+repeat until a pass places nothing:
+  for each empty cell:
+    used = digits in its row ∪ column ∪ box (a bitmask)
+    candidates = ~used within 1..maxNum
+    exactly one bit set -> place it
+true iff no cell is left empty
+```
+
+Microseconds per call; cheap enough to run after every dig attempt.

@@ -139,6 +139,29 @@ While we still need to remove clues AND we haven't failed 100 times:
     Increment the attempts counter.
 ```
 
+## `applyMediumDigger(grid, solution, config, rng = Math.random)` (October 2026)
+
+**Why:** the quota tiers separate on clue count alone, and the difficulty-separation report
+measured that **half** of 9×9 Mediums at 31 clues could be finished by naked singles alone — an
+Easy with fewer clues — while Hard at 26 clues always needed a real technique. Medium now carries
+one gate: the dug grid must *not* be solvable by naked singles alone (`solvableBySinglesAlone`
+in `grid-utils.ts`, a microsecond check, finer than the HumanSolver's basic tier, which bundles
+hidden singles and pairs with naked singles). Owner's decision on the report's recommendation.
+
+**Why only 9×9:** at 4×4 and 6×6 nearly every unique grid is singles-only, so the same gate would
+reject most boards for nothing; clue count is the honest lever there.
+
+```text
+repeat up to MEDIUM_MAX_RETRIES (30) times:
+  restore the grid to the full solution
+  applyQuotaDigger(grid, 'medium')          # a fresh rng order each time
+  if NOT solvableBySinglesAlone(grid): done  # needs at least a hidden single or a pair
+keep the last dig                            # still unique, still 31 clues — never fail over a label
+```
+
+A retry costs one more quota dig (~1 ms); Medium generation roughly doubled (17 → ~2 ms per
+puzzle is the order of magnitude — see `benchmark-logs.md`). Seeded Medium output changed.
+
 ## `applyExtremeDigger(grid, solution, config, rng = Math.random, deadline = Infinity)`
 
 **Why:** Extreme puzzles must explicitly *require* advanced techniques (like AICs). Standard exhaustive digging often results in Expert puzzles by chance. We wrap the exhaustive dig in a retry loop: if the resulting puzzle doesn't actually trigger the extreme logic paths in our solver, we throw it away and start over with a fresh solution grid. The uniqueness gate in `digExhaustively` is where this tier gains most: a full Extreme generation went from ~880 ms to ~150 ms average in the benchmark (October 2026, 5 puzzles each — the per-pass seeded comparison above is the steadier number).

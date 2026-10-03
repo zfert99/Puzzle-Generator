@@ -130,8 +130,10 @@ Latin-square test at 5/7 guards this (if the sentinel ever changes, that test fa
 5. Turn `options.timeBudgetMs` into an absolute deadline (`Infinity` when it is absent).
 6. If `difficulty` is 'extreme' AND `gridSize` is 9, call `applyExtremeDigger()` (passing `rng` and the deadline).
 7. If `difficulty` is 'expert' AND `gridSize` is 9, call `applyExhaustiveDigger()` (passing `rng` and the deadline).
-8. Otherwise, call `applyQuotaDigger()` (passing `rng`).
-9. Return the final `{ grid, solution, difficulty, gridSize }` object.
+8. If `difficulty` is 'medium' AND `gridSize` is 9, call `applyMediumDigger()` — the quota dig plus
+   a "not naked-singles-only" gate (October 2026; see `diggers.md`).
+9. Otherwise, call `applyQuotaDigger()` (passing `rng`).
+10. Return the final `{ grid, solution, difficulty, gridSize }` object.
 
 **`rng` (seedable generation):** defaults to `Math.random`, so callers that don't care are unchanged.
 Threaded through `fillGrid` and every digger so a seeded PRNG makes the *entire* Sudoku pipeline
@@ -175,14 +177,15 @@ no classic digger and fall back to a safe default, since classic puzzles can't e
 **Steps:**
 
 1. Look up how many clues to remove from the quota table.
-2. While we still need to remove more numbers (and haven't tried too many times):
-   - Pick a random row and column.
-   - If the cell is not already empty:
-     - Save the current number as a backup.
-     - Set the cell to 0 (dig the hole).
-     - Call `countSolutions` on a copy of the grid.
-     - If `countSolutions` does NOT equal 1: put the `backup` number back.
-     - Otherwise, the hole is safe. Decrement the counter.
+2. While we still need to remove more numbers (and haven't failed 100 times):
+   - Collect the currently-filled cells and pick one at random via `rng` (bounded — no re-roll
+     loop; this replaced the older "pick a random row and column until it is filled").
+   - Save the current number as a backup and set the cell to 0 (dig the hole).
+   - Call `countSolutions` on a copy of the grid.
+   - If `countSolutions` does NOT equal 1: put the `backup` number back and count a failure.
+   - Otherwise, the hole is safe. Decrement the counter.
+
+9×9 **Medium** does not call this directly: `applyMediumDigger` wraps it with a technique gate.
 
 ### `applyExtremeDigger(grid, solution, config, rng, deadline)`
 

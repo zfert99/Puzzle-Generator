@@ -245,3 +245,47 @@ export function fillGrid(grid: number[][], config: GridConfig, rng: () => number
 
   return recurse();
 }
+
+/**
+ * Can naked singles alone finish this grid? Repeatedly fills every cell that has exactly one
+ * candidate (given its row, column and box) and reports whether that reaches a full grid.
+ *
+ * Deliberately NOT the `HumanSolver`: its basic tier bundles naked singles with hidden singles,
+ * pairs and pointing pairs, so "solvable at basic" cannot tell a puzzle that needs none of them
+ * from one that needs a hidden single. This is the finer question the classic **medium** gate
+ * asks (`diggers.ts`, October 2026): a quota-dug 9×9 medium was singles-only half the time, which
+ * made it an easy with fewer clues. Also what the difficulty-separation report's `T0` bucket means.
+ * O(cells × size) per pass, a few passes — microseconds; cheap enough to run per dig attempt.
+ */
+export function solvableBySinglesAlone(grid: readonly (readonly number[])[], config: GridConfig): boolean {
+  const g = grid.map((row) => [...row]);
+  const { size, boxWidth, boxHeight, maxNum } = config;
+  let progress = true;
+  while (progress) {
+    progress = false;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (g[r][c] !== 0) continue;
+        let used = 0;
+        for (let i = 0; i < size; i++) {
+          if (g[r][i] !== 0) used |= 1 << (g[r][i] - 1);
+          if (g[i][c] !== 0) used |= 1 << (g[i][c] - 1);
+        }
+        const br = Math.floor(r / boxHeight) * boxHeight;
+        const bc = Math.floor(c / boxWidth) * boxWidth;
+        for (let rr = br; rr < br + boxHeight; rr++) {
+          for (let cc = bc; cc < bc + boxWidth; cc++) {
+            if (g[rr][cc] !== 0) used |= 1 << (g[rr][cc] - 1);
+          }
+        }
+        const candidates = ~used & ((1 << maxNum) - 1);
+        if (candidates !== 0 && (candidates & (candidates - 1)) === 0) {
+          g[r][c] = 32 - Math.clz32(candidates);
+          progress = true;
+        }
+      }
+    }
+  }
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (g[r][c] === 0) return false;
+  return true;
+}
