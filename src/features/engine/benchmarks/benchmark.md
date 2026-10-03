@@ -80,3 +80,12 @@ Two digger changes moved both rows in the same session (`diggers.md` has the det
   sample, and log the **median and p90** next to the mean.
 - The script times with `Date.now()` (1 ms resolution); `performance.now()` would match the other
   benchmarks.
+
+## Seeded draws and a Medium row (October 2026)
+
+**Why:** draw *i* of a tier is `generateSudoku(tier, 9, mulberry32(base + i))`
+(`bench-utils.ts`, `SEED_BASE.classic`), so the same ten Experts and five Extremes are timed on
+every commit — five unseeded Extremes were dominated by whichever slow draw came up. A Medium row
+(10×) joins Expert and Extreme because the October 2026 Medium gate (`applyMediumDigger`) made
+Medium a retrying tier whose cost is worth watching. A warm-up generation runs first. The Metric
+cell carries `p50 · p90 · max (n, seeded)`.

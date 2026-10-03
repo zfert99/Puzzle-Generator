@@ -92,6 +92,37 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — Benchmark hygiene: seeded pools, warm-up, median/p90 (item 4b)
+
+Branch `chore/benchmark-hygiene` on `0776d46`. Diff: new `benchmarks/bench-utils.ts` (+ `.md`) —
+mulberry32, per-script `SEED_BASE`, `timeDraws`/`stats`/`warmUp`, the log-row helper; the six
+benchmark scripts rewritten on it (every draw `mulberry32(base + i)`, a warm-up before the first
+timed row, `p50 · p90 · max (n, seeded)` in the Metric cell, the HumanSolver Extreme pool 10 → 50,
+a Medium row in `benchmark.ts`); the six `.md` docs; 46 first seeded rows appended to
+`benchmark-logs.md`. No engine code touched. **~330 LOC of scripts.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | unchanged suite (no engine or app code in the diff) — 98 files green on the base |
+| All six scripts run once | see the new rows: HumanSolver Extreme **p50 6.9 ms / p90 60 ms** over 50 seeded puzzles (the old 10-pool row read 4–26 ms run to run); Killer 9×9 Extreme p50 5.8 s / p90 8.0 s; Keisan 9×9 Extreme p50 4.0 s; Kakuro 9×9 Extreme p50 0.6 s / max 4.8 s; Skyscrapers 7×7 Expert p50 0.21 s |
+| markdownlint | clean on every doc touched |
+
+### Findings
+
+- **The Extreme row's noise was the pool, not the solver.** Seeded, the row is a distribution
+  (p50 6.9 ms, p90 60 ms): the old "4–26 ms band" was the average of ten lottery draws. The
+  project memory's "Extreme is noise" note is superseded from this commit.
+- **A seeded row still moves for one honest non-performance reason:** a generator change alters
+  which puzzle a seed yields (the Expert and Medium gates did this). Say so in the row's doc when
+  it happens, rather than reading it as a regression.
+- Rule: **report the distribution, not the average, for anything whose cost spans an order of
+  magnitude** — the Avg column stays for continuity, the decision reads p50/p90.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — Native `<dialog>` for every modal (item 4a of the pass's backlog)
 
 Branch `feat/native-dialog-modals` on `3d41cec`. Diff: new `features/chrome/Modal.tsx` (+ `.md`,
