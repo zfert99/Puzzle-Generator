@@ -92,6 +92,27 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — Killer Rule-of-45 geometry computed once (item 4d)
+
+Branch `perf/killer-static-geometry` on `f017c54`. Diff: `killer-logical-solver.ts` —
+`regionGeometry` and `houseSingles` built in the constructor (`geometryOf`, `houseSingleOf`); the
+three Rule-of-45 techniques loop over them with only the dynamic checks; `.md`; a seeded
+grade-equivalence test (16 puzzles: tier, passes, every technique count captured from the
+pre-change solver). **~90 LOC of source.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 988 tests** (1 new); no Known-flaky entry fired |
+| Equivalence | 40 seeded puzzles (4×4 → 9×9 expert) graded before and after: **0 differences** |
+| `benchmark-killer.ts` (seeded, same seeds as #147's rows) | Medium avg **156.7 → 97.2 ms** (p90 334 → 213); Hard **449 → 323 ms** (p90 992 → 724); Expert 447 → 357 ms; Extreme 5752 → 4998 ms (p50 5831 → 4806) — the extreme tail is the AIC's, item 4e; Easy / 6×6 / 4×4 within noise |
+| markdownlint | clean |
+
+Findings: none in review. The same before/after method as 4c (capture grades, hoist, diff) took
+under an hour end to end; it is the template for 4e and 4f. Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — Keisan hidden single/pair on position masks (item 4c)
 
 Branch `perf/keisan-hidden-masks` on `4e9f8b5`. Diff: `calc-logical-solver.ts` — `fillPositions`
