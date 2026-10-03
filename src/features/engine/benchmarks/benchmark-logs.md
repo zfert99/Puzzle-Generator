@@ -286,3 +286,9 @@
 | 2026-10-03T00:27:45.507Z | `3d41cec` | Skyscrapers Gen 7×7 Hard (10x) | 219.85 ms | p50 224.96 ms · p90 275.46 ms · max 569 ms (n=10, seeded) |
 | 2026-10-03T00:27:45.507Z | `3d41cec` | Skyscrapers Gen 7×7 Expert (10x) | 1276.45 ms | p50 671.68 ms · p90 3197.53 ms · max 4770 ms (n=10, seeded) |
 | 2026-10-03T00:27:45.507Z | `3d41cec` | Skyscrapers Gen 7×7 Extreme (10x) | 314.27 ms | p50 308.74 ms · p90 479.66 ms · max 622 ms (n=10, seeded) |
+| 2026-10-03T00:31:58.906Z | `6d745a4` | Keisan Gen 9×9 Easy (20x) | 4.83 ms | p50 3.98 ms · p90 9.55 ms · max 12 ms (n=20, seeded) |
+| 2026-10-03T00:31:58.906Z | `6d745a4` | Keisan Gen 9×9 Medium (20x) | 5.38 ms | p50 4.63 ms · p90 10.45 ms · max 13 ms (n=20, seeded) |
+| 2026-10-03T00:31:58.906Z | `6d745a4` | Keisan Gen 9×9 Hard (20x) | 10.34 ms | p50 8.62 ms · p90 20.04 ms · max 34 ms (n=20, seeded) |
+| 2026-10-03T00:31:58.906Z | `6d745a4` | Keisan Gen 9×9 Expert (10x) | 121.82 ms | p50 32.73 ms · p90 335.71 ms · max 354 ms (n=10, seeded) |
+| 2026-10-03T00:31:58.906Z | `6d745a4` | Keisan Gen 9×9 Extreme (5x) | 1370.36 ms | p50 1998.14 ms · p90 2429.32 ms · max 2429 ms (n=5, seeded) |
+| 2026-10-03T00:31:58.906Z | `6d745a4` | Keisan Gen 9×9 Hard Mystery (10x) | 31.34 ms | p50 39.63 ms · p90 47.55 ms · max 52 ms (n=10, seeded) |

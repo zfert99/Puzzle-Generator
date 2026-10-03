@@ -90,3 +90,36 @@ bounded axis is a single step (needs-a-guess vs not), not a depth ladder. T5 gra
 The bit count over digit-set masks comes from `grid-utils.ts` — the engine's single copy — rather
 than a private duplicate in this file (October 2026 dedupe; see `grid-utils.md`). Same algorithm,
 same `(number) → number` shape, so behaviour and V8 monomorphism are unchanged.
+
+## Hidden single / hidden pair on position masks (October 2026)
+
+**Why:** a CPU profile of Keisan 9×9 extreme generation put `hiddenPair` at 36 % of self time
+and the solver's anonymous filter closures at another 22 %: for every unit and every digit pair
+it ran two `unit.filter` closures, each allocating a `[r, c]` tuple per cell through `rc()` —
+about 11k closure calls per call — and it runs inside every Nishio branch, where it adds up.
+
+Both techniques now build **one per-unit position mask array** in a single pass
+(`fillPositions`): `positions[d]` has bit *i* set when the unit's i-th cell is empty and still
+holds digit *d*. A hidden single is then "exactly one bit set" and a hidden pair "two bits set,
+and equal for two digits" — integer tests, no rescans, no closures, no tuples. `nakedPair`,
+`placedCounts` and `cageArithmetic` drop the `rc()` tuples the same way. The deduction ORDER is
+unchanged (units in order, digits ascending, first qualifying step wins), so the grades are the
+same: a seeded test captures tier, pass count, guess steps and every technique's count for 18
+puzzles from the pre-rewrite solver and asserts them exactly, and an offline check of 48 found
+zero differences.
+
+```text
+fillPositions(unit):
+  positions[1..N] = 0
+  for i, cell in unit: if empty: for each candidate digit d: positions[d] |= 1 << i
+
+hiddenSingle: for each unit: fillPositions; for d = 1..N:
+  positions[d] has exactly one bit  ->  that cell; if it has > 1 candidate, place d
+
+hiddenPair:   for each unit: fillPositions; for d1 < d2:
+  popcount(positions[d1]) == 2 and positions[d2] == positions[d1]
+    -> confine both cells to {d1, d2}; report if anything changed
+```
+
+Measured with the seeded `benchmark-calc.ts` (same machine, same seeds): see the pre-merge log
+entry for the before/after rows.

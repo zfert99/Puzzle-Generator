@@ -176,7 +176,8 @@ export class CalcLogicalSolver {
   private placedCounts(cage: CalcCage): Uint8Array {
     const counts = new Uint8Array(this.size + 1);
     for (const cell of cage.cells) {
-      const [r, c] = this.rc(cell);
+      const r = (cell / this.size) | 0;
+      const c = cell - r * this.size;
       if (this.grid[r][c] !== 0) counts[this.grid[r][c]] += 1;
     }
     return counts;
@@ -206,7 +207,8 @@ export class CalcLogicalSolver {
         for (let d = 1; d <= this.size; d++) if (counts[d] > placed[d]) mask |= 1 << (d - 1);
       }
       for (const cell of cage.cells) {
-        const [r, c] = this.rc(cell);
+        const r = (cell / this.size) | 0;
+        const c = cell - r * this.size;
         if (this.grid[r][c] !== 0) continue;
         const next = this.cands[r][c] & mask;
         if (next !== this.cands[r][c]) {
@@ -241,25 +243,47 @@ export class CalcLogicalSolver {
     return n;
   }
 
+  /**
+   * Per-unit position masks: `positions[d]` has bit `i` set when the unit's i-th cell is empty
+   * and still holds digit `d`. One pass over the unit's cells builds every digit's mask at once,
+   * so a hidden single is "one bit set" and a hidden pair "two bits, equal for two digits" — no
+   * per-digit rescans, no `filter` closures, no `[r, c]` tuples. These two techniques were 36 %
+   * of Keisan 9×9 extreme generation under the old per-digit `unit.filter` form (profiled,
+   * October 2026); they run inside every Nishio branch, which is why it added up. Reused across
+   * calls; the caller refills it per unit.
+   */
+  private readonly positions: Int32Array = new Int32Array(10);
+
+  private fillPositions(unit: number[]): void {
+    const positions = this.positions;
+    positions.fill(0);
+    for (let i = 0; i < unit.length; i++) {
+      const cell = unit[i];
+      const r = (cell / this.size) | 0;
+      const c = cell - r * this.size;
+      if (this.grid[r][c] !== 0) continue;
+      let mask = this.cands[r][c];
+      const posBit = 1 << i;
+      while (mask) {
+        const low = mask & -mask;
+        positions[32 - Math.clz32(low)] |= posBit;
+        mask ^= low;
+      }
+    }
+  }
+
   private hiddenSingle(): boolean {
     for (const unit of this.units) {
+      this.fillPositions(unit);
       for (let d = 1; d <= this.size; d++) {
-        const bit = 1 << (d - 1);
-        let pos = -1;
-        let count = 0;
-        for (const cell of unit) {
-          const [r, c] = this.rc(cell);
-          if (this.grid[r][c] === 0 && this.cands[r][c] & bit) {
-            count += 1;
-            pos = cell;
-          }
-        }
-        if (count === 1) {
-          const [r, c] = this.rc(pos);
-          if (popcount(this.cands[r][c]) > 1) {
-            this.place(r, c, d);
-            return true;
-          }
+        const where = this.positions[d];
+        if (where === 0 || (where & (where - 1)) !== 0) continue; // not exactly one cell
+        const cell = unit[31 - Math.clz32(where)];
+        const r = (cell / this.size) | 0;
+        const c = cell - r * this.size;
+        if (popcount(this.cands[r][c]) > 1) {
+          this.place(r, c, d);
+          return true;
         }
       }
     }
@@ -272,7 +296,8 @@ export class CalcLogicalSolver {
     for (const unit of this.units) {
       const twos: { cell: number; mask: number }[] = [];
       for (const cell of unit) {
-        const [r, c] = this.rc(cell);
+        const r = (cell / this.size) | 0;
+        const c = cell - r * this.size;
         if (this.grid[r][c] === 0 && popcount(this.cands[r][c]) === 2) twos.push({ cell, mask: this.cands[r][c] });
       }
       for (let i = 0; i < twos.length; i++) {
@@ -282,7 +307,8 @@ export class CalcLogicalSolver {
           let changed = false;
           for (const cell of unit) {
             if (cell === twos[i].cell || cell === twos[j].cell) continue;
-            const [r, c] = this.rc(cell);
+            const r = (cell / this.size) | 0;
+            const c = cell - r * this.size;
             if (this.grid[r][c] !== 0) continue;
             if (this.eliminate(r, c, pairMask)) changed = true;
           }
@@ -295,26 +321,24 @@ export class CalcLogicalSolver {
 
   private hiddenPair(): boolean {
     for (const unit of this.units) {
+      this.fillPositions(unit);
       for (let d1 = 1; d1 <= this.size; d1++) {
+        const where = this.positions[d1];
+        // d1 must sit in exactly two empty cells of the unit before any d2 can pair with it.
+        if (where === 0 || popcount(where) !== 2) continue;
         for (let d2 = d1 + 1; d2 <= this.size; d2++) {
-          const b1 = 1 << (d1 - 1);
-          const b2 = 1 << (d2 - 1);
           // Hidden pair: d1 and d2 each appear in exactly the same two empty cells of the unit.
-          const cellsD1 = unit.filter((cell) => {
-            const [r, c] = this.rc(cell);
-            return this.grid[r][c] === 0 && this.cands[r][c] & b1;
-          });
-          const cellsD2 = unit.filter((cell) => {
-            const [r, c] = this.rc(cell);
-            return this.grid[r][c] === 0 && this.cands[r][c] & b2;
-          });
-          if (cellsD1.length !== 2 || cellsD2.length !== 2) continue;
-          if (cellsD1[0] !== cellsD2[0] || cellsD1[1] !== cellsD2[1]) continue;
+          if (this.positions[d2] !== where) continue;
           // Confine those two cells to just {d1, d2}, removing any other candidates.
-          const keep = b1 | b2;
+          const keep = (1 << (d1 - 1)) | (1 << (d2 - 1));
           let changed = false;
-          for (const cell of cellsD1) {
-            const [r, c] = this.rc(cell);
+          let pair = where;
+          while (pair) {
+            const low = pair & -pair;
+            const cell = unit[31 - Math.clz32(low)];
+            pair ^= low;
+            const r = (cell / this.size) | 0;
+            const c = cell - r * this.size;
             const next = this.cands[r][c] & keep;
             if (next !== this.cands[r][c]) {
               this.cands[r][c] = next;

@@ -2,8 +2,20 @@
 import { describe, it, expect } from 'vitest';
 import { CalcLogicalSolver } from './calc-logical-solver';
 import { generateUniqueCalc } from './calc-generator';
-import type { CalcCage } from './calc-types';
+import { generateCalcSudoku } from './calc-sudoku';
+import type { CalcCage, CalcDifficulty } from './calc-types';
 import type { GridSize } from '../sudoku';
+
+/** Seeded PRNG (mulberry32) — the same generator the benchmarks and the diggers' tests use. */
+function mulberry32(seed: number): () => number {
+  let state = seed | 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /**
  * Base seed for every fuzz loop below, drawn fresh per run and reported on failure.
@@ -150,5 +162,43 @@ describe('CalcLogicalSolver — bounded-recursion tier (K7b, T5 = depth-1 Nishio
       }
     }
     throw new Error(`expected a T4-solvable 6×6 in the seed range — ${replay}`);
+  });
+});
+
+describe('CalcLogicalSolver — hidden single/pair on position masks grade exactly as before (October 2026)', () => {
+  // Captured from the pre-rewrite solver (per-digit `unit.filter` scans) on seeded puzzles:
+  // tier, pass count, guess steps and every technique's application count must be identical.
+  // The masks are a performance change only; any drift here is a semantic change, not a speed-up.
+  const expected: { difficulty: CalcDifficulty; size: 6 | 9; seed: number; hardestTier: number; passes: number; guessSteps: number; counts: Record<string, number> }[] = [
+    { difficulty: 'hard', size: 6, seed: 9000, hardestTier: 2, passes: 50, guessSteps: 0, counts: {"cageArithmetic":7,"hiddenSingle":7,"nakedPair":1,"cageComboRestriction":5,"nakedSingle":29,"hiddenPair":1} },
+    { difficulty: 'hard', size: 6, seed: 9001, hardestTier: 2, passes: 49, guessSteps: 0, counts: {"cageArithmetic":5,"nakedPair":5,"cageComboRestriction":3,"nakedSingle":34,"hiddenSingle":2} },
+    { difficulty: 'hard', size: 6, seed: 9002, hardestTier: 2, passes: 50, guessSteps: 0, counts: {"cageArithmetic":8,"hiddenSingle":6,"nakedSingle":30,"cageComboRestriction":3,"nakedPair":2,"hiddenPair":1} },
+    { difficulty: 'hard', size: 6, seed: 9003, hardestTier: 2, passes: 46, guessSteps: 0, counts: {"cageArithmetic":4,"nakedPair":3,"cageComboRestriction":2,"nakedSingle":33,"hiddenSingle":3,"hiddenPair":1} },
+    { difficulty: 'hard', size: 6, seed: 9004, hardestTier: 2, passes: 45, guessSteps: 0, counts: {"cageArithmetic":4,"hiddenSingle":6,"nakedPair":3,"cageComboRestriction":2,"nakedSingle":30} },
+    { difficulty: 'hard', size: 6, seed: 9005, hardestTier: 2, passes: 49, guessSteps: 0, counts: {"cageArithmetic":7,"nakedPair":3,"cageComboRestriction":2,"nakedSingle":30,"hiddenSingle":6,"hiddenPair":1} },
+    { difficulty: 'hard', size: 9, seed: 9000, hardestTier: 2, passes: 106, guessSteps: 0, counts: {"cageArithmetic":13,"hiddenSingle":9,"nakedPair":8,"nakedSingle":72,"hiddenPair":2,"cageComboRestriction":2} },
+    { difficulty: 'hard', size: 9, seed: 9001, hardestTier: 2, passes: 110, guessSteps: 0, counts: {"cageArithmetic":14,"nakedPair":12,"nakedSingle":66,"hiddenSingle":15,"cageComboRestriction":2,"hiddenPair":1} },
+    { difficulty: 'hard', size: 9, seed: 9002, hardestTier: 2, passes: 110, guessSteps: 0, counts: {"cageArithmetic":21,"nakedPair":8,"nakedSingle":61,"cageComboRestriction":1,"hiddenSingle":19} },
+    { difficulty: 'hard', size: 9, seed: 9003, hardestTier: 2, passes: 105, guessSteps: 0, counts: {"cageArithmetic":16,"nakedSingle":70,"hiddenSingle":9,"nakedPair":7,"hiddenPair":1,"cageComboRestriction":2} },
+    { difficulty: 'hard', size: 9, seed: 9004, hardestTier: 2, passes: 99, guessSteps: 0, counts: {"cageArithmetic":18,"hiddenSingle":15,"nakedSingle":65,"nakedPair":1} },
+    { difficulty: 'hard', size: 9, seed: 9005, hardestTier: 2, passes: 108, guessSteps: 0, counts: {"cageArithmetic":19,"hiddenSingle":8,"nakedSingle":72,"nakedPair":8,"cageComboRestriction":1} },
+    { difficulty: 'expert', size: 9, seed: 9000, hardestTier: 5, passes: 118, guessSteps: 4, counts: {"cageArithmetic":18,"hiddenSingle":7,"nakedPair":6,"nakedSingle":74,"cageComboRestriction":8,"hiddenPair":1} },
+    { difficulty: 'expert', size: 9, seed: 9001, hardestTier: 5, passes: 116, guessSteps: 1, counts: {"cageArithmetic":25,"nakedPair":5,"hiddenSingle":17,"nakedSingle":63,"cageComboRestriction":5} },
+    { difficulty: 'expert', size: 9, seed: 9002, hardestTier: 5, passes: 121, guessSteps: 3, counts: {"cageArithmetic":17,"nakedPair":8,"cageComboRestriction":10,"hiddenSingle":14,"nakedSingle":66,"hiddenPair":2,"xWing":1} },
+    { difficulty: 'expert', size: 9, seed: 9003, hardestTier: 5, passes: 119, guessSteps: 2, counts: {"cageArithmetic":18,"nakedPair":10,"hiddenPair":1,"cageComboRestriction":6,"nakedSingle":77,"hiddenSingle":4,"xWing":1} },
+    { difficulty: 'expert', size: 9, seed: 9004, hardestTier: 5, passes: 118, guessSteps: 2, counts: {"cageArithmetic":18,"hiddenSingle":9,"nakedPair":7,"nakedSingle":71,"cageComboRestriction":6,"hiddenPair":3,"xWing":2} },
+    { difficulty: 'expert', size: 9, seed: 9005, hardestTier: 5, passes: 113, guessSteps: 1, counts: {"cageArithmetic":16,"hiddenSingle":11,"nakedSingle":69,"nakedPair":10,"cageComboRestriction":6} },
+  ];
+
+  it('reproduces the captured grades, pass counts and technique counts', () => {
+    for (const e of expected) {
+      const puzzle = generateCalcSudoku(e.difficulty, { gridSize: e.size, rng: mulberry32(e.seed) });
+      const result = new CalcLogicalSolver(puzzle.cages, e.size).solve({ maxTier: 6 });
+      const label = `${e.difficulty} ${e.size}×${e.size} seed ${e.seed}`;
+      expect(result.hardestTier, label).toBe(e.hardestTier);
+      expect(result.passes, label).toBe(e.passes);
+      expect(result.guessSteps, label).toBe(e.guessSteps);
+      expect(result.techniqueCounts, label).toEqual(e.counts);
+    }
   });
 });

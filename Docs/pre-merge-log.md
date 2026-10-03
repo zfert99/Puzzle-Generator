@@ -92,6 +92,34 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — Keisan hidden single/pair on position masks (item 4c)
+
+Branch `perf/keisan-hidden-masks` on `4e9f8b5`. Diff: `calc-logical-solver.ts` — `fillPositions`
+(one per-unit pass building every digit's position bitmask), `hiddenSingle`/`hiddenPair` as
+integer tests over it, `rc()` tuples dropped from `nakedPair`/`placedCounts`/`cageArithmetic`;
+`.md`; a seeded grade-equivalence test (18 puzzles: tier, passes, guess steps, every technique
+count captured from the pre-rewrite solver). **~110 LOC of source.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 987 tests** (1 new); no Known-flaky entry fired |
+| Equivalence | 48 seeded puzzles (4×4/6×6/9×9, easy→expert) graded before and after: **0 differences** in tier, technique counts, passes or guess steps |
+| `benchmark-calc.ts` (seeded, same machine, same seeds — #147's rows are the before) | Expert avg **224.6 → 121.8 ms**, p90 673 → 336; Extreme avg **2711 → 1370 ms**, p50 3993 → 1998; Hard 17.3 → 10.3; Easy 7.2 → 4.8; Mystery hard 47.4 → 31.3 |
+| markdownlint | clean |
+
+### Findings
+
+- **Capture the baseline grades before touching a solver's techniques, then diff.** The
+  rewrite's whole claim is "same deductions, faster"; a soundness fuzz cannot distinguish that
+  from "different but still sound". A 48-puzzle before/after grade diff did, at zero cost.
+- The seeded benchmark rows from #147 made the before/after a one-line comparison — the first
+  time an engine change has had that.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — Benchmark hygiene: seeded pools, warm-up, median/p90 (item 4b)
 
 Branch `chore/benchmark-hygiene` on `0776d46`. Diff: new `benchmarks/bench-utils.ts` (+ `.md`) —
