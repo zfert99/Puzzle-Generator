@@ -1,4 +1,5 @@
-import { boolean, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 /**
  * better-auth (1.6.x) identity tables — the canonical `user` plus its sessions, linked
@@ -18,18 +19,30 @@ import { boolean, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
  * their shape.
  */
 
-export const user = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('emailVerified').notNull().default(false),
-  image: text('image'),
-  // Public display handle for the leaderboard (so a full legal name isn't shown). Optional
-  // until the user sets one; unique when present. Managed as a better-auth additionalField.
-  username: text('username').unique(),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-});
+export const user = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('emailVerified').notNull().default(false),
+    image: text('image'),
+    // Public display handle for the leaderboard (so a full legal name isn't shown). Optional
+    // until the user sets one; unique when present. Managed as a better-auth additionalField.
+    username: text('username').unique(),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+  },
+  (table) => [
+    // Case-insensitive uniqueness (October 2026): the column's own UNIQUE is case-sensitive, so
+    // `Alice` and `alice` could both exist and the leaderboard would show two handles a reader
+    // cannot tell apart — an impersonation hole next to the one the username validator closed.
+    // A functional index on lower(username) makes the second one a unique-violation, which the
+    // sign-up/update path already reports as "that username is taken". Additive and reversible
+    // (DROP INDEX); the live table had no case-duplicates when it was added.
+    uniqueIndex('user_username_lower_idx').on(sql`lower(${table.username})`),
+  ],
+);
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),
