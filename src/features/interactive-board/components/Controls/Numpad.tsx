@@ -47,7 +47,7 @@ export const Numpad = memo(function Numpad({ showHint = true }: { showHint?: boo
   const undo = () => useBoardStore.temporal.getState().undo();
   const redo = () => useBoardStore.temporal.getState().redo();
 
-  const controlClass = 'py-2 rounded-lg bg-paper border-2 border-ink hover:bg-paper-2 text-sm transition-colors disabled:opacity-40 disabled:hover:bg-paper';
+  const controlClass = 'tap-target py-2 rounded-lg bg-paper border-2 border-ink hover:bg-paper-2 text-sm transition-colors disabled:opacity-40 disabled:hover:bg-paper';
 
   return (
     <div className="mt-6 w-full max-w-[520px] mx-auto flex flex-col gap-3">
@@ -79,7 +79,7 @@ export const Numpad = memo(function Numpad({ showHint = true }: { showHint?: boo
           aria-label="Pencil marks"
           title="Pencil marks"
           onClick={() => togglePencilMode()}
-          className={`py-2 rounded-lg text-sm transition-colors ${
+          className={`tap-target py-2 rounded-lg text-sm transition-colors ${
             pencilMode ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper border-2 border-ink hover:bg-paper-2'
           }`}
         >

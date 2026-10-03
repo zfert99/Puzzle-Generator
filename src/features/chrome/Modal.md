@@ -39,3 +39,8 @@ in the old shells the `role="dialog"` sat on a full-viewport scrim whose box was
 **jsdom:** `vitest.setup.ts` polyfills `showModal`/`close` (toggle `open`, fire `close`) with no
 focus behaviour, which is why the shell places and restores focus itself rather than relying on
 the browser. Trap and inert assertions belong in Playwright (`e2e/a11y.spec.ts`).
+
+**jsx-a11y strict (October 2026):** the `<dialog>`'s click handler is the backdrop dismiss and
+its keyboard twin is Escape, delivered as the native `cancel` event — so the two strict rules
+(`click-events-have-key-events`, `no-noninteractive-element-interactions`) are disabled on that
+element with the reason in a comment rather than satisfied with a duplicate keydown listener.

@@ -262,7 +262,7 @@ export function LeaderboardView({
                 type="button"
                 aria-pressed={difficulty === s.key}
                 onClick={() => selectDifficulty(s.key)}
-                className={`px-2.5 py-1 rounded-lg text-xs transition-all ${
+                className={`tap-target px-2.5 py-1 rounded-lg text-xs transition-all ${
                   difficulty === s.key ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper border-2 border-ink hover:bg-paper-2'
                 }`}
               >

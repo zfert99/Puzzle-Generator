@@ -34,6 +34,11 @@
      too — the theme-flipping `--ink` measured 1.25:1 (cream on lime) in the dark theme. */
   --on-sticker: #2B1B12;
   --r-sm: 8px; --r-md: 14px; --r-lg: 20px;
+  /* The board's footprint — the largest square that fits (a11y audit G7): capped by width as
+     before AND by the small viewport height less the chrome around the board (header, title,
+     status row, numpad — about 21rem), with a 280px floor so a landscape phone still gets a
+     usable grid. Shared with the "Paused" placeholders so pausing never changes the layout. */
+  --board-width: min(92vw, 520px, max(calc(100svh - 21rem), 280px));
   color-scheme: light;
 
   /* Chaos-layer "wildcard" sticker colors (5.5) — DECORATION ONLY (stickers, tape,
@@ -170,9 +175,25 @@ h1, h2, .font-display {
 .tilt-c { --tilt: -1deg; transform: rotate(var(--tilt)); }
 .tilt-d { --tilt: 2.5deg; transform: rotate(var(--tilt)); }
 
-/* On hover, decorative chrome gets a small extra rotation on top of its base tilt. */
+/* On hover, decorative chrome gets a small extra rotation on top of its base tilt. Gated on a
+   real hover-capable pointer (a11y audit G6): on touch, a tap left the "hovered" tilt stuck
+   until the next tap elsewhere. Tailwind v4 already gates its `hover:` utilities the same way. */
 .wobble-hover { transition: transform 140ms ease-out; }
-.wobble-hover:hover { transform: rotate(calc(var(--tilt, 0deg) + 1.5deg)) translateY(-2px); }
+@media (hover: hover) {
+  .wobble-hover:hover { transform: rotate(calc(var(--tilt, 0deg) + 1.5deg)) translateY(-2px); }
+}
+
+/* Touch targets (a11y audit G5, WCAG 2.5.8 / the 44 px guidance): the secondary controls — the
+   game header's Errors/Pause/Rules, the numpad's Erase/Pencil/Hint/Undo/Redo row, the settings
+   choices, the calendar arrows, the leaderboard tabs, the dialogs' ✕ — are 28–40 px tall as
+   drawn. A fine pointer does not need more; a finger does. Opt-in per control, only on a coarse
+   pointer, so the desktop layout keeps its density. */
+@media (pointer: coarse) {
+  .tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
 
 @keyframes idle-wobble {
   0%, 100% { transform: rotate(-3deg); }

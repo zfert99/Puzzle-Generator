@@ -112,7 +112,7 @@ export function GameHeader() {
             type="button"
             aria-pressed={errorHighlight}
             onClick={() => setSetting('errorHighlight', !errorHighlight)}
-            className={`px-2 py-1 rounded transition-colors ${
+            className={`tap-target px-2 py-1 rounded transition-colors ${
               errorHighlight ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper border-2 border-ink hover:bg-paper-2'
             }`}
             title="Highlight incorrect entries"
@@ -121,7 +121,7 @@ export function GameHeader() {
           </button>
         )}
         {status === 'paused' ? (
-          <button type="button" onClick={() => resume()} className="px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2">
+          <button type="button" onClick={() => resume()} className="tap-target px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2">
             Resume
           </button>
         ) : (
@@ -129,7 +129,7 @@ export function GameHeader() {
             type="button"
             onClick={() => pause()}
             disabled={status !== 'playing'}
-            className="px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2 disabled:opacity-40"
+            className="tap-target px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2 disabled:opacity-40"
           >
             Pause
           </button>
@@ -140,7 +140,7 @@ export function GameHeader() {
           type="button"
           onClick={() => setRulesOpen(true)}
           aria-haspopup="dialog"
-          className="px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2"
+          className="tap-target px-2 py-1 rounded bg-paper border-2 border-ink hover:bg-paper-2"
           title="How to play"
         >
           Rules

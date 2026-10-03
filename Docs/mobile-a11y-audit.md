@@ -1,8 +1,11 @@
 # Mobile / Accessibility Audit & Plan
 
-> **Status:** ✅ Quick wins **G1–G4 shipped** (see the ✅ marks below: board live region, the
-> Playwright reflow + axe suite, `100svh`, a non-color conflict cue); **G5–G8** fold into normal work
-> as those surfaces are touched; **G9 (PWA)** is unscheduled · **Date:** July 2026 (analysis)
+> **Status:** ✅ **G1–G9 shipped** — G1–G4 in July 2026 (board live region, the Playwright reflow +
+> axe suite, `100svh`, a non-color conflict cue); **G5–G9 on 2026-10-03** (coarse-pointer
+> `.tap-target`, the one ungated hover gated, the board sized by height too via `--board-width`,
+> `jsx-a11y` at strict in `eslint.config.mjs`, a web app manifest + icons). Still open from G9: an
+> offline shell / service worker, a feature decision rather than a checkbox · **Date:** July 2026
+> (analysis)
 > **October 2026 pass:** G2's overflow test turned out to be **vacuous** — `overflow-x: hidden`
 > on `html, body` clamps the root's `scrollWidth`, so the loop could never fail, and it sat green
 > over a clipped "Sign in" link and an overlapping type picker at 320 px. The test now measures
@@ -70,22 +73,22 @@ gaps below are the genuine deltas, prioritized by leverage.
 
 ### Medium (worth doing, not urgent)
 
-- **G5 — Touch-target audit on `pointer: coarse`.** Numpad digit keys (`py-3 text-lg`) are
+- ✅ **G5 — Touch-target audit on `pointer: coarse`.** Numpad digit keys (`py-3 text-lg`) are
   ~48px — fine; the secondary control row (`py-2`) is ~40px — under the 44–48px target
   (though above the 24px WCAG 2.5.8 floor). Bump on coarse pointers via
   `@media (pointer: coarse)`.
-- **G6 — Gate hover styles behind `@media (hover: hover)`.** `hover:` utilities apply a sticky
+- ✅ **G6 — Gate hover styles behind `@media (hover: hover)`.** (Tailwind v4 already did for its utilities; the custom `.wobble-hover` was the one gap.) `hover:` utilities apply a sticky
   pressed look after tap on touch. Low-severity polish.
-- **G7 — Board "largest square that fits" pattern.** Current `min(92vw, 520px)` caps the board
+- ✅ **G7 — Board "largest square that fits" pattern.** (`--board-width`, capped by `100svh` less the chrome, 280px floor.) Current `min(92vw, 520px)` caps the board
   at 520px and doesn't use available *height*; the doc's `grid-rows: auto 1fr auto` +
   `margin:auto` makes it the largest square for the viewport with no JS. Improves tablet /
   landscape; not a phone bug.
-- **G8 — `jsx-a11y` strictness + CI.** `eslint-config-next` bundles `jsx-a11y` at
+- ✅ **G8 — `jsx-a11y` strictness + CI.** (Strict rules added; nine findings resolved or justified inline.) `eslint-config-next` bundles `jsx-a11y` at
   `recommended`; make lint a blocking CI check (it may already be) and consider `strict`.
 
 ### Future (a real feature, not a fix)
 
-- **G9 — PWA / installable + offline.** No manifest, service worker, icons, or offline shell.
+- ✅ (installable) **G9 — PWA / installable + offline.** Manifest + icons shipped; offline shell still open. No manifest, service worker, icons, or offline shell.
   The doc's stack is Serwist + `app/manifest.ts` + 192/512/512-maskable icons + iOS
   `apple-touch-icon`/meta + a guided iOS "Add to Home Screen" sheet (no `beforeinstallprompt`
   on Safari). This is **Phase-sized**, best slotted alongside or after Phase 9 (it wants the

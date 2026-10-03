@@ -40,3 +40,8 @@ menu is shut.
 
 The "▾" glyph is `aria-hidden` so the disclosure's accessible name is just "More"
 (September 2026 review nit).
+
+**Why each link closes the menu itself (October 2026):** the close used to be one click
+handler on the panel `<div>`, which jsx-a11y's strict rules reject (a static element with a
+mouse handler and no keyboard twin). Each `Link` carries its own `onClick`; a keyboard activation
+of a link fires `click` too, so nothing is lost.

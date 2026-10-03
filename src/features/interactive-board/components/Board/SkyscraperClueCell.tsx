@@ -65,6 +65,9 @@ export const SkyscraperClueCell = memo(function SkyscraperClueCell({ side, index
   }
 
   return (
+    // Keyboard: the grid's handler reaches the clues via `C` and toggles with Enter/Space (D9);
+    // a per-clue key listener would duplicate it.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events
     <div
       role="gridcell"
       aria-label={describeSkyscraperClue(side, index, clue, status, done)}

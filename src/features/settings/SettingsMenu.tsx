@@ -73,7 +73,7 @@ export function SettingsMenu() {
       >
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg">Settings</h2>
-              <button type="button" onClick={close} aria-label="Close settings" className="text-ink-soft hover:text-ink text-lg leading-none min-w-6 min-h-6">
+              <button type="button" onClick={close} aria-label="Close settings" className="tap-target text-ink-soft hover:text-ink text-lg leading-none min-w-6 min-h-6">
                 ✕
               </button>
             </div>
@@ -127,7 +127,7 @@ function Choice({ active, onClick, children }: { active: boolean; onClick: () =>
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`px-2.5 py-1.5 rounded-lg text-sm border-2 border-ink transition-colors ${
+      className={`tap-target px-2.5 py-1.5 rounded-lg text-sm border-2 border-ink transition-colors ${
         active ? 'bg-butterscotch text-on-butterscotch' : 'bg-paper hover:bg-paper-2'
       }`}
     >

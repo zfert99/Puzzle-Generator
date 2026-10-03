@@ -161,7 +161,7 @@ export function Calculator() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="py-2 rounded-lg bg-paper border-2 border-ink hover:bg-paper-2 text-sm transition-colors"
+        className="tap-target py-2 rounded-lg bg-paper border-2 border-ink hover:bg-paper-2 text-sm transition-colors"
       >
         🧮
       </button>
@@ -181,7 +181,7 @@ export function Calculator() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close calculator"
-                className="text-ink-soft hover:text-ink text-lg leading-none"
+                className="tap-target text-ink-soft hover:text-ink text-lg leading-none"
               >
                 ✕
               </button>
