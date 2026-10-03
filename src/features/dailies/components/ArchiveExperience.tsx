@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useShallow } from 'zustand/react/shallow';
 import { useBoardStore } from '@/features/interactive-board/store/useBoardStore';
 import { useSavedGame } from '@/features/interactive-board/store/useSavedGame';
+import { useBoardSlot } from '@/features/interactive-board/store/saved-slots';
 import { Board } from '@/features/interactive-board/components/Board/Board';
 import { Numpad } from '@/features/interactive-board/components/Controls/Numpad';
 import { GameHeader } from '@/features/interactive-board/components/Header/GameHeader';
@@ -60,6 +61,9 @@ function formatUtcDate(isoDate: string): string {
  * `· practice` remains unconditionally true for everything it does start.
  */
 export default function ArchiveExperience() {
+  // Replays are daily-shaped and share the daily slot: a replay erases a parked daily (the
+  // warning below says so) but never a free-play game (October 2026, one slot per surface).
+  useBoardSlot('daily');
   const router = useRouter();
   const mounted = useHasMounted();
   const todayIso = toUtcDateString(new Date());
@@ -240,11 +244,10 @@ export default function ArchiveExperience() {
     void beginPlay();
   };
 
-  // "Keep playing" — a saved game always lives on another surface from here, so go to it.
+  // "Keep playing" — the parked game in this slot is a daily (or an older replay); /daily owns it.
   const keepPlaying = () => {
     setWarnOpen(false);
-    if (saved?.mode === 'daily') router.push('/daily');
-    else if (saved) router.push('/play');
+    if (saved) router.push('/daily');
   };
 
   if (!mounted) {
@@ -408,7 +411,7 @@ export default function ArchiveExperience() {
       <ConfirmModal
         open={warnOpen}
         title="Start a new puzzle?"
-        message="You have a saved puzzle in progress. Playing this archived puzzle will erase it — you can only save one puzzle at a time, and an archived replay is practice, so it will not be ranked."
+        message="You have a saved daily (or practice) board in progress. Playing this archived puzzle will erase it — the daily and archive share one saved slot; your free-play game is kept separately. A replay is practice, so it will not be ranked."
         confirmLabel="Play it"
         cancelLabel="Keep playing"
         onConfirm={confirmNew}

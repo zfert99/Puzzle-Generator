@@ -104,8 +104,9 @@ leak the other way.
 
 ## Persistence
 
-The store is wrapped in Zustand's `persist` middleware (key `sudoku-board`,
-localStorage) so a refresh resumes the in-progress game. `partialize` saves the game
+The store is wrapped in Zustand's `persist` middleware (localStorage, under one of two
+**slot keys** — see [Two saved-game slots](#two-saved-game-slots-october-2026)) so a refresh
+resumes the in-progress game. `partialize` saves the game
 data (grid, candidates, givens, solution, difficulty, status, timer, mistakes, …) but
 not the derived fields, which are rebuilt inside the persist `merge` step (below). `mode` is
 persisted too, so a refresh keeps a daily contained to `/daily`. The store `version` is
@@ -121,6 +122,43 @@ serialization and re-supplied by the store creator. `persist` sits
 *outside* `temporal` (October 2026 — see below); `useBoardStore.temporal` is still exposed.
 Because the persisted state only exists on the client, `PlayExperience` gates its
 first render on a mounted check to avoid an SSR/hydration mismatch.
+
+### Two saved-game slots (October 2026)
+
+**Why:** one key (`sudoku-board`) used to hold whichever game was started last, so starting a
+free-play game erased a parked daily and vice versa — the "starting a new puzzle will erase your
+saved one" warning fired *across* surfaces, and two tabs on different surfaces overwrote each
+other's save. Now a daily board and a free-play board park under different keys
+(`SLOT_KEYS = { play: 'sudoku-board:play', daily: 'sudoku-board:daily' }`). The store itself still
+holds **one** game — the slot of the surface that is active — which keeps the hot path (cell
+selectors, undo, persist writes) exactly as it was; only *which key* persist points at changes.
+
+- **`activateSlot(mode)`** makes a slot the live one: reset the store to `configuring`, point
+  persist at the slot key, rehydrate from it (synchronous for localStorage), clear undo history.
+  Idempotent; a no-op on the server. Each surface calls it on its first client render through
+  `useBoardSlot` (`saved-slots.ts`): `/play` → `play`, `/daily` and `/archive` → `daily` (a replay
+  is daily-shaped and shares the daily slot, as before).
+- **The reset write must not land in either slot.** Persist writes the whole state on every `set`,
+  so a plain reset would overwrite the slot it is still pointed at, and pointing at the target first
+  would overwrite the target before `rehydrate` could read it. The reset is aimed at a scratch key
+  (`sudoku-board:void`, deleted straight after), and only then is the target activated and
+  rehydrated. An empty target leaves the reset state in place — persist's rehydrate changes
+  nothing for a missing key.
+- **Undo history belongs to the game that leaves.** zundo's past states are cleared on a switch;
+  grid, timer and mistakes are preserved in the slot. This was the trade-off flagged when the idea
+  was first floated (July 2026) and it stands.
+- **Legacy migration** runs once at module import on the client: a game under the old single key
+  is moved into the slot its persisted `mode` names (never over a game already there), and the
+  old key is removed.
+- **The hub reads both slots from storage** (`readSavedSlot` / `useSavedSlots` in
+  `saved-slots.ts`), not from the store — the store only ever holds one.
+
+```text
+activateSlot(mode):
+  if mode is already active and persist is on its key: return
+  persist.name = VOID; set(reset fields + mode); remove VOID
+  activeSlot = mode; persist.name = SLOT_KEYS[mode]; temporal.clear(); persist.rehydrate()
+```
 
 ### Middleware order: persist outside (October 2026)
 
@@ -146,7 +184,7 @@ create(
       (set, get) => actions,
       { partialize, limit: 100, equality: reference-first },
     ),
-    { name: 'sudoku-board', version, partialize, merge },
+    { name: SLOT_KEYS.play, version, partialize, merge },   # swapped by activateSlot
   ),
 )
 ```

@@ -35,11 +35,13 @@ Phase 'select':
                failed  -> "Couldn't load today's boards. Retry" (role=alert)
                empty   -> "Today's boards aren't available right now — check back shortly."
                ready   -> sectioned pills (aria-pressed) + Play button
-  If a daily-shaped board is parked (saved.mode === 'daily'): a "Continue {difficulty} · M:SS"
+  useBoardSlot('daily') ran in the first client render: the store holds the DAILY slot only.
+  If a daily-shaped board is parked: a "Continue {difficulty} · M:SS"
     button (M:SS is the <SavedElapsed> leaf) → handleContinue (restore difficulty/date from the store, resume() if paused,
     phase 'playing'; no re-fetch). Captioned with the day it came from when that is not
     today, so the picker never implies a practice board counts for today.
-  On Play: if any game is parked (one slot), open the <ConfirmModal> warning first; on
+  On Play: if a daily-shaped board is parked (this slot — a free-play game is kept separately
+    and never at risk here), open the <ConfirmModal> warning first; on
     confirm — or when nothing is parked — fetch the daily, startNewGame(puzzle, 'daily', date),
     phase 'playing'.
 

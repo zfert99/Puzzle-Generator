@@ -179,6 +179,44 @@ Hosted `/code-review` not run.
 
 ---
 
+## 2026-10-03 — Two-slot save: a daily and a free-play game no longer erase each other
+
+Branch `feat/two-slot-save` on the merged #154. Diff: `useBoardStore.ts` gains `SLOT_KEYS`,
+`activateSlot` / `getActiveSlot` and a one-shot legacy-key migration; new `saved-slots.ts`
+(`readSavedSlot`, `useSavedSlots`, `useBoardSlot`); `ContinueBanner` shows one bar per parked
+slot from storage; `PlayExperience` / `DailyExperience` / `ArchiveExperience` activate their slot
+on the first client render and drop the cross-surface "Keep playing" navigation; ConfirmModal
+copy; 13 new tests; 11 `.md`s. **~430 LOC of source (+), 67 (−).**
+
+| Check | Result |
+|---|---|
+| `npm run lint` (exit code) · `npx tsc --noEmit` · `npm run build` | 0 · clean · exit 0 |
+| `npx vitest run` | **99 files / 1003 tests**; no Known-flaky entry fired |
+| Prod build in the browser (`puzzles-prod`, 3100) | start free play → `/daily` shows no Continue and the play slot is untouched → seeded daily slot → hub shows **two** banners (daily first) → `/play` Continue resumes its own game with 81 cells while the daily slot stays `playing` → legacy `sudoku-board` key with `mode: 'daily'` migrates into `sudoku-board:daily` on load and `/daily?resume=1` resumes it |
+| markdownlint (12 docs) | clean |
+
+### Findings
+
+- **Persist writes the whole state on every `set`, so a slot switch cannot simply reset then
+  repoint.** Reset first and the old slot is overwritten with `configuring`; repoint first and
+  the target is overwritten before `rehydrate` reads it. The reset write is aimed at a scratch
+  key that is deleted straight after; only then is the target activated and rehydrated. Tested
+  explicitly ("parks the free-play game… and brings it back", `localStorage['sudoku-board:void']`
+  is null afterwards).
+- **A hook that must run before the first mounted read belongs in a `useState` initializer, not
+  an effect.** `useBoardSlot` activates the slot during the first client render, before the
+  `mounted` flag flips, so `useSavedGame` on `/play` can never observe a parked daily — the test
+  reads the store *during* render to prove it.
+- **The hub's banner test no longer mocks a module.** It used to replace `useSavedGame`; the
+  banner now reads localStorage, which is the real boundary, so the test seeds the keys the way
+  `persist` writes them (AGENTS.md Section 4 mocking rule, and one less vacuous mock).
+- The old "two tabs overwrite each other" window (QA B5) is closed across surfaces; two tabs on
+  the same surface still share that surface's slot by design.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — ALS-XZ on cell bitsets with a de-duplicated ALS list (item 4f, the last engine item)
 
 Branch `perf/als-xz-bitsets` on the merged 4e. Diff: `human-solver.ts` `enumerateALS` keeps the

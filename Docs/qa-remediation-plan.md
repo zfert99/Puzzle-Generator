@@ -313,8 +313,9 @@ decisions in it were paid for once already:
 `selectedDate === todayIso` branch, it never calls `/api/solve` or `/api/daily/start`, and it
 hardcodes the `· practice` label. The calendar *defaults* `selectedDate` to today and today is
 selectable, so the most natural path — open Archive, press Play — silently burns today's board for
-no rank. It also calls `startNewGame(puzzle, 'daily', date)`, which overwrites the single saved
-slot, so it can erase an in-progress **ranked** attempt at the same board.
+no rank. It also calls `startNewGame(puzzle, 'daily', date)`, which overwrites the saved slot (then
+the only one; since October 2026 the daily slot, which replays still share), so it can erase an
+in-progress **ranked** attempt at the same board.
 
 **The resolution keeps rankability in one place.** `DailyExperience` already owns it correctly —
 posts `/api/daily/start` on begin, submits only when `session && dailyDate === todayIso` — so the

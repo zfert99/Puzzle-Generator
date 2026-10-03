@@ -6,9 +6,13 @@ picker.
 
 ## Why a single hook
 
-The board store persists exactly ONE game to localStorage (shared between `/play` and
-`/daily`). Save & continue and the "starting a new game erases your saved puzzle" warning both
-key off the same question, so it lives in one hook rather than being re-derived three times.
+The board store holds exactly ONE game — since October 2026 the one in the **active slot**
+(`/play` owns the free-play slot, `/daily` and `/archive` the daily slot; see
+`useBoardStore.md` → "Two saved-game slots"). Save & continue and the "starting a new game erases
+your saved puzzle" warning both key off the same question, so it lives in one hook rather than
+being re-derived on each surface. Because every surface activates its own slot before its first
+mounted read, this hook can only ever report that surface's game — `/play` never sees a parked
+daily. The hub needs *both* slots and reads them from storage instead (`saved-slots.ts`).
 
 - **Resumable = `status` is `playing` or `paused`.** A `solved` game has nothing to continue;
   a `configuring` one was abandoned back to the menu.

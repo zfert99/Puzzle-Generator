@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { KAKURO_FIXTURE_7X7_CHAINS } from '@/features/engine/kakuro/kakuro-fixtures';
 import { generateKillerSudoku } from '@/features/engine/killer/killer-sudoku';
 import { SKYSCRAPERS_FIXTURE_5X5 } from '@/features/engine/skyscrapers/skyscrapers-fixtures';
-import { useBoardStore } from './useBoardStore';
+import { SLOT_KEYS, useBoardStore } from './useBoardStore';
 
 /**
  * The derived fields (`peers`, `cellToCage`, `blocked`, `cellToRuns`, `clues`) are NOT persisted;
@@ -16,7 +16,9 @@ import { useBoardStore } from './useBoardStore';
  * store test starts games through `startNewGame` and could never notice.
  */
 
-const STORAGE_KEY = 'sudoku-board';
+// The store starts on the free-play slot; these games are started without a mode, so that's
+// where persist writes them.
+const STORAGE_KEY = SLOT_KEYS.play;
 
 /**
  * Clear the in-memory store so nothing survives except what storage holds. `persist` writes on
