@@ -22,3 +22,9 @@ V8 cannot cache shapes or eliminate the work (AGENTS.md §5).
   few fills stall to the cap), not a regression — compare the maxima, and re-run before
   concluding. Averages below the E5 gate (easy/medium/hard 9×9 < 500 ms) are the target.
 - The 6×6 and 7×7 rows are the stable regression signal: tens to low hundreds of ms.
+
+## Seeded draws (October 2026)
+
+**Why:** draw *i* of a cell uses `mulberry32(base + i)` (`bench-utils.ts`, `SEED_BASE.kakuro`
+plus 100 per cell), so the rows compare across commits; the Metric cell carries
+`p50 · p90 · max (n, seeded)` instead of the bare max.

@@ -31,3 +31,10 @@ npx tsx src/features/engine/benchmarks/benchmark-calc.ts
 Appends one row per tier to `benchmark-logs.md` (`| timestamp | commit | label | avg ms | N/A |`)
 via the shared [`benchmark-log.ts`](benchmark-log.md) writer. No fixed pass/fail target yet — this is the baseline to regression-guard against; watch for large
 jumps versus the previous commit's rows.
+
+## Seeded draws (October 2026)
+
+**Why:** draw *i* of a cell uses `mulberry32(base + i)` (`bench-utils.ts`, `SEED_BASE.calc`
+plus 100 per cell), so the rows compare across commits, and the Metric cell carries
+`p50 · p90 · max (n, seeded)`. The Keisan hidden-pair/single rewrite in the pass's backlog is to
+be proved against the 9×9 Expert and Extreme rows.

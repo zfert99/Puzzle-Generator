@@ -81,10 +81,21 @@ only.
 
 ## Known gaps
 
-- **Unseeded pools.** Every pool is drawn with `Math.random`, so two runs time different puzzles.
+- **Unseeded pools.** Every pool is drawn with `Math.random`, so two runs time different puzzles. **Done October 2026 — see "Seeded" below.**
   The Extreme row in particular is a 10-puzzle lottery — it has swung across a ~4–26 ms band with
   no code change. Recommended (not done yet, so the logged history stays comparable until it is
   done deliberately): seed each pool with `mulberry32` from a fixed seed, grow the Extreme pool to
   ~50 puzzles, and log the **median and p90** per tier alongside the mean.
 - The **Expected Results** numbers above predate the bitmask candidate store and the October 2026
   pool change; `benchmark-logs.md` is the source of truth for current values.
+
+## Seeded pools, a warm-up, and the distribution (October 2026)
+
+**Why:** each tier's pool is now drawn from `mulberry32(base + i)` (`bench-utils.ts`,
+`SEED_BASE.humanSolver`), so puzzle *i* of a tier is the same puzzle on every commit. The
+Extreme pool was 10 unseeded puzzles and its row moved between 4 and 26 ms with no code change —
+the project memory had to carry "the Extreme row is noise". It is 50 puzzles now, and a move in
+the row is a move in the solver (or, the one honest exception, in which puzzle a seed yields when
+a generator changes — the Expert gate did this to the Advanced row). One untimed pass over each
+pool precedes the timing so the Basic row no longer pays the solver's JIT compilation. The
+Metric cell carries `solves/sec · p50 · p90 · max (n, seeded)`; the Avg column is unchanged.

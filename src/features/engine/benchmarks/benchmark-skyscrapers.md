@@ -38,3 +38,9 @@ time out on.
   times different puzzles. Recommended (not done yet, so the history in `benchmark-logs.md` stays
   comparable until it is changed deliberately): seed each cell with `mulberry32`, raise the rare
   cells to ~50 samples, and log the **median and p90** beside the mean and max.
+
+## Seeded draws (October 2026)
+
+**Why:** draw *i* of a cell uses `mulberry32(base + i)` (`bench-utils.ts`,
+`SEED_BASE.skyscrapers` plus 100 per cell), so the rows compare across commits; the Metric cell
+carries `p50 · p90 · max (n, seeded)` instead of the bare max.

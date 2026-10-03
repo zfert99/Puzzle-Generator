@@ -31,3 +31,11 @@ Appends one row per tier to `benchmark-logs.md` (`| timestamp | commit | label |
 via the shared [`benchmark-log.ts`](benchmark-log.md) writer.
 No fixed pass/fail target yet — this is the baseline to regression-guard against; watch for large
 jumps versus the previous commit's rows.
+
+## Seeded draws (October 2026)
+
+**Why:** draw *i* of a cell uses `mulberry32(base + i)` (`bench-utils.ts`, `SEED_BASE.killer`
+plus 100 per cell), so the rows compare across commits. Killer extreme's per-puzzle time spans
+4–30 s, which is exactly why an unseeded average of five said little; the Metric cell now carries
+`p50 · p90 · max (n, seeded)`. The AIC and ALS-XZ rewrites in the pass's backlog are to be proved
+against this row.

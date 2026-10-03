@@ -1,94 +1,56 @@
 import { HumanSolver } from '../human-solver';
-import { execSync } from 'child_process';
+import { generateSudoku, type Difficulty } from '../sudoku';
 import { appendBenchmarkRows } from './benchmark-log';
-
-import { generateSudoku, Difficulty } from '../sudoku';
+import { SEED_BASE, currentCommit, distribution, logRow, mulberry32, stats, warmUp } from './bench-utils';
 
 /**
- * We dynamically generate a pool of unique puzzles BEFORE the timer starts.
- * This prevents the V8 JavaScript engine from using Just-In-Time (JIT) compilation
- * to cache object shapes or perform dead-code elimination on a single static grid,
- * which would result in deceptively fast microbenchmark times.
- *
- * Crucially, each tier is benchmarked against a puzzle pool of a REPRESENTATIVE
- * difficulty. A prior version measured every tier against expert-only puzzles,
- * which made the "extreme" tier meaningless: expert puzzles are fully solvable by
- * advanced strategies, so the expensive extreme strategies (W-Wing, ALS-XZ, AIC)
- * were never actually invoked and the tier reported deceptively fast times. Giving
- * each tier puzzles that genuinely require that tier's strategies is what makes the
- * per-tier thresholds (Basic < 0.3ms, Extreme < 10ms) meaningful.
+ * HumanSolver throughput per tier. Each tier solves a POOL of distinct puzzles round-robin —
+ * never one grid, which V8 would specialise on (AGENTS.md §5) — and the pool is SEEDED
+ * (October 2026): puzzle i of a tier is `generateSudoku(difficulty, 9, mulberry32(base + i))`,
+ * the same puzzle on every commit. The Extreme pool was 10 unseeded puzzles and its row moved
+ * between 4 and 26 ms with no code change; it is 50 now, and comparable across runs. A row still
+ * moves when a *generator* changes which puzzle a seed yields (the October 2026 Expert gate did).
  */
-function generatePuzzlePool(size: number, difficulty: Difficulty) {
-  console.log(`Pre-generating pool of ${size} unique ${difficulty} puzzles to thwart V8 JIT caching...`);
-  const pool = [];
-  for (let i = 0; i < size; i++) {
-    pool.push(generateSudoku(difficulty).grid);
-  }
+function generatePuzzlePool(size: number, difficulty: Difficulty, base: number): number[][][] {
+  console.log(`Pre-generating a seeded pool of ${size} ${difficulty} puzzles...`);
+  const pool: number[][][] = [];
+  for (let i = 0; i < size; i++) pool.push(generateSudoku(difficulty, 9, mulberry32(base + i)).grid);
   return pool;
 }
 
-/**
- * Benchmark script specifically for the HumanSolver engine across difficulty tiers.
- * 
- * This isolates the logical deduction engine and tests raw solving speed for each tier:
- * - Basic Tier (Easy / Medium / Hard)
- * - Advanced Tier (Expert)
- * - Extreme Tier (Extreme / Impossible)
- */
-async function main() {
+function main(): void {
   console.log('Running HumanSolver benchmarks across difficulty tiers...\n');
 
   const benchmarks = [
-    { name: 'HumanSolver Basic', maxTier: 'basic' as const, difficulty: 'hard' as const, poolSize: 50, iterations: 5000 },
-    { name: 'HumanSolver Advanced', maxTier: 'advanced' as const, difficulty: 'expert' as const, poolSize: 50, iterations: 5000 },
-    { name: 'HumanSolver Extreme', maxTier: 'extreme' as const, difficulty: 'extreme' as const, poolSize: 10, iterations: 1000 }
+    { name: 'HumanSolver Basic', maxTier: 'basic' as const, difficulty: 'hard' as const, poolSize: 50, iterations: 5000, base: SEED_BASE.humanSolver },
+    { name: 'HumanSolver Advanced', maxTier: 'advanced' as const, difficulty: 'expert' as const, poolSize: 50, iterations: 5000, base: SEED_BASE.humanSolver + 100 },
+    { name: 'HumanSolver Extreme', maxTier: 'extreme' as const, difficulty: 'extreme' as const, poolSize: 50, iterations: 1000, base: SEED_BASE.humanSolver + 200 },
   ];
 
-  const logEntries: string[] = [];
-  let commit = 'unknown';
-  try {
-    commit = execSync('git rev-parse --short HEAD').toString().trim();
-  } catch {
-    // Ignore git error
-  }
+  const rows: string[] = [];
+  const commit = currentCommit();
   const timestamp = new Date().toISOString();
 
-  for (const { name, maxTier, difficulty, poolSize, iterations } of benchmarks) {
-    // Each tier gets a fresh pool of puzzles at a difficulty that genuinely
-    // exercises that tier's strategies (see generatePuzzlePool docstring).
-    const puzzlePool = generatePuzzlePool(poolSize, difficulty);
+  for (const { name, maxTier, difficulty, poolSize, iterations, base } of benchmarks) {
+    const pool = generatePuzzlePool(poolSize, difficulty, base);
+    // Untimed pass over the pool first: the first tier used to pay the solver's JIT compilation.
+    warmUp(() => pool.forEach((grid) => new HumanSolver(grid).solve({ maxTier })), 1);
 
     console.log(`Running ${name} (${maxTier} tier) for ${iterations} iterations...`);
-
-    const start = performance.now();
-
+    const perSolve: number[] = [];
     for (let i = 0; i < iterations; i++) {
-      // Pick a puzzle from the pool sequentially to ensure V8 processes different data
-      const grid = puzzlePool[i % puzzlePool.length];
-      const solver = new HumanSolver(grid);
-      solver.solve({ maxTier });
+      const grid = pool[i % pool.length];
+      const start = performance.now();
+      new HumanSolver(grid).solve({ maxTier });
+      perSolve.push(performance.now() - start);
     }
-
-    const end = performance.now();
-    const timeMs = end - start;
-    const avg = (timeMs / iterations).toFixed(2);
-    const sps = Math.round(1000 / (timeMs / iterations));
-
-    console.log(`Total time: ${timeMs.toFixed(2)} ms`);
-    console.log(`Average time per solve: ${avg} ms`);
-    console.log(`Solves per second: ${sps}\n`);
-
-    logEntries.push(`| ${timestamp} | \`${commit}\` | ${name} (${iterations}x) | ${avg} ms | ${sps} solves/sec |\n`);
+    const s = stats(perSolve);
+    const sps = Math.round(1000 / s.avg);
+    console.log(`Average ${s.avg.toFixed(2)} ms · p50 ${s.median.toFixed(2)} · p90 ${s.p90.toFixed(2)} · ${sps} solves/sec\n`);
+    rows.push(logRow(timestamp, commit, `${name} (${iterations}x)`, s.avg, `${sps} solves/sec · ${distribution(s)}`));
   }
 
-  // --- Auto-Logging ---
-  try {
-    const logPath = appendBenchmarkRows(logEntries);
-    console.log(`Logged all tier results to ${logPath}`);
-  } catch (err) {
-    console.error('Failed to log benchmark:', err);
-  }
+  console.log(`Logged all tier results to ${appendBenchmarkRows(rows)}`);
 }
 
-// Execute the benchmark
 main();

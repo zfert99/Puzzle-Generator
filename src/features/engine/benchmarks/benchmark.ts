@@ -1,79 +1,35 @@
 import { generateSudoku } from '../sudoku';
-import { execSync } from 'child_process';
 import { appendBenchmarkRows } from './benchmark-log';
+import { SEED_BASE, currentCommit, distribution, logRow, mulberry32, timeDraws, warmUp } from './bench-utils';
 
 /**
- * Main benchmark script for the overall Sudoku Generator.
- * 
- * Unlike the human-solver benchmark (which only tests the solving logic),
- * this script tests the ENTIRE generation pipeline for Expert puzzles.
- * 
- * The pipeline includes:
- * 1. Generating a random, valid full 9x9 grid.
- * 2. Digging holes one-by-one.
- * 3. Verifying the puzzle after EVERY single hole is dug by running it
- *    through the entire HumanSolver logic engine.
- * 
- * Because it verifies thousands of states per generated puzzle, this is the
- * heaviest operation in the entire codebase.
+ * Classic generation per tier — the pipeline rows. Seeded since October 2026: draw i of a tier is
+ * `generateSudoku(tier, 9, mulberry32(base + i))`, so the same puzzles are timed on every commit
+ * and a row moves only when the code (or the generator's own output for a seed) does. Reports
+ * the median and p90 beside the average: five Extremes are dominated by the one slow draw.
  */
-async function main() {
-  console.log('Generating 10 Expert puzzles...');
-  const times: number[] = [];
-  
-  // We generate 10 expert puzzles to get a reliable average time.
-  // We don't generate more because this process is intentionally CPU-intensive.
-  for (let i = 0; i < 10; i++) {
-    const start = Date.now();
-    
-    // Generate a single expert puzzle. The `generateSudoku` function is synchronous,
-    // so it will block the event loop until the puzzle is completely finished.
-    generateSudoku('expert');
-    
-    const end = Date.now();
-    const duration = end - start; // Time taken in milliseconds
-    
-    times.push(duration);
-    console.log(`Puzzle ${i + 1}: ${duration}ms`);
+function main(): void {
+  const rows: string[] = [];
+  const commit = currentCommit();
+  const timestamp = new Date().toISOString();
+
+  warmUp(() => generateSudoku('medium', 9, mulberry32(SEED_BASE.classic - 1)));
+
+  const tiers = [
+    { label: 'Pipeline Gen (10x Medium)', difficulty: 'medium' as const, count: 10, base: SEED_BASE.classic },
+    { label: 'Pipeline Gen (10x Expert)', difficulty: 'expert' as const, count: 10, base: SEED_BASE.classic + 100 },
+    { label: 'Pipeline Gen (5x Extreme)', difficulty: 'extreme' as const, count: 5, base: SEED_BASE.classic + 200 },
+  ];
+  for (const { label, difficulty, count, base } of tiers) {
+    console.log(`Generating ${count} ${difficulty} puzzles...`);
+    const s = timeDraws(count, (i) => {
+      generateSudoku(difficulty, 9, mulberry32(base + i));
+    });
+    console.log(`  avg ${s.avg.toFixed(2)} ms · ${distribution(s)}`);
+    rows.push(logRow(timestamp, commit, label, s.avg, distribution(s)));
   }
 
-  // Calculate total and average times across all 10 generations
-  const total = times.reduce((a, b) => a + b, 0);
-  const average = total / times.length;
-
-  console.log(`\nTotal time: ${total}ms`);
-  console.log(`Average time per Expert puzzle: ${average.toFixed(2)}ms`);
-
-  console.log('\nGenerating 5 Extreme puzzles...');
-  const extremeTimes: number[] = [];
-  for (let i = 0; i < 5; i++) {
-    const start = Date.now();
-    generateSudoku('extreme');
-    const end = Date.now();
-    const duration = end - start;
-    extremeTimes.push(duration);
-    console.log(`Extreme Puzzle ${i + 1}: ${duration}ms`);
-  }
-
-  const extremeTotal = extremeTimes.reduce((a, b) => a + b, 0);
-  const extremeAverage = extremeTotal / extremeTimes.length;
-
-  console.log(`\nTotal Extreme time: ${extremeTotal}ms`);
-  console.log(`Average time per Extreme puzzle: ${extremeAverage.toFixed(2)}ms`);
-
-  // --- Auto-Logging ---
-  try {
-    const commit = execSync('git rev-parse --short HEAD').toString().trim();
-    const timestamp = new Date().toISOString();
-    const logEntry1 = `| ${timestamp} | \`${commit}\` | Pipeline Gen (10x Expert) | ${average.toFixed(2)} ms | N/A |\n`;
-    const logEntry2 = `| ${timestamp} | \`${commit}\` | Pipeline Gen (5x Extreme) | ${extremeAverage.toFixed(2)} ms | N/A |\n`;
-
-    const logPath = appendBenchmarkRows([logEntry1, logEntry2]);
-    console.log(`Logged results to ${logPath}`);
-  } catch (err) {
-    console.error('Failed to log benchmark:', err);
-  }
+  console.log(`Logged results to ${appendBenchmarkRows(rows)}`);
 }
 
-// Execute the benchmark
 main();
