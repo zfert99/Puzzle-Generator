@@ -85,7 +85,9 @@ are from the first run.)
 
 ## Open questions
 
-- Should classic 9×9 **medium** carry a "not naked-singles-only" gate? Half of today's medium
-  boards are singles-only; the daily's `medium` key would change meaning.
+- ~~Should classic 9×9 **medium** carry a "not naked-singles-only" gate?~~ **Decided 2026-10-03:
+  yes, 9×9 only** (`applyMediumDigger`). Re-measured after the gate (12 per cell): easy
+  T0×10 T1×2 · **medium T1×12** · hard T0×1 T1×7 T3×4 · expert T2×12 · extreme T3×4; medium
+  generation ~2 ms. The daily's `medium` Sudoku is a slightly harder puzzle from that day on.
 - Should the HumanSolver gain **Claiming** (line → box)? Without it an occasional 41-clue easy is
   "unsolvable" to the solver, and Expert necessity is judged against an incomplete basic tier.

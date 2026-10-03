@@ -176,8 +176,13 @@ full table is in `Docs/research/difficulty-separation-findings.md`; the reading:
   naked-singles-only** and hard always needs a basic technique. Expert (advanced strategies) and
   Extreme (extreme strategies) are now genuinely gated (E2). The one soft spot: a 9×9 "medium"
   that differs from easy only in clue count. A cheap gate (reject a medium/hard that naked singles
-  alone finish — the report's own check) is the recommendation; **not applied**, because it
-  changes what the daily's `medium` boards are and is the owner's call.
+  alone finish — the report's own check) was the recommendation. **Applied 2026-10-03 at the
+  owner's decision (9×9 Medium only):** `applyMediumDigger` re-digs in a fresh order until naked
+  singles alone cannot finish the grid (bounded, 30 tries); the report then read 9×9 medium
+  **T1×12** (was T0×6 T1×6) at ~2 ms per puzzle. 4×4 and 6×6 stay on the plain quota dig, where
+  nearly every unique grid is singles-only and clue count is the honest lever. A 9×9 Hard is
+  still an ungated quota dig and read singles-only once in twelve — the same gate would fit it
+  if that ever matters.
 - The report's Classic T3 bucket also surfaces the HumanSolver's missing Claiming technique: an
   occasional 41-clue "easy" cannot be finished by the solver at any tier.
 
@@ -219,14 +224,19 @@ Hosted `/code-review` was **not** run (user-triggered, billed).
 
 Grouped by the kind of follow-up each needs.
 
-### Needs one measurement before anything else
+### Measured after landing (2026-10-03) — both closed
 
-- **S8 — client IP behind the hub rewrite.** Log `x-forwarded-for` / `x-real-ip` once in
-  production. If both limiters share one bucket, key on `x-vercel-forwarded-for` and set
-  better-auth `advanced.ipAddress.ipAddressHeaders`.
-- **Speed Insights attribution under multi-zone** (§3). Check the Vercel dashboard of *both*
-  projects; if the data lands on the hub, `@vercel/speed-insights/next` takes a `scriptSrc`/
-  `endpoint` to point at this project.
+- **S8 — client IP behind the hub rewrite: per-IP, as hoped.** Thirty `/api/puzzle` requests
+  through `biscuitlab.net` from one machine passed and the 31st got `429` with `Retry-After: 54`
+  (the limiter is live on Upstash and the real-TTL fix works); a request from a second network
+  (the owner's phone on mobile data) inside that window got a puzzle. The hub's rewrite
+  preserves the client address in `x-forwarded-for`; no re-keying needed. (The origin itself sits
+  behind deployment protection — every public request arrives through the hub.)
+- **Speed Insights attribution: the hub project.** `biscuitlab.net/_vercel/speed-insights/script.js`
+  is served by the hub (200), so vitals from every `/puzzles/*` page post to the hub and appear in
+  the **Biscuit-Website** project's Speed Insights under `/puzzles/…` routes — not in this
+  project's dashboard. Decision: leave it; read the data there rather than cross-posting vitals
+  to a protected origin.
 
 ### Engine performance rewrites (each proven by a named benchmark)
 

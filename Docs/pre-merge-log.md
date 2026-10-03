@@ -92,6 +92,28 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — Classic 9×9 Medium technique gate + the two post-landing measurements
+
+Branch `feat/classic-medium-technique-gate` on `591b70e`. Diff: `grid-utils.ts`
+(`solvableBySinglesAlone`), `diggers.ts` (`applyMediumDigger`, 30 bounded re-digs), `sudoku.ts`
+(the 9×9 Medium branch), the separation report sharing the engine's check, three seeded tests,
+mirrored docs; the pass's record, research findings and roadmap updated with the owner's decision
+and both production measurements (per-IP limiter buckets through the hub; Speed Insights data on
+the hub project). **~60 LOC of source.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 985 tests** (3 new); no Known-flaky entry fired |
+| `benchmark.ts` (core digger change) | Expert 109 ms avg, Extreme 49–225 ms — unchanged band; Medium ~2 ms per puzzle in the separation report (was ~1 ms) |
+| `difficulty-separation.ts 12 classic` | 9×9 medium **T1×12** (was T0×6 T1×6); easy/hard/expert/extreme as before |
+| markdownlint | clean on every doc touched |
+
+Findings: none in review. Seeded Medium output changed (noted in `diggers.md`). The hosted
+`/code-review` has not been run.
+
+---
+
 ## 2026-10-02 — Site-wide pass, slice 4 of 4: board + store (review, clock, undo persistence)
 
 Branch `fix/board-store-review-clock-undo` on `a4bf567` (slice 3 merged as #142). Files:

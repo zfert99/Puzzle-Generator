@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { countSolutions, digExhaustively } from './diggers';
-import { copyGrid, createEmptyGrid, fillGrid, shuffle } from './grid-utils';
+import { copyGrid, createEmptyGrid, fillGrid, shuffle, solvableBySinglesAlone } from './grid-utils';
 import { HumanSolver } from './human-solver';
 import { generateSudoku, getGridConfig, isSudokuBudgetError, type GridConfig } from './sudoku';
 
@@ -118,5 +118,31 @@ describe('timeBudgetMs', () => {
 
   it('is ignored by the quota diggers, which cannot run long', () => {
     expect(generateSudoku('easy', 9, mulberry32(3), { timeBudgetMs: 0 }).grid).toHaveLength(9);
+  });
+});
+
+describe('applyMediumDigger — the 9×9 Medium technique gate (October 2026)', () => {
+  it('a 9×9 Medium is never finishable by naked singles alone, and stays unique at 31 clues', () => {
+    for (const seed of [11, 23, 37, 41, 59, 67, 71, 83]) {
+      const puzzle = generateSudoku('medium', 9, mulberry32(seed));
+      const clues = puzzle.grid.flat().filter((v) => v !== 0).length;
+      expect(clues, `seed ${seed}`).toBe(31);
+      expect(solvableBySinglesAlone(puzzle.grid, getGridConfig(9)), `seed ${seed} is singles-only`).toBe(false);
+      expect(countSolutions(copyGrid(puzzle.grid), getGridConfig(9)), `seed ${seed}`).toBe(1);
+      // Still a Medium, not a Hard: the basic tier (hidden singles, pairs, pointing) finishes it.
+      expect(new HumanSolver(puzzle.grid).solve({ maxTier: 'basic' }).solved, `seed ${seed}`).toBe(true);
+    }
+  });
+
+  it('is deterministic for a seed', () => {
+    const a = generateSudoku('medium', 9, mulberry32(5));
+    const b = generateSudoku('medium', 9, mulberry32(5));
+    expect(a.grid).toEqual(b.grid);
+  });
+
+  it('leaves the small sizes on the plain quota dig (singles-only boards remain valid there)', () => {
+    const puzzle = generateSudoku('medium', 4, mulberry32(3));
+    expect(puzzle.grid.flat().filter((v) => v !== 0).length).toBe(6);
+    expect(countSolutions(copyGrid(puzzle.grid), getGridConfig(4))).toBe(1);
   });
 });

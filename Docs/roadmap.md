@@ -814,9 +814,10 @@ and a generation time budget on every `/api/generate` variant.
 §5): the AIC numeric-graph rewrite, ALS-XZ bitsets, Keisan hidden-pair masks and Killer static
 geometry (engine perf); seeded benchmark pools with median/p90; native `<dialog>` for the five
 hand-rolled modals; G5–G9 of the a11y audit; an `opengraph-image`; a `lower(username)` unique
-index + `me/attempts` pagination; the client-IP-behind-the-hub check for both rate limiters;
-Speed Insights attribution under multi-zone; the two-slot save (the single slot can still be
-overwritten across two tabs, now only while both are visible).
+index + `me/attempts` pagination; the two-slot save (the single slot can still be overwritten
+across two tabs, now only while both are visible). Measured and closed 2026-10-03: rate-limit
+buckets are per-IP through the hub, and Speed Insights data for `/puzzles/*` lives on the hub
+project's dashboard (doc §5). The classic 9×9 Medium technique gate landed the same day.
 
 ### Hint agent — MCP server + eval harness over `HumanSolver` ✅ Done (September 2026)
 

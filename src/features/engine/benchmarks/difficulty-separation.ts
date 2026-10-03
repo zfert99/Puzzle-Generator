@@ -1,6 +1,7 @@
 import { generateSudoku, type Difficulty, type GridSize } from '../sudoku';
 import { HumanSolver } from '../human-solver';
 import { getGridConfig } from '../sudoku';
+import { solvableBySinglesAlone } from '../grid-utils';
 import { generateKillerSudoku, type KillerDifficulty } from '../killer/killer-sudoku';
 import { KillerLogicalSolver } from '../killer/killer-logical-solver';
 import { scoreKillerSolve } from '../killer/killer-score';
@@ -71,45 +72,11 @@ function summarize(samples: Sample[]): string {
   return `p10 ${pct(scores, 10).toFixed(0)} · p50 ${pct(scores, 50).toFixed(0)} · p90 ${pct(scores, 90).toFixed(0)}${extra} | ${tierText}`; // two cells
 }
 
-/** Fill cells that have exactly one candidate, repeatedly. True if that alone finishes the grid. */
-function nakedSinglesOnly(grid: number[][], size: GridSize): boolean {
-  const cfg = getGridConfig(size);
-  const g = grid.map((row) => [...row]);
-  const candidates = (r: number, c: number): number[] => {
-    const used = new Set<number>();
-    for (let i = 0; i < cfg.size; i++) {
-      used.add(g[r][i]);
-      used.add(g[i][c]);
-    }
-    const br = Math.floor(r / cfg.boxHeight) * cfg.boxHeight;
-    const bc = Math.floor(c / cfg.boxWidth) * cfg.boxWidth;
-    for (let rr = br; rr < br + cfg.boxHeight; rr++) for (let cc = bc; cc < bc + cfg.boxWidth; cc++) used.add(g[rr][cc]);
-    const out: number[] = [];
-    for (let d = 1; d <= cfg.maxNum; d++) if (!used.has(d)) out.push(d);
-    return out;
-  };
-  let progress = true;
-  while (progress) {
-    progress = false;
-    for (let r = 0; r < cfg.size; r++) {
-      for (let c = 0; c < cfg.size; c++) {
-        if (g[r][c] !== 0) continue;
-        const cands = candidates(r, c);
-        if (cands.length === 1) {
-          g[r][c] = cands[0];
-          progress = true;
-        }
-      }
-    }
-  }
-  return g.every((row) => row.every((v) => v !== 0));
-}
-
 function classicSample(difficulty: Difficulty, size: GridSize): Sample {
   const p = generateSudoku(difficulty, size);
   const clues = p.grid.flat().filter((v) => v !== 0).length;
   let tier: number;
-  if (nakedSinglesOnly(p.grid, size)) tier = 0;
+  if (solvableBySinglesAlone(p.grid, getGridConfig(size))) tier = 0;
   else if (new HumanSolver(p.grid).solve({ maxTier: 'basic' }).solved) tier = 1;
   else if (new HumanSolver(p.grid).solve({ maxTier: 'advanced' }).solved) tier = 2;
   else tier = 3;

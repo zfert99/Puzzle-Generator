@@ -1,5 +1,5 @@
 import { createEmptyGrid, fillGrid, copyGrid } from './grid-utils';
-import { applyExtremeDigger, applyExhaustiveDigger, applyQuotaDigger } from './diggers';
+import { applyExtremeDigger, applyExhaustiveDigger, applyQuotaDigger, applyMediumDigger } from './diggers';
 
 export { SUDOKU_BUDGET_ERROR, isSudokuBudgetError } from './diggers';
 
@@ -130,6 +130,10 @@ export function generateSudoku(
     // Expert puzzles use logical deduction to guarantee they require advanced strategies
     // Only supported on 9x9 grids
     applyExhaustiveDigger(grid, config, rng, deadline);
+  } else if (difficulty === 'medium' && gridSize === 9) {
+    // Medium is the quota dig plus a gate: it must not be finishable by naked singles alone
+    // (half of them were, which made Medium an Easy with fewer clues — October 2026).
+    applyMediumDigger(grid, solution, config, rng);
   } else {
     // Easier puzzles (and all mini puzzles) remove a set number of clues
     // while maintaining a unique solution

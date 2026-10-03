@@ -1,6 +1,6 @@
 import { HumanSolver, canHumanSolveExpert, canHumanSolveExtreme } from './human-solver';
 import type { GridConfig, Difficulty, GridSize } from './sudoku';
-import { copyGrid, createEmptyGrid, fillGrid, shuffle, popcount } from './grid-utils';
+import { copyGrid, createEmptyGrid, fillGrid, shuffle, popcount, solvableBySinglesAlone } from './grid-utils';
 
 /**
  * Counts how many valid solutions exist for a given partially-filled grid.
@@ -260,6 +260,31 @@ export function applyQuotaDigger(grid: number[][], difficulty: Difficulty, confi
       // Decrement our remaining quota and continue.
       cluesToRemove--;
     }
+  }
+}
+
+/** How many fresh dig orders a 9×9 Medium gets to stop being singles-only before the last one is kept. */
+export const MEDIUM_MAX_RETRIES = 30;
+
+/**
+ * Medium Digger (9×9 only): the quota digger plus one technique gate — the result must NOT be
+ * finishable by naked singles alone.
+ *
+ * Why: the quota tiers separate on clue count only, and the difficulty-separation report
+ * (October 2026) measured that **half** of 9×9 Mediums at 31 clues were still singles-only — an
+ * Easy with fewer clues — while Hard at 26 clues always needed a real technique. The gate makes
+ * Medium mean "you will need at least a hidden single or a pair", which is what the label
+ * promises. Each retry restores the full solution and re-digs in a fresh `rng` order; the check
+ * itself (`solvableBySinglesAlone`) is microseconds, so a retry costs one more quota dig (~1 ms).
+ * After `MEDIUM_MAX_RETRIES` the last dig is kept — still a valid, unique, 31-clue Medium — rather
+ * than failing generation over a label. Not applied to 4×4/6×6: at those sizes nearly every
+ * unique grid is singles-only and clue count is the honest lever (the report's T0 columns).
+ */
+export function applyMediumDigger(grid: number[][], solution: number[][], config: GridConfig, rng: () => number = Math.random): void {
+  for (let attempt = 0; attempt < MEDIUM_MAX_RETRIES; attempt++) {
+    for (let r = 0; r < config.size; r++) for (let c = 0; c < config.size; c++) grid[r][c] = solution[r][c];
+    applyQuotaDigger(grid, 'medium', config, rng);
+    if (!solvableBySinglesAlone(grid, config)) return;
   }
 }
 
