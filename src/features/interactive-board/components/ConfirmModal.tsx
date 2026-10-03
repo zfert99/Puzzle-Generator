@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useDialogFocus } from '../hooks/useDialogFocus';
+import { useRef } from 'react';
+import { Modal } from '@/features/chrome/Modal';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -17,9 +17,10 @@ interface ConfirmModalProps {
 }
 
 /**
- * A small accessible confirm dialog (Biscuit Lab styling). Used for the "starting a new
- * puzzle erases your saved one" warning. Focus lands on the (safe) cancel button on open so a
- * stray Enter never destroys progress.
+ * A small confirm dialog (Biscuit Lab styling) on the shared native `Modal` shell. Used for the
+ * "starting a new puzzle erases your saved one" warning. Focus lands on the (safe) cancel button
+ * on open so a stray Enter never destroys progress; the shell traps Tab inside and hands focus
+ * back to the opener on close.
  *
  * `onCancel` fires on the explicit safe-button click (which may do more than dismiss — e.g.
  * resume the saved game); `onDismiss` fires on Escape / backdrop (a plain close). They're
@@ -35,51 +36,32 @@ export function ConfirmModal({
   onCancel,
   onDismiss,
 }: ConfirmModalProps) {
-  // Shared dialog focus (F7): focus-in on open — which this modal always did — plus
-  // restore-to-opener on close, which it previously lacked.
-  const cancelRef = useDialogFocus<HTMLButtonElement>(open);
-  const dismiss = onDismiss ?? onCancel;
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dismiss();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, dismiss]);
-
-  if (!open) return null;
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-title"
-      onClick={dismiss}
+    <Modal
+      open={open}
+      onDismiss={onDismiss ?? onCancel}
+      ariaLabelledBy="confirm-title"
+      initialFocusRef={cancelRef}
+      cardClassName="rounded-2xl border-[3px] border-ink bg-paper-2 text-ink p-6 text-center shadow-chunky"
     >
-      <div
-        className="rounded-2xl border-[3px] border-ink bg-paper-2 p-6 max-w-sm w-full text-center shadow-chunky"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 id="confirm-title" className="text-xl font-semibold mb-2">
-          {title}
-        </h2>
-        <p className="text-sm text-ink-soft mb-6">{message}</p>
-        <div className="flex gap-3 justify-center">
-          <button ref={cancelRef} type="button" onClick={onCancel} className="btn-primary">
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
-          >
-            {confirmLabel}
-          </button>
-        </div>
+      <h2 id="confirm-title" className="text-xl font-semibold mb-2">
+        {title}
+      </h2>
+      <p className="text-sm text-ink-soft mb-6">{message}</p>
+      <div className="flex gap-3 justify-center">
+        <button ref={cancelRef} type="button" onClick={onCancel} className="btn-primary">
+          {cancelLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="px-5 py-3 rounded-lg border border-ink hover:bg-paper-2 transition-colors"
+        >
+          {confirmLabel}
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }

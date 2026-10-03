@@ -92,6 +92,45 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — Native `<dialog>` for every modal (item 4a of the pass's backlog)
+
+Branch `feat/native-dialog-modals` on `3d41cec`. Diff: new `features/chrome/Modal.tsx` (+ `.md`,
+`.test.tsx`) — the one shell on `showModal()`; `ConfirmModal`, `SolvedDialog`, `ReviewDialog`,
+`SettingsMenu`, `Calculator` and `RulesDialog` migrated onto it; `useDialogFocus` (ts/md/test)
+deleted; `PlayExperience` gives the solved dialog an Escape meaning ("View puzzle"); two Playwright
+journeys in `a11y.spec.ts` prove the trap (15 Tabs inside Settings, 6 inside the confirm) and the
+focus hand-back; mirrored docs and the reverse sweep (`DailyExperience.md`, `PlayExperience.md`,
+`project-status.md`, the pass's record §5, the a11y audit banner, roadmap). **~250 LOC of source
+net of deletions.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 986 tests** (3 new in `Modal.test.tsx`, 2 removed with the hook); no Known-flaky entry fired |
+| Playwright, production build (`E2E_PORT=3100`) | full suite **50 passed / 2 failed** on the first run — my own new trap tests, asserting focus never leaves the dialog element, which is not what a modal guarantees (focus may leave the *document* for the browser UI and `activeElement` reads `body`); re-stated as "never page content behind the dialog" plus an inert check (`.focus()` on a header link / the menu's Play is a no-op), then `a11y.spec.ts` + `play.spec.ts` **44 passed, 1 flaky** (`play.spec.ts` 4×4 timeout, the Known-flaky contention class, green on retry) |
+| markdownlint | clean on every doc touched |
+
+### Findings
+
+- **`onDismiss` must not fire on a programmatic close.** The first draft listened to the native
+  `close` event, so flipping `open` to false re-entered the owner's dismiss handler (a resume, a
+  state reset) a second time. Only `cancel` (Escape) and the backdrop click dismiss; a programmatic
+  close just runs the effect cleanup. Rule: **a dialog's "closed by the user" and "closed by
+  state" paths need different handlers**, or every owner pays for the echo.
+- **React's `autoFocus` never reaches a `showModal()` dialog** — it runs at mount, before the
+  element is open, so initial focus is placed explicitly after `showModal()` (RulesDialog had
+  found this in September; the shell keeps it).
+- jsdom's dialog polyfill neither traps nor restores focus, so the shell restores the opener
+  itself (which also covers unmount); the trap is asserted only in Playwright.
+- **A modal "trap" is "no page content", not "never leaves the element".** Chromium lets Tab run
+  off the end of a modal dialog into the address bar (`activeElement` → `body`) and back in; the
+  first trap test called that a leak and failed on Tab #8. Assert that `activeElement` is never a
+  page element outside the dialog, and that content behind it refuses `.focus()`.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — Classic 9×9 Medium technique gate + the two post-landing measurements
 
 Branch `feat/classic-medium-technique-gate` on `591b70e`. Diff: `grid-utils.ts`

@@ -207,6 +207,78 @@ test.describe('a11y: no serious/critical axe violations', () => {
   }
 });
 
+/**
+ * The native-dialog migration (October 2026): every modal is the shared `Modal` shell on
+ * `<dialog>.showModal()`, which traps Tab and makes the page behind inert. jsdom cannot assert
+ * either (its polyfill only toggles `open`), so this is where the trap is proved — a real
+ * browser, Tab pressed more times than the dialog has controls, focus never leaving it, and the
+ * opener getting focus back on close.
+ */
+test.describe('a11y: modals trap focus and give it back (native <dialog>)', () => {
+  test('Settings: Tab cycles inside the dialog; Escape returns focus to the gear', async ({ page }) => {
+    await page.goto('/');
+    const gear = page.getByRole('button', { name: 'Settings' });
+    await gear.click();
+    const dialog = page.getByRole('dialog', { name: 'Settings' });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Close settings' })).toBeFocused();
+    // What a modal dialog guarantees is that focus can never land on PAGE content behind it. It
+    // may leave the document for the browser's own UI (the address bar) once it runs off the end
+    // of the dialog's controls — `document.activeElement` then reads `body` — and come back in.
+    // The old overlay failed this by landing on the header links and the hub cards.
+    for (let i = 0; i < 15; i++) {
+      await page.keyboard.press('Tab');
+      const where = await page.evaluate(() => {
+        const dlg = document.querySelector('dialog[open]');
+        const ae = document.activeElement;
+        if (!ae || ae === document.body) return 'browser-ui';
+        return dlg?.contains(ae) ? 'dialog' : `page:${ae.tagName}:${ae.textContent?.trim().slice(0, 20)}`;
+      });
+      expect(where, `Tab #${i + 1} reached page content behind the Settings dialog`).toMatch(/^(dialog|browser-ui)$/);
+    }
+    // The page behind is inert: a header link cannot even be focused programmatically.
+    const headerFocusable = await page.getByRole('link', { name: 'Daily' }).first().evaluate((el) => {
+      (el as HTMLElement).focus();
+      return document.activeElement === el;
+    });
+    expect(headerFocusable, 'the header is not inert behind the Settings dialog').toBe(false);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(gear).toBeFocused();
+  });
+
+  test('"Start a new puzzle?": the safe button has focus, the board behind is inert', async ({ page }) => {
+    await page.goto('/play');
+    await page.getByRole('button', { name: '4×4' }).click();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+    await expect(page.getByRole('grid', { name: /sudoku board/i })).toBeVisible();
+    await dismissRulesIfShown(page);
+    await page.getByRole('button', { name: /menu/i }).click();
+    await page.getByRole('button', { name: /^Play$/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Start a new puzzle?' });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Keep playing' })).toBeFocused();
+    // Inert page: the menu's own Play button cannot be focused while the dialog is up.
+    const playFocusable = await page.getByRole('button', { name: /^Play$/ }).evaluate((el) => {
+      (el as HTMLElement).focus();
+      return document.activeElement === el;
+    });
+    expect(playFocusable, 'the menu is not inert behind the confirm dialog').toBe(false);
+    for (let i = 0; i < 6; i++) {
+      await page.keyboard.press('Tab');
+      const where = await page.evaluate(() => {
+        const dlg = document.querySelector('dialog[open]');
+        const ae = document.activeElement;
+        if (!ae || ae === document.body) return 'browser-ui';
+        return dlg?.contains(ae) ? 'dialog' : `page:${ae.tagName}`;
+      });
+      expect(where, `Tab #${i + 1} reached page content behind the confirm dialog`).toMatch(/^(dialog|browser-ui)$/);
+    }
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+  });
+});
+
 test.describe('a11y: the Skyscrapers board (four-sided clue gutter — plan G8)', () => {
   test('a started Skyscrapers game passes axe (serious+critical)', async ({ page }) => {
     await page.goto('/play?variant=skyscrapers', { waitUntil: 'networkidle' });

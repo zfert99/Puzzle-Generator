@@ -381,6 +381,7 @@ export default function PlayExperience() {
           mistakes={useBoardStore.getState().mistakes}
           primaryLabel="New puzzle"
           onPrimary={() => setView('config')}
+          onDismiss={() => setViewingSolved(true)}
           secondaryAction={
             <button
               type="button"

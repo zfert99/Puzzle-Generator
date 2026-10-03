@@ -9,8 +9,8 @@
 > the body too, axe runs in **both themes** and on `/generate` + `/account`, and the first dark
 > run found a 1.5:1 text/fill pair on every primary button. Everything found and fixed (skip
 > link, form labels + autocomplete, `aria-pressed`, a CSS reduced-motion fallback, branded
-> error/404 pages, live regions) and what stays open (G5–G9 plus a native-`<dialog>` focus trap
-> for the five hand-rolled modals) is in
+> error/404 pages, live regions) and what stays open (G5–G9; the native-`<dialog>` focus trap for
+> the hand-rolled modals landed 2026-10-03 as one shared `Modal` shell) is in
 > [site-wide-optimization-qa-pass.md](site-wide-optimization-qa-pass.md) §2.5 and §5.
 > **Kept live, not archived (September 2026):** [`e2e/a11y.spec.ts`](../e2e/a11y.spec.ts) cites gap
 > G2 as the reason the reflow loop exists, so per AGENTS.md §7 this stays in the root.

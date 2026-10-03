@@ -19,3 +19,13 @@ render: backdrop + chunky panel (role=dialog, aria-modal, aria-label "Board full
   [Keep looking]  (focused on open via useDialogFocus — F7)
   [Show me what's wrong]  (hidden once errorsRevealed)
 ```
+
+## On the native `Modal` shell (October 2026)
+
+**Why:** this dialog was a hand-rolled `aria-modal` overlay (or, for the rules dialog, its own
+`<dialog>` wiring). It now renders through the shared [`Modal`](../../chrome/Modal.md) —
+`<dialog>.showModal()` — which gives what the overlay never could: a real focus trap and an inert
+page behind it. The shell owns open/close, the deterministic initial focus (`initialFocusRef`),
+Escape (`cancel`) and backdrop-click dismissal, and handing focus back to the opener. The former
+`useDialogFocus` hook (focus-in + restore, explicitly not a trap) is retired. Behaviour this
+component still decides: what "dismiss" means for it (see `onDismiss`).
