@@ -299,3 +299,16 @@
 | 2026-10-03T00:35:51.805Z | `4e9f8b5` | Killer Gen 9×9 Extreme (5x) | 4998.31 ms | p50 4805.93 ms · p90 7024.41 ms · max 7024 ms (n=5, seeded) |
 | 2026-10-03T00:35:51.805Z | `4e9f8b5` | Killer Gen 6×6 Hard (20x) | 11.80 ms | p50 13.32 ms · p90 19.05 ms · max 31 ms (n=20, seeded) |
 | 2026-10-03T00:35:51.805Z | `4e9f8b5` | Killer Gen 4×4 Easy (20x) | 0.24 ms | p50 0.22 ms · p90 0.42 ms · max 1 ms (n=20, seeded) |
+| 2026-10-03T00:40:52.216Z | `7ed14f7` | HumanSolver Basic (5000x) | 0.11 ms | 9286 solves/sec · p50 0.08 ms · p90 0.19 ms · max 2 ms (n=5000, seeded) |
+| 2026-10-03T00:40:52.216Z | `7ed14f7` | HumanSolver Advanced (5000x) | 0.66 ms | 1509 solves/sec · p50 0.58 ms · p90 1.07 ms · max 14 ms (n=5000, seeded) |
+| 2026-10-03T00:40:52.216Z | `7ed14f7` | HumanSolver Extreme (1000x) | 18.09 ms | 55 solves/sec · p50 6.45 ms · p90 54.98 ms · max 109 ms (n=1000, seeded) |
+| 2026-10-03T00:41:26.546Z | `7ed14f7` | Pipeline Gen (10x Medium) | 2.93 ms | p50 2.64 ms · p90 5.05 ms · max 7 ms (n=10, seeded) |
+| 2026-10-03T00:41:26.546Z | `7ed14f7` | Pipeline Gen (10x Expert) | 52.02 ms | p50 38.14 ms · p90 93.28 ms · max 167 ms (n=10, seeded) |
+| 2026-10-03T00:41:26.546Z | `7ed14f7` | Pipeline Gen (5x Extreme) | 79.81 ms | p50 76.16 ms · p90 142.58 ms · max 143 ms (n=5, seeded) |
+| 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 9×9 Easy (20x) | 10.45 ms | p50 6.10 ms · p90 21.25 ms · max 34 ms (n=20, seeded) |
+| 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 9×9 Medium (20x) | 92.28 ms | p50 64.46 ms · p90 199.68 ms · max 239 ms (n=20, seeded) |
+| 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 9×9 Hard (20x) | 311.22 ms | p50 277.09 ms · p90 685.16 ms · max 722 ms (n=20, seeded) |
+| 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 9×9 Expert (10x) | 318.02 ms | p50 303.99 ms · p90 548.19 ms · max 755 ms (n=10, seeded) |
+| 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 9×9 Extreme (5x) | 2678.85 ms | p50 2684.10 ms · p90 3806.13 ms · max 3806 ms (n=5, seeded) |
+| 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 6×6 Hard (20x) | 10.65 ms | p50 11.48 ms · p90 16.86 ms · max 27 ms (n=20, seeded) |
+| 2026-10-03T00:41:28.658Z | `7ed14f7` | Killer Gen 4×4 Easy (20x) | 0.43 ms | p50 0.30 ms · p90 0.77 ms · max 2 ms (n=20, seeded) |

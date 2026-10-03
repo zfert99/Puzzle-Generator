@@ -177,133 +177,156 @@ export function applyALSXZ(solver: HumanSolver): boolean {
  */
 export function applyAIC(solver: HumanSolver): boolean {
   const MAX_CHAIN_DEPTH = 12;
+  const size = solver.size;
+  const nodeCount = size * size * size;
 
-  const strongLinks = new Map<string, string[]>();
-  const weakLinks = new Map<string, string[]>();
-
-  const nodeKey = (r: number, c: number, num: number) => `${r},${c},${num}`;
-  const parseKey = (key: string): { r: number; c: number; num: number } => {
-    const [r, c, num] = key.split(',').map(Number);
-    return { r, c, num };
+  // Numeric node ids — `(r * size + c) * size + (num - 1)` — in place of "r,c,num" strings
+  // (October 2026). The string form cost a `split`/`map(Number)` parse on every dequeue, a Map
+  // lookup per neighbour list, a full `path` array copy per enqueue plus `path.includes` per
+  // candidate neighbour, and `queue.shift()` (O(n)) per dequeue; profiled at 23 % of Killer
+  // extreme generation, with the chain's own closures on top. Adjacency is per-node arrays built
+  // in EXACTLY the order the string version inserted them, the queue is an index over typed
+  // arrays with parent pointers (ancestry walked instead of copied), and visited is a stamped
+  // Int32Array — so the BFS visits the same states in the same order and finds the same first
+  // elimination. The 40-puzzle before/after capture is identical.
+  const strongAdj: number[][] = new Array(nodeCount);
+  const weakAdj: number[][] = new Array(nodeCount);
+  for (let i = 0; i < nodeCount; i++) {
+    strongAdj[i] = [];
+    weakAdj[i] = [];
+  }
+  /** Strong-link sources in first-insertion order (the Map's iteration order in the old form). */
+  const strongOrder: number[] = [];
+  const addStrong = (from: number, to: number) => {
+    if (strongAdj[from].length === 0) strongOrder.push(from);
+    strongAdj[from].push(to);
   };
 
-  const addLink = (map: Map<string, string[]>, from: string, to: string) => {
-    if (!map.has(from)) map.set(from, []);
-    map.get(from)!.push(to);
-  };
-
-  const allNodes: string[] = [];
-  for (let r = 0; r < solver.size; r++) {
-    for (let c = 0; c < solver.size; c++) {
+  const allNodes: number[] = [];
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
       if (solver.grid[r][c] !== 0) continue;
       const cands = solver.candidateList(r, c);
-
-      for (const num of cands) {
-        allNodes.push(nodeKey(r, c, num));
-      }
-
+      const cellBase = (r * size + c) * size;
+      for (const num of cands) allNodes.push(cellBase + num - 1);
       for (let a = 0; a < cands.length; a++) {
         for (let b = a + 1; b < cands.length; b++) {
-          const keyA = nodeKey(r, c, cands[a]);
-          const keyB = nodeKey(r, c, cands[b]);
-          addLink(weakLinks, keyA, keyB);
-          addLink(weakLinks, keyB, keyA);
+          const idA = cellBase + cands[a] - 1;
+          const idB = cellBase + cands[b] - 1;
+          weakAdj[idA].push(idB);
+          weakAdj[idB].push(idA);
         }
       }
     }
   }
 
   const housePositions = solver.buildHousePositions();
-
-  for (let num = 1; num <= solver.size; num++) {
+  for (let num = 1; num <= size; num++) {
     const base = (num - 1) * solver.numHouses;
     for (let h = 0; h < solver.numHouses; h++) {
       const cells = housePositions[base + h];
       if (cells.length === 2) {
-        const keyA = nodeKey(cells[0].r, cells[0].c, num);
-        const keyB = nodeKey(cells[1].r, cells[1].c, num);
-        addLink(strongLinks, keyA, keyB);
-        addLink(strongLinks, keyB, keyA);
+        const idA = (cells[0].r * size + cells[0].c) * size + num - 1;
+        const idB = (cells[1].r * size + cells[1].c) * size + num - 1;
+        addStrong(idA, idB);
+        addStrong(idB, idA);
       } else if (cells.length > 2) {
         for (let a = 0; a < cells.length; a++) {
           for (let b = a + 1; b < cells.length; b++) {
-            const keyA = nodeKey(cells[a].r, cells[a].c, num);
-            const keyB = nodeKey(cells[b].r, cells[b].c, num);
-            addLink(weakLinks, keyA, keyB);
-            addLink(weakLinks, keyB, keyA);
+            const idA = (cells[a].r * size + cells[a].c) * size + num - 1;
+            const idB = (cells[b].r * size + cells[b].c) * size + num - 1;
+            weakAdj[idA].push(idB);
+            weakAdj[idB].push(idA);
           }
         }
       }
     }
   }
-
-  for (const [from, tos] of strongLinks) {
-    for (const to of tos) {
-      addLink(weakLinks, from, to);
-    }
+  // Every strong link is also a weak link, appended after the weak ones (the old Map order).
+  for (const from of strongOrder) {
+    for (const to of strongAdj[from]) weakAdj[from].push(to);
   }
 
+  // BFS state: one slot per (node, lastLink) pair, at most 2 × nodeCount entries per search.
+  const capacity = nodeCount * 2 + 1;
+  const qNode = new Int32Array(capacity);
+  const qLink = new Uint8Array(capacity); // 0 = weak, 1 = strong
+  const qDepth = new Int32Array(capacity);
+  const qParent = new Int32Array(capacity);
+  const visited = new Int32Array(capacity);
+  let stamp = 0;
+
+  /** Is `candidate` already on the path leading to queue entry `at`? (The old `path.includes`.) */
+  const onPath = (at: number, candidate: number): boolean => {
+    for (let i = at; i !== -1; i = qParent[i]) if (qNode[i] === candidate) return true;
+    return false;
+  };
+
   for (const startNode of allNodes) {
-    const startParsed = parseKey(startNode);
-    const startCell = { r: startParsed.r, c: startParsed.c };
+    const startNum = (startNode % size) + 1;
+    const startCellIndex = (startNode - (startNum - 1)) / size;
+    const startCell = { r: Math.floor(startCellIndex / size), c: startCellIndex % size };
 
-    for (const startLinkType of ['strong', 'weak'] as const) {
-      const queue: { node: string; lastLink: 'strong' | 'weak'; depth: number; path: string[] }[] = [];
-      const visited = new Set<string>();
+    for (let startLink = 1; startLink >= 0; startLink--) {
+      // 1 = strong first, then 0 = weak — the old ['strong', 'weak'] order.
+      stamp++;
+      let head = 0;
+      let tail = 0;
 
-      const firstLinks = startLinkType === 'strong'
-        ? (strongLinks.get(startNode) || [])
-        : (weakLinks.get(startNode) || []);
-
+      const firstLinks = startLink === 1 ? strongAdj[startNode] : weakAdj[startNode];
       for (const next of firstLinks) {
         if (next === startNode) continue;
-        const stateKey = `${next}:${startLinkType}`;
-        if (!visited.has(stateKey)) {
-          visited.add(stateKey);
-          queue.push({ node: next, lastLink: startLinkType, depth: 2, path: [startNode, next] });
+        const state = next * 2 + startLink;
+        if (visited[state] !== stamp) {
+          visited[state] = stamp;
+          qNode[tail] = next;
+          qLink[tail] = startLink;
+          qDepth[tail] = 2;
+          qParent[tail] = -1; // the start node is implicit: it is exempt from the path check anyway
+          tail++;
         }
       }
 
-      while (queue.length > 0) {
-        const { node, lastLink, depth, path } = queue.shift()!;
+      while (head < tail) {
+        const at = head++;
+        const node = qNode[at];
+        const lastLink = qLink[at];
+        const depth = qDepth[at];
 
         if (depth > MAX_CHAIN_DEPTH) continue;
 
         if (depth >= 4) {
-          const endParsed = parseKey(node);
-          const endCell = { r: endParsed.r, c: endParsed.c };
+          const endNum = (node % size) + 1;
+          const endCellIndex = (node - (endNum - 1)) / size;
+          const endCell = { r: Math.floor(endCellIndex / size), c: endCellIndex % size };
 
-          if (startLinkType === 'strong' && lastLink === 'strong') {
-            if (startParsed.num === endParsed.num) {
+          if (startLink === 1 && lastLink === 1) {
+            if (startNum === endNum) {
               const endpoints = [startCell, endCell];
-              const elim = solver.eliminateFromCellsSeeingAll(endpoints, startParsed.num, endpoints);
-              if (elim) return true;
+              if (solver.eliminateFromCellsSeeingAll(endpoints, startNum, endpoints)) return true;
             }
-          } else if (startLinkType === 'weak' && lastLink === 'weak') {
+          } else if (startLink === 0 && lastLink === 0) {
             // Discontinuous loop back to the start node: assuming it true forces it false, so it
             // is false. (A weak-ended chain between two DIFFERENT same-digit cells only proves
             // they are not both true — no elimination; see extreme.md.)
-            if (startParsed.num === endParsed.num &&
-                startCell.r === endCell.r && startCell.c === endCell.c) {
-              if (solver.removeCandidate(startCell.r, startCell.c, startParsed.num)) {
-                return true;
-              }
+            if (node === startNode) {
+              if (solver.removeCandidate(startCell.r, startCell.c, startNum)) return true;
             }
           }
         }
 
-        const nextLinkType: 'strong' | 'weak' = lastLink === 'strong' ? 'weak' : 'strong';
-        const nextLinks = nextLinkType === 'strong'
-          ? (strongLinks.get(node) || [])
-          : (weakLinks.get(node) || []);
-
+        const nextLink = lastLink === 1 ? 0 : 1;
+        const nextLinks = nextLink === 1 ? strongAdj[node] : weakAdj[node];
         for (const next of nextLinks) {
-          if (path.includes(next) && next !== startNode) continue;
-
-          const stateKey = `${next}:${nextLinkType}`;
-          if (!visited.has(stateKey)) {
-            visited.add(stateKey);
-            queue.push({ node: next, lastLink: nextLinkType, depth: depth + 1, path: [...path, next] });
+          if (next !== startNode && onPath(at, next)) continue;
+          const state = next * 2 + nextLink;
+          if (visited[state] !== stamp) {
+            visited[state] = stamp;
+            qNode[tail] = next;
+            qLink[tail] = nextLink;
+            qDepth[tail] = depth + 1;
+            qParent[tail] = at;
+            tail++;
           }
         }
       }

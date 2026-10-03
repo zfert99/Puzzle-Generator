@@ -5,6 +5,17 @@ import { generateSudoku } from '../sudoku';
 import { createEmptyGrid } from '../grid-utils';
 import { applyAIC } from './extreme';
 
+/** Seeded PRNG (mulberry32) — the same generator the benchmarks and the diggers' tests use. */
+function mulberry32(seed: number): () => number {
+  let state = seed | 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /** Bitmask for a set of candidate digits. */
 const mask = (...digits: number[]) => digits.reduce((m, d) => m | (1 << (d - 1)), 0);
 
@@ -65,3 +76,31 @@ describe('applyAIC soundness', () => {
     expect(solver.candidates[0][8]).toBe(mask(5, 7));
   });
 });
+
+describe('applyAIC on the numeric graph finds the same eliminations as the string version (October 2026)', () => {
+  // Captured from the pre-rewrite solver: the final grid and flags of a full extreme-tier solve of
+  // seeded Extreme puzzles. The rewrite changed data structures only; a different first
+  // elimination would show up here as a different solve.
+  const expected = [
+    { seed: 9200, grid: '392567841415238769876149235254893617937416528168752394741325986683974152529681473', solved: true, requiresExtreme: true },
+    { seed: 9201, grid: '986435172513287964472916538234871695697542813851693247168754329729368451345129786', solved: true, requiresExtreme: true },
+    { seed: 9202, grid: '387915264419826375256743891534291786792658413861437529648579132923184657175362948', solved: true, requiresExtreme: true },
+    { seed: 9203, grid: '876934251953261874421758936549873612618592347732416589295347168367189425184625793', solved: true, requiresExtreme: true },
+    { seed: 9204, grid: '357624891869371245124598673692157384541839726783246519276913458418765932935482167', solved: true, requiresExtreme: true },
+    { seed: 9205, grid: '193782456728546391645193782562917834471238965839654217214869573957321648386475129', solved: true, requiresExtreme: true },
+    { seed: 9206, grid: '586942173371856924924173685159327468432689517867415239645238791793561842218794356', solved: true, requiresExtreme: true },
+    { seed: 9207, grid: '528479163319286457476351928981523746264817395735964812192638574857142639643795281', solved: true, requiresExtreme: true },
+  ];
+
+  it('solves eight seeded Extreme puzzles to the captured grids and flags', () => {
+    for (const e of expected) {
+      const puzzle = generateSudoku('extreme', 9, mulberry32(e.seed));
+      const solver = new HumanSolver(puzzle.grid);
+      const result = solver.solve({ maxTier: 'extreme' });
+      expect(result.solved, `seed ${e.seed}`).toBe(e.solved);
+      expect(result.requiresExtreme, `seed ${e.seed}`).toBe(e.requiresExtreme);
+      expect(solver.grid.flat().join(''), `seed ${e.seed}`).toBe(e.grid);
+    }
+  });
+});
+
