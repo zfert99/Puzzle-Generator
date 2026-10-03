@@ -91,6 +91,17 @@ export class KillerLogicalSolver {
   private readonly houses: number[][];
   /** Regions for the multi-unit Rule of 45: unions of 1–3 contiguous rows / columns. */
   private readonly regions: { cells: Set<number>; houseCount: number }[];
+  /**
+   * The cage geometry of every region, computed ONCE: which cages lie fully inside it (their
+   * sum), which straddle it (every touching cage's sum), the innie cells (in the region but not
+   * in a contained cage) and the outie cells (outside it, in a straddling cage). Cages never
+   * change during a solve, so the two region techniques used to rebuild all of this — Sets,
+   * `every` scans, cell lists — for ~57 regions × every cage on every call, inside every
+   * deduction pass; only the placed digits are dynamic (October 2026).
+   */
+  private readonly regionGeometry: { total: number; houseCount: number; containedSum: number; touchingSum: number; innieCells: number[]; outieCells: number[] }[];
+  /** Per house: the one uncovered cell and the sum of the cages fully inside, when exactly one cell is uncovered; else null. */
+  private readonly houseSingles: ({ target: number; containedSum: number } | null)[];
   private hardestTier: KillerTier = 0;
 
   constructor(cages: Cage[], gridSize: GridSize, givens?: number[][]) {
@@ -108,6 +119,47 @@ export class KillerLogicalSolver {
     this.hs = new HumanSolver(givens ?? createEmptyGrid(config.size));
     this.houses = this.buildHouses();
     this.regions = this.buildRegions();
+    this.regionGeometry = this.regions.map((region) => this.geometryOf(region));
+    this.houseSingles = this.houses.map((house) => this.houseSingleOf(house));
+  }
+
+  /** The static part of the single-house Rule of 45: the lone uncovered cell, if there is exactly one. */
+  private houseSingleOf(houseCellList: number[]): { target: number; containedSum: number } | null {
+    const houseCells = new Set(houseCellList);
+    let containedSum = 0;
+    const covered = new Set<number>();
+    for (const cage of this.cages) {
+      if (cage.cells.every((cell) => houseCells.has(cell))) {
+        containedSum += cage.sum;
+        for (const cell of cage.cells) covered.add(cell);
+      }
+    }
+    if (covered.size !== houseCells.size - 1) return null;
+    for (const cell of houseCells) if (!covered.has(cell)) return { target: cell, containedSum };
+    return null;
+  }
+
+  /** The static part of the region techniques — see `regionGeometry`. */
+  private geometryOf(region: { cells: Set<number>; houseCount: number }) {
+    const touching = new Set<number>();
+    for (const cell of region.cells) touching.add(this.cellToCage[cell]);
+    let touchingSum = 0;
+    let containedSum = 0;
+    const containedCells = new Set<number>();
+    const outieCells: number[] = [];
+    for (const cageIndex of touching) {
+      const cage = this.cages[cageIndex];
+      touchingSum += cage.sum;
+      if (cage.cells.every((cell) => region.cells.has(cell))) {
+        containedSum += cage.sum;
+        for (const cell of cage.cells) containedCells.add(cell);
+      } else {
+        for (const cell of cage.cells) if (!region.cells.has(cell)) outieCells.push(cell);
+      }
+    }
+    const innieCells: number[] = [];
+    for (const cell of region.cells) if (!containedCells.has(cell)) innieCells.push(cell);
+    return { total: this.houseSum * region.houseCount, houseCount: region.houseCount, containedSum, touchingSum, innieCells, outieCells };
   }
 
   /** The working grid (0 = still empty). Read after `solve`. */
@@ -235,25 +287,9 @@ export class KillerLogicalSolver {
    * cell (an "innie"), that cell = houseSum − (sum of those cages). Sound only on real houses.
    */
   private applyRuleOf45(): boolean {
-    for (const houseCellList of this.houses) {
-      const houseCells = new Set(houseCellList);
-      let containedSum = 0;
-      const covered = new Set<number>();
-      for (const cage of this.cages) {
-        if (cage.cells.every((cell) => houseCells.has(cell))) {
-          containedSum += cage.sum;
-          for (const cell of cage.cells) covered.add(cell);
-        }
-      }
-      if (covered.size !== houseCells.size - 1) continue;
-
-      let target = -1;
-      for (const cell of houseCells) {
-        if (!covered.has(cell)) {
-          target = cell;
-          break;
-        }
-      }
+    for (const single of this.houseSingles) {
+      if (single === null) continue;
+      const { target, containedSum } = single;
       const value = this.houseSum - containedSum;
       const r = Math.floor(target / this.size);
       const c = target % this.size;
@@ -405,28 +441,7 @@ export class KillerLogicalSolver {
    */
   private applyRuleOf45MultiCell(): boolean {
     let changed = false;
-    for (const region of this.regions) {
-      const total = this.houseSum * region.houseCount;
-      const touching = new Set<number>();
-      for (const cell of region.cells) touching.add(this.cellToCage[cell]);
-
-      let touchingSum = 0;
-      let containedSum = 0;
-      const containedCells = new Set<number>();
-      const outieCells: number[] = [];
-      for (const cageIndex of touching) {
-        const cage = this.cages[cageIndex];
-        touchingSum += cage.sum;
-        if (cage.cells.every((cell) => region.cells.has(cell))) {
-          containedSum += cage.sum;
-          for (const cell of cage.cells) containedCells.add(cell);
-        } else {
-          for (const cell of cage.cells) if (!region.cells.has(cell)) outieCells.push(cell);
-        }
-      }
-      const innieCells: number[] = [];
-      for (const cell of region.cells) if (!containedCells.has(cell)) innieCells.push(cell);
-
+    for (const { total, containedSum, touchingSum, innieCells, outieCells } of this.regionGeometry) {
       changed = this.restrictPseudoCage(innieCells, total - containedSum) || changed;
       changed = this.restrictPseudoCage(outieCells, touchingSum - total) || changed;
     }
@@ -508,30 +523,8 @@ export class KillerLogicalSolver {
    * multi-house innies count here; outies (which Tier 1 doesn't do) fire on any region.
    */
   private applyRuleOf45Regions(): boolean {
-    for (const region of this.regions) {
-      const total = this.houseSum * region.houseCount;
-      const touching = new Set<number>();
-      for (const cell of region.cells) touching.add(this.cellToCage[cell]);
-
-      let touchingSum = 0;
-      let containedSum = 0;
-      const containedCells = new Set<number>();
-      const outieCells: number[] = [];
-      for (const cageIndex of touching) {
-        const cage = this.cages[cageIndex];
-        touchingSum += cage.sum;
-        if (cage.cells.every((cell) => region.cells.has(cell))) {
-          containedSum += cage.sum;
-          for (const cell of cage.cells) containedCells.add(cell);
-        } else {
-          for (const cell of cage.cells) if (!region.cells.has(cell)) outieCells.push(cell);
-        }
-      }
-
-      const innieCells: number[] = [];
-      for (const cell of region.cells) if (!containedCells.has(cell)) innieCells.push(cell);
-
-      if (region.houseCount >= 2 && innieCells.length === 1) {
+    for (const { total, houseCount, containedSum, touchingSum, innieCells, outieCells } of this.regionGeometry) {
+      if (houseCount >= 2 && innieCells.length === 1) {
         if (this.tryPlace(innieCells[0], total - containedSum)) return true;
       }
       if (outieCells.length === 1) {

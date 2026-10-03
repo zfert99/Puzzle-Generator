@@ -145,3 +145,28 @@ box regions), with 93 logically-solved layouts fuzzing 0 mismatches against the 
 solver. Tier spread on that set: 14× tier 4, 3× tier 5 — both new bands are populated.
 Existing tiers unaffected: identical traces for puzzles solvable ≤ tier 3 (cheapest-first
 ordering), bands hold, generation 9/75/291 ms.
+
+## Rule-of-45 geometry computed once (October 2026)
+
+**Why:** the single-house Rule of 45 (tier 1) and the two region techniques (tier 3's innie/outie
+placements and the multi-cell pseudo-cages) rebuilt their geometry on every call: for each of the
+~57 regions, a `Set` of touching cages, an `every` scan over every cage's cells to find the ones
+fully inside, the contained and touching sums, and fresh innie/outie cell lists — inside every
+deduction pass, on a 9×9 extreme that takes thousands of passes. None of it depends on the grid:
+cages never change during a solve; only the placed digits do. The constructor now computes
+`regionGeometry` (total, contained sum, touching sum, innie cells, outie cells per region) and
+`houseSingles` (the one uncovered cell of a house whose cages cover all but one, with the
+contained sum) once, and the three techniques loop over those with only the dynamic checks
+(`tryPlace`, `restrictPseudoCage`, the candidate test). Iteration order is unchanged, so grades
+are the same: 40 seeded puzzles (4×4 → 9×9 expert) graded identically before and after, and 16 of
+them are asserted in a test (tier, passes, every technique count).
+
+```text
+constructor: regionGeometry = regions.map(geometryOf); houseSingles = houses.map(houseSingleOf)
+applyRuleOf45:          for each non-null houseSingle: value = houseSum − containedSum → place if open
+applyRuleOf45Regions:   for each geometry: single innie (≥ 2 houses) / single outie → tryPlace
+applyRuleOf45MultiCell: for each geometry: restrictPseudoCage(innies, total − contained),
+                                           restrictPseudoCage(outies, touching − total)
+```
+
+Measured with the seeded `benchmark-killer.ts`: see the pre-merge log entry for the before/after.
