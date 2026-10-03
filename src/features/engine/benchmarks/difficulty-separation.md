@@ -51,8 +51,9 @@ avg gen                 generation time per puzzle, for context only
 
 ## Known gaps
 
-- The Classic T3 bucket means "the HumanSolver could not finish at the advanced tier" — which
-  includes puzzles needing a technique the solver lacks (Claiming / box-line reduction is not
-  implemented), not only genuinely extreme ones. An occasional easy 9×9 lands there.
+- The Classic T3 bucket means "the HumanSolver could not finish at the advanced tier". Before
+  Claiming joined the basic ladder (October 2026) that included puzzles needing a technique the
+  solver lacked, and an occasional easy 9×9 landed there; it should now hold only genuinely
+  extreme puzzles.
 - Samples are unseeded, so rows differ run to run; 12 per cell is enough to read the shape of a
   tier, not to recalibrate a band. Use the generator's own seeded tests for that.

@@ -92,6 +92,37 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — Claiming (box-line reduction, line → box) joins the basic ladder
+
+Branch `feat/claiming-box-line` on the merged #152. Diff: `strategies/basic.ts` `applyClaiming`
+(one scan per digit for rows and columns), `human-solver.ts` ladder (after pointing pairs),
+Killer's tier-3 list + `claiming: 2.6` score weight, two unit tests, the Killer grade fixture
+re-captured; docs that recorded the gap (`basic.md` §6, `diggers.md`, `human-solver.md`,
+`difficulty-separation.md`, the pass's record, README). **~80 LOC of source.** A **semantic**
+change by design, unlike 4c–4f.
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 991 tests** (2 new); the pinned Killer fixture re-captured — 3 of 40 seeded traces shortened, **no tier moved**; the eight pinned Extreme solves and the Expert seeds still hold |
+| Fair solver timing — the new solver on the exact pre-Claiming pools (regenerated from a `main` worktree with the benchmark's seeds) | Extreme avg 9.1 → 10.3 ms, **p50 4.42 → 3.81**, p90 26 → 31; Advanced avg 0.66 → 0.71 ms. One more basic pass per iteration, paid back on the puzzles claiming finishes sooner |
+| Seeded benchmark rows (`benchmark-logs.md`) | **moved for the non-performance reason** `bench-utils.md` names: a solver change alters which puzzle a seed yields, so the pools and the generator's draws are different puzzles now — Expert generation 39 → 67 ms (Expert is judged against a complete basic tier and retries more), Killer Extreme 1953 → 4585 ms on *different* draws (its historical band is 2–8 s). Not comparable to the rows above them; the fixed-pool row is the comparison |
+| `difficulty-separation.ts 12 classic` | easy T0×10 T1×2, medium T1×11 T3×1, hard T0×1 T1×10 T2×1, expert T2×12, extreme T3×4 — Easy's T3 is gone |
+| markdownlint | clean |
+
+### Findings
+
+- **When a solver changes, the seeded generator rows stop being a performance signal** — the
+  same seed draws different puzzles. The honest comparison is the new solver on the OLD pools
+  (a `main` worktree regenerates them from the seeds); say which rows are which.
+- A "single scan instead of two" rewrite of the new strategy measured no change on the fixed
+  pools (ALS-XZ and AIC dominate); kept because it is cheaper by construction, the claim in the
+  comment was cut to what was measured.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — a11y audit G5–G9: tap targets, hover gating, board by height, jsx-a11y strict, manifest
 
 Branch `feat/a11y-g5-g9` on `20db7bf`. Diff: `globals.css` (`.tap-target` under

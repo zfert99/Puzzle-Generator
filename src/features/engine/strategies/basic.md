@@ -65,12 +65,10 @@ RETURN changed
 
 If a specific candidate within a 3×3 box only appears in a single row (or column), then that candidate's final position for this box MUST be somewhere along that line. Because of this, the candidate cannot exist anywhere else along that same row (or column) OUTSIDE of the box.
 
-**Only the box → line direction exists.** The converse — *Claiming* / *Box-Line Reduction*: a
-row's (or column's) candidate confined to one box clears it from the rest of that box — is **not**
-implemented, although this function's JSDoc used to say "(Box-Line Reduction)". Claiming is a
-standard basic technique, so a puzzle that needs it is solved here only by a later advanced step,
-which grades it one tier harder than it is. Kept as a recorded gap rather than added in passing,
-because adding a basic strategy changes the grade (and the generator's output) of every tier.
+**The converse lives in `applyClaiming` (October 2026).** This function is the box → line
+direction only; *Claiming* / box-line reduction (line → box) is the sixth basic strategy below.
+It was a recorded gap for a while because adding a basic strategy re-grades every tier and
+changes which puzzle a seed yields — which is exactly what happened when it landed (see §6).
 
 ```text
 FOR each number 1-9:
@@ -85,3 +83,34 @@ FOR each number 1-9:
 
 RETURN changed
 ```
+
+## 6. applyClaiming(solver) → boolean (October 2026)
+
+If a row's (or column's) candidate `num` appears only in cells that all lie in one box, that box's
+`num` must be on that line — so `num` can be removed from the box's other cells. The mirror image
+of pointing pairs: pointing goes box → line, claiming line → box.
+
+**Why it was missing, and what adding it changed.** `applyPointingPairs`' JSDoc once said
+"(Box-Line Reduction)", but only the pointing direction existed. A puzzle whose only "advanced"
+step was really a claiming move was accepted as Expert (the HumanSolver reached it through an
+X-Wing or similar), and the difficulty-separation report's `T3` bucket caught an occasional
+41-clue Easy the solver could not finish at all. With claiming in the basic ladder: the `T3`
+bucket empties for Easy, Expert's "needs advanced" gate is judged against a complete basic tier
+(so Expert generation retries more and takes longer — see `benchmark.ts`), Killer's tier-3 gains
+`claiming` beside `pointingPairs` with the same score weight, and the pinned Killer grade fixture
+was re-captured (3 of 40 traces shortened, no tier moved).
+
+```text
+FOR each number 1..N:
+    rows = solver.getCandidatePositions(num, 'row')
+    FOR each row r:
+        cells = rows[r]
+        IF 2 ≤ cells.length ≤ boxWidth AND every cell is in the same box column:
+            remove num from every OTHER row of that box
+    cols = solver.getCandidatePositions(num, 'col')
+    FOR each column c: the same with boxHeight and box rows
+RETURN whether anything was removed
+```
+
+A single position is a hidden single (found earlier); more positions than the box is wide (or
+tall) cannot fit in one box, so those lines are skipped before the `every`.

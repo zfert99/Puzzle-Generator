@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { HumanSolver } from '../human-solver';
-import { applyNakedSingle, applyHiddenSingle, applyNakedPair, applyPointingPairs } from './basic';
+import { applyNakedSingle, applyHiddenSingle, applyNakedPair, applyPointingPairs, applyClaiming } from './basic';
 import { createEmptyGrid } from '../grid-utils';
 
 // A known-valid, fully solved 9x9 grid (the canonical Sudoku example).
@@ -82,5 +82,32 @@ describe('applyPointingPairs', () => {
     expect(solver.hasCandidate(0, 5, 4)).toBe(false);
     // ...but kept in the pointing cells.
     expect(solver.hasCandidate(0, 0, 4)).toBe(true);
+  });
+});
+
+describe('applyClaiming (box-line reduction, line → box)', () => {
+  it('clears a digit from the rest of a box when its row positions all lie in that box', () => {
+    const grid = createEmptyGrid(9);
+    const solver = new HumanSolver(grid);
+    // Row 0: remove 5 from every cell outside box 0, so the 5s of row 0 are confined to r0c0..r0c2.
+    for (let c = 3; c < 9; c++) solver.removeCandidate(0, c, 5);
+    expect(applyClaiming(solver)).toBe(true);
+    // Box 0's other rows lost their 5s; row 0's own cells kept theirs.
+    for (let r = 1; r < 3; r++) for (let c = 0; c < 3; c++) expect(solver.hasCandidate(r, c, 5), `r${r}c${c}`).toBe(false);
+    for (let c = 0; c < 3; c++) expect(solver.hasCandidate(0, c, 5)).toBe(true);
+    // Nothing outside box 0 was touched.
+    expect(solver.hasCandidate(3, 0, 5)).toBe(true);
+  });
+
+  it('does the same for a column confined to one box, and does nothing when the digit spans two boxes', () => {
+    const grid = createEmptyGrid(9);
+    const solver = new HumanSolver(grid);
+    for (let r = 3; r < 9; r++) solver.removeCandidate(r, 4, 7); // column 4's 7s sit in box 1 only
+    expect(applyClaiming(solver)).toBe(true);
+    for (let r = 0; r < 3; r++) for (const c of [3, 5]) expect(solver.hasCandidate(r, c, 7), `r${r}c${c}`).toBe(false);
+
+    const spread = new HumanSolver(createEmptyGrid(9));
+    for (let c = 1; c < 9; c++) if (c !== 4) spread.removeCandidate(2, c, 3); // row 2's 3s at c0 (box 0) and c4 (box 1)
+    expect(applyClaiming(spread)).toBe(false);
   });
 });

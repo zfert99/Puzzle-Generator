@@ -1,4 +1,4 @@
-import { applyNakedSingle, applyHiddenSingle, applyNakedPair, applyHiddenPair, applyPointingPairs } from './strategies/basic';
+import { applyNakedSingle, applyHiddenSingle, applyNakedPair, applyHiddenPair, applyPointingPairs, applyClaiming } from './strategies/basic';
 import { applyXWing, applySwordfish, applyYWing, applyXYZWing } from './strategies/advanced';
 import { applyWWing, applyALSXZ, applyAIC } from './strategies/extreme';
 import { popcount } from './grid-utils';
@@ -525,6 +525,7 @@ export class HumanSolver {
       if (applyNakedPair(this)) { changed = true; continue; }
       if (applyHiddenPair(this)) { changed = true; continue; }
       if (applyPointingPairs(this)) { changed = true; continue; }
+      if (applyClaiming(this)) { changed = true; continue; }
 
       if (options.maxTier === 'basic') break;
 

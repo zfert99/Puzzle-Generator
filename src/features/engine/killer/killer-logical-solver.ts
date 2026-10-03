@@ -20,6 +20,7 @@ import {
   applyNakedPair,
   applyHiddenPair,
   applyPointingPairs,
+  applyClaiming,
 } from '../strategies/basic';
 import { applyXWing, applyYWing, applySwordfish, applyXYZWing } from '../strategies/advanced';
 import { applyWWing, applyALSXZ, applyAIC } from '../strategies/extreme';
@@ -49,6 +50,7 @@ export type KillerTechnique =
   | 'hiddenPair'
   | 'ruleOf45Regions'
   | 'pointingPairs'
+  | 'claiming'
   | 'cageComboRestriction'
   | 'ruleOf45MultiCell'
   | 'xWing'
@@ -575,6 +577,7 @@ export class KillerLogicalSolver {
       { name: 'hiddenPair', tier: 2, apply: () => applyHiddenPair(this.hs) },
       { name: 'ruleOf45Regions', tier: 3, apply: () => this.applyRuleOf45Regions() },
       { name: 'pointingPairs', tier: 3, apply: () => applyPointingPairs(this.hs) },
+      { name: 'claiming', tier: 3, apply: () => applyClaiming(this.hs) },
       // ---- Tier 4: Killer-tough (E2) + classic advanced — expert's ceiling ----
       { name: 'cageComboRestriction', tier: 4, apply: () => this.applyCageComboRestriction() },
       { name: 'ruleOf45MultiCell', tier: 4, apply: () => this.applyRuleOf45MultiCell() },

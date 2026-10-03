@@ -52,3 +52,7 @@ hard 64–96 with no overlap, at a modest yield cost (medium ~88 → ~117 ms, ha
 **Recalibrate the cuts** (re-run the distribution sweep) whenever technique weights, shape
 gates, or solver techniques change — the cuts are only meaningful relative to the generator
 that produced the distribution.
+
+**`claiming: 2.6` (October 2026):** the same weight as `pointingPairs` — it is the same box-line
+reasoning in the other direction, and weighting them apart would have been a judgment the
+measured distributions give no basis for.

@@ -170,3 +170,8 @@ applyRuleOf45MultiCell: for each geometry: restrictPseudoCage(innies, total − 
 ```
 
 Measured with the seeded `benchmark-killer.ts`: see the pre-merge log entry for the before/after.
+
+**Claiming in tier 3 (October 2026):** `applyClaiming` (line → box) sits beside `applyPointingPairs`
+in the technique list with the same score weight; both are the same box-line reasoning. The
+pinned grade fixture in the test was re-captured when it joined — 3 of 40 seeded traces got
+shorter, no tier moved.
