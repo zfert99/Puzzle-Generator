@@ -811,9 +811,9 @@ button, the public leaderboard no longer showing email local-parts, atomic rate-
 and a generation time budget on every `/api/generate` variant.
 
 **Backlog it leaves behind** (each with its proving benchmark or measurement named in the doc's
-§5): the AIC numeric-graph rewrite, ALS-XZ bitsets, Keisan hidden-pair masks and Killer static
-geometry (engine perf); seeded benchmark pools with median/p90; G5–G9 of the a11y audit (the
-native `<dialog>` shell for every modal landed 2026-10-03); an `opengraph-image`; a `lower(username)` unique
+§5): G5–G9 of the a11y audit (the native `<dialog>` shell for every modal landed 2026-10-03;
+the engine rewrites — seeded benchmarks, Keisan masks, Killer geometry, the AIC graph, ALS-XZ
+bitsets — all landed 2026-10-03 as #147–#151, Killer extreme generation 3× faster); an `opengraph-image`; a `lower(username)` unique
 index + `me/attempts` pagination; the two-slot save (the single slot can still be overwritten
 across two tabs, now only while both are visible). Measured and closed 2026-10-03: rate-limit
 buckets are per-IP through the hub, and Speed Insights data for `/puzzles/*` lives on the hub

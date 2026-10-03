@@ -92,6 +92,36 @@ are in [archive/pre-merge-log-2026-08.md](archive/pre-merge-log-2026-08.md)).
 
 ---
 
+## 2026-10-03 — ALS-XZ on cell bitsets with a de-duplicated ALS list (item 4f, the last engine item)
+
+Branch `perf/als-xz-bitsets` on the merged 4e. Diff: `human-solver.ts` `enumerateALS` keeps the
+first occurrence of each cell set; `strategies/extreme.ts` `applyALSXZ` on 3-word cell bitsets
+(per-ALS cells, per-ALS cells per digit, per-cell peers built once per call) for the overlap,
+restricted-common and elimination tests; `.md`s; the eight pinned Extreme solves from 4e cover it.
+**~150 LOC of source.**
+
+| Check | Result |
+|---|---|
+| `npm run lint` · `npx tsc --noEmit` | clean · clean |
+| `npx vitest run` | **98 files / 989 tests**; no Known-flaky entry fired |
+| Equivalence | the 40 seeded expert/extreme full solves still match the pre-4e capture exactly (grids, candidates, flags); Killer's 40 grade identically |
+| `benchmark-human-solver.ts` (seeded; 4e's rows are the before) | Extreme avg **18.1 → 9.1 ms**, p50 6.45 → 4.42, p90 55 → 26 — against the pass's original 20.8 ms, 2.3× |
+| `benchmark.ts` | Extreme gen avg **79.8 → 44.6 ms** (p90 143 → 73); Expert 52 → 39.5 ms |
+| `benchmark-killer.ts` | Extreme avg **2679 → 1953 ms** (the pass's original 5752 → 3.0× over 4d–4f); Hard 311 → 256; Expert 318 → 269 |
+| markdownlint | clean |
+
+### Findings
+
+- **De-duplication is order-safe only because the first occurrence is kept.** Any pair of
+  duplicate ALS has an equal-or-earlier pair of originals in (i, j) order, so the first
+  elimination cannot move; keeping the *last* occurrence would not have had that property.
+- Across 4c–4f the same method held every time: capture grades (or full solves) first, change
+  only data structures, diff, then benchmark seeded. Four rewrites, zero semantic drift.
+
+Hosted `/code-review` not run.
+
+---
+
 ## 2026-10-03 — AIC on a numeric graph with a typed-array queue (item 4e)
 
 Branch `perf/aic-numeric-graph` on `7d17a3f`. Diff: `strategies/extreme.ts` `applyAIC` — integer

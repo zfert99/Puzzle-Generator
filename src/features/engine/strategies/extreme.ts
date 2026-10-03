@@ -1,4 +1,4 @@
-import type { HumanSolver, Cell } from '../human-solver';
+import type { HumanSolver } from '../human-solver';
 import { popcount } from '../grid-utils';
 
 /**
@@ -53,30 +53,71 @@ export function applyWWing(solver: HumanSolver): boolean {
 export function applyALSXZ(solver: HumanSolver): boolean {
   const allALS = solver.enumerateALS();
   const size = solver.size;
+  const cellCount = size * size;
+  // Cell sets as 3 × 32-bit words (up to 96 cells). Overlap, "do these cells all see that
+  // cell" and "is this cell in either ALS" are a few ANDs each (October 2026) — they were an
+  // O(|A|·|B|) nested `some`, an O(|xA|·|xB|) `sees()` loop and an Int32 marker scan per pair.
+  const WORDS = 3;
+  const wordOf = (cell: number) => cell >>> 5;
+  const bitOf = (cell: number) => 1 << (cell & 31);
 
-  // Precompute, per ALS, which of its cells hold each candidate digit. Done once so
-  // an ALS's cells are not re-filtered for every one of its ~N partner ALS — that
-  // repeated filtering was the bulk of the old per-call cost.
-  const cellsByDigit: Map<number, Cell[]>[] = allALS.map((als) => {
-    const map = new Map<number, Cell[]>();
-    for (const cell of als.cells) {
-      let m = solver.candidates[cell.r][cell.c];
+  // Every cell's peers (row, column, box — never itself), computed once per call.
+  const peers = new Int32Array(cellCount * WORDS);
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const self = r * size + c;
+      const base = self * WORDS;
+      for (let i = 0; i < size; i++) {
+        const rowMate = r * size + i;
+        const colMate = i * size + c;
+        if (rowMate !== self) peers[base + wordOf(rowMate)] |= bitOf(rowMate);
+        if (colMate !== self) peers[base + wordOf(colMate)] |= bitOf(colMate);
+      }
+      const br = Math.floor(r / solver.boxHeight) * solver.boxHeight;
+      const bc = Math.floor(c / solver.boxWidth) * solver.boxWidth;
+      for (let rr = br; rr < br + solver.boxHeight; rr++) {
+        for (let cc = bc; cc < bc + solver.boxWidth; cc++) {
+          const mate = rr * size + cc;
+          if (mate !== self) peers[base + wordOf(mate)] |= bitOf(mate);
+        }
+      }
+    }
+  }
+  /** Does `cell` see every cell in the 3-word set at `set[offset..offset+2]`? */
+  const seesAllOf = (cell: number, set: Int32Array, offset: number): boolean => {
+    const base = cell * WORDS;
+    return (
+      (peers[base] & set[offset]) === set[offset] &&
+      (peers[base + 1] & set[offset + 1]) === set[offset + 1] &&
+      (peers[base + 2] & set[offset + 2]) === set[offset + 2]
+    );
+  };
+
+  // Per ALS: its cell set, and per digit the set of its cells holding that digit (3 words each,
+  // digit-major: `digitSets[(als * (size + 1) + digit) * WORDS]`).
+  const alsCount = allALS.length;
+  const alsCells = new Int32Array(alsCount * WORDS);
+  const digitSets = new Int32Array(alsCount * (size + 1) * WORDS);
+  const alsFlat: number[][] = allALS.map((als) => als.cells.map((cell) => cell.r * size + cell.c));
+  for (let i = 0; i < alsCount; i++) {
+    for (const cell of alsFlat[i]) {
+      alsCells[i * WORDS + wordOf(cell)] |= bitOf(cell);
+      let m = solver.candidates[Math.floor(cell / size)][cell % size];
       while (m !== 0) {
         const lowestBit = m & -m;
         const digit = 31 - Math.clz32(lowestBit) + 1;
-        const list = map.get(digit);
-        if (list) list.push(cell);
-        else map.set(digit, [cell]);
+        digitSets[(i * (size + 1) + digit) * WORDS + wordOf(cell)] |= bitOf(cell);
         m &= m - 1;
       }
     }
-    return map;
-  });
+  }
+  const digitOffset = (als: number, digit: number) => (als * (size + 1) + digit) * WORDS;
+  const isEmptySet = (set: Int32Array, offset: number) => set[offset] === 0 && set[offset + 1] === 0 && set[offset + 2] === 0;
 
   // Precompute grid-wide: the empty cells holding each candidate digit, in row-major
   // order, so an elimination scans only cells that actually contain the digit rather
   // than all size×size cells.
-  const emptyCellsByDigit: Cell[][] = Array.from({ length: size + 1 }, () => []);
+  const emptyCellsByDigit: number[][] = Array.from({ length: size + 1 }, () => []);
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
       if (solver.grid[r][c] !== 0) continue;
@@ -84,22 +125,17 @@ export function applyALSXZ(solver: HumanSolver): boolean {
       while (m !== 0) {
         const lowestBit = m & -m;
         const digit = 31 - Math.clz32(lowestBit) + 1;
-        emptyCellsByDigit[digit].push({ r, c });
+        emptyCellsByDigit[digit].push(r * size + c);
         m &= m - 1;
       }
     }
   }
 
-  // Allocation-free ALS-cell exclusion: tag the current pair's ALS cells with a
-  // monotonically increasing marker rather than building a Set (and clearing it)
-  // per pair.
-  const excludedMark = new Int32Array(size * size);
-  let pairTag = 0;
+  const union = new Int32Array(WORDS); // scratch: the z-cells of A ∪ B, or A ∪ B themselves
 
-  for (let i = 0; i < allALS.length; i++) {
+  for (let i = 0; i < alsCount; i++) {
     const alsA = allALS[i];
-    const byA = cellsByDigit[i];
-    for (let j = i + 1; j < allALS.length; j++) {
+    for (let j = i + 1; j < alsCount; j++) {
       const alsB = allALS[j];
 
       // Cheap O(1) reject: ALS-XZ requires at least two shared candidates.
@@ -107,9 +143,11 @@ export function applyALSXZ(solver: HumanSolver): boolean {
       if (popcount(commonMask) < 2) continue;
 
       // Skip overlapping ALS (sharing a cell).
-      if (alsA.cells.some((a: Cell) => alsB.cells.some((b: Cell) => a.r === b.r && a.c === b.c))) continue;
-
-      const byB = cellsByDigit[j];
+      if (
+        (alsCells[i * WORDS] & alsCells[j * WORDS]) !== 0 ||
+        (alsCells[i * WORDS + 1] & alsCells[j * WORDS + 1]) !== 0 ||
+        (alsCells[i * WORDS + 2] & alsCells[j * WORDS + 2]) !== 0
+      ) continue;
 
       // Expand the shared candidate bitmask into the actual digit list.
       const commonCands: number[] = [];
@@ -120,45 +158,37 @@ export function applyALSXZ(solver: HumanSolver): boolean {
         m &= m - 1;
       }
 
-      // Mark this pair's ALS cells as excluded elimination targets.
-      pairTag++;
-      for (const cell of alsA.cells) excludedMark[cell.r * size + cell.c] = pairTag;
-      for (const cell of alsB.cells) excludedMark[cell.r * size + cell.c] = pairTag;
-
       for (const x of commonCands) {
-        const xInA = byA.get(x) ?? [];
-        const xInB = byB.get(x) ?? [];
-        if (xInA.length === 0 || xInB.length === 0) continue;
+        const xA = digitOffset(i, x);
+        const xB = digitOffset(j, x);
+        if (isEmptySet(digitSets, xA) || isEmptySet(digitSets, xB)) continue;
 
         // Restricted Common Candidate: every x-cell in A sees every x-cell in B.
         let restricted = true;
-        for (const a of xInA) {
-          for (const b of xInB) {
-            if (!solver.sees(a, b)) { restricted = false; break; }
-          }
-          if (!restricted) break;
+        for (const a of alsFlat[i]) {
+          if ((digitSets[xA + wordOf(a)] & bitOf(a)) === 0) continue; // a does not hold x
+          if (!seesAllOf(a, digitSets, xB)) { restricted = false; break; }
         }
         if (!restricted) continue;
 
         for (const z of commonCands) {
           if (z === x) continue;
-          const zInA = byA.get(z) ?? [];
-          const zInB = byB.get(z) ?? [];
-          if (zInA.length === 0 || zInB.length === 0) continue;
+          const zA = digitOffset(i, z);
+          const zB = digitOffset(j, z);
+          if (isEmptySet(digitSets, zA) || isEmptySet(digitSets, zB)) continue;
 
           // Eliminate z from every cell that sees all z-locations in BOTH ALS,
           // excluding the ALS cells themselves.
+          union[0] = digitSets[zA] | digitSets[zB];
+          union[1] = digitSets[zA + 1] | digitSets[zB + 1];
+          union[2] = digitSets[zA + 2] | digitSets[zB + 2];
           let changed = false;
           for (const cell of emptyCellsByDigit[z]) {
-            if (excludedMark[cell.r * size + cell.c] === pairTag) continue;
-
-            let seesAll = true;
-            for (const t of zInA) { if (!solver.sees(cell, t)) { seesAll = false; break; } }
-            if (seesAll) {
-              for (const t of zInB) { if (!solver.sees(cell, t)) { seesAll = false; break; } }
-            }
-            if (seesAll) {
-              solver.removeCandidate(cell.r, cell.c, z);
+            const w = wordOf(cell);
+            const b = bitOf(cell);
+            if (((alsCells[i * WORDS + w] | alsCells[j * WORDS + w]) & b) !== 0) continue; // an ALS cell
+            if (seesAllOf(cell, union, 0)) {
+              solver.removeCandidate(Math.floor(cell / size), cell % size, z);
               changed = true;
             }
           }
