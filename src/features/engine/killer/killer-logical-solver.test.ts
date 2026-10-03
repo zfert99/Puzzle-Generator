@@ -125,9 +125,10 @@ describe('KillerLogicalSolver — tiered grading', () => {
 });
 
 describe('KillerLogicalSolver — precomputed Rule-of-45 geometry grades exactly as before (October 2026)', () => {
-  // Captured from the pre-change solver (region geometry rebuilt on every call) on seeded puzzles:
-  // tier, pass count and every technique's application count must be identical. Hoisting the
-  // geometry into the constructor is a performance change only; any drift here is semantic.
+  // Captured from the solver on seeded puzzles: tier, pass count and every technique's application
+  // count must be identical to the capture. First taken before the Rule-of-45 geometry hoist (a
+  // performance change, zero drift); re-captured 2026-10-03 when Claiming joined the basic ladder
+  // (a semantic change by design — `claiming` now appears in the counts, and a few traces shortened).
   const expected: { difficulty: KillerDifficulty; size: 6 | 9; seed: number; hardestTier: number; passes: number; counts: Record<string, number> }[] = [
     { difficulty: 'hard', size: 6, seed: 9100, hardestTier: 3, passes: 44, counts: {"cageArithmetic":7,"nakedSingle":30,"ruleOf45":3,"hiddenSingle":2,"cageConsistentDigits":1,"ruleOf45Regions":1} },
     { difficulty: 'hard', size: 6, seed: 9101, hardestTier: 2, passes: 47, counts: {"cageArithmetic":10,"hiddenSingle":9,"nakedSingle":26,"ruleOf45":1,"cageConsistentDigits":1} },
@@ -141,10 +142,10 @@ describe('KillerLogicalSolver — precomputed Rule-of-45 geometry grades exactly
     { difficulty: 'hard', size: 9, seed: 9103, hardestTier: 3, passes: 110, counts: {"cageArithmetic":24,"nakedSingle":60,"ruleOf45":2,"hiddenSingle":17,"cageConsistentDigits":2,"nakedPair":2,"hiddenPair":1,"ruleOf45Regions":2} },
     { difficulty: 'hard', size: 9, seed: 9104, hardestTier: 3, passes: 109, counts: {"cageArithmetic":24,"nakedSingle":62,"cageConsistentDigits":2,"ruleOf45Regions":4,"hiddenPair":1,"hiddenSingle":15,"nakedPair":1} },
     { difficulty: 'hard', size: 9, seed: 9105, hardestTier: 3, passes: 106, counts: {"cageArithmetic":24,"nakedSingle":62,"ruleOf45":3,"cageConsistentDigits":1,"ruleOf45Regions":1,"hiddenSingle":15} },
-    { difficulty: 'expert', size: 9, seed: 9100, hardestTier: 4, passes: 110, counts: {"cageArithmetic":18,"nakedSingle":57,"ruleOf45":1,"cageConsistentDigits":3,"ruleOf45Regions":2,"hiddenSingle":21,"pointingPairs":3,"cageComboRestriction":3,"nakedPair":1,"hiddenPair":1} },
+    { difficulty: 'expert', size: 9, seed: 9100, hardestTier: 4, passes: 110, counts: {"cageArithmetic":18,"nakedSingle":58,"ruleOf45":1,"cageConsistentDigits":3,"ruleOf45Regions":2,"hiddenSingle":20,"pointingPairs":3,"cageComboRestriction":3,"claiming":1,"nakedPair":1} },
     { difficulty: 'expert', size: 9, seed: 9101, hardestTier: 4, passes: 117, counts: {"cageArithmetic":20,"nakedSingle":58,"ruleOf45":1,"ruleOf45Regions":1,"pointingPairs":3,"cageComboRestriction":6,"nakedPair":4,"hiddenPair":2,"ruleOf45MultiCell":1,"hiddenSingle":21} },
-    { difficulty: 'expert', size: 9, seed: 9102, hardestTier: 4, passes: 112, counts: {"cageArithmetic":13,"nakedSingle":64,"ruleOf45":1,"hiddenPair":2,"cageConsistentDigits":1,"nakedPair":5,"ruleOf45Regions":1,"pointingPairs":5,"cageComboRestriction":5,"hiddenSingle":15} },
-    { difficulty: 'expert', size: 9, seed: 9103, hardestTier: 4, passes: 115, counts: {"cageArithmetic":18,"nakedSingle":58,"ruleOf45":1,"cageConsistentDigits":1,"cageComboRestriction":5,"nakedPair":5,"pointingPairs":3,"ruleOf45MultiCell":1,"hiddenSingle":22,"hiddenPair":1} },
+    { difficulty: 'expert', size: 9, seed: 9102, hardestTier: 4, passes: 113, counts: {"cageArithmetic":13,"nakedSingle":64,"ruleOf45":1,"hiddenPair":2,"cageConsistentDigits":1,"nakedPair":5,"ruleOf45Regions":1,"pointingPairs":5,"claiming":1,"cageComboRestriction":5,"hiddenSingle":15} },
+    { difficulty: 'expert', size: 9, seed: 9103, hardestTier: 4, passes: 117, counts: {"cageArithmetic":18,"nakedSingle":59,"ruleOf45":1,"cageConsistentDigits":1,"cageComboRestriction":5,"nakedPair":5,"pointingPairs":3,"ruleOf45MultiCell":1,"hiddenSingle":21,"claiming":2,"hiddenPair":1} },
   ];
 
   it('reproduces the captured grades, pass counts and technique counts', () => {

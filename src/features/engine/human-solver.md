@@ -45,6 +45,8 @@ numHouses          : size * 3 (rows + cols + boxes)
 totalCells         : size * size
 usedAdvanced       : boolean flag — true if X-Wing, Swordfish, Y-Wing, or XYZ-Wing was used
 usedExtreme        : boolean flag — true if W-Wing, ALS-XZ, or AIC was used
+basic ladder       : naked single, hidden single, naked pair, hidden pair, pointing pairs,
+                     claiming (line → box; added October 2026, see strategies/basic.md §6)
 filledCount        : private counter — incremented by placeNumber(), enables O(1) isSolved()
 ```
 

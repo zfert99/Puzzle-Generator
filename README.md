@@ -23,7 +23,7 @@ Unlike typical brute-force generators, this project features a custom-built, pur
 - **Logical Solver Engine (`HumanSolver`)**: An advanced deduction engine capable of performing sophisticated Sudoku strategies:
   - Naked Singles & Hidden Singles
   - Naked Pairs & Hidden Pairs
-  - Pointing Pairs
+  - Pointing Pairs & Claiming (box-line reduction, both directions)
   - X-Wing & Swordfish
   - Y-Wing & XYZ-Wing
   - W-Wing, Almost Locked Sets (ALS-XZ), & Alternating Inference Chains (AICs)

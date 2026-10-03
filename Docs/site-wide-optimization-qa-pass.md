@@ -251,8 +251,9 @@ Grouped by the kind of follow-up each needs.
 Net across the three: Killer 9×9 Extreme generation **5752 → 1953 ms** (3.0×), HumanSolver Extreme
 **20.8 → 9.1 ms** (2.3×), classic Extreme generation **884 ms per 5 → 45 ms each**. Method every
 time: capture grades or full solves first, change only data structures, diff (zero differences),
-then benchmark on the seeded rows. Still open: **Claiming** (line → box) is not implemented;
-adding it re-grades every tier.
+then benchmark on the seeded rows. **Claiming** (line → box) landed on 2026-10-03 as the last
+engine item — a semantic change by design: Expert is judged against a complete basic tier now,
+and the Killer grade fixture was re-captured (3 of 40 traces shortened, no tier moved).
 
 ### Accessibility slices
 

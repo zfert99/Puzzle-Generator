@@ -96,10 +96,10 @@ last, unverified puzzle — still unique and logically solvable, as before. Cost
 average, so Expert generation went from ~17 ms to ~95 ms per puzzle (the uniqueness gate halves
 the price of each pass).
 
-**Known gap — Claiming is not implemented.** The basic tier has *pointing* pairs/triples (box →
-line) but not *claiming* / box-line reduction (line → box); see `strategies/basic.md`. A puzzle
-whose only "advanced" step is really a claiming move is therefore accepted as Expert here, because
-`HumanSolver` reaches it through an advanced strategy instead. Adding claiming would re-grade every
+**Closed gap — Claiming landed 2026-10-03.** The basic tier now has both *pointing* (box → line)
+and *claiming* / box-line reduction (line → box); see `strategies/basic.md` §6. Until then a puzzle
+whose only "advanced" step was really a claiming move was accepted as Expert here, because
+`HumanSolver` reached it through an advanced strategy instead. Adding claiming re-graded every
 tier, so it is recorded rather than slipped into this change.
 
 ```text

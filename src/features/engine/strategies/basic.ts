@@ -1,4 +1,4 @@
-import type { HumanSolver } from '../human-solver';
+import type { HumanSolver, Cell } from '../human-solver';
 
 /**
  * Naked Single:
@@ -185,3 +185,63 @@ export function applyPointingPairs(solver: HumanSolver): boolean {
   }
   return changed;
 }
+
+/**
+ * Claiming / box-line reduction — the converse of pointing pairs (line → box). If, within a row
+ * (or column), a candidate appears only in cells that all lie in ONE box, then that box's copy of
+ * the digit must be on that line, so the digit can be removed from the box's other cells. A
+ * standard basic-tier technique that the engine lacked until October 2026: a puzzle whose only
+ * "advanced" step was really a claiming move was graded one tier harder than it is, and an
+ * occasional 41-clue Easy read as unsolvable to the solver. Adding it re-grades every tier and
+ * changes which puzzle a generator seed yields — the diggers' pinned fixtures were re-captured.
+ *
+ * Mirrors `applyPointingPairs` in shape: 2–3 positions on the line (a single position is a hidden
+ * single, found earlier; more than `boxWidth`/`boxHeight` cannot fit in one box).
+ */
+export function applyClaiming(solver: HumanSolver): boolean {
+  let changed = false;
+  const size = solver.size;
+  for (let num = 1; num <= solver.size; num++) {
+    // One pass per digit builds both the row and the column position lists; the generic
+    // `getCandidatePositions` helper would scan the grid once per axis.
+    const rowPositions: Cell[][] = Array.from({ length: size }, () => []);
+    const colPositions: Cell[][] = Array.from({ length: size }, () => []);
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (solver.grid[r][c] === 0 && solver.hasCandidate(r, c, num)) {
+          const cell = { r, c };
+          rowPositions[r].push(cell);
+          colPositions[c].push(cell);
+        }
+      }
+    }
+    for (let r = 0; r < solver.size; r++) {
+      const cells = rowPositions[r];
+      if (cells.length < 2 || cells.length > solver.boxWidth) continue;
+      const boxCol = Math.floor(cells[0].c / solver.boxWidth);
+      if (!cells.every((cell) => Math.floor(cell.c / solver.boxWidth) === boxCol)) continue;
+      const boxRow = Math.floor(r / solver.boxHeight);
+      for (let rr = boxRow * solver.boxHeight; rr < (boxRow + 1) * solver.boxHeight; rr++) {
+        if (rr === r) continue;
+        for (let cc = boxCol * solver.boxWidth; cc < (boxCol + 1) * solver.boxWidth; cc++) {
+          if (solver.removeCandidate(rr, cc, num)) changed = true;
+        }
+      }
+    }
+    for (let c = 0; c < solver.size; c++) {
+      const cells = colPositions[c];
+      if (cells.length < 2 || cells.length > solver.boxHeight) continue;
+      const boxRow = Math.floor(cells[0].r / solver.boxHeight);
+      if (!cells.every((cell) => Math.floor(cell.r / solver.boxHeight) === boxRow)) continue;
+      const boxCol = Math.floor(c / solver.boxWidth);
+      for (let cc = boxCol * solver.boxWidth; cc < (boxCol + 1) * solver.boxWidth; cc++) {
+        if (cc === c) continue;
+        for (let rr = boxRow * solver.boxHeight; rr < (boxRow + 1) * solver.boxHeight; rr++) {
+          if (solver.removeCandidate(rr, cc, num)) changed = true;
+        }
+      }
+    }
+  }
+  return changed;
+}
+
